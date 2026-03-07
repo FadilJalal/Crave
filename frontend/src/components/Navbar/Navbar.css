@@ -1,0 +1,265 @@
+.nb-wrap {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  height: var(--navbar-h);
+  background: rgba(255,255,255,0.97);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.nb-wrap.nb-scrolled {
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.nb-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.nb-logo img { height: 36px; width: auto; }
+
+.nb-location {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.2s;
+}
+.nb-location:hover { border-color: var(--brand); color: var(--brand); }
+
+.nb-search-wrap { position: relative; flex: 1; max-width: 420px; }
+.nb-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 42px;
+  border: 1.5px solid var(--border);
+  border-radius: 50px;
+  background: var(--bg);
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  color: var(--text-3);
+}
+.nb-search-open, .nb-search:focus-within {
+  border-color: var(--brand);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255,48,8,0.08);
+  color: var(--brand);
+}
+.nb-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  font-family: var(--font-body);
+  color: var(--text);
+}
+.nb-search input::placeholder { color: var(--text-3); }
+.nb-search-clear {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 13px; padding: 2px;
+}
+.nb-search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0; right: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  z-index: 9999;
+  animation: fadeIn 0.15s ease;
+}
+.nb-search-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.nb-search-item:hover { background: var(--brand-soft); }
+.nb-search-item img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
+.nb-si-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.nb-si-cat { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.nb-si-price { margin-left: auto; font-size: 14px; font-weight: 700; color: var(--brand); white-space: nowrap; }
+
+.nb-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+
+.nb-cart-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  background: var(--brand-soft);
+  border: 1.5px solid var(--brand-mid);
+  border-radius: 50px;
+  color: var(--brand);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  text-decoration: none;
+}
+.nb-cart-btn:hover { background: var(--brand-mid); transform: translateY(-1px); }
+.nb-cart-label { font-family: var(--font-body); }
+.nb-cart-badge {
+  position: absolute;
+  top: -6px; right: -6px;
+  width: 20px; height: 20px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #fff;
+  animation: pulse 0.3s ease;
+}
+
+.nb-signin {
+  padding: 9px 22px;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.nb-signin:hover { background: var(--brand-dark); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(255,48,8,0.3); }
+
+.nb-profile { position: relative; }
+.nb-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  border: 1.5px solid var(--brand-mid);
+  color: var(--brand);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.nb-avatar:hover { background: var(--brand-mid); }
+
+.nb-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 210px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: fadeIn 0.15s ease;
+  z-index: 9999;
+}
+.nb-dd-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+.nb-dd-avatar {
+  width: 32px; height: 32px;
+  background: var(--brand-soft);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--brand);
+}
+.nb-dd-hr { border: none; height: 1px; background: var(--border); margin: 0; }
+.nb-dd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s;
+  text-align: left;
+}
+.nb-dd-item:hover { background: var(--bg); }
+.nb-dd-logout { color: var(--brand); }
+.nb-dd-logout:hover { background: var(--brand-soft); }
+
+@media (max-width: 768px) {
+  .nb-location { display: none; }
+  .nb-search-wrap { max-width: none; }
+  .nb-cart-label { display: none; }
+  .nb-cart-btn { padding: 9px 12px; }
+}
+.nb-restaurants-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-2);
+  white-space: nowrap;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.nb-restaurants-link:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+@media (max-width: 900px) { .nb-restaurants-link { display: none; } }
+/* Spinning loader for location */
+.nb-loc-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--brand-mid);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Truncate long location names */
+.nb-loc-text {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nb-brand-name {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--brand);
+  letter-spacing: -1px;
+  text-decoration: none;
+}

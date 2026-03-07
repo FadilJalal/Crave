@@ -1,0 +1,25 @@
+.ft-wrap { background: #1a1a2e; color: #fff; padding: 60px 0 0; margin-top: 60px; }
+.ft-inner { max-width: 1280px; margin: 0 auto; padding: 0 24px 48px; display: grid; grid-template-columns: 1.4fr 2fr; gap: 60px; }
+.ft-logo { height: 36px; width: auto; filter: brightness(0) invert(1); margin-bottom: 16px; }
+.ft-tagline { font-size: 14px; color: #8888a8; line-height: 1.6; max-width: 280px; margin-bottom: 24px; }
+.ft-socials { display: flex; gap: 12px; }
+.ft-social { width: 36px; height: 36px; background: rgba(255,255,255,0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+.ft-social:hover { background: var(--brand); }
+.ft-social img { width: 18px; height: 18px; filter: brightness(0) invert(1); }
+.ft-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.ft-col h4 { font-family: var(--font-display); font-size: 14px; font-weight: 800; color: #fff; margin-bottom: 16px; letter-spacing: 0.5px; }
+.ft-col a, .ft-col p { display: block; font-size: 14px; color: #8888a8; margin-bottom: 10px; transition: color 0.2s; text-decoration: none; }
+.ft-col a:hover { color: #fff; }
+.ft-bottom { border-top: 1px solid rgba(255,255,255,0.08); padding: 20px 24px; max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; font-size: 13px; color: #8888a8; }
+
+@media (max-width: 860px) { .ft-inner { grid-template-columns: 1fr; gap: 32px; } }
+@media (max-width: 560px) { .ft-links { grid-template-columns: 1fr 1fr; } .ft-bottom { flex-direction: column; gap: 8px; text-align: center; } }
+.ft-brand-name {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+  display: block;
+  margin-bottom: 16px;
+}

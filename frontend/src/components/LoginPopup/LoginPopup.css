@@ -1,0 +1,54 @@
+.lp-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(10,10,30,0.7);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+  overflow: hidden;
+}
+.lp-modal {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  box-shadow: var(--shadow-lg);
+  animation: fadeUp 0.3s ease;
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: auto;
+}
+.lp-close { position: absolute; top: 16px; right: 16px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg); color: var(--text-2); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; }
+.lp-close:hover { background: var(--brand-soft); color: var(--brand); }
+
+.lp-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+.lp-brand-icon { font-size: 28px; }
+.lp-brand-name { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--text); }
+
+.lp-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+.lp-tab { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 6px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text-2); font-size: 13px; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: all 0.2s; }
+.lp-tab:hover { border-color: var(--brand); color: var(--brand); }
+.lp-tab-active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+
+.lp-toggle { display: flex; background: var(--bg); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 20px; gap: 4px; }
+.lp-tog-btn { flex: 1; padding: 9px; border: none; background: none; font-size: 14px; font-weight: 700; font-family: var(--font-body); color: var(--text-3); cursor: pointer; border-radius: 8px; transition: all 0.2s; }
+.lp-tog-active { background: #fff; color: var(--text); box-shadow: var(--shadow-sm); }
+
+.lp-form { display: flex; flex-direction: column; gap: 16px; }
+.lp-field { display: flex; flex-direction: column; gap: 6px; }
+.lp-field label { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.lp-field input { padding: 13px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; font-family: var(--font-body); color: var(--text); background: var(--bg); outline: none; transition: border-color 0.2s, background 0.2s; }
+.lp-field input:focus { border-color: var(--brand); background: #fff; }
+.lp-pass-wrap { position: relative; }
+.lp-pass-wrap input { width: 100%; padding-right: 44px; }
+.lp-pass-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 16px; }
+
+.lp-terms { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; color: var(--text-3); }
+.lp-terms input { flex-shrink: 0; margin-top: 2px; accent-color: var(--brand); }
+.lp-terms span { color: var(--brand); font-weight: 600; cursor: pointer; }
+
+.lp-submit { width: 100%; padding: 14px; background: var(--brand); color: #fff; border: none; border-radius: 50px; font-size: 15px; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: background 0.2s, transform 0.15s; box-shadow: 0 4px 16px rgba(255,48,8,0.25); margin-top: 4px; }
+.lp-submit:hover:not(:disabled) { background: var(--brand-dark); transform: translateY(-1px); }
+.lp-submit:disabled { opacity: 0.6; cursor: not-allowed; }

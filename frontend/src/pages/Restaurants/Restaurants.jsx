@@ -1,0 +1,123 @@
+import React, { useContext, useEffect, useState } from 'react';
+import './Restaurants.css';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { StoreContext } from '../../Context/StoreContext';
+
+const Restaurants = () => {
+  const { url } = useContext(StoreContext);
+  const [restaurants, setRestaurants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadRestaurants = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const res = await axios.get(`${url}/api/restaurant/list`);
+        if (res.data.success) {
+          setRestaurants(res.data.data || []);
+        } else {
+          setError(res.data.message || 'Failed to load restaurants');
+        }
+      } catch (err) {
+        setError('Could not connect to server. Is the backend running?');
+        console.error('Restaurants fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadRestaurants();
+  }, [url]);
+
+  const filtered = restaurants.filter(r =>
+    r.name.toLowerCase().includes(search.toLowerCase()) ||
+    r.address.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className='rp-page'>
+      <div className='rp-header'>
+        <div>
+          <h1 className='rp-title'>Restaurants</h1>
+          <p className='rp-sub'>
+            {loading ? 'Loading...' : `${restaurants.length} restaurants available near you`}
+          </p>
+        </div>
+        <div className='rp-search'>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            placeholder='Search restaurants...'
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {error && (
+        <div className='rp-error'>
+          ⚠️ {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className='rp-grid'>
+          {[1,2,3,4,5,6].map(i => <div key={i} className='rp-skeleton skeleton' />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className='rp-empty'>
+          <div className='rp-empty-icon'>🍽️</div>
+          <p>{restaurants.length === 0 ? 'No restaurants added yet.' : 'No restaurants match your search.'}</p>
+        </div>
+      ) : (
+        <div className='rp-grid'>
+          {filtered.map(r => (
+            <div key={r._id} className='rp-card' onClick={() => navigate(`/restaurants/${r._id}`)}>
+              <div className='rp-card-img'>
+                {r.logo ? (
+                  <img
+                    src={`${url}/images/${r.logo}`}
+                    alt={r.name}
+                    onError={e => {
+                      e.target.style.display = 'none';
+                      e.target.parentNode.querySelector('.rp-card-initial').style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div className='rp-card-initial' style={{ display: r.logo ? 'none' : 'flex' }}>
+                  {r.name[0]}
+                </div>
+                <span className={`rp-status ${r.isActive ? 'rp-open' : 'rp-closed'}`}>
+                  {r.isActive ? 'Open' : 'Closed'}
+                </span>
+              </div>
+              <div className='rp-card-body'>
+                <h3 className='rp-card-name'>{r.name}</h3>
+                <p className='rp-card-address'>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  {r.address}
+                </p>
+                <div className='rp-card-meta'>
+                  <span>🕐 {r.avgPrepTime} min</span>
+                  <span>⭐ 4.5</span>
+                </div>
+              </div>
+              <div className='rp-card-footer'>
+                <button className='rp-view-btn'>View Menu →</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Restaurants;

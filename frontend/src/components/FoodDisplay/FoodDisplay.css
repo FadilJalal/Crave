@@ -1,0 +1,25 @@
+.fd-wrap { padding: 12px 0 60px; }
+.fd-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
+.fd-title { font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--text); }
+.fd-count { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+.fd-category-tag {
+  padding: 6px 16px;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-mid);
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 50px;
+}
+.fd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+.fd-empty { text-align: center; padding: 60px 20px; color: var(--text-3); }
+.fd-empty-icon { font-size: 48px; margin-bottom: 12px; }
+.fd-empty p { font-size: 15px; font-weight: 500; }
+
+@media (max-width: 600px) {
+  .fd-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}

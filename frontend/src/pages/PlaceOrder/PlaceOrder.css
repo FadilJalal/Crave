@@ -1,0 +1,42 @@
+.po-page { padding: 36px 0 80px; }
+.po-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+.po-back { background: none; border: none; color: var(--text-3); font-size: 14px; font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: color 0.2s; padding: 0; }
+.po-back:hover { color: var(--brand); }
+.po-title { font-family: var(--font-display); font-size: 28px; font-weight: 800; color: var(--text); }
+
+.po-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+.po-left { display: flex; flex-direction: column; gap: 16px; }
+
+.po-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
+.po-card-title { display: flex; align-items: center; gap: 12px; font-family: var(--font-display); font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 20px; }
+.po-step { width: 28px; height: 28px; background: var(--brand); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0; }
+
+.po-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.po-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.po-field:last-child { margin-bottom: 0; }
+.po-field label { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.po-field input { padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; font-family: var(--font-body); color: var(--text); background: var(--bg); outline: none; transition: border-color 0.2s, background 0.2s; }
+.po-field input:focus { border-color: var(--brand); background: #fff; }
+.po-field input::placeholder { color: var(--text-3); }
+
+.po-payment-opts { display: flex; flex-direction: column; gap: 12px; }
+.po-payment-opt { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 1.5px solid var(--border); border-radius: var(--radius-md); cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.po-payment-opt:hover { border-color: var(--brand); background: var(--brand-soft); }
+.po-pay-active { border-color: var(--brand); background: var(--brand-soft); }
+.po-pay-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: border-color 0.2s; }
+.po-pay-active .po-pay-radio { border-color: var(--brand); }
+.po-pay-dot { width: 10px; height: 10px; background: var(--brand); border-radius: 50%; }
+.po-pay-icon { font-size: 24px; }
+.po-pay-name { font-size: 15px; font-weight: 700; color: var(--text); }
+.po-pay-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+.po-summary-card { position: sticky; top: calc(var(--navbar-h) + 20px); }
+.po-sum-rows { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+.po-sum-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--text-2); font-weight: 500; }
+.po-sum-total { padding-top: 14px; border-top: 1px solid var(--border); font-size: 17px; font-weight: 800; color: var(--text); }
+.po-submit { width: 100%; padding: 15px; background: var(--brand); color: #fff; border: none; border-radius: 50px; font-size: 15px; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: background 0.2s, transform 0.15s; box-shadow: 0 4px 16px rgba(255,48,8,0.25); }
+.po-submit:hover:not(:disabled) { background: var(--brand-dark); transform: translateY(-1px); }
+.po-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+@media (max-width: 860px) { .po-layout { grid-template-columns: 1fr; } .po-summary-card { position: static; order: -1; } }
+@media (max-width: 560px) { .po-grid-2 { grid-template-columns: 1fr; } }
