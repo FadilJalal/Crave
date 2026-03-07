@@ -82,6 +82,9 @@ export default function RestaurantLayout({ children }) {
           <NavLink to="/orders" className={({ isActive }) => (isActive ? "active" : "")}>
             🧾 Orders
           </NavLink>
+          <NavLink to="/settings" className={({ isActive }) => (isActive ? "active" : "")}>
+            ⚙️ Settings
+          </NavLink>
         </nav>
 
         <button className="btn btn-outline logout" onClick={logout}>

@@ -4,6 +4,22 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { StoreContext } from '../../Context/StoreContext';
 
+
+const RDAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+function isRestaurantOpen(r) {
+  if (!r?.isActive) return false;
+  const hours = r.openingHours;
+  if (!hours) return r.isActive;
+  const now = new Date();
+  const day = RDAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
+  const h = hours[day];
+  if (!h || h.closed) return false;
+  const [oh, om] = h.open.split(":").map(Number);
+  const [ch, cm] = h.close.split(":").map(Number);
+  const mins = now.getHours() * 60 + now.getMinutes();
+  return mins >= oh * 60 + om && mins < ch * 60 + cm;
+}
+
 const Restaurants = () => {
   const { url } = useContext(StoreContext);
   const [restaurants, setRestaurants] = useState([]);
@@ -92,8 +108,8 @@ const Restaurants = () => {
                 <div className='rp-card-initial' style={{ display: r.logo ? 'none' : 'flex' }}>
                   {r.name[0]}
                 </div>
-                <span className={`rp-status ${r.isActive ? 'rp-open' : 'rp-closed'}`}>
-                  {r.isActive ? 'Open' : 'Closed'}
+                <span className={`rp-status ${isRestaurantOpen(r) ? 'rp-open' : 'rp-closed'}`}>
+                  {isRestaurantOpen(r) ? 'Open' : 'Closed'}
                 </span>
               </div>
               <div className='rp-card-body'>

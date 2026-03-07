@@ -1,6 +1,7 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
+import { toast } from "react-toastify";
 
 const STATUS_OPTIONS = ["Food Processing", "Out for delivery", "Delivered"];
 
@@ -35,29 +36,94 @@ export default function Orders() {
   const [loading, setLoading]   = useState(true);
   const [expanded, setExpanded] = useState({});
 
+  // ── New: sound + auto-refresh state ──
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try { return localStorage.getItem("crave_sound") !== "off"; } catch { return true; }
+  });
+  const [lastRefresh, setLastRefresh]   = useState(null);
+  const knownIdsRef  = useRef(null); // null = first load ever
+  const audioCtxRef  = useRef(null);
+  const intervalRef  = useRef(null);
+
   // Filters
-  const [search,     setSearch]     = useState("");
+  const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [datePreset, setDatePreset] = useState("all");
-  const [payFilter,  setPayFilter]  = useState("all");
-  const [sortBy,     setSortBy]     = useState("newest");
-  const [showFilters, setShowFilters] = useState(false);
+  const [datePreset,   setDatePreset]   = useState("all");
+  const [payFilter,    setPayFilter]    = useState("all");
+  const [sortBy,       setSortBy]       = useState("newest");
+  const [showFilters,  setShowFilters]  = useState(false);
 
   const toggleExpand = (id) =>
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  const loadOrders = async () => {
+  // Persist sound pref
+  useEffect(() => {
+    try { localStorage.setItem("crave_sound", soundEnabled ? "on" : "off"); } catch {}
+  }, [soundEnabled]);
+
+  // 3-tone ascending beep via Web Audio API — no file needed
+  const playAlert = useCallback(() => {
+    if (!soundEnabled) return;
     try {
-      setLoading(true);
+      if (!audioCtxRef.current)
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audioCtxRef.current;
+      const beep = (freq, start, dur) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0, ctx.currentTime + start);
+        gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + start + 0.02);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + start + dur);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + dur + 0.05);
+      };
+      beep(880,  0,    0.12);
+      beep(1100, 0.15, 0.12);
+      beep(1320, 0.30, 0.18);
+    } catch {}
+  }, [soundEnabled]);
+
+  const loadOrders = useCallback(async (isBackground = false) => {
+    try {
+      if (!isBackground) setLoading(true);
       const res = await api.get("/api/order/restaurant/list");
-      if (res.data?.success) setOrders(res.data.data || []);
-      else alert(res.data?.message || "Failed to load orders");
+      if (res.data?.success) {
+        const incoming = res.data.data || [];
+
+        if (knownIdsRef.current === null) {
+          // Very first load — just record IDs, no alert
+          knownIdsRef.current = new Set(incoming.map(o => o._id));
+        } else {
+          const brandNew = incoming.filter(o => !knownIdsRef.current.has(o._id));
+          if (brandNew.length > 0) {
+            knownIdsRef.current = new Set(incoming.map(o => o._id));
+            playAlert();
+            toast.success(
+              brandNew.length === 1
+                ? `🛎️ New order from ${brandNew[0].address?.firstName || "customer"}!`
+                : `🛎️ ${brandNew.length} new orders arrived!`,
+              { autoClose: 6000 }
+            );
+          } else {
+            knownIdsRef.current = new Set(incoming.map(o => o._id));
+          }
+        }
+
+        setOrders(incoming);
+        setLastRefresh(new Date());
+      } else {
+        if (!isBackground) alert(res.data?.message || "Failed to load orders");
+      }
     } catch (err) {
-      alert(err?.response?.data?.message || "Failed to load orders");
+      if (!isBackground) alert(err?.response?.data?.message || "Failed to load orders");
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
-  };
+  }, [playAlert]);
 
   const updateStatus = async (orderId, status) => {
     try {
@@ -69,7 +135,12 @@ export default function Orders() {
     }
   };
 
-  useEffect(() => { loadOrders(); }, []);
+  // Initial load + auto-refresh every 45s
+  useEffect(() => {
+    loadOrders(false);
+    intervalRef.current = setInterval(() => loadOrders(true), 45000);
+    return () => clearInterval(intervalRef.current);
+  }, [loadOrders]);
 
   // Derived filter options from real data
   const allCities = useMemo(() => {
@@ -84,7 +155,6 @@ export default function Orders() {
   const filtered = useMemo(() => {
     let result = [...orders];
 
-    // Search: name, order ID, phone, item name
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(o =>
@@ -101,7 +171,6 @@ export default function Orders() {
     if (cityFilter   !== "all") result = result.filter(o => o.address?.city === cityFilter);
     if (datePreset   !== "all") result = result.filter(o => isInDateRange(o.createdAt, datePreset));
 
-    // Sort
     result.sort((a, b) => {
       if (sortBy === "newest")  return new Date(b.createdAt) - new Date(a.createdAt);
       if (sortBy === "oldest")  return new Date(a.createdAt) - new Date(b.createdAt);
@@ -132,9 +201,31 @@ export default function Orders() {
           <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: "-0.5px" }}>Orders</h2>
           <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--muted)" }}>
             {filtered.length} of {orders.length} orders
+            {lastRefresh && (
+              <span style={{ marginLeft: 8, color: "#9ca3af" }}>
+                · updated {lastRefresh.toLocaleTimeString("en-AE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              </span>
+            )}
           </p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+
+          {/* Sound toggle — only addition to the header UI */}
+          <button
+            onClick={() => setSoundEnabled(p => !p)}
+            title={soundEnabled ? "Mute new order alerts" : "Unmute new order alerts"}
+            style={{
+              width: 38, height: 38, borderRadius: 10,
+              border: "1px solid var(--border)",
+              background: soundEnabled ? "#f0fdf4" : "white",
+              color: soundEnabled ? "#16a34a" : "#9ca3af",
+              cursor: "pointer", fontSize: 17,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            {soundEnabled ? "🔔" : "🔕"}
+          </button>
+
           <button
             onClick={() => setShowFilters(p => !p)}
             style={{
@@ -155,7 +246,7 @@ export default function Orders() {
               </span>
             )}
           </button>
-          <button onClick={loadOrders} style={{ padding: "9px 16px", borderRadius: 12, border: "1px solid var(--border)", background: "white", fontWeight: 800, cursor: "pointer", fontSize: 13 }}>
+          <button onClick={() => loadOrders(false)} style={{ padding: "9px 16px", borderRadius: 12, border: "1px solid var(--border)", background: "white", fontWeight: 800, cursor: "pointer", fontSize: 13 }}>
             🔄 Refresh
           </button>
         </div>

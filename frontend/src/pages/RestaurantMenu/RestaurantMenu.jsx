@@ -1,4 +1,3 @@
-// frontend/src/pages/RestaurantMenu/RestaurantMenu.jsx
 import React, { useContext, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import './RestaurantMenu.css';
@@ -6,6 +5,28 @@ import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import { StoreContext } from '../../Context/StoreContext';
 import FoodItem from '../../components/FoodItem/FoodItem';
+
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+function isOpenNow(restaurant) {
+  if (!restaurant?.isActive) return false;
+  const hours = restaurant.openingHours;
+  if (!hours) return true; 
+
+  const now = new Date();
+  // Adjust getDay() so Monday is 0 and Sunday is 6
+  const dayIndex = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  const day = DAYS[dayIndex];
+  const h = hours[day];
+
+  if (!h || h.closed) return false;
+
+  const [oh, om] = h.open.split(":").map(Number);
+  const [ch, cm] = h.close.split(":").map(Number);
+  const mins = now.getHours() * 60 + now.getMinutes();
+  
+  return mins >= oh * 60 + om && mins < ch * 60 + cm;
+}
 
 const RestaurantMenu = () => {
   const { id } = useParams();
@@ -26,11 +47,13 @@ const RestaurantMenu = () => {
           toast.error(res.data.message || 'Failed to load restaurant');
         }
       } catch (err) {
-        toast.error(err?.response?.data?.message || 'Could not connect to server. Please try again.');
-      } finally { setLoading(false); }
+        toast.error(err?.response?.data?.message || 'Could not connect to server.');
+      } finally {
+        setLoading(false);
+      }
     };
     fetchRestaurant();
-  }, [id]);
+  }, [id, url]);
 
   const menuItems = food_list.filter(item => {
     const resId = item.restaurantId?._id || item.restaurantId;
@@ -42,9 +65,9 @@ const RestaurantMenu = () => {
 
   if (loading) return (
     <div className='rm-page'>
-      <div className='rm-hero-skeleton skeleton' />
+      <div className='rm-hero-skeleton skeleton' style={{ height: '200px', borderRadius: '20px', marginBottom: '20px' }} />
       <div className='rm-grid'>
-        {[1, 2, 3, 4].map(i => <div key={i} className='rm-item-skeleton skeleton' />)}
+        {[1, 2, 3, 4].map(i => <div key={i} className='rm-item-skeleton skeleton' style={{ height: '300px', borderRadius: '15px' }} />)}
       </div>
     </div>
   );
@@ -58,9 +81,11 @@ const RestaurantMenu = () => {
     </div>
   );
 
+  const openStatus = isOpenNow(restaurant);
+
   return (
     <div className='rm-page'>
-      {/* Hero */}
+      {/* Hero Section */}
       <div className='rm-hero'>
         <button className='rm-back' onClick={() => navigate('/restaurants')}>
           ← Back
@@ -81,10 +106,10 @@ const RestaurantMenu = () => {
               {restaurant.address}
             </p>
             <div className='rm-meta'>
-              <span className={`rm-status ${restaurant.isActive ? 'rm-open' : 'rm-closed'}`}>
-                {restaurant.isActive ? '● Open Now' : '● Closed'}
+              <span className={`rm-status ${openStatus ? 'rm-open' : 'rm-closed'}`}>
+                {openStatus ? '● Open Now' : '● Closed'}
               </span>
-              <span>🕐 {restaurant.avgPrepTime} min prep</span>
+              <span>🕐 {restaurant.avgPrepTime || 30} min prep</span>
               <span>⭐ 4.5 rating</span>
               <span>🍽️ {menuItems.length} items</span>
             </div>
@@ -92,7 +117,7 @@ const RestaurantMenu = () => {
         </div>
       </div>
 
-      {/* Category pills */}
+      {/* Category Selection */}
       {categories.length > 1 && (
         <div className='rm-cats'>
           {categories.map(cat => (
@@ -107,30 +132,76 @@ const RestaurantMenu = () => {
         </div>
       )}
 
-      {/* Menu */}
       <div className='rm-menu-header'>
         <h2 className='rm-menu-title'>Menu</h2>
         <span className='rm-menu-count'>{filtered.length} items</span>
       </div>
 
+      {/* Closed / Unavailable Banner */}
+      {!openStatus && (
+        <div style={{
+          position: 'relative', marginBottom: 24,
+          background: 'linear-gradient(135deg, #1f2937, #111827)',
+          borderRadius: 20, padding: '32px 28px',
+          display: 'flex', alignItems: 'center', gap: 24,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+        }}>
+          <div style={{ fontSize: 52, flexShrink: 0 }}>🔒</div>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: 'white', marginBottom: 6 }}>
+              {restaurant.isActive ? "We're Closed Right Now" : "Restaurant Unavailable"}
+            </div>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
+              {restaurant.isActive
+                ? 'This restaurant is currently outside its opening hours. Check back later to place an order.'
+                : 'This restaurant is temporarily unavailable and not accepting orders.'}
+            </div>
+            {restaurant.isActive && restaurant.openingHours && (() => {
+              const tomorrowIndex = new Date().getDay(); // getDay() is already "tomorrow" if we consider 0=Sun
+              const tomorrowName = DAYS[tomorrowIndex === 0 ? 6 : tomorrowIndex - 1]; 
+              const th = restaurant.openingHours[tomorrowName];
+              
+              if (th && !th.closed) return (
+                <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '6px 14px' }}>
+                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+                    🕐 Opens next at <strong style={{ color: 'white' }}>{th.open}</strong>
+                  </span>
+                </div>
+              );
+              return null;
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Menu Grid */}
       {filtered.length === 0 ? (
         <div className='rm-empty'>
-          <p>🍽️ No menu items yet for this restaurant.</p>
+          <p>🍽️ No menu items found for this category.</p>
         </div>
       ) : (
-        <div className='rm-grid'>
-          {filtered.map(item => (
-            <FoodItem
-              key={item._id}
-              id={item._id}
-              name={item.name}
-              description={item.description}
-              price={item.price}
-              image={item.image}
-              restaurantId={item.restaurantId}
-              customizations={item.customizations || []}
-            />
-          ))}
+        <div style={{ position: 'relative' }}>
+          <div className='rm-grid' style={{
+            filter: openStatus ? 'none' : 'blur(3px)',
+            opacity: openStatus ? 1 : 0.45,
+            pointerEvents: openStatus ? 'auto' : 'none',
+            userSelect: openStatus ? 'auto' : 'none',
+            transition: 'filter 0.3s, opacity 0.3s',
+          }}>
+            {filtered.map(item => (
+              <FoodItem
+                key={item._id}
+                id={item._id}
+                name={item.name}
+                description={item.description}
+                price={item.price}
+                image={item.image}
+                restaurantId={item.restaurantId}
+                customizations={item.customizations || []}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

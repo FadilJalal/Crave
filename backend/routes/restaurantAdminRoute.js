@@ -88,3 +88,25 @@ router.post("/food/add", restaurantAuth, upload.single("image"), async (req, res
 });
 
 export default router;
+// ── Update restaurant settings (hours, active status, prepTime) ────────────
+router.post("/settings", restaurantAuth, async (req, res) => {
+  try {
+    const { openingHours, isActive, avgPrepTime } = req.body;
+    const update = {};
+    if (openingHours !== undefined) update.openingHours = openingHours;
+    if (isActive     !== undefined) update.isActive     = isActive;
+    if (avgPrepTime  !== undefined) update.avgPrepTime  = Number(avgPrepTime);
+
+    const restaurant = await restaurantModel.findByIdAndUpdate(
+      req.restaurantId,
+      { $set: update },
+      { new: true }
+    ).select("-password");
+
+    if (!restaurant) return res.json({ success: false, message: "Restaurant not found" });
+    res.json({ success: true, data: restaurant, message: "Settings saved" });
+  } catch (e) {
+    console.error("Settings update error:", e);
+    res.status(500).json({ success: false, message: "Failed to save settings" });
+  }
+});

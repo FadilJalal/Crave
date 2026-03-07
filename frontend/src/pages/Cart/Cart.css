@@ -1,4 +1,4 @@
-.cart-page { padding: 32px 0 80px; min-height: 60vh; width: 100%; }
+.cart-page { padding: 40px 0 80px; min-height: 60vh; }
 .cart-title { font-family: var(--font-display); font-size: 32px; font-weight: 800; color: var(--text); margin-bottom: 32px; }
 
 .cart-empty { text-align: center; padding: 80px 20px; }
@@ -8,9 +8,9 @@
 .cart-empty-btn { padding: 14px 32px; background: var(--brand); color: #fff; border: none; border-radius: 50px; font-size: 15px; font-weight: 700; font-family: var(--font-body); cursor: pointer; }
 .cart-empty-btn:hover { background: var(--brand-dark); }
 
-.cart-layout { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; width: 100%; }
+.cart-layout { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; }
 
-.cart-items-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: visible; }
+.cart-items-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
 .cart-items-header { padding: 18px 24px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; color: var(--text-2); }
 
 .cart-row { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--border); transition: background 0.15s; }
@@ -25,17 +25,10 @@
 
 /* ✅ Customizations shown under the food name */
 .cart-row-customizations {
-  font-size: 12px;
-  color: var(--brand);
-  font-weight: 600;
-  margin-top: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  background: #fff5f3;
-  border: 1px solid rgba(255,78,42,0.2);
-  border-radius: 6px;
-  padding: 2px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
   display: inline-block;
   max-width: 100%;
 }
@@ -63,7 +56,7 @@
 .cart-promo-btn { padding: 12px 20px; background: var(--text); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: background 0.2s; }
 .cart-promo-btn:hover { background: var(--brand); }
 
-.cart-summary { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; position: sticky; top: calc(var(--navbar-h) + 24px); }
+.cart-summary { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; position: sticky; top: calc(var(--navbar-h) + 20px); }
 .cart-summary-title { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 20px; }
 .cart-summary-rows { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
 .cart-sum-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--text-2); font-weight: 500; }
@@ -75,3 +68,24 @@
 
 @media (max-width: 860px) { .cart-layout { grid-template-columns: 1fr; } .cart-summary { position: static; } }
 @media (max-width: 560px) { .cart-row { gap: 10px; padding: 12px 16px; } .cart-row-img { width: 52px; height: 52px; } }
+/* Customization pills in cart */
+.cart-sel-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1.5px solid #fb923c;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+.cart-sel-label {
+  background: #fed7aa;
+  color: #92400e;
+  padding: 3px 8px;
+}
+.cart-sel-value {
+  background: white;
+  color: #c2410c;
+  padding: 3px 10px;
+}

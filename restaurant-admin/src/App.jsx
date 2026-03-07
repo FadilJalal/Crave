@@ -6,6 +6,7 @@ import Menu from "./Pages/Menu";
 import AddFood from "./Pages/AddFood";
 import EditFood from "./Pages/EditFood";
 import Orders from "./Pages/Orders";
+import Settings from "./Pages/Settings";
 import Bridge from "./Pages/Bridge";
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
       <Route path="/add-food" element={<ProtectedRoute><AddFood /></ProtectedRoute>} />
       <Route path="/edit-food/:id" element={<ProtectedRoute><EditFood /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
