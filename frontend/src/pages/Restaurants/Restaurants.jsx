@@ -4,6 +4,13 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { StoreContext } from '../../Context/StoreContext';
 
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
 const RDAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 function isRestaurantOpen(r) {
@@ -23,25 +30,28 @@ function isRestaurantOpen(r) {
 const Restaurants = () => {
   const { url } = useContext(StoreContext);
   const [restaurants, setRestaurants] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading]         = useState(true);
+  const [search,  setSearch]          = useState('');
+  const [error,   setError]           = useState('');
   const navigate = useNavigate();
+
+  // Get saved user location
+  const userLocation = (() => {
+    try { return JSON.parse(localStorage.getItem('crave_location')); } catch { return null; }
+  })();
 
   useEffect(() => {
     const loadRestaurants = async () => {
       try {
-        setLoading(true);
-        setError('');
+        setLoading(true); setError('');
         const res = await axios.get(`${url}/api/restaurant/list`);
         if (res.data.success) {
           setRestaurants(res.data.data || []);
         } else {
           setError(res.data.message || 'Failed to load restaurants');
         }
-      } catch (err) {
+      } catch {
         setError('Could not connect to server. Is the backend running?');
-        console.error('Restaurants fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -49,10 +59,26 @@ const Restaurants = () => {
     loadRestaurants();
   }, [url]);
 
-  const filtered = restaurants.filter(r =>
+  // Attach distance + sort
+  const withDistance = restaurants.map(r => ({
+    ...r,
+    distance: (userLocation && r.location?.lat && r.location?.lng)
+      ? haversine(userLocation.lat, userLocation.lng, r.location.lat, r.location.lng)
+      : null,
+  })).sort((a, b) => {
+    // Open first, then by distance
+    const aOpen = isRestaurantOpen(a), bOpen = isRestaurantOpen(b);
+    if (aOpen !== bOpen) return aOpen ? -1 : 1;
+    if (a.distance !== null && b.distance !== null) return a.distance - b.distance;
+    return 0;
+  });
+
+  const filtered = withDistance.filter(r =>
     r.name.toLowerCase().includes(search.toLowerCase()) ||
     r.address.toLowerCase().includes(search.toLowerCase())
   );
+
+  const fmtDist = (d) => d === null ? null : d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(1)} km`;
 
   return (
     <div className='rp-page'>
@@ -60,7 +86,12 @@ const Restaurants = () => {
         <div>
           <h1 className='rp-title'>Restaurants</h1>
           <p className='rp-sub'>
-            {loading ? 'Loading...' : `${restaurants.length} restaurants available near you`}
+            {loading ? 'Loading...' : (
+              <>
+                {restaurants.length} restaurants
+                {userLocation && <span style={{ color: '#ff4e2a', fontWeight: 700 }}> near {userLocation.label}</span>}
+              </>
+            )}
           </p>
         </div>
         <div className='rp-search'>
@@ -75,11 +106,7 @@ const Restaurants = () => {
         </div>
       </div>
 
-      {error && (
-        <div className='rp-error'>
-          ⚠️ {error}
-        </div>
-      )}
+      {error && <div className='rp-error'>⚠️ {error}</div>}
 
       {loading ? (
         <div className='rp-grid'>
@@ -92,44 +119,52 @@ const Restaurants = () => {
         </div>
       ) : (
         <div className='rp-grid'>
-          {filtered.map(r => (
-            <div key={r._id} className='rp-card' onClick={() => navigate(`/restaurants/${r._id}`)}>
-              <div className='rp-card-img'>
-                {r.logo ? (
-                  <img
-                    src={`${url}/images/${r.logo}`}
-                    alt={r.name}
-                    onError={e => {
-                      e.target.style.display = 'none';
-                      e.target.parentNode.querySelector('.rp-card-initial').style.display = 'flex';
-                    }}
-                  />
-                ) : null}
-                <div className='rp-card-initial' style={{ display: r.logo ? 'none' : 'flex' }}>
-                  {r.name[0]}
+          {filtered.map(r => {
+            const open = isRestaurantOpen(r);
+            const dist = fmtDist(r.distance);
+            return (
+              <div key={r._id} className='rp-card' onClick={() => navigate(`/restaurants/${r._id}`)}>
+                <div className='rp-card-img'>
+                  {r.logo ? (
+                    <img
+                      src={`${url}/images/${r.logo}`}
+                      alt={r.name}
+                      onError={e => {
+                        e.target.style.display = 'none';
+                        e.target.parentNode.querySelector('.rp-card-initial').style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div className='rp-card-initial' style={{ display: r.logo ? 'none' : 'flex' }}>
+                    {r.name[0]}
+                  </div>
+                  <span className={`rp-status ${open ? 'rp-open' : 'rp-closed'}`}>
+                    {open ? 'Open' : 'Closed'}
+                  </span>
+                  {dist && (
+                    <span className='rp-distance'>📍 {dist}</span>
+                  )}
                 </div>
-                <span className={`rp-status ${isRestaurantOpen(r) ? 'rp-open' : 'rp-closed'}`}>
-                  {isRestaurantOpen(r) ? 'Open' : 'Closed'}
-                </span>
-              </div>
-              <div className='rp-card-body'>
-                <h3 className='rp-card-name'>{r.name}</h3>
-                <p className='rp-card-address'>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
-                  </svg>
-                  {r.address}
-                </p>
-                <div className='rp-card-meta'>
-                  <span>🕐 {r.avgPrepTime} min</span>
-                  <span>⭐ 4.5</span>
+                <div className='rp-card-body'>
+                  <h3 className='rp-card-name'>{r.name}</h3>
+                  <p className='rp-card-address'>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    {r.address}
+                  </p>
+                  <div className='rp-card-meta'>
+                    <span>🕐 {r.avgPrepTime} min</span>
+                    <span>⭐ 4.5</span>
+                    {dist && <span style={{ color: '#ff4e2a', fontWeight: 700 }}>📍 {dist}</span>}
+                  </div>
+                </div>
+                <div className='rp-card-footer'>
+                  <button className='rp-view-btn'>View Menu →</button>
                 </div>
               </div>
-              <div className='rp-card-footer'>
-                <button className='rp-view-btn'>View Menu →</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

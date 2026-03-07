@@ -1,23 +1,48 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState, useCallback } from 'react';
 import './Navbar.css';
 import { assets } from '../../assets/assets';
 import { Link, useNavigate } from 'react-router-dom';
 import { StoreContext } from '../../Context/StoreContext';
 
+// Haversine distance in km between two lat/lng points
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 const Navbar = ({ setShowLogin }) => {
-  const { getTotalCartAmount, token, setToken, setCartItems, food_list, cartItems } = useContext(StoreContext);
+  const { getTotalCartAmount, token, setToken, setCartItems, food_list, cartItems, url } = useContext(StoreContext);
   const navigate = useNavigate();
-  const [openProfile, setOpenProfile] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [openProfile, setOpenProfile]   = useState(false);
+  const [searchOpen, setSearchOpen]     = useState(false);
+  const [searchQuery, setSearchQuery]   = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [scrolled, setScrolled] = useState(false);
-  const [location, setLocation] = useState('Dubai, UAE');
-  const [locLoading, setLocLoading] = useState(false);
+  const [scrolled, setScrolled]         = useState(false);
+
+  // Location state
+  const [location, setLocation]         = useState(() => {
+    try { return JSON.parse(localStorage.getItem('crave_location')) || { label: 'Sharjah, UAE', lat: 25.3463, lng: 55.4209 }; } catch { return { label: 'Sharjah, UAE', lat: 25.3463, lng: 55.4209 }; }
+  });
+  const [locOpen, setLocOpen]           = useState(false);
+  const [locQuery, setLocQuery]         = useState('');
+  const [locSuggestions, setLocSuggestions] = useState([]);
+  const [locLoading, setLocLoading]     = useState(false);
+  const [nearbyRestaurants, setNearbyRestaurants] = useState([]);
+
   const profileRef = useRef(null);
-  const searchRef = useRef(null);
+  const searchRef  = useRef(null);
+  const locRef     = useRef(null);
+  const locDebounce = useRef(null);
 
   const cartCount = Object.values(cartItems || {}).reduce((a, b) => a + (b?.quantity || 0), 0);
+
+  // Persist location
+  useEffect(() => {
+    try { localStorage.setItem('crave_location', JSON.stringify(location)); } catch {}
+  }, [location]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -28,12 +53,14 @@ const Navbar = ({ setShowLogin }) => {
   useEffect(() => {
     const handler = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) setOpenProfile(false);
-      if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false);
+      if (searchRef.current  && !searchRef.current.contains(e.target))  setSearchOpen(false);
+      if (locRef.current     && !locRef.current.contains(e.target))     setLocOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Food search
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); return; }
     const results = (food_list || []).filter(item =>
@@ -43,47 +70,81 @@ const Navbar = ({ setShowLogin }) => {
     setSearchResults(results);
   }, [searchQuery, food_list]);
 
+  // Nearby restaurants based on current location
+  const loadNearby = useCallback(async (lat, lng) => {
+    try {
+      const res = await fetch(`${url}/api/restaurant/list`);
+      const data = await res.json();
+      if (data.success) {
+        const withDist = (data.data || [])
+          .filter(r => r.isActive && r.location?.lat && r.location?.lng)
+          .map(r => ({ ...r, distance: haversine(lat, lng, r.location.lat, r.location.lng) }))
+          .sort((a, b) => a.distance - b.distance)
+          .slice(0, 4);
+        setNearbyRestaurants(withDist);
+      }
+    } catch {}
+  }, [url]);
+
+  useEffect(() => {
+    if (location.lat && location.lng) loadNearby(location.lat, location.lng);
+  }, [location, loadNearby]);
+
+  // Nominatim address autocomplete
+  const handleLocInput = (e) => {
+    const q = e.target.value;
+    setLocQuery(q);
+    clearTimeout(locDebounce.current);
+    if (!q.trim()) { setLocSuggestions([]); return; }
+    locDebounce.current = setTimeout(async () => {
+      setLocLoading(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`,
+          { headers: { 'Accept-Language': 'en' } }
+        );
+        const data = await res.json();
+        setLocSuggestions(data.map(d => ({
+          label: d.display_name.split(',').slice(0, 3).join(',').trim(),
+          fullLabel: d.display_name,
+          lat: parseFloat(d.lat),
+          lng: parseFloat(d.lon),
+        })));
+      } catch {}
+      finally { setLocLoading(false); }
+    }, 350);
+  };
+
+  const pickLocation = (sug) => {
+    setLocation({ label: sug.label, lat: sug.lat, lng: sug.lng });
+    setLocQuery('');
+    setLocSuggestions([]);
+    setLocOpen(false);
+  };
+
+  const detectGPS = () => {
+    if (!navigator.geolocation) return;
+    setLocLoading(true);
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const { latitude, longitude } = pos.coords;
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+        const data = await res.json();
+        const city = data.address?.city || data.address?.town || data.address?.village || 'Here';
+        const country = data.address?.country || '';
+        setLocation({ label: `${city}, ${country}`, lat: latitude, lng: longitude });
+        setLocOpen(false);
+      } catch { setLocation({ label: 'Current location', lat: pos.coords.latitude, lng: pos.coords.longitude }); }
+      finally { setLocLoading(false); }
+    }, () => setLocLoading(false));
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken('');
-    setCartItems({});        // ✅ clear cart from state
+    setCartItems({});
     setOpenProfile(false);
     navigate('/');
-  };
-
-  const detectLocation = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
-      return;
-    }
-    setLocLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const { latitude, longitude } = pos.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
-          );
-          const data = await res.json();
-          const city =
-            data.address?.city ||
-            data.address?.town ||
-            data.address?.village ||
-            data.address?.county ||
-            'Unknown';
-          const country = data.address?.country || '';
-          setLocation(`${city}, ${country}`);
-        } catch {
-          setLocation('Location detected');
-        } finally {
-          setLocLoading(false);
-        }
-      },
-      () => {
-        alert('Unable to get your location. Please allow location access.');
-        setLocLoading(false);
-      }
-    );
   };
 
   return (
@@ -93,20 +154,92 @@ const Navbar = ({ setShowLogin }) => {
           <span className='nb-brand-name'>Crave.</span>
         </Link>
 
-        {/* ✅ Live location pill */}
-        <button className='nb-location' onClick={detectLocation} title='Click to detect your location'>
-          {locLoading ? (
-            <span className='nb-loc-spinner' />
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
+        {/* Location picker */}
+        <div className='nb-loc-wrap' ref={locRef}>
+          <button className='nb-location' onClick={() => { setLocOpen(p => !p); setLocQuery(''); setLocSuggestions([]); }}>
+            {locLoading ? (
+              <span className='nb-loc-spinner' />
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
+              </svg>
+            )}
+            <span className='nb-loc-text'>{location.label}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              style={{ transform: locOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>
+              <polyline points="6 9 12 15 18 9" />
             </svg>
+          </button>
+
+          {locOpen && (
+            <div className='nb-loc-dropdown'>
+              {/* Search input */}
+              <div className='nb-loc-search'>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input
+                  autoFocus
+                  placeholder="Search for your area, city..."
+                  value={locQuery}
+                  onChange={handleLocInput}
+                />
+                {locLoading && <span className='nb-loc-spinner' style={{ flexShrink: 0 }} />}
+              </div>
+
+              {/* GPS detect */}
+              <button className='nb-loc-gps' onClick={detectGPS}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                  <path d="M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+                </svg>
+                Use my current location
+              </button>
+
+              {/* Address suggestions from Nominatim */}
+              {locSuggestions.length > 0 && (
+                <div className='nb-loc-suggestions'>
+                  <div className='nb-loc-section-label'>📍 Address results</div>
+                  {locSuggestions.map((s, i) => (
+                    <button key={i} className='nb-loc-suggestion' onClick={() => pickLocation(s)}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0, color: '#9ca3af' }}>
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      <span>{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Nearby restaurants */}
+              {nearbyRestaurants.length > 0 && (
+                <div className='nb-loc-nearby'>
+                  <div className='nb-loc-section-label'>🍽️ Nearby restaurants</div>
+                  {nearbyRestaurants.map(r => (
+                    <button key={r._id} className='nb-loc-restaurant' onClick={() => { setLocOpen(false); navigate(`/restaurants/${r._id}`); }}>
+                      <div className='nb-loc-rest-avatar'>
+                        {r.logo
+                          ? <img src={`${url}/images/${r.logo}`} alt={r.name} onError={e => e.target.style.display='none'} />
+                          : <span>{r.name[0]}</span>
+                        }
+                      </div>
+                      <div className='nb-loc-rest-info'>
+                        <span className='nb-loc-rest-name'>{r.name}</span>
+                        <span className='nb-loc-rest-dist'>{r.distance < 1 ? `${Math.round(r.distance * 1000)}m` : `${r.distance.toFixed(1)} km`} away</span>
+                      </div>
+                      <span className={`nb-loc-rest-status ${r.isActive ? 'open' : 'closed'}`}>
+                        {r.isActive ? 'Open' : 'Closed'}
+                      </span>
+                    </button>
+                  ))}
+                  <button className='nb-loc-view-all' onClick={() => { setLocOpen(false); navigate('/restaurants'); }}>
+                    View all restaurants →
+                  </button>
+                </div>
+              )}
+            </div>
           )}
-          <span className='nb-loc-text'>{location}</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
+        </div>
 
         {/* Restaurants link */}
         <Link to='/restaurants' className='nb-restaurants-link'>

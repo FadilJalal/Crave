@@ -263,3 +263,171 @@
   letter-spacing: -1px;
   text-decoration: none;
 }
+/* ── Location dropdown ── */
+.nb-loc-wrap { position: relative; }
+
+.nb-loc-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: 340px;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.14);
+  z-index: 9999;
+  overflow: hidden;
+  animation: loc-drop-in .15s ease;
+}
+@keyframes loc-drop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.nb-loc-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #9ca3af;
+}
+.nb-loc-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-family: inherit;
+  color: #111827;
+  background: transparent;
+}
+.nb-loc-search input::placeholder { color: #9ca3af; }
+
+.nb-loc-gps {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff4e2a;
+  font-family: inherit;
+  text-align: left;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background .12s;
+}
+.nb-loc-gps:hover { background: #fff5f3; }
+
+.nb-loc-section-label {
+  padding: 8px 14px 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.nb-loc-suggestions { border-bottom: 1px solid #f3f4f6; }
+
+.nb-loc-suggestion {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  font-family: inherit;
+  text-align: left;
+  transition: background .1s;
+  line-height: 1.4;
+}
+.nb-loc-suggestion:hover { background: #f9fafb; }
+.nb-loc-suggestion svg { margin-top: 2px; }
+
+/* Nearby restaurants in dropdown */
+.nb-loc-nearby { padding-bottom: 6px; }
+
+.nb-loc-restaurant {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background .1s;
+}
+.nb-loc-restaurant:hover { background: #f9fafb; }
+
+.nb-loc-rest-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 16px;
+  color: #374151;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.nb-loc-rest-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.nb-loc-rest-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.nb-loc-rest-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nb-loc-rest-dist {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.nb-loc-rest-status {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.nb-loc-rest-status.open   { background: #f0fdf4; color: #16a34a; }
+.nb-loc-rest-status.closed { background: #fef2f2; color: #dc2626; }
+
+.nb-loc-view-all {
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ff4e2a;
+  font-family: inherit;
+  text-align: left;
+  transition: background .1s;
+}
+.nb-loc-view-all:hover { background: #fff5f3; }
