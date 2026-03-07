@@ -4,7 +4,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import authRouter from "./routes/authRoute.js";
-
+import recommendationRouter from "./routes/recommendationRoute.js";
 import { connectDB } from "./config/db.js";
 import userRouter from "./routes/userRoute.js";
 import foodRouter from "./routes/foodRoute.js";
@@ -68,7 +68,7 @@ app.use("/api/admin", authLimiter, adminRouter);
 app.use("/api/restaurantadmin", restaurantAdminRoute);
 app.use("/api/payment", paymentRouter);
 app.use("/api/auth", authRouter);
-
+app.use("/api/recommend", recommendationRouter);
 app.get("/", (req, res) => {
   res.json({ success: true, message: "API is running" });
 });
