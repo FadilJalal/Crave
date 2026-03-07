@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import './MyOrders.css';
 import axios from 'axios';
 import { StoreContext } from '../../Context/StoreContext';
@@ -21,11 +22,22 @@ const MyOrders = () => {
   const { url, token, currency } = useContext(StoreContext);
   const navigate = useNavigate();
 
+  const [fetchError, setFetchError] = useState(false);
+
   const fetchOrders = async () => {
     try {
       setLoading(true);
+      setFetchError(false);
       const res = await axios.post(url + '/api/order/userorders', {}, { headers: { token } });
-      if (res.data.success) setOrders(res.data.data || []);
+      if (res.data.success) {
+        setOrders(res.data.data || []);
+      } else {
+        setFetchError(true);
+        toast.error(res.data.message || 'Failed to load orders');
+      }
+    } catch (err) {
+      setFetchError(true);
+      toast.error(err?.response?.data?.message || 'Could not connect to server. Please try again.');
     } finally { setLoading(false); }
   };
 
@@ -36,6 +48,18 @@ const MyOrders = () => {
       <h1 className='mo-title'>My Orders</h1>
       <div className='mo-loading'>
         {[1,2,3].map(i => <div key={i} className='mo-skeleton skeleton'/>)}
+      </div>
+    </div>
+  );
+
+  if (fetchError) return (
+    <div className='mo-page'>
+      <h1 className='mo-title'>My Orders</h1>
+      <div className='mo-empty'>
+        <div className='mo-empty-icon'>⚠️</div>
+        <p className='mo-empty-title'>Failed to load orders</p>
+        <p className='mo-empty-sub'>There was a problem connecting to the server.</p>
+        <button className='mo-order-btn' onClick={fetchOrders}>Try Again</button>
       </div>
     </div>
   );

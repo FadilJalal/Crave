@@ -1,4 +1,4 @@
-.cart-page { padding: 40px 0 80px; min-height: 60vh; }
+.cart-page { padding: 32px 0 80px; min-height: 60vh; width: 100%; }
 .cart-title { font-family: var(--font-display); font-size: 32px; font-weight: 800; color: var(--text); margin-bottom: 32px; }
 
 .cart-empty { text-align: center; padding: 80px 20px; }
@@ -8,9 +8,9 @@
 .cart-empty-btn { padding: 14px 32px; background: var(--brand); color: #fff; border: none; border-radius: 50px; font-size: 15px; font-weight: 700; font-family: var(--font-body); cursor: pointer; }
 .cart-empty-btn:hover { background: var(--brand-dark); }
 
-.cart-layout { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; }
+.cart-layout { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; width: 100%; }
 
-.cart-items-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.cart-items-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: visible; }
 .cart-items-header { padding: 18px 24px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; color: var(--text-2); }
 
 .cart-row { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--border); transition: background 0.15s; }
@@ -63,7 +63,7 @@
 .cart-promo-btn { padding: 12px 20px; background: var(--text); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: background 0.2s; }
 .cart-promo-btn:hover { background: var(--brand); }
 
-.cart-summary { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; position: sticky; top: calc(var(--navbar-h) + 20px); }
+.cart-summary { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; position: sticky; top: calc(var(--navbar-h) + 24px); }
 .cart-summary-title { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 20px; }
 .cart-summary-rows { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
 .cart-sum-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--text-2); font-weight: 500; }

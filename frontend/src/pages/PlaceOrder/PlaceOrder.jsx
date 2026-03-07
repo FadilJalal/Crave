@@ -9,7 +9,7 @@ import SplitPayment from '../../components/SplitPayment/SplitPayment.jsx';
 const PlaceOrder = () => {
   const [payment, setPayment] = useState('cod');
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState({ firstName: '', lastName: '', email: '', street: '', city: '', state: '', zipcode: '', country: '', phone: '' });
+  const [data, setData] = useState({ firstName: '', lastName: '', email: '', street: '', apartment: '', area: '', building: '', city: '', state: '', zipcode: '', country: '', phone: '', deliveryNotes: '' });
   const { getTotalCartAmount, token, food_list, foodListLoading, cartItems, url, setCartItems, currency, deliveryCharge } = useContext(StoreContext);
   const navigate = useNavigate();
   const subtotal = getTotalCartAmount();
@@ -72,16 +72,26 @@ const PlaceOrder = () => {
               <div className='po-field'><label>First Name</label><input name='firstName' value={data.firstName} onChange={onChange} placeholder='John' required /></div>
               <div className='po-field'><label>Last Name</label><input name='lastName' value={data.lastName} onChange={onChange} placeholder='Doe' required /></div>
             </div>
-            <div className='po-field'><label>Email Address</label><input name='email' type='email' value={data.email} onChange={onChange} placeholder='john@example.com' required /></div>
-            <div className='po-field'><label>Phone Number</label><input name='phone' value={data.phone} onChange={onChange} placeholder='+971 50 000 0000' required /></div>
-            <div className='po-field'><label>Street Address</label><input name='street' value={data.street} onChange={onChange} placeholder='123 Main Street' required /></div>
             <div className='po-grid-2'>
-              <div className='po-field'><label>City</label><input name='city' value={data.city} onChange={onChange} placeholder='Dubai' required /></div>
-              <div className='po-field'><label>State</label><input name='state' value={data.state} onChange={onChange} placeholder='Dubai' required /></div>
+              <div className='po-field'><label>Email Address</label><input name='email' type='email' value={data.email} onChange={onChange} placeholder='john@example.com' required /></div>
+              <div className='po-field'><label>Phone Number</label><input name='phone' value={data.phone} onChange={onChange} placeholder='+971 50 000 0000' required /></div>
+            </div>
+            <div className='po-field'><label>Street Address</label><input name='street' value={data.street} onChange={onChange} placeholder='e.g. Al Nahda Street, Sheikh Zayed Road' required /></div>
+            <div className='po-grid-2'>
+              <div className='po-field'><label>Building / Villa Name</label><input name='building' value={data.building} onChange={onChange} placeholder='e.g. Al Reef Tower, Villa 12' /></div>
+              <div className='po-field'><label>Apartment / Room No.</label><input name='apartment' value={data.apartment} onChange={onChange} placeholder='e.g. Apt 401, Floor 4' /></div>
             </div>
             <div className='po-grid-2'>
-              <div className='po-field'><label>Zip Code</label><input name='zipcode' value={data.zipcode} onChange={onChange} placeholder='00000' required /></div>
+              <div className='po-field'><label>Area / Neighbourhood</label><input name='area' value={data.area} onChange={onChange} placeholder='e.g. Downtown, JBR, Deira' required /></div>
+              <div className='po-field'><label>City</label><input name='city' value={data.city} onChange={onChange} placeholder='Dubai' required /></div>
+            </div>
+            <div className='po-grid-2'>
               <div className='po-field'><label>Country</label><input name='country' value={data.country} onChange={onChange} placeholder='UAE' required /></div>
+              <div className='po-field'><label>Zip Code <span style={{fontWeight:400,color:'#9ca3af'}}>(optional)</span></label><input name='zipcode' value={data.zipcode} onChange={onChange} placeholder='00000' /></div>
+            </div>
+            <div className='po-field'>
+              <label>Delivery Notes <span style={{fontWeight:400,color:'#9ca3af'}}>(optional)</span></label>
+              <input name='deliveryNotes' value={data.deliveryNotes} onChange={onChange} placeholder='e.g. Ring doorbell, leave at door, call on arrival...' />
             </div>
           </div>
 

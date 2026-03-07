@@ -1,19 +1,23 @@
 // frontend/src/pages/Cart/Cart.jsx
 import React, { useContext } from 'react';
+import { toast } from 'react-toastify';
 import './Cart.css';
 import { StoreContext } from '../../Context/StoreContext';
 import { useNavigate } from 'react-router-dom';
 
 const Cart = () => {
-  const { cartItems, food_list, foodListLoading, removeFromCart, addToCart, getTotalCartAmount, url, currency, deliveryCharge } = useContext(StoreContext);
+  const { cartItems, food_list, foodListLoading, removeFromCart, addToCart, getTotalCartAmount, url, currency, deliveryCharge, token } = useContext(StoreContext);
   const navigate = useNavigate();
 
-  // Build cart rows from the new cartItems format
-  // Each key is a unique cart entry (same food + different options = separate rows)
+  // Build cart rows - fallback to localStorage cache if food_list not ready
+  const resolvedFoodList = food_list.length > 0 ? food_list : (() => {
+    try { return JSON.parse(localStorage.getItem("crave_food_cache") || "[]"); } catch { return []; }
+  })();
+
   const cartRows = Object.entries(cartItems)
     .filter(([, entry]) => entry.quantity > 0)
     .map(([key, entry]) => {
-      const food = food_list.find(f => f._id === entry.itemId);
+      const food = resolvedFoodList.find(f => f._id === entry.itemId);
       if (!food) return null;
       return { key, food, entry };
     })
@@ -37,6 +41,13 @@ const Cart = () => {
         <div className='cart-empty'>
           <div className='cart-empty-icon'>⏳</div>
           <p className='cart-empty-title'>Loading your cart...</p>
+        </div>
+      ) : !foodListLoading && Object.keys(cartItems).length > 0 && cartRows.length === 0 ? (
+        <div className='cart-empty'>
+          <div className='cart-empty-icon'>⚠️</div>
+          <p className='cart-empty-title'>Could not load cart items</p>
+          <p className='cart-empty-sub'>Menu data failed to load. Please refresh the page.</p>
+          <button className='cart-empty-btn' onClick={() => window.location.reload()}>Refresh</button>
         </div>
       ) : cartRows.length === 0 ? (
         <div className='cart-empty'>
@@ -129,7 +140,10 @@ const Cart = () => {
               <div className='cart-sum-row'><span>Delivery fee</span><span>{subtotal === 0 ? `${currency}0.00` : `${currency}${deliveryCharge}.00`}</span></div>
               <div className='cart-sum-row cart-sum-row-total'><span>Total</span><span>{currency}{subtotal === 0 ? '0.00' : (subtotal + deliveryCharge).toFixed(2)}</span></div>
             </div>
-            <button className='cart-checkout-btn' onClick={() => navigate('/order')}>
+            <button className='cart-checkout-btn' onClick={() => {
+                if (!token) { toast.error('Please sign in to checkout'); setShowLogin && setShowLogin(true); return; }
+                navigate('/order');
+              }}>
               Proceed to Checkout
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>

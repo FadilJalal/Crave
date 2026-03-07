@@ -1,5 +1,6 @@
 // frontend/src/pages/RestaurantMenu/RestaurantMenu.jsx
 import React, { useContext, useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import './RestaurantMenu.css';
 import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -21,7 +22,11 @@ const RestaurantMenu = () => {
         if (res.data.success) {
           const found = res.data.data.find(r => r._id === id);
           setRestaurant(found || null);
+        } else {
+          toast.error(res.data.message || 'Failed to load restaurant');
         }
+      } catch (err) {
+        toast.error(err?.response?.data?.message || 'Could not connect to server. Please try again.');
       } finally { setLoading(false); }
     };
     fetchRestaurant();

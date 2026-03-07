@@ -2,6 +2,7 @@
 import { createContext, useEffect, useState } from "react";
 import { menu_list } from "../assets/assets";
 import axios from "axios";
+import { toast } from "react-toastify";
 export const StoreContext = createContext(null);
 
 const StoreContextProvider = (props) => {
@@ -28,8 +29,9 @@ const StoreContextProvider = (props) => {
   const calcExtraPrice = (food, selections = {}) => {
     if (!food?.customizations?.length) return 0;
     let extra = 0;
-    food.customizations.forEach((group) => {
-      const sel = selections[group.title];
+    food.customizations.forEach((group, gi) => {
+      // Support title-keyed (current) and index-keyed (legacy) selections
+      const sel = selections[group.title] !== undefined ? selections[group.title] : selections[gi];
       group.options.forEach((opt) => {
         const selected = Array.isArray(sel) ? sel.includes(opt.label) : sel === opt.label;
         if (selected) extra += opt.extraPrice || 0;
@@ -54,7 +56,11 @@ const StoreContextProvider = (props) => {
     }));
 
     if (token) {
-      await axios.post(url + "/api/cart/add", { itemId }, { headers: { token } });
+      try {
+        await axios.post(url + "/api/cart/add", { itemId }, { headers: { token } });
+      } catch {
+        // cart sync failed silently — local state already updated
+      }
     }
   };
 
@@ -72,7 +78,11 @@ const StoreContextProvider = (props) => {
 
     const itemId = key.split("::")[0];
     if (token) {
-      await axios.post(url + "/api/cart/remove", { itemId }, { headers: { token } });
+      try {
+        await axios.post(url + "/api/cart/remove", { itemId }, { headers: { token } });
+      } catch {
+        // cart sync failed silently — local state already updated
+      }
     }
   };
 
@@ -97,10 +107,40 @@ const StoreContextProvider = (props) => {
     return total;
   };
 
+  const [foodListError, setFoodListError] = useState(false);
+
   const fetchFoodList = async () => {
     try {
+      setFoodListError(false);
       const response = await axios.get(url + "/api/food/list/public");
-      setFoodList(response.data.data);
+      if (response.data?.data) {
+        setFoodList(response.data.data);
+        // Cache for cart fallback
+        try { localStorage.setItem("crave_food_cache", JSON.stringify(response.data.data)); } catch {}
+      } else {
+        setFoodListError(true);
+        toast.error("Failed to load menu. Please refresh the page.");
+        // Try cache
+        try {
+          const cached = JSON.parse(localStorage.getItem("crave_food_cache") || "null");
+          if (cached?.length) { setFoodList(cached); setFoodListError(false); }
+        } catch {}
+      }
+    } catch {
+      setFoodListError(true);
+      // Try cache on network failure
+      try {
+        const cached = JSON.parse(localStorage.getItem("crave_food_cache") || "null");
+        if (cached?.length) {
+          setFoodList(cached);
+          setFoodListError(false);
+          toast.warn("Using cached menu data.", { toastId: "food-cache-warn" });
+        } else {
+          toast.error("Could not reach server. Please check your connection.", { toastId: "food-fetch-err" });
+        }
+      } catch {
+        toast.error("Could not reach server. Please check your connection.", { toastId: "food-fetch-err" });
+      }
     } finally {
       setFoodListLoading(false);
     }
@@ -108,7 +148,13 @@ const StoreContextProvider = (props) => {
 
   // ✅ mergeWithCurrent=true keeps guest cart items when logging in
   const loadCartData = async (token, mergeWithCurrent = false) => {
-    const response = await axios.post(url + "/api/cart/get", {}, { headers: { token } });
+    let response;
+    try {
+      response = await axios.post(url + "/api/cart/get", {}, { headers: { token } });
+    } catch {
+      // Cart sync failed — keep local cart as-is
+      return;
+    }
     const raw = response.data.cartData || {};
     const converted = {};
     for (const itemId in raw) {
@@ -137,7 +183,7 @@ const StoreContextProvider = (props) => {
   }, []);
 
   const contextValue = {
-    url, food_list, menu_list, foodListLoading,
+    url, food_list, menu_list, foodListLoading, foodListError,
     cartItems, addToCart, removeFromCart,
     getTotalCartAmount, getItemCount, buildCartKey,
     token, setToken, loadCartData, setCartItems,

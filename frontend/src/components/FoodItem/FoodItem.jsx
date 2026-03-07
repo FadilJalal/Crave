@@ -14,25 +14,25 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
   const [showCustomize, setShowCustomize] = useState(false);
   const [selections, setSelections] = useState({});
 
-  const handleSelect = (groupTitle, optionLabel, multiSelect) => {
+  const handleSelect = (groupIndex, optionLabel, multiSelect) => {
     setSelections((prev) => {
       if (multiSelect) {
-        const current = prev[groupTitle] || [];
+        const current = prev[groupIndex] || [];
         return {
           ...prev,
-          [groupTitle]: current.includes(optionLabel)
+          [groupIndex]: current.includes(optionLabel)
             ? current.filter((x) => x !== optionLabel)
             : [...current, optionLabel],
         };
       }
-      return { ...prev, [groupTitle]: prev[groupTitle] === optionLabel ? null : optionLabel };
+      return { ...prev, [groupIndex]: prev[groupIndex] === optionLabel ? null : optionLabel };
     });
   };
 
   const getExtraPrice = () => {
     let extra = 0;
-    customizations.forEach((group) => {
-      const sel = selections[group.title];
+    customizations.forEach((group, gi) => {
+      const sel = selections[gi];
       group.options.forEach((opt) => {
         const selected = Array.isArray(sel) ? sel.includes(opt.label) : sel === opt.label;
         if (selected) extra += opt.extraPrice || 0;
@@ -42,16 +42,25 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
   };
 
   const handleAddToCart = () => {
-    for (const group of customizations) {
+    for (const [gi, group] of customizations.entries()) {
       if (group.required) {
-        const sel = selections[group.title];
+        const sel = selections[gi];
         if (!sel || (Array.isArray(sel) && sel.length === 0)) {
           alert(`Please select an option for "${group.title}"`);
           return;
         }
       }
     }
-    addToCart(id, selections);
+    // Convert index-keyed selections { 0: "val" } → title-keyed { "Group Title": "val" }
+    // so the restaurant admin sees meaningful labels on orders
+    const namedSelections = {};
+    customizations.forEach((group, gi) => {
+      const sel = selections[gi];
+      if (sel !== null && sel !== undefined && sel !== '' && !(Array.isArray(sel) && sel.length === 0)) {
+        namedSelections[group.title] = sel;
+      }
+    });
+    addToCart(id, namedSelections);
     setShowCustomize(false);
     setSelections({});
   };
@@ -169,10 +178,10 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
                     {group.multiSelect && <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: 20 }}>Choose multiple</span>}
                   </div>
                   {group.options.map((opt, oi) => {
-                    const sel = selections[group.title];
+                    const sel = selections[gi];
                     const isSelected = group.multiSelect ? (sel || []).includes(opt.label) : sel === opt.label;
                     return (
-                      <div key={oi} onClick={() => handleSelect(group.title, opt.label, group.multiSelect)}
+                      <div key={oi} onClick={() => handleSelect(gi, opt.label, group.multiSelect)}
                         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 12, marginBottom: 8, border: `2px solid ${isSelected ? '#ff4e2a' : '#e5e7eb'}`, background: isSelected ? '#fff5f3' : '#fff', cursor: 'pointer', transition: 'all 0.15s' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 18, height: 18, borderRadius: group.multiSelect ? 4 : '50%', border: `2px solid ${isSelected ? '#ff4e2a' : '#d1d5db'}`, background: isSelected ? '#ff4e2a' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
