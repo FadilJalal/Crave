@@ -14,6 +14,7 @@ import restaurantRouter from "./routes/restaurantRoute.js";
 import adminRouter from "./routes/adminRoute.js";
 import restaurantAdminRoute from "./routes/restaurantAdminRoute.js";
 import paymentRouter from "./routes/paymentRoute.js";
+import chatRouter from "./routes/chatRoute.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -69,6 +70,7 @@ app.use("/api/restaurantadmin", restaurantAdminRoute);
 app.use("/api/payment", paymentRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/recommend", recommendationRouter);
+app.use("/api/chat", chatRouter);
 app.get("/", (req, res) => {
   res.json({ success: true, message: "API is running" });
 });

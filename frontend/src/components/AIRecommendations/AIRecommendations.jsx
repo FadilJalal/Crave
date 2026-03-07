@@ -115,45 +115,62 @@ const AIRecommendations = () => {
   const [reason,          setReason]           = useState("");
   const [totalOrders,     setTotalOrders]      = useState(0);
   const [hasHistory,      setHasHistory]       = useState(false);
-  const [loading,         setLoading]          = useState(false);
-  const [error,           setError]            = useState(false);
-  const [visible,         setVisible]          = useState(false);
+  const [loading,         setLoading]          = useState(true);
+  const [errorMsg,        setErrorMsg]         = useState("");
   const [likes,           setLikes]            = useState({});
 
   const fetchRecommendations = async () => {
-    if (!token) return;
+    if (!token) { setLoading(false); return; }
     setLoading(true);
-    setError(false);
+    setErrorMsg("");
     try {
       const res = await axios.post(url + "/api/recommend", {}, { headers: { token } });
-      if (res.data.success && res.data.recommendations?.length > 0) {
-        setRecommendations(res.data.recommendations);
+      console.log("[AI] response:", res.data);
+      if (res.data.success) {
+        setRecommendations(res.data.recommendations || []);
         setOrderAgain(res.data.orderAgain || []);
         setTasteProfile(res.data.tasteProfile || []);
         setReason(res.data.reason || "");
         setHasHistory(res.data.hasHistory);
         setTotalOrders(res.data.totalOrders || 0);
       } else {
-        setError(true);
+        setErrorMsg(res.data.message || "Could not load recommendations");
       }
-    } catch {
-      setError(true);
+    } catch (err) {
+      console.error("[AI] fetch error:", err);
+      setErrorMsg("Network error — is the backend running?");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { if (token) fetchRecommendations(); }, [token]);
-  useEffect(() => { const t = setTimeout(() => setVisible(true), 100); return () => clearTimeout(t); }, []);
+  useEffect(() => { fetchRecommendations(); }, [token]);
 
   const handleLike = (id, val) =>
     setLikes(prev => ({ ...prev, [id]: prev[id] === val ? null : val }));
 
-  if (!token) return null;
-  if (error)  return null;
+  // Not logged in
+  if (!token) return (
+    <section className="ai-section ai-visible">
+      <div className="ai-login-prompt">
+        <span>✨</span>
+        <p>Sign in to see personalised recommendations just for you</p>
+      </div>
+    </section>
+  );
+
+  // Error state — now visible instead of null
+  if (errorMsg) return (
+    <section className="ai-section ai-visible">
+      <div className="ai-error-box">
+        <p>⚠️ {errorMsg}</p>
+        <button onClick={fetchRecommendations} className="ai-refresh">Try Again</button>
+      </div>
+    </section>
+  );
 
   return (
-    <section className={`ai-section ${visible ? "ai-visible" : ""}`}>
+    <section className="ai-section ai-visible">
 
       {/* Top row: Taste Profile + Order Again */}
       {!loading && (tasteProfile.length > 0 || orderAgain.length > 0) && (
@@ -179,7 +196,7 @@ const AIRecommendations = () => {
           <div>
             <h2 className="ai-title">Picked Just for You</h2>
             <p className="ai-subtitle">
-              {loading ? "Analysing your taste..." : hasHistory ? "Based on your order history" : "Curated picks to get you started"}
+              {loading ? "Analysing your taste..." : hasHistory ? "Based on your order history" : "Popular picks to get you started"}
             </p>
           </div>
         </div>
@@ -189,7 +206,7 @@ const AIRecommendations = () => {
             <polyline points="23 4 23 10 17 10"/>
             <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
           </svg>
-          {loading ? "Thinking..." : "Refresh"}
+          {loading ? "Loading..." : "Refresh"}
         </button>
       </div>
 
@@ -214,6 +231,12 @@ const AIRecommendations = () => {
                 </div>
               </div>
             ))
+          : recommendations.length === 0
+            ? (
+              <div className="ai-empty">
+                <p>🍽️ No recommendations yet — start ordering to unlock personalised picks!</p>
+              </div>
+            )
           : recommendations.map((food, i) => {
               const count  = getItemCount(food._id);
               const liked  = likes[food._id];
@@ -221,7 +244,6 @@ const AIRecommendations = () => {
 
               return (
                 <div key={food._id} className="ai-card" style={{ animationDelay: `${i * 80}ms` }}>
-                  {/* Image */}
                   <div className="ai-img-wrap">
                     <img
                       src={url + "/images/" + food.image}
@@ -230,8 +252,6 @@ const AIRecommendations = () => {
                       onError={e => { e.target.src = "https://via.placeholder.com/300x200?text=Food"; }}
                     />
                     <div className="ai-img-overlay" />
-
-                    {/* Badges */}
                     <div className="ai-badge">
                       <svg viewBox="0 0 24 24" fill="currentColor" width="9" height="9">
                         <path d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z"/>
@@ -239,19 +259,14 @@ const AIRecommendations = () => {
                       AI Pick
                     </div>
                     {isNew && <div className="ai-new-badge">NEW</div>}
-
-                    {/* Like / Dislike */}
                     <div className="ai-like-row">
-                      <button
-                        className={`ai-like-btn ${liked === "like" ? "ai-liked" : ""}`}
+                      <button className={`ai-like-btn ${liked === "like" ? "ai-liked" : ""}`}
                         onClick={() => handleLike(food._id, "like")}>👍</button>
-                      <button
-                        className={`ai-like-btn ${liked === "dislike" ? "ai-disliked" : ""}`}
+                      <button className={`ai-like-btn ${liked === "dislike" ? "ai-disliked" : ""}`}
                         onClick={() => handleLike(food._id, "dislike")}>👎</button>
                     </div>
                   </div>
 
-                  {/* Body */}
                   <div className="ai-body">
                     <div className="ai-top-row-card">
                       <p className="ai-name">{food.name}</p>

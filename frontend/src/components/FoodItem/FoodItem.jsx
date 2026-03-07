@@ -1,9 +1,8 @@
-// frontend/src/components/FoodItem/FoodItem.jsx
 import { useState, useContext } from 'react';
 import './FoodItem.css';
 import { StoreContext } from '../../Context/StoreContext';
 
-const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [] }) => {
+const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null }) => {
   const { cartItems, addToCart, removeFromCart, getItemCount, url, currency } = useContext(StoreContext);
 
   const count = getItemCount(id);
@@ -77,6 +76,7 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
     <>
       <div className='fi-card'>
         <div className='fi-img-wrap'>
+          {dealTag && (  <div className='fi-deal-tag' style={{ background: dealTag.bg, border: `1px solid ${dealTag.border}`, color: dealTag.color }}>    {dealTag.label}  </div>)}
           <img className='fi-img' src={url + '/images/' + image} alt={name}
             onError={e => { e.target.src = 'https://via.placeholder.com/300x200?text=Food'; }} />
 

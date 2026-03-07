@@ -1,42 +1,56 @@
-.em-wrap { padding: 20px 0 32px; }
-.em-header { margin-bottom: 20px; }
-.em-title { font-family: var(--font-display); font-size: 26px; font-weight: 800; color: var(--text); }
-.em-sub { font-size: 14px; color: var(--text-3); margin-top: 4px; }
+.em-wrap { padding: 16px 0 36px; }
+
+.em-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.em-title { font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--text); }
+.em-sub   { font-size: 13px; color: var(--text-3); font-weight: 500; }
 
 .em-scroll {
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding-bottom: 4px;
   scrollbar-width: none;
 }
 .em-scroll::-webkit-scrollbar { display: none; }
 
 .em-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
+  gap: 7px;
+  padding: 9px 18px;
   border: 1.5px solid var(--border);
   border-radius: 50px;
   background: #fff;
   color: var(--text-2);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   font-family: var(--font-body);
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s;
   flex-shrink: 0;
+  transition: all 0.18s;
 }
-.em-pill:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); transform: translateY(-2px); }
-.em-pill-active {
+.em-pill:hover {
   border-color: var(--brand);
-  background: var(--brand);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(255,48,8,0.25);
+  color: var(--brand);
+  background: var(--brand-soft);
+  transform: translateY(-1px);
 }
-.em-pill-active:hover { background: var(--brand-dark); border-color: var(--brand-dark); color: #fff; transform: translateY(-2px); }
-
-.em-pill-img { width: 24px; height: 24px; object-fit: cover; border-radius: 50%; }
-.em-pill-emoji { font-size: 18px; }
+.em-pill-active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(255,48,8,0.22);
+}
+.em-pill-active:hover {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.em-pill-emoji { font-size: 16px; line-height: 1; }

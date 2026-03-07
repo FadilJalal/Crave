@@ -79,6 +79,9 @@ export default function RestaurantLayout({ children }) {
           <NavLink to="/add-food" className={({ isActive }) => (isActive ? "active" : "")}>
             ➕ Add Food
           </NavLink>
+          <NavLink to="/bulk-upload" className={({ isActive }) => (isActive ? "active" : "")}>
+            📦 Bulk Upload
+          </NavLink>
           <NavLink to="/orders" className={({ isActive }) => (isActive ? "active" : "")}>
             🧾 Orders
           </NavLink>

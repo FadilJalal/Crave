@@ -1,0 +1,13 @@
+.oi-wrap { background: #fff; border: 1px solid #efefef; border-radius: 20px; padding: 20px 24px; margin-bottom: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); animation: fadeUp 0.4s ease both; }
+.oi-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.oi-spark  { font-size: 24px; }
+.oi-title  { font-size: 16px; font-weight: 800; color: #0f0f0f; margin: 0 0 2px; }
+.oi-sub    { font-size: 12px; color: #9a9a9a; margin: 0; }
+.oi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.oi-tile { display: flex; flex-direction: column; align-items: center; padding: 14px 10px; background: #fafaf8; border: 1px solid #efefef; border-radius: 14px; text-align: center; transition: border-color 0.2s, transform 0.2s; animation: fadeUp 0.4s ease both; }
+.oi-tile:hover { border-color: #e4e4e4; transform: translateY(-2px); }
+.oi-tile-icon  { font-size: 22px; margin-bottom: 6px; }
+.oi-tile-value { font-size: 17px; font-weight: 800; color: #0f0f0f; margin: 0 0 3px; line-height: 1.2; }
+.oi-small { font-size: 13px; }
+.oi-tile-label { font-size: 11px; color: #9a9a9a; font-weight: 500; margin: 0; }
+@media (max-width: 520px) { .oi-grid { grid-template-columns: repeat(2, 1fr); } }

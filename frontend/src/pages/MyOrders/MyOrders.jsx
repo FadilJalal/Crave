@@ -4,6 +4,7 @@ import './MyOrders.css';
 import axios from 'axios';
 import { StoreContext } from '../../Context/StoreContext';
 import { useNavigate } from 'react-router-dom';
+import OrderInsights from '../../components/OrderInsights/OrderInsights';
 
 const STATUS_STEPS = ['Order Placed', 'Food Processing', 'Out for Delivery', 'Delivered'];
 
@@ -12,7 +13,7 @@ const statusIndex = (status) => {
   const s = (status || '').toLowerCase().trim();
   if (s === 'food processing')  return 1;
   if (s === 'out for delivery') return 2;
-  if (s === 'delivered')        return 3;
+  if (s === 'delivered')         return 3;
   return 0;
 };
 
@@ -84,49 +85,52 @@ const MyOrders = () => {
           <button className='mo-order-btn' onClick={() => navigate('/')}>Start Ordering</button>
         </div>
       ) : (
-        <div className='mo-list'>
-          {[...orders].reverse().map((order, i) => {
-            const step = statusIndex(order.status);
-            const isDelivered = (order.status || '').toLowerCase().trim() === 'delivered';
-            return (
-              <div key={i} className='mo-card'>
-                <div className='mo-card-top'>
-                  <div className='mo-order-icon'>📦</div>
-                  <div className='mo-order-info'>
-                    <p className='mo-order-id'>Order #{String(order._id).slice(-6).toUpperCase()}</p>
-                    <p className='mo-order-items'>
-                      {(order.items || []).map((it, idx) =>
-                        `${it.name} x${it.quantity}${idx < order.items.length - 1 ? ', ' : ''}`
-                      )}
-                    </p>
+        <>
+          <OrderInsights orders={orders} currency={currency} />
+          <div className='mo-list'>
+            {[...orders].reverse().map((order, i) => {
+              const step = statusIndex(order.status);
+              const isDelivered = (order.status || '').toLowerCase().trim() === 'delivered';
+              return (
+                <div key={i} className='mo-card'>
+                  <div className='mo-card-top'>
+                    <div className='mo-order-icon'>📦</div>
+                    <div className='mo-order-info'>
+                      <p className='mo-order-id'>Order #{String(order._id).slice(-6).toUpperCase()}</p>
+                      <p className='mo-order-items'>
+                        {(order.items || []).map((it, idx) =>
+                          `${it.name} x${it.quantity}${idx < order.items.length - 1 ? ', ' : ''}`
+                        )}
+                      </p>
+                    </div>
+                    <div className='mo-order-right'>
+                      <p className='mo-order-amount'>{currency}{order.amount}.00</p>
+                      <span className={`mo-status-badge ${isDelivered ? 'mo-delivered' : 'mo-active'}`}>
+                        {isDelivered ? '✓ Delivered' : '⏱ ' + (order.status || 'Processing')}
+                      </span>
+                    </div>
                   </div>
-                  <div className='mo-order-right'>
-                    <p className='mo-order-amount'>{currency}{order.amount}.00</p>
-                    <span className={`mo-status-badge ${isDelivered ? 'mo-delivered' : 'mo-active'}`}>
-                      {isDelivered ? '✓ Delivered' : '⏱ ' + (order.status || 'Processing')}
-                    </span>
-                  </div>
-                </div>
 
-                <div className='mo-progress'>
-                  {STATUS_STEPS.map((s, idx) => (
-                    <React.Fragment key={s}>
-                      <div className='mo-prog-step'>
-                        <div className={`mo-prog-dot ${idx <= step ? 'mo-prog-done' : ''} ${idx === step ? 'mo-prog-current' : ''}`}>
-                          {idx <= step ? '✓' : idx + 1}
+                  <div className='mo-progress'>
+                    {STATUS_STEPS.map((s, idx) => (
+                      <React.Fragment key={s}>
+                        <div className='mo-prog-step'>
+                          <div className={`mo-prog-dot ${idx <= step ? 'mo-prog-done' : ''} ${idx === step ? 'mo-prog-current' : ''}`}>
+                            {idx <= step ? '✓' : idx + 1}
+                          </div>
+                          <p className={`mo-prog-label ${idx <= step ? 'mo-prog-label-done' : ''}`}>{s}</p>
                         </div>
-                        <p className={`mo-prog-label ${idx <= step ? 'mo-prog-label-done' : ''}`}>{s}</p>
-                      </div>
-                      {idx < STATUS_STEPS.length - 1 && (
-                        <div className={`mo-prog-line ${idx < step ? 'mo-prog-line-done' : ''}`}/>
-                      )}
-                    </React.Fragment>
-                  ))}
+                        {idx < STATUS_STEPS.length - 1 && (
+                          <div className={`mo-prog-line ${idx < step ? 'mo-prog-line-done' : ''}`}/>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

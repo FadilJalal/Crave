@@ -3,6 +3,7 @@ import React, { useContext } from 'react';
 import './Cart.css';
 import { StoreContext } from '../../Context/StoreContext';
 import { useNavigate } from 'react-router-dom';
+import CartUpsell from '../../components/CartUpsell/CartUpsell';
 
 const Cart = () => {
   const { cartItems, food_list, foodListLoading, removeFromCart, addToCart, getTotalCartAmount, url, currency, deliveryCharge } = useContext(StoreContext);
@@ -88,13 +89,13 @@ const Cart = () => {
                   <div className='cart-row-ctrl'>
                     <button onClick={() => removeFromCart(key)}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <line x1="5" y1="12" x2="19" y2="12" />
                       </svg>
                     </button>
                     <span>{entry.quantity}</span>
                     <button onClick={() => addToCart(food._id, entry.selections)}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                       </svg>
                     </button>
                   </div>
@@ -107,19 +108,19 @@ const Cart = () => {
                     for (let i = 0; i < entry.quantity; i++) removeFromCart(key);
                   }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-                      <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                      <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" />
+                      <path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
                     </svg>
                   </button>
                 </div>
               );
             })}
-
+            <CartUpsell />
             <div className='cart-promo'>
               <div className='cart-promo-input'>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
-                  <line x1="7" y1="7" x2="7.01" y2="7"/>
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" />
                 </svg>
                 <input type='text' placeholder='Enter promo code...' />
               </div>
@@ -137,7 +138,7 @@ const Cart = () => {
             <button className='cart-checkout-btn' onClick={() => navigate('/order')}>
               Proceed to Checkout
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
               </svg>
             </button>
             <button className='cart-continue-btn' onClick={() => navigate('/')}>← Continue Shopping</button>

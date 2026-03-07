@@ -1,314 +1,126 @@
+/* ── Food Card ── */
 .fi-card {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
   transition: transform 0.2s, box-shadow 0.2s;
-  animation: fadeUp 0.4s ease;
+  animation: fadeUp 0.4s ease both;
+  display: flex;
+  flex-direction: column;
 }
 .fi-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
 
-.fi-img-wrap { position: relative; aspect-ratio: 4/3; overflow: hidden; }
-.fi-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
-.fi-card:hover .fi-img { transform: scale(1.04); }
+/* Image */
+.fi-img-wrap { position: relative; aspect-ratio: 4/3; overflow: hidden; flex-shrink: 0; }
+.fi-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.35s; display: block; }
+.fi-card:hover .fi-img { transform: scale(1.05); }
 
-.fi-cart-ctrl { position: absolute; bottom: 12px; right: 12px; }
-.fi-add-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 8px 16px;
-  background: #fff;
-  border: 1.5px solid var(--brand);
-  color: var(--brand);
-  font-size: 13px;
-  font-weight: 800;
-  font-family: var(--font-body);
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: background 0.15s, transform 0.15s;
-  letter-spacing: 0.5px;
-}
-.fi-add-btn:hover { background: var(--brand); color: #fff; transform: scale(1.05); }
-
-.fi-counter {
-  display: flex;
-  align-items: center;
-  background: #fff;
-  border: 1.5px solid var(--brand);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-}
-.fi-counter button {
-  width: 34px; height: 34px;
-  border: none; background: none;
-  color: var(--brand); cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s;
-}
-.fi-counter button:hover { background: var(--brand-soft); }
-.fi-counter span {
-  min-width: 28px; text-align: center;
-  font-size: 14px; font-weight: 800; color: var(--brand);
-}
-
-.fi-body { padding: 14px 16px; }
-.fi-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-.fi-name { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.3; }
-.fi-rating {
-  display: flex; align-items: center; gap: 3px;
-  background: #fef9ee; border: 1px solid #fde68a;
-  padding: 3px 8px; border-radius: 50px;
-  font-size: 12px; font-weight: 700; color: #92400e;
-  white-space: nowrap; flex-shrink: 0; margin-left: 8px;
-}
-.fi-desc { font-size: 12px; color: var(--text-3); line-height: 1.5; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.fi-footer { display: flex; justify-content: space-between; align-items: center; }
-.fi-price { font-size: 17px; font-weight: 800; color: var(--text); font-family: var(--font-display); }
-.fi-delivery { font-size: 12px; color: var(--text-3); }
-/* Restaurant badge on food card */
+/* Restaurant badge */
 .fi-rest-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  position: absolute; top: 10px; left: 10px;
+  display: flex; align-items: center; gap: 5px;
   padding: 4px 10px 4px 4px;
   background: rgba(255,255,255,0.92);
   backdrop-filter: blur(6px);
   border-radius: 50px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text);
+  font-size: 11.5px; font-weight: 700; color: var(--text);
   box-shadow: var(--shadow-sm);
-  max-width: calc(100% - 20px);
-  overflow: hidden;
+  max-width: calc(100% - 20px); overflow: hidden;
 }
-.fi-rest-badge span:last-child {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.fi-rest-logo {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
+.fi-rest-badge span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fi-rest-logo  { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .fi-rest-initial {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--brand);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--brand); color: #fff;
+  font-size: 10px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.fi-customize-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 8px 14px;
-  background: #fff;
-  border: 1.5px solid #ff4e2a;
-  color: #ff4e2a;
-  font-size: 12px;
-  font-weight: 800;
-  font-family: var(--font-body);
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: background 0.15s, transform 0.15s;
-  letter-spacing: 0.5px;
-}
-.fi-customize-btn:hover {
-  background: #ff4e2a;
-  color: #fff;
-  transform: scale(1.05);
-}
-.fi-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
-  animation: fadeUp 0.4s ease;
-}
-.fi-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
 
-.fi-img-wrap { position: relative; aspect-ratio: 4/3; overflow: hidden; }
-.fi-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
-.fi-card:hover .fi-img { transform: scale(1.04); }
+/* Deal tag */
+.fi-deal-tag {
+  position: absolute; top: 10px; right: 10px; z-index: 5;
+  font-size: 10.5px; font-weight: 700;
+  padding: 3px 10px; border-radius: 50px;
+  letter-spacing: 0.02em; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
 
-/* ── Cart controls ── */
-.fi-cart-ctrl { position: absolute; bottom: 12px; right: 12px; }
+/* Cart controls */
+.fi-cart-ctrl { position: absolute; bottom: 10px; right: 10px; }
 
 .fi-add-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+  display: inline-flex; align-items: center; gap: 5px;
   padding: 8px 16px;
   background: #fff;
   border: 1.5px solid var(--brand);
   color: var(--brand);
-  font-size: 13px;
-  font-weight: 800;
-  font-family: var(--font-body);
-  border-radius: 8px;
-  cursor: pointer;
+  font-size: 12.5px; font-weight: 800; font-family: var(--font-body);
+  border-radius: 8px; cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: background 0.15s, transform 0.15s;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
 }
-.fi-add-btn:hover { background: var(--brand); color: #fff; transform: scale(1.05); }
+.fi-add-btn:hover { background: var(--brand); color: #fff; transform: scale(1.04); }
 
-/* ── CUSTOMIZE button ── */
 .fi-customize-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 16px;
-  background: rgba(255, 255, 255, 0.95);
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.95);
   border: 1.5px solid var(--brand);
   color: var(--brand);
-  font-size: 12px;
-  font-weight: 800;
-  font-family: var(--font-body);
-  border-radius: 50px;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(255,78,42,0.20);
-  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
-  letter-spacing: 0.6px;
-  backdrop-filter: blur(6px);
+  font-size: 11.5px; font-weight: 800; font-family: var(--font-body);
+  border-radius: 50px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(255,78,42,0.18);
+  backdrop-filter: blur(4px);
+  transition: background 0.15s, transform 0.15s;
+  letter-spacing: 0.4px;
 }
-.fi-customize-btn:hover {
-  background: var(--brand);
-  color: #fff;
-  transform: scale(1.05);
-  box-shadow: 0 6px 18px rgba(255,78,42,0.32);
-}
+.fi-customize-btn:hover { background: var(--brand); color: #fff; transform: scale(1.04); }
 
-/* ── Counter ── */
 .fi-counter {
-  display: flex;
-  align-items: center;
-  background: #fff;
-  border: 1.5px solid var(--brand);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  display: flex; align-items: center;
+  background: #fff; border: 1.5px solid var(--brand);
+  border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-sm);
 }
 .fi-counter button {
-  width: 34px; height: 34px;
-  border: none; background: none;
+  width: 32px; height: 32px; border: none; background: none;
   color: var(--brand); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s;
+  transition: background 0.12s;
 }
 .fi-counter button:hover { background: var(--brand-soft); }
-.fi-counter span {
-  min-width: 28px; text-align: center;
-  font-size: 14px; font-weight: 800; color: var(--brand);
-}
+.fi-counter span { min-width: 26px; text-align: center; font-size: 13px; font-weight: 800; color: var(--brand); }
 
-/* ── Card body ── */
-.fi-body { padding: 14px 16px; }
-.fi-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-.fi-name { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.3; }
+/* Card body */
+.fi-body { padding: 14px 16px 16px; display: flex; flex-direction: column; flex: 1; }
+
+.fi-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+.fi-name { font-size: 14.5px; font-weight: 700; color: var(--text); line-height: 1.3; }
 
 .fi-rating {
-  display: flex; align-items: center; gap: 3px;
+  display: inline-flex; align-items: center; gap: 3px;
   background: #fef9ee; border: 1px solid #fde68a;
   padding: 3px 8px; border-radius: 50px;
-  font-size: 12px; font-weight: 700; color: #92400e;
-  white-space: nowrap; flex-shrink: 0; margin-left: 8px;
+  font-size: 11.5px; font-weight: 700; color: #92400e;
+  white-space: nowrap; flex-shrink: 0;
 }
 
 .fi-desc {
-  font-size: 12px; color: var(--text-3); line-height: 1.5;
-  margin-bottom: 12px;
+  font-size: 12px; color: var(--text-3); line-height: 1.55;
+  margin-bottom: 14px; flex: 1;
   display: -webkit-box; -webkit-line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden;
 }
 
-/* ── Footer row ── */
-.fi-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.fi-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: auto; }
+.fi-price  { font-size: 16px; font-weight: 800; color: var(--text); font-family: var(--font-display); }
 
-.fi-price {
-  font-size: 17px; font-weight: 800;
-  color: var(--text);
-  font-family: var(--font-display);
-  white-space: nowrap;
-}
+.fi-footer-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.fi-delivery { font-size: 11.5px; color: var(--text-3); }
 
-.fi-footer-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.fi-delivery { font-size: 12px; color: var(--text-3); white-space: nowrap; }
-
-/* ── Customizable badge ── */
 .fi-customizable-badge {
-  font-size: 10px;
-  color: var(--brand);
-  font-weight: 700;
-  background: #fff5f3;
-  border: 1px solid rgba(255,78,42,0.25);
-  padding: 2px 8px;
-  border-radius: 20px;
-  white-space: nowrap;
-  letter-spacing: 0.3px;
-}
-
-/* ── Restaurant badge on image ── */
-.fi-rest-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px 4px 4px;
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(6px);
-  border-radius: 50px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
-  max-width: calc(100% - 20px);
-  overflow: hidden;
-}
-.fi-rest-badge span:last-child {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.fi-rest-logo {
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-.fi-rest-initial {
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  background: var(--brand);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 800;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+  font-size: 10px; color: var(--brand); font-weight: 700;
+  background: #fff5f3; border: 1px solid rgba(255,78,42,0.2);
+  padding: 2px 8px; border-radius: 20px; white-space: nowrap;
 }

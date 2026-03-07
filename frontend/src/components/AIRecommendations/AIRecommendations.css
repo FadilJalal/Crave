@@ -263,3 +263,26 @@
   .ai-body { padding: 10px; }
   .taste-label { min-width: 90px; }
 }
+/* ── Extra states ─────────────────────────────────────────────── */
+.ai-login-prompt {
+  display: flex; align-items: center; gap: 12px;
+  padding: 18px 24px; background: #fff;
+  border: 1px solid var(--border, #efefef);
+  border-radius: 16px; color: #6b7280; font-size: 14px;
+  margin: 16px 0;
+}
+.ai-login-prompt span { font-size: 22px; }
+
+.ai-error-box {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px; background: #fff5f3;
+  border: 1px solid #ffd5cc; border-radius: 12px;
+  font-size: 13px; color: #c2410c; margin: 16px 0;
+}
+
+.ai-empty {
+  grid-column: 1 / -1;
+  padding: 40px; text-align: center;
+  background: #fff; border: 1px dashed #e5e7eb;
+  border-radius: 16px; color: #9ca3af; font-size: 14px;
+}

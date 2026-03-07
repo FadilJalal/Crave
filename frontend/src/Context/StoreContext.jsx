@@ -1,6 +1,5 @@
 // frontend/src/Context/StoreContext.jsx
 import { createContext, useEffect, useState } from "react";
-import { menu_list } from "../assets/assets";
 import axios from "axios";
 import { toast } from "react-toastify";
 export const StoreContext = createContext(null);
@@ -183,7 +182,7 @@ const StoreContextProvider = (props) => {
   }, []);
 
   const contextValue = {
-    url, food_list, menu_list, foodListLoading, foodListError,
+    url, food_list, foodListLoading, foodListError,
     cartItems, addToCart, removeFromCart,
     getTotalCartAmount, getItemCount, buildCartKey,
     token, setToken, loadCartData, setCartItems,

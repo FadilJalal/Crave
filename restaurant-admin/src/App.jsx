@@ -8,6 +8,7 @@ import EditFood from "./Pages/EditFood";
 import Orders from "./Pages/Orders";
 import Settings from "./Pages/Settings";
 import Bridge from "./Pages/Bridge";
+import BulkUpload from "./Pages/BulkUpload";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/menu" element={<ProtectedRoute><Menu /></ProtectedRoute>} />
       <Route path="/add-food" element={<ProtectedRoute><AddFood /></ProtectedRoute>} />
+      <Route path="/bulk-upload" element={<ProtectedRoute><BulkUpload /></ProtectedRoute>} />
       <Route path="/edit-food/:id" element={<ProtectedRoute><EditFood /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
