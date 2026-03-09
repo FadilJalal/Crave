@@ -6,28 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { StoreContext } from '../../Context/StoreContext';
 import FoodItem from '../../components/FoodItem/FoodItem';
 
-const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-
-function isOpenNow(restaurant) {
-  if (!restaurant?.isActive) return false;
-  const hours = restaurant.openingHours;
-  if (!hours) return true; 
-
-  const now = new Date();
-  // Adjust getDay() so Monday is 0 and Sunday is 6
-  const dayIndex = now.getDay() === 0 ? 6 : now.getDay() - 1;
-  const day = DAYS[dayIndex];
-  const h = hours[day];
-
-  if (!h || h.closed) return false;
-
-  const [oh, om] = h.open.split(":").map(Number);
-  const [ch, cm] = h.close.split(":").map(Number);
-  const mins = now.getHours() * 60 + now.getMinutes();
-  
-  return mins >= oh * 60 + om && mins < ch * 60 + cm;
-}
-
+import { isRestaurantOpen, nextOpeningTime } from '../../utils/restaurantHours';
 const RestaurantMenu = () => {
   const { id } = useParams();
   const { url, food_list } = useContext(StoreContext);
@@ -81,7 +60,7 @@ const RestaurantMenu = () => {
     </div>
   );
 
-  const openStatus = isOpenNow(restaurant);
+  const openStatus = isRestaurantOpen(restaurant);
 
   return (
     <div className='rm-page'>
@@ -156,20 +135,17 @@ const RestaurantMenu = () => {
                 ? 'This restaurant is currently outside its opening hours. Check back later to place an order.'
                 : 'This restaurant is temporarily unavailable and not accepting orders.'}
             </div>
-            {restaurant.isActive && restaurant.openingHours && (() => {
-              const tomorrowIndex = new Date().getDay(); // getDay() is already "tomorrow" if we consider 0=Sun
-              const tomorrowName = DAYS[tomorrowIndex === 0 ? 6 : tomorrowIndex - 1]; 
-              const th = restaurant.openingHours[tomorrowName];
-              
-              if (th && !th.closed) return (
+            {restaurant.isActive && (() => {
+              const next = nextOpeningTime(restaurant);
+              if (!next) return null;
+              return (
                 <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8,
                   background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '6px 14px' }}>
                   <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                    🕐 Opens next at <strong style={{ color: 'white' }}>{th.open}</strong>
+                    🕐 <strong style={{ color: 'white' }}>{next}</strong>
                   </span>
                 </div>
               );
-              return null;
             })()}
           </div>
         </div>

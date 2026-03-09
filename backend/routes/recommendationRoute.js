@@ -127,7 +127,7 @@ router.post("/", authMiddleware, async (req, res) => {
     // ── Step 6: Fetch full food docs ─────────────────────────────────
     const recFoods = await foodModel
       .find({ _id: { $in: recommendedIds } })
-      .populate("restaurantId", "name logo")
+      .populate("restaurantId", "name logo isActive openingHours")
       .lean();
 
     const recommendations = recommendedIds
@@ -139,7 +139,7 @@ router.post("/", authMiddleware, async (req, res) => {
     const orderAgainIds = lastOrderedItems.map(i => String(i._id));
     const orderAgainFoods = await foodModel
       .find({ _id: { $in: orderAgainIds } })
-      .populate("restaurantId", "name logo")
+      .populate("restaurantId", "name logo isActive openingHours")
       .lean();
 
     // ── Step 8: Taste Profile ────────────────────────────────────────

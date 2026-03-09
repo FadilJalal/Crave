@@ -33,7 +33,7 @@ foodRouter.get("/list/public", async (req, res) => {
   try {
     const foods = await foodModel
       .find({})
-      .populate("restaurantId", "name logo");
+      .populate("restaurantId", "name logo isActive openingHours");
     res.json({ success: true, data: foods });
   } catch (error) {
     res.json({ success: false, message: "Error listing foods" });

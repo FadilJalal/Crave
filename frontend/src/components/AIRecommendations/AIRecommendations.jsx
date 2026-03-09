@@ -2,6 +2,7 @@
 import { useState, useEffect, useContext } from "react";
 import axios from "axios";
 import { StoreContext } from "../../Context/StoreContext";
+import { isRestaurantOpen } from "../../utils/restaurantHours";
 import "./AIRecommendations.css";
 
 // ── Per-card reason tag ───────────────────────────────────────────
@@ -71,7 +72,8 @@ const OrderAgain = ({ items, url, currency, addToCart, getItemCount, removeFromC
       </div>
       <div className="oa-list">
         {items.map((food, i) => {
-          const count = getItemCount(food._id);
+          const count  = getItemCount(food._id);
+          const isOpen = isRestaurantOpen(food.restaurantId);
           return (
             <div key={food._id} className="oa-card" style={{ animationDelay: `${i * 60}ms` }}>
               <img
@@ -84,7 +86,11 @@ const OrderAgain = ({ items, url, currency, addToCart, getItemCount, removeFromC
                 <p className="oa-name">{food.name}</p>
                 <p className="oa-price">{currency}{food.price}</p>
               </div>
-              {count === 0 ? (
+              {!isOpen ? (
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#ef4444",
+                  background: "#fef2f2", border: "1px solid #fecaca",
+                  borderRadius: 20, padding: "4px 10px" }}>Closed</span>
+              ) : count === 0 ? (
                 <button className="oa-add" onClick={() => addToCart(food._id)}>+ Add</button>
               ) : (
                 <div className="oa-counter">
@@ -241,6 +247,7 @@ const AIRecommendations = () => {
               const count  = getItemCount(food._id);
               const liked  = likes[food._id];
               const isNew  = food.tag?.color === "green";
+              const isOpen = isRestaurantOpen(food.restaurantId);
 
               return (
                 <div key={food._id} className="ai-card" style={{ animationDelay: `${i * 80}ms` }}>
@@ -259,6 +266,17 @@ const AIRecommendations = () => {
                       AI Pick
                     </div>
                     {isNew && <div className="ai-new-badge">NEW</div>}
+                    {!isOpen && (
+                      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.52)",
+                        display: "flex", flexDirection: "column", alignItems: "center",
+                        justifyContent: "center", gap: 6, backdropFilter: "blur(2px)" }}>
+                        <div style={{ fontSize: 24 }}>🔒</div>
+                        <span style={{ color: "white", fontWeight: 800, fontSize: 12,
+                          background: "rgba(0,0,0,0.5)", padding: "3px 12px", borderRadius: 20 }}>
+                          Closed
+                        </span>
+                      </div>
+                    )}
                     <div className="ai-like-row">
                       <button className={`ai-like-btn ${liked === "like" ? "ai-liked" : ""}`}
                         onClick={() => handleLike(food._id, "like")}>👍</button>
@@ -279,7 +297,11 @@ const AIRecommendations = () => {
                     <p className="ai-desc">{food.description}</p>
                     <div className="ai-footer">
                       <p className="ai-price">{currency}{food.price}</p>
-                      {count === 0 ? (
+                      {!isOpen ? (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#ef4444",
+                          background: "#fef2f2", border: "1px solid #fecaca",
+                          borderRadius: 20, padding: "5px 12px" }}>Closed</span>
+                      ) : count === 0 ? (
                         <button className="ai-add" onClick={() => addToCart(food._id)}>
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="12" height="12">
                             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>

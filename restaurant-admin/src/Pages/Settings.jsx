@@ -13,16 +13,20 @@ const DEFAULT_HOURS = Object.fromEntries(
 
 function computeIsOpenNow(openingHours, isActive) {
   if (!isActive) return false;
-  const hours = openingHours;
-  if (!hours) return isActive;
+  if (!openingHours) return isActive;
   const now = new Date();
   const day = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
-  const h = hours[day];
+  const h = openingHours[day];
   if (!h || h.closed) return false;
+  if (h.open === "00:00" && h.close === "23:59") return true;
   const [oh, om] = h.open.split(":").map(Number);
   const [ch, cm] = h.close.split(":").map(Number);
-  const mins = now.getHours() * 60 + now.getMinutes();
-  return mins >= oh * 60 + om && mins < ch * 60 + cm;
+  const mins     = now.getHours() * 60 + now.getMinutes();
+  const openMins = oh * 60 + om;
+  const closeMins = ch * 60 + cm;
+  // Overnight span (e.g. 09:00 → 03:00 next day)
+  if (closeMins <= openMins) return mins >= openMins || mins < closeMins;
+  return mins >= openMins && mins < closeMins;
 }
 
 function fmt12(t) {
@@ -34,12 +38,28 @@ function fmt12(t) {
 }
 
 export default function Settings() {
-  const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState(false);
-  const [isActive, setIsActive] = useState(true);
-  const [prepTime, setPrepTime] = useState(15);
-  const [hours,    setHours]    = useState(DEFAULT_HOURS);
-  const [openNow,  setOpenNow]  = useState(false);
+  const [loading,    setLoading]    = useState(true);
+  const [saving,     setSaving]     = useState(false);
+  const [isActive,   setIsActive]   = useState(true);
+  const [prepTime,   setPrepTime]   = useState(15);
+  const [hours,      setHours]      = useState(DEFAULT_HOURS);
+  const [openNow,    setOpenNow]    = useState(false);
+  const [is24_7,     setIs24_7]     = useState(false);
+  const [savedHours, setSavedHours] = useState(null);
+
+  const toggle24_7 = () => {
+    if (!is24_7) {
+      setSavedHours(hours);
+      setHours(Object.fromEntries(DAYS.map(d => [d, { open: "00:00", close: "23:59", closed: false }])));
+      setIs24_7(true);
+      toast.success("Set to 24/7 \u2014 remember to save!");
+    } else {
+      setHours(savedHours || DEFAULT_HOURS);
+      setSavedHours(null);
+      setIs24_7(false);
+      toast.success("Restored previous hours \u2014 remember to save!");
+    }
+  };
 
   const todayKey = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
@@ -54,6 +74,9 @@ export default function Settings() {
         const h = { ...DEFAULT_HOURS, ...(r.openingHours || {}) };
         setHours(h);
         setOpenNow(computeIsOpenNow(h, r.isActive ?? true));
+        // Detect if already saved as 24/7
+        const all24 = DAYS.every(d => h[d]?.open === "00:00" && h[d]?.close === "23:59" && !h[d]?.closed);
+        setIs24_7(all24);
       }
     } catch { toast.error("Failed to load settings"); }
     finally   { setLoading(false); }
@@ -199,45 +222,95 @@ export default function Settings() {
           boxShadow:"0 2px 12px rgba(0,0,0,0.04)", overflow:"hidden" }}>
 
           {/* Card header */}
-          <div style={{ padding:"18px 22px 16px", borderBottom:"1px solid var(--border)",
-            display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div>
-              <div style={{ fontWeight:900, fontSize:15, color:"#111827" }}>Opening Hours</div>
-              <div style={{ fontSize:12, color:"var(--muted)", marginTop:2 }}>
-                Click Open/Closed to toggle a day · Copy icon applies that day's hours to all
+          <div style={{ padding:"18px 22px 16px", borderBottom: is24_7 ? "none" : "1px solid var(--border)" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
+              <div>
+                <div style={{ fontWeight:900, fontSize:15, color:"#111827" }}>Opening Hours</div>
+                <div style={{ fontSize:12, color:"var(--muted)", marginTop:2 }}>
+                  Click Open/Closed to toggle a day · Copy icon applies that day's hours to all
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+
+                {/* 24/7 toggle */}
+                <button onClick={toggle24_7} style={{
+                  display:"flex", alignItems:"center", gap:7,
+                  padding:"8px 16px", borderRadius:10, cursor:"pointer",
+                  fontWeight:800, fontSize:13, border:"1.5px solid",
+                  borderColor: is24_7 ? "#ff4e2a" : "var(--border)",
+                  background:  is24_7 ? "#fff5f3" : "#f9fafb",
+                  color:       is24_7 ? "#ff4e2a" : "#374151",
+                  transition:"all 0.15s",
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  {is24_7 ? "24/7 ON" : "Set 24/7"}
+                </button>
+
+                <button onClick={() => applyToAll(todayKey)} disabled={is24_7} style={{
+                  display:"flex", alignItems:"center", gap:6,
+                  padding:"8px 14px", borderRadius:10, border:"1px solid var(--border)",
+                  background:"#f9fafb", color: is24_7 ? "#d1d5db" : "#374151",
+                  cursor: is24_7 ? "not-allowed" : "pointer",
+                  fontSize:12, fontWeight:700, opacity: is24_7 ? 0.5 : 1,
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/>
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                  </svg>
+                  Copy today to all
+                </button>
+                <button disabled={is24_7} onClick={() => {
+                  setHours(Object.fromEntries(DAYS.map(d => [d, { open:"09:00", close:"22:00", closed:false }])));
+                  setIs24_7(false);
+                  toast.success("Hours reset to defaults");
+                }} style={{
+                  display:"flex", alignItems:"center", gap:6,
+                  padding:"8px 14px", borderRadius:10, border:"1px solid #fecaca",
+                  background:"#fef2f2", color: is24_7 ? "#fca5a5" : "#dc2626",
+                  cursor: is24_7 ? "not-allowed" : "pointer",
+                  fontSize:12, fontWeight:700, opacity: is24_7 ? 0.5 : 1,
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+                  </svg>
+                  Reset
+                </button>
               </div>
             </div>
-            <div style={{ display:"flex", gap:8 }}>
-              <button onClick={() => applyToAll(todayKey)} style={{
-                display:"flex", alignItems:"center", gap:6,
-                padding:"8px 14px", borderRadius:10, border:"1px solid var(--border)",
-                background:"#f9fafb", color:"#374151", cursor:"pointer",
-                fontSize:12, fontWeight:700,
-              }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <rect x="9" y="9" width="13" height="13" rx="2"/>
-                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-                </svg>
-                Copy today to all
-              </button>
-              <button onClick={() => {
-                setHours(Object.fromEntries(DAYS.map(d => [d, { open:"09:00", close:"22:00", closed:false }])));
-                toast.success("Hours reset to defaults");
-              }} style={{
-                display:"flex", alignItems:"center", gap:6,
-                padding:"8px 14px", borderRadius:10, border:"1px solid #fecaca",
-                background:"#fef2f2", color:"#dc2626", cursor:"pointer",
-                fontSize:12, fontWeight:700,
-              }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
-                </svg>
-                Reset
-              </button>
-            </div>
+
+            {/* 24/7 active banner */}
+            {is24_7 && (
+              <div style={{ marginTop:14, padding:"12px 16px", borderRadius:12,
+                background:"linear-gradient(135deg, #fff5f3, #fff1ee)",
+                border:"1.5px solid #fca89a",
+                display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ fontSize:22 }}>🕐</div>
+                  <div>
+                    <div style={{ fontWeight:900, fontSize:13, color:"#ff4e2a" }}>
+                      Open 24 hours, 7 days a week
+                    </div>
+                    <div style={{ fontSize:12, color:"#9ca3af", marginTop:2 }}>
+                      All days set to 12:00 AM – 11:59 PM. Click "24/7 ON" to restore previous hours.
+                    </div>
+                  </div>
+                </div>
+                <button onClick={toggle24_7} style={{
+                  padding:"7px 14px", borderRadius:9, border:"1.5px solid #fca89a",
+                  background:"white", color:"#ff4e2a", fontWeight:800,
+                  fontSize:12, cursor:"pointer", whiteSpace:"nowrap",
+                }}>
+                  Turn off
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Day rows */}
+          <div style={{ opacity: is24_7 ? 0.4 : 1, pointerEvents: is24_7 ? "none" : "auto",
+            borderTop: is24_7 ? "none" : "1px solid var(--border)" }}>
           {DAYS.map((day, i) => {
             const d = hours[day] || { open:"09:00", close:"22:00", closed:false };
             const isToday = day === todayKey;
@@ -248,11 +321,12 @@ export default function Settings() {
             if (!d.closed) {
               const [oh,om] = d.open.split(":").map(Number);
               const [ch,cm] = d.close.split(":").map(Number);
-              const dur = (ch*60+cm) - (oh*60+om);
-              if (dur > 0) {
-                const hrs = Math.floor(dur/60), mins = dur%60;
-                durLabel = `${hrs > 0 ? hrs+"h" : ""}${mins > 0 ? " "+mins+"m" : ""}`.trim();
-              }
+              let dur = (ch*60+cm) - (oh*60+om);
+              // Handle overnight: close time is next day (e.g. 09:00 AM → 03:00 AM)
+              if (dur <= 0) dur += 24 * 60;
+              const hrs  = Math.floor(dur/60);
+              const mins = dur % 60;
+              durLabel = `${hrs > 0 ? hrs+"h" : ""}${mins > 0 ? " "+mins+"m" : ""}`.trim();
             }
 
             return (
@@ -351,6 +425,7 @@ export default function Settings() {
               </div>
             );
           })}
+          </div>
 
           {/* Week summary footer */}
           <div style={{ padding:"14px 20px", background:"#f9fafb",

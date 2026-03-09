@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useContext } from "react";
 import { StoreContext } from "../../Context/StoreContext";
+import { isRestaurantOpen } from "../../utils/restaurantHours";
 import "./FoodChat.css";
 
 const FoodChat = () => {
@@ -82,17 +83,25 @@ const FoodChat = () => {
                 <div className={`fc-msg ${msg.role === "user" ? "fc-msg-user" : "fc-msg-bot"}`}>{msg.text}</div>
                 {msg.foods?.length > 0 && (
                   <div className="fc-suggestions">
-                    {msg.foods.map(food => (
-                      <div key={food._id} className="fc-food-card">
-                        <img src={url + "/images/" + food.image} alt={food.name}
-                          onError={e => e.target.src="https://via.placeholder.com/48?text=🍽️"} />
-                        <div className="fc-food-info">
-                          <p className="fc-food-name">{food.name}</p>
-                          <p className="fc-food-price">{currency}{food.price}</p>
+                    {msg.foods.map(food => {
+                      const isOpen = isRestaurantOpen(food.restaurantId);
+                      return (
+                        <div key={food._id} className="fc-food-card">
+                          <img src={url + "/images/" + food.image} alt={food.name}
+                            onError={e => e.target.src="https://via.placeholder.com/48?text=🍽️"} />
+                          <div className="fc-food-info">
+                            <p className="fc-food-name">{food.name}</p>
+                            <p className="fc-food-price">{currency}{food.price}</p>
+                          </div>
+                          {isOpen
+                            ? <button className="fc-food-add" onClick={() => addToCart(food._id)}>Add</button>
+                            : <span style={{ fontSize: 11, fontWeight: 700, color: "#ef4444",
+                                background: "#fef2f2", border: "1px solid #fecaca",
+                                borderRadius: 20, padding: "4px 10px", whiteSpace: "nowrap" }}>Closed</span>
+                          }
                         </div>
-                        <button className="fc-food-add" onClick={() => addToCart(food._id)}>Add</button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

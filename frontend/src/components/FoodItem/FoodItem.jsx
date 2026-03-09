@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import './FoodItem.css';
 import { StoreContext } from '../../Context/StoreContext';
 
-const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null }) => {
+const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true }) => {
   const { cartItems, addToCart, removeFromCart, getItemCount, url, currency } = useContext(StoreContext);
 
   const count = getItemCount(id);
@@ -90,8 +90,25 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
             </div>
           )}
 
+          {/* Closed overlay */}
+          {!restaurantOpen && (
+            <div style={{
+              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: 6, backdropFilter: 'blur(2px)',
+              borderRadius: 'inherit',
+            }}>
+              <div style={{ fontSize: 28 }}>🔒</div>
+              <span style={{ color: 'white', fontWeight: 800, fontSize: 13,
+                background: 'rgba(0,0,0,0.5)', padding: '4px 12px',
+                borderRadius: 20, letterSpacing: '0.5px' }}>
+                Closed
+              </span>
+            </div>
+          )}
+
           <div className='fi-cart-ctrl'>
-            {count === 0 ? (
+            {!restaurantOpen ? null : count === 0 ? (
               hasCustomizations ? (
                 <button className='fi-customize-btn' onClick={openCustomize}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

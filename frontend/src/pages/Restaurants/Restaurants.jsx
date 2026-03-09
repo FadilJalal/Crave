@@ -4,27 +4,14 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { StoreContext } from '../../Context/StoreContext';
 
+import { isRestaurantOpen } from '../../utils/restaurantHours';
+
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-const RDAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
-function isRestaurantOpen(r) {
-  if (!r?.isActive) return false;
-  const hours = r.openingHours;
-  if (!hours) return r.isActive;
-  const now = new Date();
-  const day = RDAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
-  const h = hours[day];
-  if (!h || h.closed) return false;
-  const [oh, om] = h.open.split(":").map(Number);
-  const [ch, cm] = h.close.split(":").map(Number);
-  const mins = now.getHours() * 60 + now.getMinutes();
-  return mins >= oh * 60 + om && mins < ch * 60 + cm;
 }
 
 const Restaurants = () => {

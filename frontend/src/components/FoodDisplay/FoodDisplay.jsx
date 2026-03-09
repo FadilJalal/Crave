@@ -2,6 +2,7 @@ import { useContext, useMemo } from 'react';
 import './FoodDisplay.css';
 import FoodItem from '../FoodItem/FoodItem';
 import { StoreContext } from '../../Context/StoreContext';
+import { isRestaurantOpen } from '../../utils/restaurantHours';
 
 const computeTags = (food_list) => {
   const tags = {};
@@ -47,7 +48,8 @@ const FoodDisplay = ({ category }) => {
           {filtered.map(item => (
             <FoodItem key={item._id} id={item._id} name={item.name} description={item.description}
               price={item.price} image={item.image} restaurantId={item.restaurantId}
-              customizations={item.customizations || []} dealTag={dealTags[item._id] || null} />
+              customizations={item.customizations || []} dealTag={dealTags[item._id] || null}
+              restaurantOpen={isRestaurantOpen(item.restaurantId)} />
           ))}
         </div>
       )}
