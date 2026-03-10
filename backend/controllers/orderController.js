@@ -2,9 +2,13 @@ import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// ✅ FIXED: lazy-init Stripe so a missing key doesn't crash the server at startup
+const getStripe = () => {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("STRIPE_SECRET_KEY is not set in .env");
+  return new Stripe(key);
+};
 
-// Config
 const currency = "usd";
 const deliveryCharge = 5;
 const frontend_URL = process.env.FRONTEND_URL || "http://localhost:5174";
@@ -18,9 +22,7 @@ const placeOrder = async (req, res) => {
       return res.json({ success: false, message: "Cart is empty" });
     }
 
-    // restaurantId should exist in item (from populated food list / cart items)
     const restaurantId = req.body.items[0].restaurantId;
-
     if (!restaurantId) {
       return res.json({ success: false, message: "restaurantId missing in items" });
     }
@@ -35,11 +37,8 @@ const placeOrder = async (req, res) => {
     });
 
     await newOrder.save();
-
-    // Clear cart
     await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
 
-    // Stripe items
     const line_items = req.body.items.map((item) => ({
       price_data: {
         currency,
@@ -49,7 +48,6 @@ const placeOrder = async (req, res) => {
       quantity: item.quantity,
     }));
 
-    // Add delivery charge
     line_items.push({
       price_data: {
         currency,
@@ -59,6 +57,8 @@ const placeOrder = async (req, res) => {
       quantity: 1,
     });
 
+    // ✅ Only call Stripe when actually needed — won't crash server on startup
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       success_url: `${frontend_URL}/verify?success=true&orderId=${newOrder._id}`,
       cancel_url: `${frontend_URL}/verify?success=false&orderId=${newOrder._id}`,
@@ -83,7 +83,6 @@ const placeOrderCod = async (req, res) => {
     }
 
     const restaurantId = req.body.items[0].restaurantId;
-
     if (!restaurantId) {
       return res.json({ success: false, message: "restaurantId missing in items" });
     }
@@ -99,8 +98,6 @@ const placeOrderCod = async (req, res) => {
     });
 
     await newOrder.save();
-
-    // Clear cart
     await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
 
     res.json({ success: true, message: "Order Placed Successfully" });
@@ -112,11 +109,9 @@ const placeOrderCod = async (req, res) => {
 
 // =====================================
 // LIST ALL ORDERS (SUPER ADMIN ONLY)
-// GET /api/order/list
 // =====================================
 const listOrders = async (req, res) => {
   try {
-    // ✅ lock this to superadmin only
     if (req.admin?.role && req.admin.role !== "superadmin") {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
@@ -135,7 +130,6 @@ const listOrders = async (req, res) => {
 
 // =====================================
 // USER ORDERS
-// POST /api/order/userorders
 // =====================================
 const userOrders = async (req, res) => {
   try {
@@ -153,19 +147,14 @@ const userOrders = async (req, res) => {
 
 // =====================================
 // UPDATE STATUS (SUPER ADMIN ONLY)
-// POST /api/order/status
 // =====================================
 const updateStatus = async (req, res) => {
   try {
-    // ✅ lock this to superadmin only
     if (req.admin?.role && req.admin.role !== "superadmin") {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
-    await orderModel.findByIdAndUpdate(req.body.orderId, {
-      status: req.body.status,
-    });
-
+    await orderModel.findByIdAndUpdate(req.body.orderId, { status: req.body.status });
     res.json({ success: true, message: "Status Updated" });
   } catch (error) {
     res.json({ success: false, message: "Error updating status" });
@@ -174,11 +163,9 @@ const updateStatus = async (req, res) => {
 
 // =====================================
 // VERIFY STRIPE PAYMENT
-// POST /api/order/verify
 // =====================================
 const verifyOrder = async (req, res) => {
   const { orderId, success } = req.body;
-
   try {
     if (success === "true") {
       await orderModel.findByIdAndUpdate(orderId, { payment: true });
@@ -192,10 +179,9 @@ const verifyOrder = async (req, res) => {
   }
 };
 
-// ======================================================
-// ✅ RESTAURANT ADMIN: LIST OWN ORDERS ONLY
-// GET /api/order/restaurant/list
-// ======================================================
+// =====================================
+// RESTAURANT ADMIN: LIST OWN ORDERS
+// =====================================
 const listRestaurantOrders = async (req, res) => {
   try {
     const restaurantId = req.restaurantId;
@@ -215,11 +201,9 @@ const listRestaurantOrders = async (req, res) => {
   }
 };
 
-// ======================================================
-// ✅ RESTAURANT ADMIN: UPDATE STATUS (OWN ORDERS ONLY)
-// POST /api/order/restaurant/status
-// body: { orderId, status }
-// ======================================================
+// =====================================
+// RESTAURANT ADMIN: UPDATE STATUS
+// =====================================
 const restaurantUpdateStatus = async (req, res) => {
   try {
     const { orderId, status } = req.body;
@@ -234,7 +218,6 @@ const restaurantUpdateStatus = async (req, res) => {
       return res.json({ success: false, message: "Order not found" });
     }
 
-    // Restaurant admin can only update THEIR restaurant's orders
     if (String(order.restaurantId) !== String(restaurantId)) {
       return res.status(403).json({ success: false, message: "Not your order" });
     }
