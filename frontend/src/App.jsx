@@ -13,6 +13,7 @@ import Verify from './pages/Verify/Verify'
 import Restaurants from './pages/Restaurants/Restaurants'
 import RestaurantMenu from './pages/RestaurantMenu/RestaurantMenu'
 import ResetPassword from './pages/ResetPassword/ResetPassword'
+import OrderTracking from './pages/OrderTracking/OrderTracking'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 
 const App = () => {
@@ -45,6 +46,7 @@ const App = () => {
             <Route path='/restaurants' element={<Restaurants />} />
             <Route path='/restaurants/:id' element={<RestaurantMenu />} />
             <Route path='/reset-password' element={<ResetPassword />} />
+            <Route path='/order/track/:orderId' element={<OrderTracking />} />
           </Routes>
         </ErrorBoundary>
       </div>

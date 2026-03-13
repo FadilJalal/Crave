@@ -87,7 +87,6 @@ router.post("/food/add", restaurantAuth, upload.single("image"), async (req, res
   }
 });
 
-export default router;
 // ── Update restaurant settings (hours, active status, prepTime) ────────────
 router.post("/settings", restaurantAuth, async (req, res) => {
   try {
@@ -110,3 +109,30 @@ router.post("/settings", restaurantAuth, async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to save settings" });
   }
 });
+
+// ── Update restaurant location ────────────────────────────────────────────────
+router.post("/location", restaurantAuth, async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
+    console.log("[location] restaurantId:", req.restaurantId, "lat:", lat, "lng:", lng);
+
+    if (lat === undefined || lng === undefined) {
+      return res.json({ success: false, message: "lat and lng are required" });
+    }
+
+    const restaurant = await restaurantModel.findByIdAndUpdate(
+      req.restaurantId,
+      { $set: { "location.lat": Number(lat), "location.lng": Number(lng) } },
+      { new: true, runValidators: false }
+    ).select("-password");
+
+    if (!restaurant) return res.json({ success: false, message: "Restaurant not found" });
+    console.log("[location] saved:", restaurant.location);
+    res.json({ success: true, data: restaurant, message: "Location updated" });
+  } catch (e) {
+    console.error("Location update error:", e);
+    res.status(500).json({ success: false, message: "Failed to update location" });
+  }
+});
+
+export default router;

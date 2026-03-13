@@ -126,6 +126,14 @@ const MyOrders = () => {
                       </React.Fragment>
                     ))}
                   </div>
+                  <div className='mo-card-actions'>
+                    <button
+                      className='mo-track-btn'
+                      onClick={() => navigate(`/order/track/${order._id}`)}
+                    >
+                      🛵 Track Order
+                    </button>
+                  </div>
                 </div>
               );
             })}

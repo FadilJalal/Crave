@@ -118,7 +118,7 @@ const listOrders = async (req, res) => {
 
     const orders = await orderModel
       .find({})
-      .populate("restaurantId", "name address")
+      .populate("restaurantId", "name address location")
       .sort({ createdAt: -1 });
 
     res.json({ success: true, data: orders });
@@ -135,7 +135,7 @@ const userOrders = async (req, res) => {
   try {
     const orders = await orderModel
       .find({ userId: req.body.userId })
-      .populate("restaurantId", "name address")
+      .populate("restaurantId", "name address location")
       .sort({ createdAt: -1 });
 
     res.json({ success: true, data: orders });
@@ -191,7 +191,7 @@ const listRestaurantOrders = async (req, res) => {
 
     const orders = await orderModel
       .find({ restaurantId })
-      .populate("restaurantId", "name address")
+      .populate("restaurantId", "name address location")
       .sort({ createdAt: -1 });
 
     res.json({ success: true, data: orders });
@@ -232,6 +232,32 @@ const restaurantUpdateStatus = async (req, res) => {
   }
 };
 
+// =====================================
+// GET SINGLE ORDER BY ID (owner only)
+// =====================================
+const getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const order = await orderModel
+      .findById(orderId)
+      .populate("restaurantId", "name address location image");
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    // Only the order owner can view it
+    if (String(order.userId) !== String(req.body.userId)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    res.json({ success: true, data: order });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: "Error fetching order" });
+  }
+};
+
 export {
   placeOrder,
   placeOrderCod,
@@ -241,4 +267,5 @@ export {
   verifyOrder,
   listRestaurantOrders,
   restaurantUpdateStatus,
+  getOrderById,
 };

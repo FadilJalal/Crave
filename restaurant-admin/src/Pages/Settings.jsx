@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { toast } from "react-toastify";
@@ -37,15 +37,162 @@ function fmt12(t) {
   return `${h12}:${String(m).padStart(2,"0")} ${ampm}`;
 }
 
+// ── Inline Leaflet map (uses window.L from CDN) ──────────────────────────────
+function LocationMap({ location, onChange }) {
+  const mapRef      = useRef(null);
+  const leafletRef  = useRef(null);
+  const markerRef   = useRef(null);
+  const onChangeRef = useRef(onChange);   // always-fresh callback ref
+  const [search,    setSearch]   = useState("");
+  const [results,   setResults]  = useState([]);
+  const [searching, setSearching] = useState(false);
+
+  // Keep onChangeRef current on every render
+  useEffect(() => { onChangeRef.current = onChange; });
+
+  // Search via Nominatim
+  const doSearch = async (q) => {
+    if (!q || q.length < 3) { setResults([]); return; }
+    setSearching(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      setResults(await res.json());
+    } catch { setResults([]); }
+    finally { setSearching(false); }
+  };
+
+  useEffect(() => {
+    const t = setTimeout(() => doSearch(search), 500);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const pickResult = (r) => {
+    const lat = parseFloat(r.lat);
+    const lng = parseFloat(r.lon);
+    if (leafletRef.current && markerRef.current) {
+      markerRef.current.setLatLng([lat, lng]);
+      leafletRef.current.flyTo([lat, lng], 17, { duration: 1.2 });
+    }
+    onChangeRef.current({ lat, lng });
+    setSearch(r.display_name.split(",").slice(0, 2).join(","));
+    setResults([]);
+  };
+
+  // Init map once
+  useEffect(() => {
+    if (!window.L || !mapRef.current || leafletRef.current) return;
+    const L = window.L;
+
+    leafletRef.current = L.map(mapRef.current, { zoomControl: true });
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(leafletRef.current);
+    mapRef.current.style.cursor = "crosshair";
+
+    // Click to place pin
+    leafletRef.current.on("click", (e) => {
+      const { lat, lng } = e.latlng;
+      markerRef.current?.setLatLng([lat, lng]);
+      onChangeRef.current({ lat, lng });   // always uses latest setter
+    });
+
+    leafletRef.current.setView([location.lat, location.lng], 15);
+
+    // Pin icon
+    const pinIcon = L.divIcon({
+      className: "",
+      html: `<div style="
+        width:22px;height:22px;border-radius:50%;
+        background:#ff4e2a;border:3px solid white;
+        box-shadow:0 0 0 2px #ff4e2a,0 4px 12px rgba(0,0,0,0.35);
+      "></div>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+    });
+
+    markerRef.current = L.marker([location.lat, location.lng], { icon: pinIcon, draggable: true })
+      .addTo(leafletRef.current);
+
+    markerRef.current.on("dragend", (e) => {
+      const { lat, lng } = e.target.getLatLng();
+      onChangeRef.current({ lat, lng });
+    });
+
+    return () => {
+      if (leafletRef.current) { leafletRef.current.remove(); leafletRef.current = null; markerRef.current = null; }
+    };
+  }, []); // only once
+
+  // Sync marker when location prop changes externally (GPS button)
+  useEffect(() => {
+    if (!leafletRef.current || !markerRef.current) return;
+    markerRef.current.setLatLng([location.lat, location.lng]);
+    leafletRef.current.flyTo([location.lat, location.lng], 17, { duration: 1.2 });
+  }, [location.lat, location.lng]);
+
+  return (
+    <div>
+      {/* Search bar */}
+      <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--border)", position:"relative" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10,
+          border:"1.5px solid var(--border)", borderRadius:10,
+          padding:"8px 14px", background:"#f9fafb" }}>
+          <span style={{ fontSize:16 }}>🔍</span>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search for a location, street or area..."
+            style={{ flex:1, border:"none", background:"transparent",
+              outline:"none", fontSize:14, fontFamily:"inherit", color:"#111827" }} />
+          {searching && <span style={{ fontSize:12, color:"var(--muted)" }}>searching…</span>}
+          {search && (
+            <button onClick={() => { setSearch(""); setResults([]); }}
+              style={{ background:"none", border:"none", cursor:"pointer",
+                fontSize:18, color:"var(--muted)", lineHeight:1, padding:0 }}>×</button>
+          )}
+        </div>
+        {results.length > 0 && (
+          <div style={{ position:"absolute", top:"calc(100% - 8px)", left:16, right:16,
+            background:"white", border:"1px solid var(--border)", borderRadius:10,
+            boxShadow:"0 8px 24px rgba(0,0,0,0.1)", zIndex:9999, overflow:"hidden" }}>
+            {results.map(r => (
+              <div key={r.place_id} onClick={() => pickResult(r)}
+                style={{ padding:"10px 14px", cursor:"pointer", fontSize:13,
+                  borderBottom:"1px solid #f3f4f6" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+                onMouseLeave={e => e.currentTarget.style.background = "white"}>
+                <div style={{ fontWeight:700, color:"#111827" }}>{r.display_name.split(",")[0]}</div>
+                <div style={{ color:"var(--muted)", fontSize:11, marginTop:2,
+                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                  {r.display_name}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div ref={mapRef} style={{ height:280, width:"100%", cursor:"crosshair" }} />
+    </div>
+  );
+}
+
 export default function Settings() {
   const [loading,    setLoading]    = useState(true);
   const [saving,     setSaving]     = useState(false);
+  const [savingLoc,  setSavingLoc]  = useState(false);
   const [isActive,   setIsActive]   = useState(true);
   const [prepTime,   setPrepTime]   = useState(15);
   const [hours,      setHours]      = useState(DEFAULT_HOURS);
   const [openNow,    setOpenNow]    = useState(false);
   const [is24_7,     setIs24_7]     = useState(false);
   const [savedHours, setSavedHours] = useState(null);
+  const [location,   setLocation]   = useState({ lat: 25.2048, lng: 55.2708 });
+  const [mapKey,     setMapKey]     = useState(0);
+  const locationRef  = useRef({ lat: 25.2048, lng: 55.2708 }); // always-fresh ref
+
+  const updateLocation = (coords) => {
+    locationRef.current = coords;
+    setLocation(coords);
+  };
 
   const toggle24_7 = () => {
     if (!is24_7) {
@@ -74,6 +221,9 @@ export default function Settings() {
         const h = { ...DEFAULT_HOURS, ...(r.openingHours || {}) };
         setHours(h);
         setOpenNow(computeIsOpenNow(h, r.isActive ?? true));
+        if (r.location?.lat && r.location?.lng) {
+          updateLocation({ lat: r.location.lat, lng: r.location.lng });
+        }
         // Detect if already saved as 24/7
         const all24 = DAYS.every(d => h[d]?.open === "00:00" && h[d]?.close === "23:59" && !h[d]?.closed);
         setIs24_7(all24);
@@ -97,6 +247,21 @@ export default function Settings() {
     const src = hours[sourceDay];
     setHours(Object.fromEntries(DAYS.map(d => [d, { ...src }])));
     toast.success(`${DAY_FULL[sourceDay]}'s hours applied to all days`);
+  };
+
+  const saveLocation = async () => {
+    const { lat, lng } = locationRef.current;
+    console.log("[saveLocation] sending lat:", lat, "lng:", lng);
+    setSavingLoc(true);
+    try {
+      const res = await api.post("/api/restaurantadmin/location", { lat, lng });
+      if (res.data?.success) toast.success("Location saved! The delivery map will now work.");
+      else toast.error(res.data?.message || "Failed to save location");
+    } catch (e) {
+      console.error("[saveLocation] error:", e);
+      toast.error("Network error");
+    }
+    finally { setSavingLoc(false); }
   };
 
   const save = async () => {
@@ -214,6 +379,52 @@ export default function Settings() {
                 <span style={{ fontSize:12, color:"var(--muted)" }}>min</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Location card */}
+        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
+          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", overflow:"hidden", marginBottom:14 }}>
+          <div style={{ padding:"18px 22px 16px", borderBottom:"1px solid var(--border)",
+            display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
+            <div>
+              <div style={{ fontWeight:900, fontSize:15, color:"#111827" }}>📍 Restaurant Location</div>
+              <div style={{ fontSize:12, color:"var(--muted)", marginTop:2 }}>
+                Click the map or drag the pin to set your exact location. This powers the live delivery map.
+              </div>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <button onClick={() => {
+                if (!navigator.geolocation) return toast.error("Geolocation not supported");
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => {
+                    updateLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                    toast.success("GPS location detected!");
+                  },
+                  () => toast.error("Enable location permissions first")
+                );
+              }} style={{ padding:"8px 16px", borderRadius:10, border:"1px solid var(--border)",
+                background:"#f9fafb", color:"#374151", fontWeight:700, fontSize:13, cursor:"pointer",
+                display:"flex", alignItems:"center", gap:6 }}>
+                🎯 Use My GPS
+              </button>
+              <button onClick={saveLocation} disabled={savingLoc} style={{
+                padding:"8px 22px", borderRadius:10, border:"none",
+                background:"linear-gradient(135deg, #ff4e2a, #ff6a3d)",
+                color:"white", fontWeight:800, fontSize:13,
+                cursor: savingLoc ? "not-allowed" : "pointer",
+                opacity: savingLoc ? 0.7 : 1,
+                boxShadow:"0 4px 14px rgba(255,78,42,0.3)",
+              }}>{savingLoc ? "Saving…" : "Save Location"}</button>
+            </div>
+          </div>
+          <div style={{ padding:"0 0 0 0" }}>
+            <LocationMap location={location} onChange={updateLocation} />
+          </div>
+          <div style={{ padding:"10px 20px", background:"#f9fafb", borderTop:"1px solid var(--border)",
+            fontSize:12, color:"var(--muted)", display:"flex", gap:16 }}>
+            <span>📌 Lat: <b style={{ color:"#111827" }}>{location.lat.toFixed(5)}</b></span>
+            <span>📌 Lng: <b style={{ color:"#111827" }}>{location.lng.toFixed(5)}</b></span>
           </div>
         </div>
 

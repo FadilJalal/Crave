@@ -7,8 +7,8 @@ const restaurantSchema = new mongoose.Schema(
     password: { type: String, required: true },
     address: { type: String, required: true },
     location: {
-      lat: { type: Number, required: true },
-      lng: { type: Number, required: true },
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
     },
     logo: { type: String, default: "" },
     avgPrepTime: { type: Number, default: 15 },
