@@ -125,10 +125,13 @@ router.post("/location", restaurantAuth, async (req, res) => {
     // Reverse-geocode to get a human-readable address
     let addressText = null;
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
       const nominatimRes = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-        { headers: { "Accept-Language": "en", "User-Agent": "CraveApp/1.0 (contact@crave.ae)" } }
+        { headers: { "Accept-Language": "en", "User-Agent": "CraveApp/1.0 (contact@crave.ae)" }, signal: controller.signal }
       );
+      clearTimeout(timeout);
       const nominatimData = await nominatimRes.json();
       if (nominatimData && nominatimData.address) {
         const a = nominatimData.address;

@@ -17,18 +17,31 @@ import paymentRouter from "./routes/paymentRoute.js";
 import chatRouter from "./routes/chatRoute.js";
 import geocodeRouter from "./routes/geocodeRoute.js";
 
+// ── Process-level crash guards ───────────────────────────────────────────────
+process.on("uncaughtException", (err) => {
+  console.error("[FATAL] Uncaught Exception — server kept alive:", err.message);
+  console.error(err.stack);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[FATAL] Unhandled Promise Rejection — server kept alive:", reason);
+});
+
 const app = express();
 const port = process.env.PORT || 4000;
 
-// Security headers
+// ── Security headers ─────────────────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
-// CORS — restrict to your frontend origins only
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:5175").split(",");
+// ── CORS ─────────────────────────────────────────────────────────────────────
+const allowedOrigins = (
+  process.env.ALLOWED_ORIGINS ||
+  "http://localhost:5173,http://localhost:5174,http://localhost:5175"
+).split(",").map(o => o.trim());
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.) or from allowed origins
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.some(o => origin.startsWith(o))) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
@@ -37,50 +50,75 @@ app.use(cors({
   credentials: true,
 }));
 
+// ── Body parsing ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: "10mb" }));
 
-// Rate limiting — prevents brute force & spam
+// ── Request timeout — kills hanging requests after 30s ──────────────────────
+app.use((req, res, next) => {
+  res.setTimeout(30000, () => {
+    if (!res.headersSent) {
+      res.status(503).json({ success: false, message: "Request timed out" });
+    }
+  });
+  next();
+});
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path === "/" || req.path.startsWith("/images"),
   message: { success: false, message: "Too many requests, please try again later." },
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20, // strict on login endpoints
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, message: "Too many login attempts, please try again later." },
 });
 
 app.use(generalLimiter);
 
-// DB connection
+// ── DB connection ─────────────────────────────────────────────────────────────
 connectDB();
 
-// Static files
+// ── Static files ─────────────────────────────────────────────────────────────
 app.use("/images", express.static("uploads"));
 
-// API endpoints
-app.use("/api/user", authLimiter, userRouter);
-app.use("/api/food", foodRouter);
-app.use("/api/cart", cartRouter);
-app.use("/api/order", orderRouter);
-app.use("/api/restaurant", restaurantRouter);
-app.use("/api/admin", authLimiter, adminRouter);
-app.use("/api/restaurantadmin", restaurantAdminRoute);
-app.use("/api/payment", paymentRouter);
-app.use("/api/auth", authRouter);
-app.use("/api/recommend", recommendationRouter);
-app.use("/api/chat", chatRouter);
-app.use("/api/geocode", geocodeRouter);
+// ── Health check ─────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
   res.json({ success: true, message: "API is running" });
 });
 
-// Global error handler — never leak stack traces to client
-app.use((err, req, res, next) => {
-  console.error("[ERROR]", err.message);
-  res.status(500).json({ success: false, message: "Internal server error" });
+// ── API routes ────────────────────────────────────────────────────────────────
+app.use("/api/user",            authLimiter, userRouter);
+app.use("/api/food",            foodRouter);
+app.use("/api/cart",            cartRouter);
+app.use("/api/order",           orderRouter);
+app.use("/api/restaurant",      restaurantRouter);
+app.use("/api/admin",           authLimiter, adminRouter);
+app.use("/api/restaurantadmin", restaurantAdminRoute);
+app.use("/api/payment",         paymentRouter);
+app.use("/api/auth",            authRouter);
+app.use("/api/recommend",       recommendationRouter);
+app.use("/api/chat",            chatRouter);
+app.use("/api/geocode",         geocodeRouter);
+
+// ── 404 handler ───────────────────────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Route not found" });
 });
 
-app.listen(port, () => console.log(`Server started on http://localhost:${port}`));
+// ── Global error handler ──────────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error("[ERROR]", err.message);
+  if (!res.headersSent) {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+app.listen(port, () => console.log(`✅ Server started on http://localhost:${port}`));

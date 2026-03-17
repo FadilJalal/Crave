@@ -1,17 +1,21 @@
 import mongoose from "mongoose";
 
+let isConnecting = false;
+
 export const connectDB = async () => {
+  if (isConnecting) return;
   const uri = process.env.MONGO_URL;
   if (!uri) {
     console.error("[DB] MONGO_URL is not set in .env — cannot connect.");
     return;
   }
 
+  isConnecting = true;
   mongoose.set("strictQuery", false);
 
-  // Auto-reconnect on disconnect
   mongoose.connection.on("disconnected", () => {
-    console.warn("[DB] Disconnected — attempting reconnect in 5s...");
+    console.warn("[DB] Disconnected — reconnecting in 5s...");
+    isConnecting = false;
     setTimeout(() => connectDB(), 5000);
   });
 
@@ -20,17 +24,19 @@ export const connectDB = async () => {
   });
 
   mongoose.connection.on("connected", () => {
+    isConnecting = false;
     console.log("[DB] Connected to MongoDB");
   });
 
   try {
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000,   // 10s to find a server
-      socketTimeoutMS: 45000,            // 45s socket timeout
-      maxPoolSize: 10,                   // connection pool
-      heartbeatFrequencyMS: 10000,       // ping every 10s to keep alive
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      heartbeatFrequencyMS: 10000,
     });
   } catch (error) {
+    isConnecting = false;
     console.error("[DB] Initial connection failed:", error.message);
     console.warn("[DB] Retrying in 5s...");
     setTimeout(() => connectDB(), 5000);

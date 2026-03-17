@@ -37,10 +37,13 @@ async function geocodeAddress(address) {
 
   const query = [building, street, area, city, "UAE"].filter(Boolean).join(", ");
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000); // 8s max
     const res = await fetch(
       `${NOMINATIM}?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=ae`,
-      { headers: HEADERS }
+      { headers: HEADERS, signal: controller.signal }
     );
+    clearTimeout(timeout);
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0) {
       return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
