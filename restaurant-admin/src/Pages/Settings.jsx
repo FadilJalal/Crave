@@ -87,7 +87,10 @@ function LocationMap({ location, onChange }) {
     const L = window.L;
 
     leafletRef.current = L.map(mapRef.current, { zoomControl: true });
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(leafletRef.current);
+    L.tileLayer("https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?language=en", {
+      attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+      maxZoom: 20,
+    }).addTo(leafletRef.current);
     mapRef.current.style.cursor = "crosshair";
 
     // Click to place pin
@@ -181,6 +184,8 @@ export default function Settings() {
   const [savingLoc,  setSavingLoc]  = useState(false);
   const [isActive,   setIsActive]   = useState(true);
   const [prepTime,   setPrepTime]   = useState(15);
+  const [deliveryRadius, setDeliveryRadius] = useState(10);
+  const [address,    setAddress]    = useState('');
   const [hours,      setHours]      = useState(DEFAULT_HOURS);
   const [openNow,    setOpenNow]    = useState(false);
   const [is24_7,     setIs24_7]     = useState(false);
@@ -218,6 +223,8 @@ export default function Settings() {
         const r = res.data.data;
         setIsActive(r.isActive ?? true);
         setPrepTime(r.avgPrepTime ?? 15);
+        setDeliveryRadius(r.deliveryRadius ?? 10);
+        setAddress(r.address || '');
         const h = { ...DEFAULT_HOURS, ...(r.openingHours || {}) };
         setHours(h);
         setOpenNow(computeIsOpenNow(h, r.isActive ?? true));
@@ -267,19 +274,23 @@ export default function Settings() {
   const save = async () => {
     setSaving(true);
     try {
-      const res = await api.post("/api/restaurantadmin/settings", {
-        isActive, avgPrepTime: prepTime, openingHours: hours,
-      });
+      const payload = { isActive, avgPrepTime: prepTime, openingHours: hours, deliveryRadius, address };
+      console.log("[Settings] Saving payload:", payload);
+      const res = await api.post("/api/restaurantadmin/settings", payload);
+      console.log("[Settings] Server response:", res.data);
       if (res.data?.success) {
-        toast.success("Settings saved!");
+        toast.success(`Settings saved! Address → "${res.data.data?.address}"`);
         try {
           const info = JSON.parse(localStorage.getItem("restaurantInfo") || "{}");
           localStorage.setItem("restaurantInfo", JSON.stringify({ ...info, isActive, avgPrepTime: prepTime, openingHours: hours }));
         } catch {}
       } else {
-        toast.error(res.data?.message || "Failed to save");
+        toast.error("Save failed: " + (res.data?.message || "Unknown error"));
       }
-    } catch { toast.error("Network error"); }
+    } catch (err) {
+      console.error("[Settings] Save error:", err);
+      toast.error("Network error: " + err.message);
+    }
     finally  { setSaving(false); }
   };
 
@@ -319,6 +330,26 @@ export default function Settings() {
               opacity: saving ? 0.7 : 1, boxShadow:"0 4px 14px rgba(255,78,42,0.3)",
             }}>{saving ? "Saving…" : "Save Settings"}</button>
           </div>
+        </div>
+
+        {/* Display Address */}
+        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
+          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px", marginBottom:14 }}>
+          <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>📍 Display Address</div>
+          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
+            This is the address shown on your restaurant card on the homepage.
+          </div>
+          <input
+            value={address}
+            onChange={e => setAddress(e.target.value)}
+            placeholder="e.g. Al Gharb, Sharjah"
+            style={{ width:"100%", padding:"10px 14px", borderRadius:10,
+              border:"1.5px solid var(--border)", fontSize:14, fontWeight:600,
+              outline:"none", fontFamily:"inherit", color:"#111827",
+              boxSizing:"border-box", transition:"border 0.2s" }}
+            onFocus={e => e.target.style.borderColor = "#ff4e2a"}
+            onBlur={e => e.target.style.borderColor = "var(--border)"}
+          />
         </div>
 
         {/* Status + Prep time side by side */}
@@ -380,6 +411,57 @@ export default function Settings() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Delivery Radius card */}
+        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
+          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px", marginBottom:14 }}>
+          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
+            <div>
+              <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🚴 Delivery Radius</div>
+              <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
+                Orders outside this range will be rejected. Set to <b>0</b> for unlimited delivery.
+              </div>
+            </div>
+            {deliveryRadius === 0 && (
+              <div style={{ padding:"4px 12px", borderRadius:999, background:"#f0fdf4",
+                border:"1px solid #86efac", fontSize:11, fontWeight:800, color:"#16a34a", whiteSpace:"nowrap" }}>
+                🌍 Unlimited
+              </div>
+            )}
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+            {[3, 5, 10, 15, 20].map(r => (
+              <button key={r} onClick={() => setDeliveryRadius(r)} style={{
+                padding:"7px 13px", borderRadius:10,
+                border:`1.5px solid ${deliveryRadius === r ? "#ff4e2a" : "var(--border)"}`,
+                background: deliveryRadius === r ? "#fff1ee" : "#f9fafb",
+                color: deliveryRadius === r ? "#ff4e2a" : "#6b7280",
+                fontWeight:800, fontSize:13, cursor:"pointer", transition:"all 0.15s",
+              }}>{r} km</button>
+            ))}
+            <button onClick={() => setDeliveryRadius(0)} style={{
+              padding:"7px 13px", borderRadius:10,
+              border:`1.5px solid ${deliveryRadius === 0 ? "#16a34a" : "var(--border)"}`,
+              background: deliveryRadius === 0 ? "#f0fdf4" : "#f9fafb",
+              color: deliveryRadius === 0 ? "#16a34a" : "#6b7280",
+              fontWeight:800, fontSize:13, cursor:"pointer", transition:"all 0.15s",
+            }}>∞ Unlimited</button>
+            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+              <input type="number" min={0} max={200} value={deliveryRadius}
+                onChange={e => setDeliveryRadius(Number(e.target.value))}
+                style={{ width:60, padding:"7px 8px", borderRadius:10,
+                  border:"1.5px solid var(--border)", fontSize:13, fontWeight:800,
+                  textAlign:"center", outline:"none", fontFamily:"inherit" }} />
+              <span style={{ fontSize:12, color:"var(--muted)" }}>km</span>
+            </div>
+          </div>
+          {deliveryRadius > 0 && (
+            <div style={{ marginTop:14, padding:"10px 14px", borderRadius:10,
+              background:"#fff7ed", border:"1px solid #fed7aa", fontSize:12, color:"#92400e", fontWeight:600 }}>
+              🗺️ Customers more than <strong>{deliveryRadius} km</strong> from your restaurant will not be able to place an order.
+            </div>
+          )}
         </div>
 
         {/* Location card */}

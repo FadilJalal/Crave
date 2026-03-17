@@ -41,10 +41,12 @@ const PlaceOrder = () => {
       if (payment === 'stripe') {
         const res = await axios.post(url + '/api/order/place', orderData, { headers: { token } });
         if (res.data.success) window.location.replace(res.data.session_url);
+        else if (res.data.outOfRange) toast.error('🚫 ' + res.data.message, { autoClose: 6000 });
         else toast.error(res.data.message || 'Something went wrong');
       } else {
         const res = await axios.post(url + '/api/order/placecod', orderData, { headers: { token } });
         if (res.data.success) { toast.success('Order placed successfully!'); setCartItems({}); navigate('/myorders'); }
+        else if (res.data.outOfRange) toast.error('🚫 ' + res.data.message, { autoClose: 6000 });
         else toast.error(res.data.message || 'Something went wrong');
       }
     } catch (err) {

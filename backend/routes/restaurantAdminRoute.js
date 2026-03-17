@@ -90,11 +90,13 @@ router.post("/food/add", restaurantAuth, upload.single("image"), async (req, res
 // ── Update restaurant settings (hours, active status, prepTime) ────────────
 router.post("/settings", restaurantAuth, async (req, res) => {
   try {
-    const { openingHours, isActive, avgPrepTime } = req.body;
+    const { openingHours, isActive, avgPrepTime, deliveryRadius, address } = req.body;
     const update = {};
-    if (openingHours !== undefined) update.openingHours = openingHours;
-    if (isActive     !== undefined) update.isActive     = isActive;
-    if (avgPrepTime  !== undefined) update.avgPrepTime  = Number(avgPrepTime);
+    if (openingHours    !== undefined) update.openingHours    = openingHours;
+    if (isActive        !== undefined) update.isActive        = isActive;
+    if (avgPrepTime     !== undefined) update.avgPrepTime     = Number(avgPrepTime);
+    if (deliveryRadius  !== undefined) update.deliveryRadius  = Number(deliveryRadius);
+    if (address         !== undefined && address.trim()) update.address = address.trim();
 
     const restaurant = await restaurantModel.findByIdAndUpdate(
       req.restaurantId,
@@ -120,14 +122,42 @@ router.post("/location", restaurantAuth, async (req, res) => {
       return res.json({ success: false, message: "lat and lng are required" });
     }
 
+    // Reverse-geocode to get a human-readable address
+    let addressText = null;
+    try {
+      const nominatimRes = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
+        { headers: { "Accept-Language": "en", "User-Agent": "CraveApp/1.0 (contact@crave.ae)" } }
+      );
+      const nominatimData = await nominatimRes.json();
+      if (nominatimData && nominatimData.address) {
+        const a = nominatimData.address;
+        // Build a clean short address: neighbourhood/suburb, city/state
+        const parts = [
+          a.neighbourhood || a.suburb || a.quarter || a.village || a.road,
+          a.city || a.town || a.state_district || a.state,
+        ].filter(Boolean);
+        if (parts.length) addressText = parts.join(", ");
+        else if (nominatimData.display_name) {
+          // Fallback: first 2 parts of the full display name
+          addressText = nominatimData.display_name.split(",").slice(0, 2).join(",").trim();
+        }
+      }
+    } catch (geoErr) {
+      console.warn("[location] reverse-geocode failed:", geoErr.message);
+    }
+
+    const updateFields = { "location.lat": Number(lat), "location.lng": Number(lng) };
+    if (addressText) updateFields.address = addressText;
+
     const restaurant = await restaurantModel.findByIdAndUpdate(
       req.restaurantId,
-      { $set: { "location.lat": Number(lat), "location.lng": Number(lng) } },
+      { $set: updateFields },
       { new: true, runValidators: false }
     ).select("-password");
 
     if (!restaurant) return res.json({ success: false, message: "Restaurant not found" });
-    console.log("[location] saved:", restaurant.location);
+    console.log("[location] saved:", restaurant.location, "address:", restaurant.address);
     res.json({ success: true, data: restaurant, message: "Location updated" });
   } catch (e) {
     console.error("Location update error:", e);

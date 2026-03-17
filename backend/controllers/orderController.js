@@ -1,5 +1,6 @@
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
+import restaurantModel from "../models/restaurantModel.js";
 import Stripe from "stripe";
 
 // ✅ FIXED: lazy-init Stripe so a missing key doesn't crash the server at startup
@@ -13,6 +14,78 @@ const currency = "usd";
 const deliveryCharge = 5;
 const frontend_URL = process.env.FRONTEND_URL || "http://localhost:5174";
 
+// ── Haversine distance (km) ──────────────────────────────────────────────────
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ── Geocode an address object via our own Nominatim proxy ───────────────────
+async function geocodeAddress(address) {
+  const NOMINATIM = "https://nominatim.openstreetmap.org/search";
+  const HEADERS = { "Accept-Language": "en", "User-Agent": "CraveApp/1.0 (contact@crave.ae)" };
+  const city = address.city || address.state || "";
+  const area = address.area || "";
+  const street = address.street || "";
+  const building = address.building || "";
+
+  const query = [building, street, area, city, "UAE"].filter(Boolean).join(", ");
+  try {
+    const res = await fetch(
+      `${NOMINATIM}?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=ae`,
+      { headers: HEADERS }
+    );
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    }
+  } catch (_) {}
+  return null;
+}
+
+// ── Check if address is within restaurant's delivery radius ─────────────────
+async function checkDeliveryRadius(restaurantId, address) {
+  const restaurant = await restaurantModel.findById(restaurantId);
+  if (!restaurant) return { ok: false, message: "Restaurant not found" };
+
+  // 0 = unlimited radius
+  const radius = restaurant.deliveryRadius ?? 10;
+  if (radius === 0) return { ok: true };
+
+  if (!restaurant.location?.lat || !restaurant.location?.lng) {
+    // Restaurant hasn't set location — allow order through
+    return { ok: true };
+  }
+
+  const coords = await geocodeAddress(address);
+  if (!coords) {
+    // Can't geocode — allow through (don't block legitimate orders)
+    return { ok: true };
+  }
+
+  const distKm = haversine(
+    restaurant.location.lat, restaurant.location.lng,
+    coords.lat, coords.lon
+  );
+
+  if (distKm > radius) {
+    return {
+      ok: false,
+      message: `Sorry, this restaurant only delivers within ${radius} km. Your address is ${distKm.toFixed(1)} km away.`,
+      distKm: Math.round(distKm * 10) / 10,
+      radius,
+    };
+  }
+
+  return { ok: true, distKm: Math.round(distKm * 10) / 10 };
+}
+
 // =====================================
 // PLACE ORDER (Stripe Payment)
 // =====================================
@@ -25,6 +98,12 @@ const placeOrder = async (req, res) => {
     const restaurantId = req.body.items[0].restaurantId;
     if (!restaurantId) {
       return res.json({ success: false, message: "restaurantId missing in items" });
+    }
+
+    // ── Delivery radius check ──────────────────────────────────────────────
+    const radiusCheck = await checkDeliveryRadius(restaurantId, req.body.address);
+    if (!radiusCheck.ok) {
+      return res.json({ success: false, message: radiusCheck.message, outOfRange: true });
     }
 
     const newOrder = new orderModel({
@@ -85,6 +164,12 @@ const placeOrderCod = async (req, res) => {
     const restaurantId = req.body.items[0].restaurantId;
     if (!restaurantId) {
       return res.json({ success: false, message: "restaurantId missing in items" });
+    }
+
+    // ── Delivery radius check ──────────────────────────────────────────────
+    const radiusCheck = await checkDeliveryRadius(restaurantId, req.body.address);
+    if (!radiusCheck.ok) {
+      return res.json({ success: false, message: radiusCheck.message, outOfRange: true });
     }
 
     const newOrder = new orderModel({

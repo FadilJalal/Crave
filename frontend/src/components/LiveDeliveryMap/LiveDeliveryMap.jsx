@@ -28,8 +28,50 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function interpolate(lat1, lon1, lat2, lon2, t) {
-  return [lat1+(lat2-lat1)*t, lon1+(lon2-lon1)*t];
+/**
+ * Fetch a real road route from OSRM (free, no API key required).
+ * Returns an array of [lat, lng] waypoints along the actual road.
+ */
+async function fetchRoadRoute(from, to) {
+  // OSRM expects coordinates as lng,lat
+  const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('OSRM request failed');
+  const data = await res.json();
+  if (data.code !== 'Ok' || !data.routes?.length) throw new Error('No route found');
+  // GeoJSON coords are [lng, lat] — flip to [lat, lng] for Leaflet
+  return data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+}
+
+/**
+ * Given a route (array of [lat,lng]) and a progress fraction 0–1,
+ * return the [lat, lng] point at that fraction of the total route length.
+ */
+function interpolateAlongRoute(routePoints, t) {
+  if (!routePoints || routePoints.length === 0) return null;
+  if (t <= 0) return routePoints[0];
+  if (t >= 1) return routePoints[routePoints.length - 1];
+
+  // Compute cumulative distances
+  const dists = [0];
+  for (let i = 1; i < routePoints.length; i++) {
+    const [lat1, lon1] = routePoints[i - 1];
+    const [lat2, lon2] = routePoints[i];
+    const d = Math.sqrt((lat2 - lat1) ** 2 + (lon2 - lon1) ** 2);
+    dists.push(dists[i - 1] + d);
+  }
+  const totalDist = dists[dists.length - 1];
+  const target = t * totalDist;
+
+  for (let i = 1; i < routePoints.length; i++) {
+    if (dists[i] >= target) {
+      const segFrac = (target - dists[i - 1]) / (dists[i] - dists[i - 1]);
+      const [lat1, lon1] = routePoints[i - 1];
+      const [lat2, lon2] = routePoints[i];
+      return [lat1 + (lat2 - lat1) * segFrac, lon1 + (lon2 - lon1) * segFrac];
+    }
+  }
+  return routePoints[routePoints.length - 1];
 }
 
 // Create a custom emoji marker for Leaflet
@@ -75,11 +117,12 @@ export default function LiveDeliveryMap({ order }) {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(false);
   const [expanded, setExpanded] = useState(true); // open by default
-  const mapRef     = useRef(null); // Leaflet map instance
-  const mapDivRef  = useRef(null); // DOM div
-  const markersRef = useRef({});
-  const lineRef    = useRef(null);
-  const doneLineRef= useRef(null);
+  const mapRef      = useRef(null); // Leaflet map instance
+  const mapDivRef   = useRef(null); // DOM div
+  const markersRef  = useRef({});
+  const lineRef     = useRef(null);
+  const doneLineRef = useRef(null);
+  const routeRef    = useRef(null); // full road route points
 
   const statusInfo       = getStatusConfig(order?.status);
   const displayAddress   = buildDisplayAddress(order?.address);
@@ -111,7 +154,7 @@ export default function LiveDeliveryMap({ order }) {
     if (mapRef.current) return; // already initialized
 
     // Dynamically import leaflet to avoid SSR issues
-    import('leaflet').then(L => {
+    import('leaflet').then(async L => {
       L = L.default || L;
 
       // Fix default icon path issue in Vite
@@ -131,9 +174,9 @@ export default function LiveDeliveryMap({ order }) {
       const map = L.map(mapDivRef.current, { zoomControl: true, scrollWheelZoom: true }).setView(center, 13);
       mapRef.current = map;
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
-        maxZoom: 19,
+      L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?language=en', {
+        attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+        maxZoom: 20,
       }).addTo(map);
 
       // Fit bounds to show all points
@@ -141,42 +184,67 @@ export default function LiveDeliveryMap({ order }) {
         map.fitBounds(L.latLngBounds(allPoints).pad(0.2));
       }
 
-      // Route line (dashed gray = full route)
+      // ── Road routing via OSRM ──────────────────────────────────────────
+      let routePoints = null;
       if (restaurantCoords) {
-        lineRef.current = L.polyline([restaurantCoords, customerCoords], {
-          color: '#94a3b8', weight: 3, dashArray: '8 6', opacity: 0.7,
-        }).addTo(map);
-      }
+        try {
+          routePoints = await fetchRoadRoute(restaurantCoords, customerCoords);
+        } catch (e) {
+          console.warn('OSRM routing failed, falling back to straight line:', e);
+        }
+        routeRef.current = routePoints;
 
-      // Rider position
-      const riderPos = restaurantCoords
-        ? interpolate(...restaurantCoords, ...customerCoords, statusInfo.progress)
-        : customerCoords;
+        if (routePoints && routePoints.length > 1) {
+          // Draw full road route as a solid red line
+          lineRef.current = L.polyline(routePoints, {
+            color: '#e53935', weight: 5, opacity: 0.85,
+          }).addTo(map);
 
-      // Completed portion line (colored)
-      if (restaurantCoords) {
-        doneLineRef.current = L.polyline([restaurantCoords, riderPos], {
-          color: statusInfo.color, weight: 4, opacity: 0.95,
-        }).addTo(map);
-      }
+          // Rider position along the actual road
+          const riderPos = interpolateAlongRoute(routePoints, statusInfo.progress);
 
-      // Markers
-      if (restaurantCoords) {
+          // Rider marker
+          markersRef.current.rider = L.marker(riderPos || routePoints[0], {
+            icon: makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color),
+            zIndexOffset: 200,
+          }).addTo(map).bindPopup(`<b>${statusInfo.label}</b>`);
+
+        } else {
+          // Fallback: straight line if OSRM failed
+          lineRef.current = L.polyline([restaurantCoords, customerCoords], {
+            color: '#e53935', weight: 5, opacity: 0.85,
+          }).addTo(map);
+
+          const riderPos = [
+            restaurantCoords[0] + (customerCoords[0] - restaurantCoords[0]) * statusInfo.progress,
+            restaurantCoords[1] + (customerCoords[1] - restaurantCoords[1]) * statusInfo.progress,
+          ];
+
+          markersRef.current.rider = L.marker(riderPos, {
+            icon: makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color),
+            zIndexOffset: 200,
+          }).addTo(map).bindPopup(`<b>${statusInfo.label}</b>`);
+        }
+
+        // Restaurant marker
         markersRef.current.restaurant = L.marker(restaurantCoords, {
           icon: makeEmojiIcon(L, '🏪', '#f59e0b'),
           zIndexOffset: 100,
         }).addTo(map).bindPopup('<b>Restaurant</b>');
+
+      } else {
+        // No restaurant coords — just show rider at customer location
+        markersRef.current.rider = L.marker(customerCoords, {
+          icon: makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color),
+          zIndexOffset: 200,
+        }).addTo(map).bindPopup(`<b>${statusInfo.label}</b>`);
       }
 
+      // Customer / delivery marker (always shown)
       markersRef.current.customer = L.marker(customerCoords, {
         icon: makeEmojiIcon(L, '🏠', '#22c55e'),
         zIndexOffset: 100,
       }).addTo(map).bindPopup('<b>Your delivery address</b>');
-
-      markersRef.current.rider = L.marker(riderPos, {
-        icon: makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color),
-        zIndexOffset: 200,
-      }).addTo(map).bindPopup(`<b>${statusInfo.label}</b>`);
     });
 
     return () => {
@@ -186,6 +254,7 @@ export default function LiveDeliveryMap({ order }) {
         markersRef.current = {};
         lineRef.current = null;
         doneLineRef.current = null;
+        routeRef.current = null;
       }
     };
   }, [customerCoords, expanded]);
@@ -195,15 +264,31 @@ export default function LiveDeliveryMap({ order }) {
     if (!mapRef.current || !customerCoords || !markersRef.current.rider) return;
     import('leaflet').then(L => {
       L = L.default || L;
-      const riderPos = restaurantCoords
-        ? interpolate(...restaurantCoords, ...customerCoords, statusInfo.progress)
-        : customerCoords;
+
+      let riderPos;
+      let donePortion;
+
+      if (routeRef.current && routeRef.current.length > 1) {
+        // Move rider along the actual road route
+        riderPos = interpolateAlongRoute(routeRef.current, statusInfo.progress);
+        const splitIndex = Math.round(statusInfo.progress * (routeRef.current.length - 1));
+        donePortion = routeRef.current.slice(0, splitIndex + 1);
+      } else if (restaurantCoords) {
+        // Fallback straight-line interpolation
+        riderPos = [
+          restaurantCoords[0] + (customerCoords[0] - restaurantCoords[0]) * statusInfo.progress,
+          restaurantCoords[1] + (customerCoords[1] - restaurantCoords[1]) * statusInfo.progress,
+        ];
+        donePortion = [restaurantCoords, riderPos];
+      } else {
+        return;
+      }
 
       markersRef.current.rider.setLatLng(riderPos);
       markersRef.current.rider.setIcon(makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color));
 
-      if (doneLineRef.current && restaurantCoords) {
-        doneLineRef.current.setLatLngs([restaurantCoords, riderPos]);
+      if (doneLineRef.current) {
+        doneLineRef.current.setLatLngs(donePortion.length > 1 ? donePortion : [riderPos, riderPos]);
         doneLineRef.current.setStyle({ color: statusInfo.color });
       }
     });

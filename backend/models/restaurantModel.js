@@ -13,6 +13,7 @@ const restaurantSchema = new mongoose.Schema(
     logo: { type: String, default: "" },
     avgPrepTime: { type: Number, default: 15 },
     isActive: { type: Boolean, default: true },
+    deliveryRadius: { type: Number, default: 10 }, // km — 0 means unlimited
 
     // Opening hours per day: { open: "09:00", close: "22:00", closed: false }
     openingHours: {
