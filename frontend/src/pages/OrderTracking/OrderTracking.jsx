@@ -2,39 +2,14 @@ import React, { useContext, useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { StoreContext } from '../../Context/StoreContext';
-import DeliveryMap from '../../components/DeliveryMap/DeliveryMap';
+import LiveDeliveryMap from '../../components/LiveDeliveryMap/LiveDeliveryMap';
 import './OrderTracking.css';
 
-// ── Status config ────────────────────────────────────────────────────────────
 const STEPS = [
-  {
-    key: 'Order Placed',
-    label: 'Order Placed',
-    icon: '🧾',
-    desc: 'Your order has been received.',
-    eta: null,
-  },
-  {
-    key: 'Food Processing',
-    label: 'Preparing',
-    icon: '👨‍🍳',
-    desc: 'The restaurant is preparing your food.',
-    eta: '15–25 min',
-  },
-  {
-    key: 'Out for Delivery',
-    label: 'On the Way',
-    icon: '🛵',
-    desc: 'Your order is out for delivery.',
-    eta: '10–20 min',
-  },
-  {
-    key: 'Delivered',
-    label: 'Delivered',
-    icon: '✅',
-    desc: 'Enjoy your meal!',
-    eta: null,
-  },
+  { key: 'Order Placed',    label: 'Order Placed', icon: '🧾', desc: 'Your order has been received.',              eta: null },
+  { key: 'Food Processing', label: 'Preparing',    icon: '👨‍🍳', desc: 'The restaurant is preparing your food.',    eta: '15–25 min' },
+  { key: 'Out for Delivery',label: 'On the Way',   icon: '🛵', desc: 'Your order is out for delivery.',           eta: '10–20 min' },
+  { key: 'Delivered',       label: 'Delivered',    icon: '✅', desc: 'Enjoy your meal!',                          eta: null },
 ];
 
 const stepIndex = (status) => {
@@ -45,54 +20,41 @@ const stepIndex = (status) => {
   return 0;
 };
 
-const POLL_INTERVAL = 15000; // 15 s
+const POLL_INTERVAL = 15000;
 
-// ── Component ────────────────────────────────────────────────────────────────
 const OrderTracking = () => {
   const { orderId } = useParams();
   const { url, token, currency } = useContext(StoreContext);
   const navigate = useNavigate();
 
-  const [order, setOrder]     = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(false);
+  const [order, setOrder]           = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [pulsing, setPulsing] = useState(false);   // flash on refresh
-
+  const [pulsing, setPulsing]       = useState(false);
   const pollRef = useRef(null);
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchOrder = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await axios.get(`${url}/api/order/track/${orderId}`, {
-        headers: { token },
-      });
+      const res = await axios.get(`${url}/api/order/track/${orderId}`, { headers: { token } });
       if (res.data.success) {
         setOrder(res.data.data);
         setLastUpdated(new Date());
         setError(false);
         if (silent) { setPulsing(true); setTimeout(() => setPulsing(false), 600); }
-      } else {
-        setError(true);
-      }
-    } catch {
-      setError(true);
-    } finally {
-      if (!silent) setLoading(false);
-    }
+      } else { setError(true); }
+    } catch { setError(true); }
+    finally { if (!silent) setLoading(false); }
   };
 
   useEffect(() => {
     if (!token) return;
     fetchOrder();
-    // Poll every 15 s until delivered
     pollRef.current = setInterval(() => {
       setOrder(prev => {
-        const s = (prev?.status || '').toLowerCase().trim();
-        if (s === 'delivered') {
+        if ((prev?.status || '').toLowerCase().trim() === 'delivered') {
           clearInterval(pollRef.current);
-          return prev;
         }
         return prev;
       });
@@ -101,17 +63,13 @@ const OrderTracking = () => {
     return () => clearInterval(pollRef.current);
   }, [token, orderId]);
 
-  // ── Derived ────────────────────────────────────────────────────────────────
-  const step     = order ? stepIndex(order.status) : 0;
-  const current  = STEPS[step];
+  const step        = order ? stepIndex(order.status) : 0;
+  const currentStep = STEPS[step];
   const isDelivered = step === 3;
 
   const formatDate = (d) =>
-    new Date(d).toLocaleString('en-US', {
-      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
+    new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-  // ── States ─────────────────────────────────────────────────────────────────
   if (!token) return (
     <div className="ot-page">
       <div className="ot-empty">
@@ -143,11 +101,9 @@ const OrderTracking = () => {
     </div>
   );
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="ot-page">
 
-      {/* ── Back ── */}
       <button className="ot-back" onClick={() => navigate('/myorders')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
           <polyline points="15 18 9 12 15 6"/>
@@ -155,32 +111,30 @@ const OrderTracking = () => {
         My Orders
       </button>
 
-      {/* ── Hero status ── */}
+      {/* Hero */}
       <div className={`ot-hero ${isDelivered ? 'ot-hero-done' : ''} ${pulsing ? 'ot-pulse' : ''}`}>
-        <div className="ot-hero-icon">{current.icon}</div>
+        <div className="ot-hero-icon">{currentStep.icon}</div>
         <div className="ot-hero-text">
-          <h1 className="ot-hero-title">{current.label}</h1>
-          <p className="ot-hero-desc">{current.desc}</p>
-          {current.eta && !isDelivered && (
-            <span className="ot-eta">⏱ Est. {current.eta}</span>
+          <h1 className="ot-hero-title">{currentStep.label}</h1>
+          <p className="ot-hero-desc">{currentStep.desc}</p>
+          {currentStep.eta && !isDelivered && (
+            <span className="ot-eta">⏱ Est. {currentStep.eta}</span>
           )}
         </div>
-        <div className="ot-order-id-badge">
-          #{String(order._id).slice(-6).toUpperCase()}
-        </div>
+        <div className="ot-order-id-badge">#{String(order._id).slice(-6).toUpperCase()}</div>
       </div>
 
-      {/* ── Stepper ── */}
+      {/* Stepper */}
       <div className="ot-stepper">
         {STEPS.map((s, idx) => {
           const done    = idx <= step;
-          const current = idx === step && !isDelivered;
+          const active  = idx === step && !isDelivered;
           const lineActive = idx < step;
           return (
             <React.Fragment key={s.key}>
               <div className="ot-step">
-                <div className={`ot-dot ${done ? 'ot-dot-done' : ''} ${current ? 'ot-dot-current' : ''}`}>
-                  {done ? (idx === step && !isDelivered ? s.icon : '✓') : <span className="ot-dot-num">{idx + 1}</span>}
+                <div className={`ot-dot ${done ? 'ot-dot-done' : ''} ${active ? 'ot-dot-current' : ''}`}>
+                  {done ? (active ? s.icon : '✓') : <span className="ot-dot-num">{idx + 1}</span>}
                 </div>
                 <p className={`ot-step-label ${done ? 'ot-label-done' : ''}`}>{s.label}</p>
               </div>
@@ -194,16 +148,14 @@ const OrderTracking = () => {
         })}
       </div>
 
-      {/* ── Map ── */}
+      {/* Map — FIXED: was <DeliveryMap>, now <LiveDeliveryMap> */}
       <div className="ot-map-section">
         <h3 className="ot-section-label">📍 Live Delivery Map</h3>
-        <DeliveryMap order={order} status={order.status} />
+        <LiveDeliveryMap order={order} />
       </div>
 
-      {/* ── Cards row ── */}
+      {/* Cards */}
       <div className="ot-cards">
-
-        {/* Order summary */}
         <div className="ot-card">
           <h3 className="ot-card-title">🛍 Order Summary</h3>
           <ul className="ot-items">
@@ -216,14 +168,8 @@ const OrderTracking = () => {
             ))}
           </ul>
           <div className="ot-divider" />
-          <div className="ot-total-row">
-            <span>Delivery fee</span>
-            <span>{currency}{(order.deliveryFee || 0).toFixed(2)}</span>
-          </div>
-          <div className="ot-total-row ot-total-bold">
-            <span>Total</span>
-            <span>{currency}{order.amount?.toFixed(2)}</span>
-          </div>
+          <div className="ot-total-row"><span>Delivery fee</span><span>{currency}{(order.deliveryFee || 0).toFixed(2)}</span></div>
+          <div className="ot-total-row ot-total-bold"><span>Total</span><span>{currency}{order.amount?.toFixed(2)}</span></div>
           <div className="ot-total-row">
             <span>Payment</span>
             <span className={`ot-pay-badge ${order.payment ? 'ot-paid' : 'ot-unpaid'}`}>
@@ -232,42 +178,26 @@ const OrderTracking = () => {
           </div>
         </div>
 
-        {/* Delivery info */}
         <div className="ot-card">
           <h3 className="ot-card-title">📍 Delivery Details</h3>
-          <div className="ot-info-row">
-            <span className="ot-info-label">Name</span>
-            <span className="ot-info-value">{order.address?.firstName} {order.address?.lastName}</span>
-          </div>
-          <div className="ot-info-row">
-            <span className="ot-info-label">Street</span>
-            <span className="ot-info-value">{order.address?.street}</span>
-          </div>
+          <div className="ot-info-row"><span className="ot-info-label">Name</span><span className="ot-info-value">{order.address?.firstName} {order.address?.lastName}</span></div>
+          <div className="ot-info-row"><span className="ot-info-label">Street</span><span className="ot-info-value">{order.address?.street}</span></div>
           <div className="ot-info-row">
             <span className="ot-info-label">City</span>
             <span className="ot-info-value">{order.address?.city}{order.address?.state ? `, ${order.address.state}` : ''}</span>
           </div>
           {order.address?.phone && (
-            <div className="ot-info-row">
-              <span className="ot-info-label">Phone</span>
-              <span className="ot-info-value">{order.address.phone}</span>
-            </div>
+            <div className="ot-info-row"><span className="ot-info-label">Phone</span><span className="ot-info-value">{order.address.phone}</span></div>
           )}
           <div className="ot-divider" />
-          <div className="ot-info-row">
-            <span className="ot-info-label">Placed</span>
-            <span className="ot-info-value">{formatDate(order.date || order.createdAt)}</span>
-          </div>
+          <div className="ot-info-row"><span className="ot-info-label">Placed</span><span className="ot-info-value">{formatDate(order.date || order.createdAt)}</span></div>
           {order.restaurantId?.name && (
-            <div className="ot-info-row">
-              <span className="ot-info-label">Restaurant</span>
-              <span className="ot-info-value">{order.restaurantId.name}</span>
-            </div>
+            <div className="ot-info-row"><span className="ot-info-label">Restaurant</span><span className="ot-info-value">{order.restaurantId.name}</span></div>
           )}
         </div>
       </div>
 
-      {/* ── Footer ── */}
+      {/* Footer */}
       <div className="ot-footer">
         {lastUpdated && (
           <p className="ot-last-updated">

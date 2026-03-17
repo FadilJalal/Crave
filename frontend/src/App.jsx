@@ -13,8 +13,8 @@ import Verify from './pages/Verify/Verify'
 import Restaurants from './pages/Restaurants/Restaurants'
 import RestaurantMenu from './pages/RestaurantMenu/RestaurantMenu'
 import ResetPassword from './pages/ResetPassword/ResetPassword'
-import OrderTracking from './pages/OrderTracking/OrderTracking'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
+import OrderTracking from './pages/OrderTracking/OrderTracking'
 
 const App = () => {
   const [showLogin, setShowLogin] = useState(false);
@@ -42,11 +42,11 @@ const App = () => {
             <Route path='/cart' element={<Cart />} />
             <Route path='/order' element={<PlaceOrder />} />
             <Route path='/myorders' element={<MyOrders />} />
+            <Route path='/order/track/:orderId' element={<OrderTracking />} />
             <Route path='/verify' element={<Verify />} />
             <Route path='/restaurants' element={<Restaurants />} />
             <Route path='/restaurants/:id' element={<RestaurantMenu />} />
             <Route path='/reset-password' element={<ResetPassword />} />
-            <Route path='/order/track/:orderId' element={<OrderTracking />} />
           </Routes>
         </ErrorBoundary>
       </div>
