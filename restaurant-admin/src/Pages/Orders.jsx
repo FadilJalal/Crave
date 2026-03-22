@@ -135,10 +135,10 @@ export default function Orders() {
     }
   };
 
-  // Initial load + auto-refresh every 45s
+  // Initial load + auto-refresh every 8s
   useEffect(() => {
     loadOrders(false);
-    intervalRef.current = setInterval(() => loadOrders(true), 45000);
+    intervalRef.current = setInterval(() => loadOrders(true), 8000);
     return () => clearInterval(intervalRef.current);
   }, [loadOrders]);
 

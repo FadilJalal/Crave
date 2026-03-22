@@ -38,9 +38,9 @@ async function geocodeAddress(address) {
   const query = [building, street, area, city, "UAE"].filter(Boolean).join(", ");
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000); // 8s max
+    const timeout = setTimeout(() => controller.abort(), 8000);
     const res = await fetch(
-      `${NOMINATIM}?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=ae`,
+      `${NOMINATIM}?q=${encodeURIComponent(query)}&format=json&limit=1`,
       { headers: HEADERS, signal: controller.signal }
     );
     clearTimeout(timeout);
@@ -59,16 +59,22 @@ async function checkDeliveryRadius(restaurantId, address) {
 
   // 0 = unlimited radius
   const radius = restaurant.deliveryRadius ?? 10;
+  console.log(`[radius] restaurant="${restaurant.name}" radius=${radius} location=`, restaurant.location);
+
   if (radius === 0) return { ok: true };
 
   if (!restaurant.location?.lat || !restaurant.location?.lng) {
-    // Restaurant hasn't set location — allow order through
-    return { ok: true };
+    console.log(`[radius] no location set — blocking order to enforce safety`);
+    // Restaurant has no location set — block orders if radius is set
+    return { ok: false, message: "This restaurant hasn't set up delivery yet. Please try again later." };
   }
 
   const coords = await geocodeAddress(address);
+  console.log(`[radius] customer geocode result:`, coords);
+
   if (!coords) {
-    // Can't geocode — allow through (don't block legitimate orders)
+    // Can't geocode — allow through but log it
+    console.warn(`[radius] geocode failed for address, allowing order through`);
     return { ok: true };
   }
 
@@ -76,6 +82,8 @@ async function checkDeliveryRadius(restaurantId, address) {
     restaurant.location.lat, restaurant.location.lng,
     coords.lat, coords.lon
   );
+
+  console.log(`[radius] distance=${distKm.toFixed(2)}km radius=${radius}km — ${distKm > radius ? 'BLOCKED' : 'allowed'}`);
 
   if (distKm > radius) {
     return {
@@ -98,13 +106,16 @@ const placeOrder = async (req, res) => {
       return res.json({ success: false, message: "Cart is empty" });
     }
 
-    const restaurantId = req.body.items[0].restaurantId;
+    const raw = req.body.items[0].restaurantId;
+    const restaurantId = raw?._id ? String(raw._id) : String(raw);
+    console.log(`[placeOrder] restaurantId="${restaurantId}" address city="${req.body.address?.city}"`);
     if (!restaurantId) {
       return res.json({ success: false, message: "restaurantId missing in items" });
     }
 
     // ── Delivery radius check ──────────────────────────────────────────────
     const radiusCheck = await checkDeliveryRadius(restaurantId, req.body.address);
+    console.log(`[placeOrder] radiusCheck:`, radiusCheck);
     if (!radiusCheck.ok) {
       return res.json({ success: false, message: radiusCheck.message, outOfRange: true });
     }
@@ -164,13 +175,16 @@ const placeOrderCod = async (req, res) => {
       return res.json({ success: false, message: "Cart is empty" });
     }
 
-    const restaurantId = req.body.items[0].restaurantId;
+    const raw = req.body.items[0].restaurantId;
+    const restaurantId = raw?._id ? String(raw._id) : String(raw);
+    console.log(`[placeOrderCod] restaurantId="${restaurantId}" address city="${req.body.address?.city}"`);
     if (!restaurantId) {
       return res.json({ success: false, message: "restaurantId missing in items" });
     }
 
     // ── Delivery radius check ──────────────────────────────────────────────
     const radiusCheck = await checkDeliveryRadius(restaurantId, req.body.address);
+    console.log(`[placeOrderCod] radiusCheck:`, radiusCheck);
     if (!radiusCheck.ok) {
       return res.json({ success: false, message: radiusCheck.message, outOfRange: true });
     }
@@ -206,7 +220,7 @@ const listOrders = async (req, res) => {
 
     const orders = await orderModel
       .find({})
-      .populate("restaurantId", "name address location")
+      .populate("restaurantId", "name address location logo")
       .sort({ createdAt: -1 });
 
     res.json({ success: true, data: orders });
@@ -223,7 +237,7 @@ const userOrders = async (req, res) => {
   try {
     const orders = await orderModel
       .find({ userId: req.body.userId })
-      .populate("restaurantId", "name address location")
+      .populate("restaurantId", "name address location logo")
       .sort({ createdAt: -1 });
 
     res.json({ success: true, data: orders });
@@ -279,7 +293,7 @@ const listRestaurantOrders = async (req, res) => {
 
     const orders = await orderModel
       .find({ restaurantId })
-      .populate("restaurantId", "name address location")
+      .populate("restaurantId", "name address location logo")
       .sort({ createdAt: -1 });
 
     res.json({ success: true, data: orders });

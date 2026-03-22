@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Home from './pages/Home/Home'
 import Footer from './components/Footer/Footer'
 import Navbar from './components/Navbar/Navbar'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import Cart from './pages/Cart/Cart'
 import LoginPopup from './components/LoginPopup/LoginPopup'
 import PlaceOrder from './pages/PlaceOrder/PlaceOrder'
@@ -15,6 +15,13 @@ import RestaurantMenu from './pages/RestaurantMenu/RestaurantMenu'
 import ResetPassword from './pages/ResetPassword/ResetPassword'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 import OrderTracking from './pages/OrderTracking/OrderTracking'
+
+// Scroll to top on every route change
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 
 const App = () => {
   const [showLogin, setShowLogin] = useState(false);
@@ -33,6 +40,7 @@ const App = () => {
         toastStyle={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 14 }}
         style={{ zIndex: 99999 }}
       />
+      <ScrollToTop />
       {showLogin ? <LoginPopup setShowLogin={setShowLogin} /> : <></>}
       <div className='app'>
         <Navbar setShowLogin={setShowLogin} />

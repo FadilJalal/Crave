@@ -74,6 +74,25 @@ function interpolateAlongRoute(routePoints, t) {
   return routePoints[routePoints.length - 1];
 }
 
+// Create a marker with the restaurant's actual logo image
+function makeLogoIcon(L, logoUrl, borderColor) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:42px;height:42px;border-radius:50%;
+      background:white;border:3px solid ${borderColor};
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 2px 8px rgba(0,0,0,0.25);
+      overflow:hidden;flex-shrink:0;
+    ">
+      <img src="${logoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+        onerror="this.parentNode.innerHTML='🏪';this.parentNode.style.fontSize='18px';" />
+    </div>`,
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
+  });
+}
+
 // Create a custom emoji marker for Leaflet
 function makeEmojiIcon(L, emoji, borderColor) {
   return L.divIcon({
@@ -116,7 +135,6 @@ export default function LiveDeliveryMap({ order }) {
   const [customerCoords, setCustomerCoords] = useState(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(false);
-  const [expanded, setExpanded] = useState(true); // open by default
   const mapRef      = useRef(null); // Leaflet map instance
   const mapDivRef   = useRef(null); // DOM div
   const markersRef  = useRef({});
@@ -150,7 +168,7 @@ export default function LiveDeliveryMap({ order }) {
 
   // Init Leaflet map once coords are ready and panel is expanded
   useEffect(() => {
-    if (!customerCoords || !mapDivRef.current || !expanded) return;
+    if (!customerCoords || !mapDivRef.current) return;
     if (mapRef.current) return; // already initialized
 
     // Dynamically import leaflet to avoid SSR issues
@@ -174,14 +192,17 @@ export default function LiveDeliveryMap({ order }) {
       const map = L.map(mapDivRef.current, { zoomControl: true, scrollWheelZoom: true }).setView(center, 13);
       mapRef.current = map;
 
+      // Force map to recalculate its size after mounting in a flex/grid container
+      setTimeout(() => map.invalidateSize(), 100);
+
       L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?language=en', {
         attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
         maxZoom: 20,
       }).addTo(map);
 
-      // Fit bounds to show all points
+      // Fit bounds to show all points — tighter padding so it zooms in on the route
       if (allPoints.length > 1) {
-        map.fitBounds(L.latLngBounds(allPoints).pad(0.2));
+        map.fitBounds(L.latLngBounds(allPoints).pad(0.15));
       }
 
       // ── Road routing via OSRM ──────────────────────────────────────────
@@ -199,6 +220,9 @@ export default function LiveDeliveryMap({ order }) {
           lineRef.current = L.polyline(routePoints, {
             color: '#e53935', weight: 5, opacity: 0.85,
           }).addTo(map);
+
+          // Re-fit bounds to the actual road route
+          map.fitBounds(L.latLngBounds(routePoints).pad(0.15));
 
           // Rider position along the actual road
           const riderPos = interpolateAlongRoute(routePoints, statusInfo.progress);
@@ -227,10 +251,16 @@ export default function LiveDeliveryMap({ order }) {
         }
 
         // Restaurant marker
+        // Restaurant marker — show actual logo
+        const logoUrl = order?.restaurantId?.logo
+          ? `${url}/images/${order.restaurantId.logo}`
+          : null;
         markersRef.current.restaurant = L.marker(restaurantCoords, {
-          icon: makeEmojiIcon(L, '🏪', '#f59e0b'),
+          icon: logoUrl
+            ? makeLogoIcon(L, logoUrl, '#f59e0b')
+            : makeEmojiIcon(L, '🏪', '#f59e0b'),
           zIndexOffset: 100,
-        }).addTo(map).bindPopup('<b>Restaurant</b>');
+        }).addTo(map).bindPopup(`<b>${order?.restaurantId?.name || 'Restaurant'}</b>`);
 
       } else {
         // No restaurant coords — just show rider at customer location
@@ -257,7 +287,7 @@ export default function LiveDeliveryMap({ order }) {
         routeRef.current = null;
       }
     };
-  }, [customerCoords, expanded]);
+  }, [customerCoords]);
 
   // Update rider position when status changes
   useEffect(() => {
@@ -294,13 +324,6 @@ export default function LiveDeliveryMap({ order }) {
     });
   }, [order?.status, customerCoords]);
 
-  // Invalidate map size when panel expands
-  useEffect(() => {
-    if (expanded && mapRef.current) {
-      setTimeout(() => mapRef.current?.invalidateSize(), 300);
-    }
-  }, [expanded]);
-
   const distanceKm = customerCoords && restaurantCoords
     ? haversine(customerCoords[0], customerCoords[1], restaurantCoords[0], restaurantCoords[1])
     : null;
@@ -308,100 +331,55 @@ export default function LiveDeliveryMap({ order }) {
   const isDelivered = statusInfo.step === 3;
 
   return (
-    <div className={`ldm-wrap ${expanded ? 'ldm-expanded' : ''}`}>
-      <div className="ldm-header" onClick={() => setExpanded(v => !v)}>
-        <div className="ldm-header-left">
-          <span className="ldm-pin-icon">📍</span>
-          <div>
-            <p className="ldm-title">Live Delivery Map</p>
-            {displayAddress && <p className="ldm-address">{displayAddress}</p>}
+    <div className="ldm-wrap ldm-expanded">
+
+      {/* Legend + distance bar */}
+      <div className="ldm-info-bar">
+        {restaurantCoords && <><div className="ldm-legend-item"><span className="ldm-dot-restaurant"/>Restaurant</div><div className="ldm-legend-sep"/></>}
+        <div className="ldm-legend-item"><span className="ldm-dot-rider"/>{isDelivered?'Delivered':'Rider'}</div>
+        <div className="ldm-legend-sep"/>
+        <div className="ldm-legend-item"><span className="ldm-dot-customer"/>Your location</div>
+        {distanceKm && <>
+          <div className="ldm-legend-sep"/>
+          <div className="ldm-legend-item ldm-distance-text">
+            Distance: <strong>{distanceKm<1?`${Math.round(distanceKm*1000)} m`:`${distanceKm.toFixed(2)} km`}</strong>
           </div>
-        </div>
-        <div className="ldm-header-right">
-          {distanceKm && (
-            <span className="ldm-distance-pill">
-              📏 {distanceKm < 1 ? `${Math.round(distanceKm*1000)}m` : `${distanceKm.toFixed(1)}km`}
-            </span>
-          )}
-          <span className="ldm-status-pill" style={{'--status-color': statusInfo.color}}>
-            <span className="ldm-status-dot" style={{'--status-color': statusInfo.color}}/>
-            {statusInfo.icon} {statusInfo.label}
-          </span>
-          <svg className={`ldm-chevron ${expanded?'ldm-chevron-up':''}`}
-            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </div>
+        </>}
       </div>
 
-      <div className="ldm-body">
-        {/* Steps */}
-        <div className="ldm-steps">
-          {['Order Placed','Preparing','On the Way','Delivered'].map((s, i) => (
-            <React.Fragment key={s}>
-              <div className="ldm-step">
-                <div className={`ldm-step-dot ${i<=statusInfo.step?'ldm-step-done':''} ${i===statusInfo.step?'ldm-step-current':''}`}
-                  style={i<=statusInfo.step?{'--status-color':statusInfo.color}:{}}>
-                  {i<statusInfo.step?'✓':i===statusInfo.step?['📋','👨‍🍳','🛵','✅'][i]:''}
-                  {i>statusInfo.step?i+1:''}
-                </div>
-                <p className={`ldm-step-label ${i<=statusInfo.step?'ldm-step-label-done':''}`}
-                   style={i<=statusInfo.step?{color:statusInfo.color}:{}}>{s}</p>
-              </div>
-              {i<3 && <div className={`ldm-step-line ${i<statusInfo.step?'ldm-step-line-done':''}`}
-                           style={i<statusInfo.step?{background:statusInfo.color}:{}}/>}
-            </React.Fragment>
-          ))}
-        </div>
-
-        {/* Legend */}
-        <div className="ldm-info-bar">
-          {restaurantCoords && <><div className="ldm-legend-item"><span className="ldm-dot-restaurant"/>Restaurant</div><div className="ldm-legend-sep"/></>}
-          <div className="ldm-legend-item"><span className="ldm-dot-rider"/>{isDelivered?'Delivered':'Rider'}</div>
-          <div className="ldm-legend-sep"/>
-          <div className="ldm-legend-item"><span className="ldm-dot-customer"/>Your location</div>
-          {distanceKm && <>
-            <div className="ldm-legend-sep"/>
-            <div className="ldm-legend-item ldm-distance-text">
-              Distance: <strong>{distanceKm<1?`${Math.round(distanceKm*1000)} m`:`${distanceKm.toFixed(2)} km`}</strong>
-            </div>
-          </>}
-        </div>
-
-        {/* Map */}
-        <div className="ldm-map-container">
-          {loading && (
-            <div className="ldm-map-placeholder skeleton">
-              <div className="ldm-map-loading"><div className="ldm-spinner"/><p>Locating your address…</p></div>
-            </div>
-          )}
-          {!loading && error && (
-            <div className="ldm-map-placeholder ldm-map-error">
-              <span>📍</span><p>Couldn't pin your address on the map.</p>
-              <small>{displayAddress||'No address provided'}</small>
-            </div>
-          )}
-          {!loading && !error && (
-            <div className="ldm-leaflet-wrap">
-              <div ref={mapDivRef} className="ldm-leaflet-map"/>
-              {!isDelivered && <div className="ldm-map-badge"><span className="ldm-live-dot"/>Live</div>}
-            </div>
-          )}
-        </div>
-
-        {/* Address row */}
-        {order?.address && (
-          <div className="ldm-addr-row">
-            <div className="ldm-addr-icon">🏠</div>
-            <div className="ldm-addr-detail">
-              <p className="ldm-addr-name">{order.address.firstName} {order.address.lastName}</p>
-              <p className="ldm-addr-text">{displayAddress}</p>
-              {order.address.phone && <p className="ldm-addr-phone">📞 {order.address.phone}</p>}
-              {order.address.deliveryNotes && <p className="ldm-addr-notes">📝 {order.address.deliveryNotes}</p>}
-            </div>
+      {/* Map */}
+      <div className="ldm-map-container">
+        {loading && (
+          <div className="ldm-map-placeholder skeleton">
+            <div className="ldm-map-loading"><div className="ldm-spinner"/><p>Locating your address…</p></div>
+          </div>
+        )}
+        {!loading && error && (
+          <div className="ldm-map-placeholder ldm-map-error">
+            <span>📍</span><p>Couldn't pin your address on the map.</p>
+            <small>{displayAddress||'No address provided'}</small>
+          </div>
+        )}
+        {!loading && !error && (
+          <div className="ldm-leaflet-wrap">
+            <div ref={mapDivRef} className="ldm-leaflet-map"/>
+            {!isDelivered && <div className="ldm-map-badge"><span className="ldm-live-dot"/>Live</div>}
           </div>
         )}
       </div>
+
+      {/* Address row */}
+      {order?.address && (
+        <div className="ldm-addr-row">
+          <div className="ldm-addr-icon">🏠</div>
+          <div className="ldm-addr-detail">
+            <p className="ldm-addr-name">{order.address.firstName} {order.address.lastName}</p>
+            <p className="ldm-addr-text">{displayAddress}</p>
+            {order.address.phone && <p className="ldm-addr-phone">📞 {order.address.phone}</p>}
+            {order.address.deliveryNotes && <p className="ldm-addr-notes">📝 {order.address.deliveryNotes}</p>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

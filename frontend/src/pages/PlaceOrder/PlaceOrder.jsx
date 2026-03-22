@@ -6,18 +6,85 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import SplitPayment from '../../components/SplitPayment/SplitPayment.jsx';
 
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 const PlaceOrder = () => {
   const [payment, setPayment] = useState('cod');
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState({ firstName: '', lastName: '', email: '', street: '', apartment: '', area: '', building: '', city: '', state: '', zipcode: '', country: '', phone: '', deliveryNotes: '' });
+  const [distanceWarning, setDistanceWarning] = useState('');
+  const [data, setData] = useState(() => {
+    const base = { firstName: '', lastName: '', email: '', street: '', apartment: '', area: '', building: '', city: '', state: '', zipcode: '', country: 'UAE', phone: '', deliveryNotes: '' };
+    try {
+      const saved = JSON.parse(localStorage.getItem('crave_location'));
+      if (saved?.label) {
+        const parts = saved.label.split(',').map(s => s.trim());
+        return { ...base, area: parts[0] || '', city: parts[1] || parts[0] || '' };
+      }
+    } catch {}
+    return base;
+  });
   const { getTotalCartAmount, token, food_list, foodListLoading, cartItems, url, setCartItems, currency, deliveryCharge } = useContext(StoreContext);
   const navigate = useNavigate();
   const subtotal = getTotalCartAmount();
 
   const onChange = (e) => setData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
+  // Check distance against restaurant radius whenever address fields change
+  useEffect(() => {
+    const city = data.city || data.state || '';
+    const area = data.area || '';
+    if (!city && !area) { setDistanceWarning(''); return; }
+
+    const timer = setTimeout(async () => {
+      try {
+        // Get the restaurant from cart
+        const firstItem = Object.values(cartItems).find(e => e.quantity > 0);
+        if (!firstItem) return;
+        const food = food_list.find(f => f._id === firstItem.itemId);
+        if (!food) return;
+        const restaurant = food.restaurantId;
+        if (!restaurant?.location?.lat || !restaurant?.deliveryRadius) return;
+
+        const radius = restaurant.deliveryRadius;
+        if (radius === 0) { setDistanceWarning(''); return; }
+
+        // Geocode the customer address
+        const res = await fetch(`${url}/api/geocode`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: data }),
+        });
+        const geocoded = await res.json();
+        if (!geocoded.success) return;
+
+        const dist = haversine(
+          restaurant.location.lat, restaurant.location.lng,
+          geocoded.lat, geocoded.lon
+        );
+
+        if (dist > radius) {
+          setDistanceWarning(`🚫 This restaurant only delivers within ${radius} km. Your address is ${dist.toFixed(1)} km away.`);
+        } else {
+          setDistanceWarning('');
+        }
+      } catch { setDistanceWarning(''); }
+    }, 800); // debounce 800ms
+
+    return () => clearTimeout(timer);
+  }, [data.city, data.area, data.street, data.state]);
+
   const placeOrder = async (e) => {
     e.preventDefault();
+    if (distanceWarning) {
+      toast.error(distanceWarning, { autoClose: 6000 });
+      return;
+    }
     setLoading(true);
     let orderItems = [];
     // cartItems format: { key -> { itemId, quantity, selections, extraPrice } }
@@ -138,7 +205,17 @@ const PlaceOrder = () => {
               <div className='po-sum-row'><span>Delivery</span><span>{currency}{deliveryCharge}.00</span></div>
               <div className='po-sum-row po-sum-total'><span>Total</span><span>{currency}{(subtotal + deliveryCharge).toFixed(2)}</span></div>
             </div>
-            <button className='po-submit' type='submit' disabled={loading}>
+            {distanceWarning && (
+              <div style={{
+                padding: '12px 16px', borderRadius: 10, marginBottom: 12,
+                background: '#fef2f2', border: '1.5px solid #fecaca',
+                fontSize: 13, fontWeight: 700, color: '#dc2626', lineHeight: 1.5,
+              }}>
+                {distanceWarning}
+              </div>
+            )}
+            <button className='po-submit' type='submit' disabled={loading || !!distanceWarning}
+              style={distanceWarning ? { opacity: 0.5, cursor: 'not-allowed' } : {}}>
               {loading ? 'Placing Order...' : payment === 'cod' ? 'Place Order' : 'Proceed to Payment'}
             </button>
           </div>

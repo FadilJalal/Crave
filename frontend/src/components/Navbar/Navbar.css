@@ -246,3 +246,15 @@
   .nb-cart-label { display: none; }
   .nb-cart-btn { padding: 9px 12px; }
 }
+/* Location tab switcher */
+.nb-loc-tabs { display:flex; border-bottom:1px solid #f3f4f6; }
+.nb-loc-tab { flex:1; padding:10px; font-size:12px; font-weight:700; font-family:inherit; border:none; background:none; cursor:pointer; color:#6b7280; transition:all 0.15s; }
+.nb-loc-tab:hover { color:#ff4e2a; background:#fff5f3; }
+.nb-loc-tab-active { color:#ff4e2a; border-bottom:2px solid #ff4e2a; background:#fff5f3; }
+
+/* Map picker */
+.nb-loc-map-wrap { display:flex; flex-direction:column; }
+.nb-loc-map-hint { padding:8px 14px; font-size:11px; color:#6b7280; font-weight:600; }
+.nb-loc-map { height:280px; width:100%; }
+.nb-loc-map-confirm { margin:10px 14px 14px; padding:10px; border-radius:10px; border:none; background:linear-gradient(135deg,#ff4e2a,#ff6a3d); color:white; font-size:13px; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 4px 14px rgba(255,78,42,0.3); transition:opacity 0.2s; }
+.nb-loc-map-confirm:hover { opacity:0.9; }

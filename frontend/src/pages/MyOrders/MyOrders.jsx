@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useRef } from 'react';
 import { toast } from 'react-toastify';
 import './MyOrders.css';
 import axios from 'axios';
@@ -8,7 +8,6 @@ import OrderInsights from '../../components/OrderInsights/OrderInsights';
 
 const STATUS_STEPS = ['Order Placed', 'Food Processing', 'Out for Delivery', 'Delivered'];
 
-// Normalise to lowercase to handle "Out for delivery" vs "Out for Delivery" etc.
 const statusIndex = (status) => {
   const s = (status || '').toLowerCase().trim();
   if (s === 'food processing')  return 1;
@@ -17,32 +16,53 @@ const statusIndex = (status) => {
   return 0;
 };
 
+const POLL_INTERVAL = 10000; // 10 seconds
+
 const MyOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const { url, token, currency } = useContext(StoreContext);
   const navigate = useNavigate();
-
   const [fetchError, setFetchError] = useState(false);
+  const pollRef = useRef(null);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setFetchError(false);
       const res = await axios.post(url + '/api/order/userorders', {}, { headers: { token } });
       if (res.data.success) {
         setOrders(res.data.data || []);
       } else {
         setFetchError(true);
-        toast.error(res.data.message || 'Failed to load orders');
+        if (!silent) toast.error(res.data.message || 'Failed to load orders');
       }
     } catch (err) {
       setFetchError(true);
-      toast.error(err?.response?.data?.message || 'Could not connect to server. Please try again.');
-    } finally { setLoading(false); }
+      if (!silent) toast.error(err?.response?.data?.message || 'Could not connect to server. Please try again.');
+    } finally {
+      if (!silent) setLoading(false);
+    }
   };
 
-  useEffect(() => { if (token) fetchOrders(); }, [token]);
+  useEffect(() => {
+    if (!token) return;
+    fetchOrders();
+
+    // Poll every 10s — stop if all orders are delivered
+    pollRef.current = setInterval(() => {
+      setOrders(prev => {
+        const hasActive = prev.some(o => (o.status || '').toLowerCase().trim() !== 'delivered');
+        if (!hasActive && prev.length > 0) {
+          clearInterval(pollRef.current);
+        }
+        return prev;
+      });
+      fetchOrders(true);
+    }, POLL_INTERVAL);
+
+    return () => clearInterval(pollRef.current);
+  }, [token]);
 
   if (loading) return (
     <div className='mo-page'>

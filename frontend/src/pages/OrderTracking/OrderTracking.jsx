@@ -20,7 +20,7 @@ const stepIndex = (status) => {
   return 0;
 };
 
-const POLL_INTERVAL = 15000;
+const POLL_INTERVAL = 5000; // 5 seconds
 
 const OrderTracking = () => {
   const { orderId } = useParams();
@@ -111,106 +111,115 @@ const OrderTracking = () => {
         My Orders
       </button>
 
-      {/* Hero */}
-      <div className={`ot-hero ${isDelivered ? 'ot-hero-done' : ''} ${pulsing ? 'ot-pulse' : ''}`}>
-        <div className="ot-hero-icon">{currentStep.icon}</div>
-        <div className="ot-hero-text">
-          <h1 className="ot-hero-title">{currentStep.label}</h1>
-          <p className="ot-hero-desc">{currentStep.desc}</p>
-          {currentStep.eta && !isDelivered && (
-            <span className="ot-eta">⏱ Est. {currentStep.eta}</span>
-          )}
-        </div>
-        <div className="ot-order-id-badge">#{String(order._id).slice(-6).toUpperCase()}</div>
-      </div>
+      {/* Main layout: left info + right map */}
+      <div className="ot-main">
 
-      {/* Stepper */}
-      <div className="ot-stepper">
-        {STEPS.map((s, idx) => {
-          const done    = idx <= step;
-          const active  = idx === step && !isDelivered;
-          const lineActive = idx < step;
-          return (
-            <React.Fragment key={s.key}>
-              <div className="ot-step">
-                <div className={`ot-dot ${done ? 'ot-dot-done' : ''} ${active ? 'ot-dot-current' : ''}`}>
-                  {done ? (active ? s.icon : '✓') : <span className="ot-dot-num">{idx + 1}</span>}
-                </div>
-                <p className={`ot-step-label ${done ? 'ot-label-done' : ''}`}>{s.label}</p>
-              </div>
-              {idx < STEPS.length - 1 && (
-                <div className={`ot-line ${lineActive ? 'ot-line-active' : ''}`}>
-                  {lineActive && <div className="ot-line-fill" />}
-                </div>
+        {/* LEFT: status + stepper + order details */}
+        <div className="ot-left">
+
+          {/* Hero */}
+          <div className={`ot-hero ${isDelivered ? 'ot-hero-done' : ''} ${pulsing ? 'ot-pulse' : ''}`}>
+            <div className="ot-hero-icon">{currentStep.icon}</div>
+            <div className="ot-hero-text">
+              <h1 className="ot-hero-title">{currentStep.label}</h1>
+              <p className="ot-hero-desc">{currentStep.desc}</p>
+              {currentStep.eta && !isDelivered && (
+                <span className="ot-eta">⏱ Est. {currentStep.eta}</span>
               )}
-            </React.Fragment>
-          );
-        })}
-      </div>
-
-      {/* Map — FIXED: was <DeliveryMap>, now <LiveDeliveryMap> */}
-      <div className="ot-map-section">
-        <h3 className="ot-section-label">📍 Live Delivery Map</h3>
-        <LiveDeliveryMap order={order} />
-      </div>
-
-      {/* Cards */}
-      <div className="ot-cards">
-        <div className="ot-card">
-          <h3 className="ot-card-title">🛍 Order Summary</h3>
-          <ul className="ot-items">
-            {(order.items || []).map((item, i) => (
-              <li key={i} className="ot-item">
-                <span className="ot-item-name">{item.name}</span>
-                <span className="ot-item-qty">×{item.quantity}</span>
-                <span className="ot-item-price">{currency}{(item.price * item.quantity).toFixed(2)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="ot-divider" />
-          <div className="ot-total-row"><span>Delivery fee</span><span>{currency}{(order.deliveryFee || 0).toFixed(2)}</span></div>
-          <div className="ot-total-row ot-total-bold"><span>Total</span><span>{currency}{order.amount?.toFixed(2)}</span></div>
-          <div className="ot-total-row">
-            <span>Payment</span>
-            <span className={`ot-pay-badge ${order.payment ? 'ot-paid' : 'ot-unpaid'}`}>
-              {order.payment ? '✓ Paid' : 'Cash on Delivery'}
-            </span>
+            </div>
+            <div className="ot-order-id-badge">#{String(order._id).slice(-6).toUpperCase()}</div>
           </div>
+
+          {/* Stepper */}
+          <div className="ot-stepper">
+            {STEPS.map((s, idx) => {
+              const done    = idx <= step;
+              const active  = idx === step && !isDelivered;
+              const lineActive = idx < step;
+              return (
+                <React.Fragment key={s.key}>
+                  <div className="ot-step">
+                    <div className={`ot-dot ${done ? 'ot-dot-done' : ''} ${active ? 'ot-dot-current' : ''}`}>
+                      {done ? (active ? s.icon : '✓') : <span className="ot-dot-num">{idx + 1}</span>}
+                    </div>
+                    <p className={`ot-step-label ${done ? 'ot-label-done' : ''}`}>{s.label}</p>
+                  </div>
+                  {idx < STEPS.length - 1 && (
+                    <div className={`ot-line ${lineActive ? 'ot-line-active' : ''}`}>
+                      {lineActive && <div className="ot-line-fill" />}
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          {/* Order summary */}
+          <div className="ot-card">
+            <h3 className="ot-card-title">🛍 Order Summary</h3>
+            <ul className="ot-items">
+              {(order.items || []).map((item, i) => (
+                <li key={i} className="ot-item">
+                  <span className="ot-item-name">{item.name}</span>
+                  <span className="ot-item-qty">×{item.quantity}</span>
+                  <span className="ot-item-price">{currency}{(item.price * item.quantity).toFixed(2)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="ot-divider" />
+            <div className="ot-total-row"><span>Delivery fee</span><span>{currency}{(order.deliveryFee || 0).toFixed(2)}</span></div>
+            <div className="ot-total-row ot-total-bold"><span>Total</span><span>{currency}{order.amount?.toFixed(2)}</span></div>
+            <div className="ot-total-row">
+              <span>Payment</span>
+              <span className={`ot-pay-badge ${order.payment ? 'ot-paid' : 'ot-unpaid'}`}>
+                {order.payment ? '✓ Paid' : 'Cash on Delivery'}
+              </span>
+            </div>
+          </div>
+
+          {/* Delivery details */}
+          <div className="ot-card">
+            <h3 className="ot-card-title">📍 Delivery Details</h3>
+            <div className="ot-info-row"><span className="ot-info-label">Name</span><span className="ot-info-value">{order.address?.firstName} {order.address?.lastName}</span></div>
+            <div className="ot-info-row"><span className="ot-info-label">Street</span><span className="ot-info-value">{order.address?.street}</span></div>
+            <div className="ot-info-row">
+              <span className="ot-info-label">City</span>
+              <span className="ot-info-value">{order.address?.city}{order.address?.state ? `, ${order.address.state}` : ''}</span>
+            </div>
+            {order.address?.phone && (
+              <div className="ot-info-row"><span className="ot-info-label">Phone</span><span className="ot-info-value">{order.address.phone}</span></div>
+            )}
+            <div className="ot-divider" />
+            <div className="ot-info-row"><span className="ot-info-label">Placed</span><span className="ot-info-value">{formatDate(order.date || order.createdAt)}</span></div>
+            {order.restaurantId?.name && (
+              <div className="ot-info-row"><span className="ot-info-label">Restaurant</span><span className="ot-info-value">{order.restaurantId.name}</span></div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="ot-footer">
+            {lastUpdated && (
+              <p className="ot-last-updated">
+                Last updated {lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                {!isDelivered && <span className="ot-live-dot" />}
+              </p>
+            )}
+            <button className="ot-btn-outline" onClick={() => fetchOrder(false)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+              </svg>
+              Refresh
+            </button>
+          </div>
+
         </div>
 
-        <div className="ot-card">
-          <h3 className="ot-card-title">📍 Delivery Details</h3>
-          <div className="ot-info-row"><span className="ot-info-label">Name</span><span className="ot-info-value">{order.address?.firstName} {order.address?.lastName}</span></div>
-          <div className="ot-info-row"><span className="ot-info-label">Street</span><span className="ot-info-value">{order.address?.street}</span></div>
-          <div className="ot-info-row">
-            <span className="ot-info-label">City</span>
-            <span className="ot-info-value">{order.address?.city}{order.address?.state ? `, ${order.address.state}` : ''}</span>
-          </div>
-          {order.address?.phone && (
-            <div className="ot-info-row"><span className="ot-info-label">Phone</span><span className="ot-info-value">{order.address.phone}</span></div>
-          )}
-          <div className="ot-divider" />
-          <div className="ot-info-row"><span className="ot-info-label">Placed</span><span className="ot-info-value">{formatDate(order.date || order.createdAt)}</span></div>
-          {order.restaurantId?.name && (
-            <div className="ot-info-row"><span className="ot-info-label">Restaurant</span><span className="ot-info-value">{order.restaurantId.name}</span></div>
-          )}
+        {/* RIGHT: map — sticky so it stays visible while scrolling left */}
+        <div className="ot-right">
+          <h3 className="ot-section-label">📍 Live Delivery Map</h3>
+          <LiveDeliveryMap key={order.status} order={order} />
         </div>
-      </div>
 
-      {/* Footer */}
-      <div className="ot-footer">
-        {lastUpdated && (
-          <p className="ot-last-updated">
-            Last updated {lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-            {!isDelivered && <span className="ot-live-dot" />}
-          </p>
-        )}
-        <button className="ot-btn-outline" onClick={() => fetchOrder(false)}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
-          </svg>
-          Refresh
-        </button>
       </div>
 
     </div>

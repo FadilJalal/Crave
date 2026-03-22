@@ -67,6 +67,14 @@ const Restaurants = () => {
 
   const fmtDist = (d) => d === null ? null : d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(1)} km`;
 
+  // Check if user is outside the restaurant's delivery radius
+  const isOutOfRange = (r) => {
+    if (!userLocation || r.distance === null) return false;
+    const radius = r.deliveryRadius ?? 10;
+    if (radius === 0) return false; // unlimited
+    return r.distance > radius;
+  };
+
   return (
     <div className='rp-page'>
       <div className='rp-header'>
@@ -109,8 +117,15 @@ const Restaurants = () => {
           {filtered.map(r => {
             const open = isRestaurantOpen(r);
             const dist = fmtDist(r.distance);
+            const outOfRange = isOutOfRange(r);
+            const radius = r.deliveryRadius ?? 10;
             return (
-              <div key={r._id} className='rp-card' onClick={() => navigate(`/restaurants/${r._id}`)}>
+              <div
+                key={r._id}
+                className={`rp-card ${outOfRange ? 'rp-card-disabled' : ''}`}
+                onClick={() => !outOfRange && navigate(`/restaurants/${r._id}`)}
+                title={outOfRange ? `Delivery only within ${radius} km` : ''}
+              >
                 <div className='rp-card-img'>
                   {r.logo ? (
                     <img
@@ -131,6 +146,9 @@ const Restaurants = () => {
                   {dist && (
                     <span className='rp-distance'>📍 {dist}</span>
                   )}
+                  {outOfRange && (
+                    <span className='rp-out-of-range'>🚫 Too Far</span>
+                  )}
                 </div>
                 <div className='rp-card-body'>
                   <h3 className='rp-card-name'>{r.name}</h3>
@@ -143,11 +161,18 @@ const Restaurants = () => {
                   <div className='rp-card-meta'>
                     <span>🕐 {r.avgPrepTime} min</span>
                     <span>⭐ 4.5</span>
-                    {dist && <span style={{ color: '#ff4e2a', fontWeight: 700 }}>📍 {dist}</span>}
+                    {dist && <span style={{ color: outOfRange ? '#ef4444' : '#ff4e2a', fontWeight: 700 }}>📍 {dist}</span>}
                   </div>
+                  {outOfRange && (
+                    <p className='rp-range-warning'>
+                      Delivers only within {radius} km · You are {r.distance?.toFixed(1)} km away
+                    </p>
+                  )}
                 </div>
                 <div className='rp-card-footer'>
-                  <button className='rp-view-btn'>View Menu →</button>
+                  <button className={`rp-view-btn ${outOfRange ? 'rp-view-btn-disabled' : ''}`} disabled={outOfRange}>
+                    {outOfRange ? `Out of delivery range` : 'View Menu →'}
+                  </button>
                 </div>
               </div>
             );

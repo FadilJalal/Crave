@@ -179,6 +179,10 @@ const StoreContextProvider = (props) => {
       }
     }
     loadData();
+
+    // Refresh food list every 60s so menu changes appear without reload
+    const foodPoll = setInterval(() => fetchFoodList(), 60000);
+    return () => clearInterval(foodPoll);
   }, []);
 
   const contextValue = {
