@@ -12,6 +12,8 @@ import BulkUpload from "./Pages/BulkUpload";
 import Promos from "./Pages/Promos";
 import Subscription from "./Pages/Subscription";
 import EmailCampaign from "./Pages/EmailCampaign";
+import Customers from "./Pages/Customers";
+import Messages from "./Pages/Messages";
 
 export default function App() {
   return (
@@ -32,6 +34,8 @@ export default function App() {
       <Route path="/promos" element={<ProtectedRoute><Promos /></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
       <Route path="/email-campaign" element={<ProtectedRoute><EmailCampaign /></ProtectedRoute>} />
+      <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+      <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

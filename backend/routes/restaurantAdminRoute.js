@@ -4,6 +4,8 @@ import multer from "multer";
 import restaurantAuth from "../middleware/restaurantAuth.js";
 import foodModel from "../models/foodModel.js";
 import restaurantModel from "../models/restaurantModel.js";
+import userModel from "../models/userModel.js";
+import orderModel from "../models/orderModel.js";
 
 const router = express.Router();
 
@@ -165,6 +167,71 @@ router.post("/location", restaurantAuth, async (req, res) => {
   } catch (e) {
     console.error("Location update error:", e);
     res.status(500).json({ success: false, message: "Failed to update location" });
+  }
+});
+
+// ── GET /api/restaurantadmin/customers — all plans ────────────────────────
+router.get("/customers", restaurantAuth, async (req, res) => {
+  try {
+    const orders = await orderModel
+      .find({ restaurantId: req.restaurantId })
+      .select("userId")
+      .lean();
+
+    const uniqueUserIds = [...new Set(orders.map(o => String(o.userId)))];
+    const users = await userModel
+      .find({ _id: { $in: uniqueUserIds } })
+      .select("name email phone")
+      .lean();
+
+    res.json({ success: true, count: users.length, customers: users });
+  } catch (err) {
+    console.error("[customers list]", err);
+    res.json({ success: false, message: "Failed to load customers." });
+  }
+});
+
+// ── GET /api/restaurantadmin/customer/:userId ─────────────────────────────
+router.get("/customer/:userId", restaurantAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const restaurantId = req.restaurantId;
+
+    const [user, orders] = await Promise.all([
+      userModel.findById(userId).select("name email phone").lean(),
+      orderModel.find({ restaurantId, userId }).sort({ createdAt: -1 }).lean(),
+    ]);
+
+    if (!user) return res.json({ success: false, message: "Customer not found." });
+
+    const totalSpent    = orders.filter(o => o.status !== "Cancelled").reduce((s, o) => s + (o.amount || 0), 0);
+    const orderCount    = orders.filter(o => o.status !== "Cancelled").length;
+    const lastOrder     = orders[0] || null;
+    const lastAddress   = lastOrder?.address || {};
+
+    res.json({
+      success: true,
+      data: {
+        name:        user.name,
+        email:       user.email,
+        phone:       user.phone || lastAddress.phone || "",
+        address: {
+          street:    lastAddress.street    || "",
+          building:  lastAddress.building  || "",
+          apartment: lastAddress.apartment || "",
+          area:      lastAddress.area      || "",
+          city:      lastAddress.city      || "",
+          country:   lastAddress.country   || "",
+        },
+        orderCount,
+        totalSpent,
+        firstOrderDate: orders.length > 0 ? orders[orders.length - 1].createdAt : null,
+        lastOrderDate:  lastOrder?.createdAt || null,
+      },
+    });
+  } catch (err) {
+    console.error("[customer profile]", err);
+    res.json({ success: false, message: "Failed to load customer profile." });
   }
 });
 

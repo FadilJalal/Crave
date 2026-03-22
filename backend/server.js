@@ -20,6 +20,8 @@ import promoRouter from "./routes/promoRoute.js";
 import subRouter from "./routes/subscriptionRoute.js";
 import emailCampaignRouter from "./routes/emailCampaignRoute.js";
 import { startCampaignScheduler } from "./utils/campaignScheduler.js";
+import broadcastRouter from "./routes/broadcastRoute.js";
+import messageRouter from "./routes/messageRoute.js";
 
 // ── Process-level crash guards ───────────────────────────────────────────────
 process.on("uncaughtException", (err) => {
@@ -116,6 +118,8 @@ app.use("/api/geocode",         geocodeRouter);
 app.use("/api/promo",           promoRouter);
 app.use("/api/subscription",     subRouter);
 app.use("/api/email-campaign",   emailCampaignRouter);
+app.use("/api/broadcast",        broadcastRouter);
+app.use("/api/messages",         messageRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {

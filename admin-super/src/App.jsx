@@ -8,6 +8,8 @@ import Orders from "./pages/Orders";
 import FoodList from "./pages/FoodList";
 import FoodAdd from "./pages/FoodAdd";
 import Subscriptions from "./pages/Subscriptions";
+import Broadcast from "./pages/Broadcast";
+import Messages from "./pages/Messages";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 
@@ -25,6 +27,8 @@ export default function App() {
       <Route path="/food/list" element={<ProtectedRoute><Layout><FoodList /></Layout></ProtectedRoute>} />
       <Route path="/food/add" element={<ProtectedRoute><Layout><FoodAdd /></Layout></ProtectedRoute>} />
       <Route path="/subscriptions" element={<ProtectedRoute><Layout><Subscriptions /></Layout></ProtectedRoute>} />
+      <Route path="/broadcast" element={<ProtectedRoute><Layout><Broadcast /></Layout></ProtectedRoute>} />
+      <Route path="/messages" element={<ProtectedRoute><Layout><Messages /></Layout></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

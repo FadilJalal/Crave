@@ -229,9 +229,6 @@ const MyOrders = () => {
                         {cancelling[order._id] ? 'Cancelling…' : `✕ Cancel (${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')})`}
                       </button>
                     )}
-                    {order.status === 'Food Processing' && !isCancellable && (
-                      <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>Cancellation window passed</span>
-                    )}
                   </div>
                   {isDelivered && (
                     <div style={{ padding: '14px 16px', borderTop: '1px solid var(--border)', marginTop: 12, background: 'var(--bg)', borderRadius: '0 0 16px 16px' }}>

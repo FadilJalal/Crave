@@ -1,114 +1,43 @@
-import { NavLink, useNavigate } from "react-router-dom";
-import { BASE_URL } from "../utils/api";
-import { clearRestaurantSession, redirectToFrontend } from "../utils/session";
+import { Routes, Route, Navigate } from "react-router-dom";
+import ProtectedRoute from "./components/ProtectedRoute";
+import ResetPassword from "./Pages/ResetPassword";
+import Dashboard from "./Pages/Dashboard";
+import Menu from "./Pages/Menu";
+import AddFood from "./Pages/AddFood";
+import EditFood from "./Pages/EditFood";
+import Orders from "./Pages/Orders";
+import Settings from "./Pages/Settings";
+import Bridge from "./Pages/Bridge";
+import BulkUpload from "./Pages/BulkUpload";
+import Promos from "./Pages/Promos";
+import Subscription from "./Pages/Subscription";
+import EmailCampaign from "./Pages/EmailCampaign";
+import Customers from "./Pages/Customers";
+import Messages from "./Pages/Messages";
 
-export default function RestaurantLayout({ children }) {
-  const navigate = useNavigate();
-
-  let restaurantInfo = null;
-  try {
-    restaurantInfo = JSON.parse(localStorage.getItem("restaurantInfo"));
-  } catch {
-    restaurantInfo = null;
-  }
-
-  const restaurantLogo =
-    restaurantInfo?.logo ? `${BASE_URL}/images/${restaurantInfo.logo}` : "";
-
-  const restaurantName = restaurantInfo?.name || "Restaurant";
-
-  const logout = () => {
-    clearRestaurantSession();
-    redirectToFrontend();
-  };
-
+export default function App() {
   return (
-    <div className="ra-shell">
-      <aside className="ra-sidebar">
-        <div className="brand">
-          {restaurantLogo ? (
-            <img
-              src={restaurantLogo}
-              alt="Restaurant Logo"
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 10,
-                objectFit: "cover",
-                border: "1px solid rgba(0,0,0,0.08)",
-                flexShrink: 0,
-              }}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-          ) : (
-            <div
-              className="brand-badge"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                fontWeight: 900,
-                fontSize: 18,
-                flexShrink: 0,
-              }}
-            >
-              {restaurantName.charAt(0).toUpperCase()}
-            </div>
-          )}
+    <Routes>
+      {/* ✅ MUST be public */}
+      <Route path="/bridge" element={<Bridge />} />
 
-          <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>
-              {restaurantName}
-            </h1>
-            <p style={{ margin: 0, fontSize: 12, opacity: 0.6, marginTop: 2 }}>
-              Restaurant Control Panel
-            </p>
-          </div>
-        </div>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
-        <nav className="nav">
-          <NavLink to="/dashboard" className={({ isActive }) => (isActive ? "active" : "")}>
-            📊 Dashboard
-          </NavLink>
-          <NavLink to="/menu" className={({ isActive }) => (isActive ? "active" : "")}>
-            🍽️ Menu
-          </NavLink>
-          <NavLink to="/add-food" className={({ isActive }) => (isActive ? "active" : "")}>
-            ➕ Add Food
-          </NavLink>
-          <NavLink to="/bulk-upload" className={({ isActive }) => (isActive ? "active" : "")}>
-            📦 Bulk Upload
-          </NavLink>
-          <NavLink to="/orders" className={({ isActive }) => (isActive ? "active" : "")}>
-            🧾 Orders
-          </NavLink>
-          <NavLink to="/promos" className={({ isActive }) => (isActive ? "active" : "")}>
-            🏷️ Promo Codes
-          </NavLink>
-          <NavLink to="/email-campaign" className={({ isActive }) => (isActive ? "active" : "")}>
-            📧 Email Campaigns
-          </NavLink>
-          <NavLink to="/settings" className={({ isActive }) => (isActive ? "active" : "")}>
-            ⚙️ Settings
-          </NavLink>
-          <NavLink to="/subscription" className={({ isActive }) => (isActive ? "active" : "")}>
-            💳 Subscription
-          </NavLink>
-        </nav>
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/menu" element={<ProtectedRoute><Menu /></ProtectedRoute>} />
+      <Route path="/add-food" element={<ProtectedRoute><AddFood /></ProtectedRoute>} />
+      <Route path="/bulk-upload" element={<ProtectedRoute><BulkUpload /></ProtectedRoute>} />
+      <Route path="/edit-food/:id" element={<ProtectedRoute><EditFood /></ProtectedRoute>} />
+      <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/promos" element={<ProtectedRoute><Promos /></ProtectedRoute>} />
+      <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
+      <Route path="/email-campaign" element={<ProtectedRoute><EmailCampaign /></ProtectedRoute>} />
+      <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+      <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
 
-        <button className="btn btn-outline logout" onClick={logout}>
-          Logout
-        </button>
-      </aside>
-
-      <main className="ra-main">
-<div className="container" style={{ padding: 0 }}>
-          {children}
-        </div>
-      </main>
-    </div>
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 }

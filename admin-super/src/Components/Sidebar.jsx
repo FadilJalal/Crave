@@ -36,6 +36,12 @@ export default function Sidebar() {
           <NavLink to="/subscriptions" end>
             💳 Subscriptions
           </NavLink>
+          <NavLink to="/broadcast" end>
+            📣 Broadcast
+          </NavLink>
+          <NavLink to="/messages" end>
+            💬 Messages
+          </NavLink>
         </nav>
       </div>
 
