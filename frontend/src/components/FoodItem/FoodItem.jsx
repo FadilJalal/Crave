@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import './FoodItem.css';
 import { StoreContext } from '../../Context/StoreContext';
 
-const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true }) => {
+const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, avgRating = 0, ratingCount = 0 }) => {
   const { cartItems, addToCart, removeFromCart, getItemCount, url, currency } = useContext(StoreContext);
 
   const count = getItemCount(id);
@@ -152,7 +152,8 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
               <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
               </svg>
-              <span>4.5</span>
+              <span>{ratingCount > 0 ? avgRating.toFixed(1) : 'New'}</span>
+              {ratingCount > 0 && <span style={{fontSize:10, opacity:0.6}}>({ratingCount})</span>}
             </div>
           </div>
           <p className='fi-desc'>{description}</p>

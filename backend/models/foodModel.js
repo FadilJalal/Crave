@@ -14,6 +14,10 @@ const foodSchema = new mongoose.Schema({
         required: true
     },
 
+    avgRating: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
+    ratings: [{ userId: String, score: Number }],  // one rating per user
+
     // ✅ CUSTOMIZATIONS FIELD
     customizations: [
         {

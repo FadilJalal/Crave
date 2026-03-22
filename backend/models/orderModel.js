@@ -62,6 +62,9 @@ const orderSchema = new mongoose.Schema(
       default: false,
     },
 
+    promoCode: { type: String, default: null },
+    discount: { type: Number, default: 0 },
+
     paymentMethod: {
       type: String,
       enum: ["cod", "stripe", "split"],

@@ -175,6 +175,8 @@ const RestaurantMenu = () => {
                 image={item.image}
                 restaurantId={item.restaurantId}
                 customizations={item.customizations || []}
+                avgRating={item.avgRating || 0}
+                ratingCount={item.ratingCount || 0}
               />
             ))}
           </div>

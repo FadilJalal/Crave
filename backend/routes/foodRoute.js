@@ -2,6 +2,7 @@
 import express from "express";
 import multer from "multer";
 import adminAuth from "../middleware/adminAuth.js";
+import authMiddleware from "../middleware/auth.js";
 import restaurantAuth from "../middleware/restaurantAuth.js";
 import { listFood } from "../controllers/foodController.js";
 import foodModel from "../models/foodModel.js";
@@ -141,6 +142,43 @@ foodRouter.post("/edit", (req, res, next) => {
   } catch (error) {
     console.error(error);
     res.json({ success: false, message: "Error updating food" });
+  }
+});
+
+// ── Customer: rate a food item ─────────────────────────────────────────────
+foodRouter.post("/rate", authMiddleware, async (req, res) => {
+  try {
+    const userId = String(req.body.userId);
+    const { foodId, score } = req.body;
+
+    if (!foodId || !score || score < 1 || score > 5)
+      return res.json({ success: false, message: "Score must be between 1 and 5." });
+
+    const food = await foodModel.findById(foodId);
+    if (!food) return res.json({ success: false, message: "Food not found." });
+
+    // Update or insert rating — use $set to force Mongoose to detect the change
+    const existingIndex = food.ratings.findIndex(r => r.userId === userId);
+    if (existingIndex >= 0) {
+      food.ratings[existingIndex].score = Number(score);
+    } else {
+      food.ratings.push({ userId, score: Number(score) });
+    }
+
+    // Mark modified so Mongoose saves the nested array change
+    food.markModified("ratings");
+
+    // Recalculate average
+    const total = food.ratings.reduce((sum, r) => sum + r.score, 0);
+    food.avgRating = Math.round((total / food.ratings.length) * 10) / 10;
+    food.ratingCount = food.ratings.length;
+    await food.save();
+    console.log("[food/rate] saved rating for food", foodId, "user", userId, "score", score, "avg", food.avgRating);
+
+    res.json({ success: true, avgRating: food.avgRating, ratingCount: food.ratingCount });
+  } catch (err) {
+    console.error("[food/rate]", err);
+    res.json({ success: false, message: "Error submitting rating." });
   }
 });
 

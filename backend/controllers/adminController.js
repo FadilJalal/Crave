@@ -83,15 +83,24 @@ export const loginRestaurant = async (req, res) => {
 /* ================= DASHBOARD STATS ================= */
 export const getAdminStats = async (req, res) => {
   try {
-    const [totalRestaurants, totalOrders, totalUsers] = await Promise.all([
+    const now = new Date();
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+
+    const [totalRestaurants, totalOrders, totalUsers, todayOrders, allOrders, activeRestaurants] = await Promise.all([
       restaurantModel.countDocuments({}),
       orderModel.countDocuments({}),
       userModel.countDocuments({}),
+      orderModel.countDocuments({ createdAt: { $gte: todayStart } }),
+      orderModel.find({}, "amount"),
+      restaurantModel.find({ "subscription.status": "active" }, "subscription.price"),
     ]);
+
+    const totalRevenue = allOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+    const mrr = activeRestaurants.reduce((sum, r) => sum + (r.subscription?.price || 0), 0);
 
     return res.json({
       success: true,
-      data: { totalRestaurants, totalOrders, totalUsers },
+      data: { totalRestaurants, totalOrders, totalUsers, todayOrders, totalRevenue: Math.round(totalRevenue), mrr },
     });
   } catch (err) {
     console.log(err);

@@ -15,6 +15,15 @@ const restaurantSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     deliveryRadius: { type: Number, default: 10 }, // km — 0 means unlimited
 
+    subscription: {
+      plan:      { type: String, enum: ["none", "standard"], default: "none" },
+      status:    { type: String, enum: ["active", "expired", "trial", "cancelled"], default: "trial" },
+      startDate: { type: Date, default: null },
+      expiresAt: { type: Date, default: null },
+      price:     { type: Number, default: 0 },   // AED per month
+      notes:     { type: String, default: "" },
+    },
+
     // Opening hours per day: { open: "09:00", close: "22:00", closed: false }
     openingHours: {
       type: Object,

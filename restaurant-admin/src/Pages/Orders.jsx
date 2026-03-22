@@ -468,7 +468,8 @@ export default function Orders() {
                         </div>
                         <div style={{ marginTop: 12, padding: "10px 12px", background: "white", borderRadius: 12, border: "1px solid var(--border)" }}>
                           {order.deliveryFee > 0 && <>
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginBottom: 6 }}><span>Subtotal</span><span>AED {subtotal.toFixed(2)}</span></div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginBottom: 6 }}><span>Subtotal</span><span>AED {(subtotal + (order.discount || 0)).toFixed(2)}</span></div>
+                            {order.discount > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#16a34a", fontWeight: 700, marginBottom: 6 }}><span>Discount {order.promoCode ? `(${order.promoCode})` : ""}</span><span>- AED {order.discount.toFixed(2)}</span></div>}
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginBottom: 6 }}><span>Delivery Fee</span><span>AED {order.deliveryFee.toFixed(2)}</span></div>
                           </>}
                           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, fontSize: 15, borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 4 }}><span>Total</span><span>AED {order.amount}</span></div>

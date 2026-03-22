@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import './PlaceOrder.css';
 import { StoreContext } from '../../Context/StoreContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import SplitPayment from '../../components/SplitPayment/SplitPayment.jsx';
@@ -41,7 +41,11 @@ const PlaceOrder = () => {
   }, []);
   const { getTotalCartAmount, token, food_list, foodListLoading, cartItems, url, setCartItems, currency, deliveryCharge } = useContext(StoreContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  const promo = location.state?.promo || null;
+  const discount = promo ? promo.discount : 0;
   const subtotal = getTotalCartAmount();
+  const finalTotal = Math.max(0, subtotal - discount + deliveryCharge);
 
   const onChange = (e) => setData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -115,17 +119,23 @@ const PlaceOrder = () => {
     if (!restaurantId) { toast.error('Restaurant info missing. Refresh and try again.'); setLoading(false); return; }
     if (orderItems.some(it => getResId(it) !== restaurantId)) { toast.error('You can only order from one restaurant at a time.'); setLoading(false); return; }
 
-    const orderData = { address: data, items: orderItems, amount: subtotal + deliveryCharge, deliveryFee: deliveryCharge, restaurantId };
+    const orderData = { address: data, items: orderItems, amount: finalTotal, deliveryFee: deliveryCharge, restaurantId, promoCode: promo?.code || null, discount: discount || 0 };
 
     try {
       if (payment === 'stripe') {
         const res = await axios.post(url + '/api/order/place', orderData, { headers: { token } });
-        if (res.data.success) window.location.replace(res.data.session_url);
+        if (res.data.success) {
+          if (promo?.code) { try { await axios.post(url + '/api/promo/use', { code: promo.code, restaurantId: promo.restaurantId }, { headers: { token } }); } catch {} }
+          window.location.replace(res.data.session_url);
+        }
         else if (res.data.outOfRange) toast.error('🚫 ' + res.data.message, { autoClose: 6000 });
         else toast.error(res.data.message || 'Something went wrong');
       } else {
         const res = await axios.post(url + '/api/order/placecod', orderData, { headers: { token } });
-        if (res.data.success) { toast.success('Order placed successfully!'); setCartItems({}); navigate('/myorders'); }
+        if (res.data.success) {
+          if (promo?.code) { try { await axios.post(url + '/api/promo/use', { code: promo.code, restaurantId: promo.restaurantId }, { headers: { token } }); } catch {} }
+          toast.success('Order placed successfully!'); setCartItems({}); navigate('/myorders');
+        }
         else if (res.data.outOfRange) toast.error('🚫 ' + res.data.message, { autoClose: 6000 });
         else toast.error(res.data.message || 'Something went wrong');
       }
@@ -215,8 +225,9 @@ const PlaceOrder = () => {
             <h3 className='po-card-title'>Order Summary</h3>
             <div className='po-sum-rows'>
               <div className='po-sum-row'><span>Subtotal</span><span>{currency}{subtotal.toFixed(2)}</span></div>
+              {discount > 0 && <div className='po-sum-row' style={{ color: '#16a34a', fontWeight: 700 }}><span>Discount ({promo.code})</span><span>- {currency}{discount.toFixed(2)}</span></div>}
               <div className='po-sum-row'><span>Delivery</span><span>{currency}{deliveryCharge}.00</span></div>
-              <div className='po-sum-row po-sum-total'><span>Total</span><span>{currency}{(subtotal + deliveryCharge).toFixed(2)}</span></div>
+              <div className='po-sum-row po-sum-total'><span>Total</span><span>{currency}{finalTotal.toFixed(2)}</span></div>
             </div>
             {distanceWarning && (
               <div style={{

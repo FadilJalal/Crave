@@ -85,6 +85,9 @@ export default function RestaurantLayout({ children }) {
           <NavLink to="/orders" className={({ isActive }) => (isActive ? "active" : "")}>
             🧾 Orders
           </NavLink>
+          <NavLink to="/promos" className={({ isActive }) => (isActive ? "active" : "")}>
+            🏷️ Promo Codes
+          </NavLink>
           <NavLink to="/settings" className={({ isActive }) => (isActive ? "active" : "")}>
             ⚙️ Settings
           </NavLink>

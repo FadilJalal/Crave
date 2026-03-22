@@ -33,6 +33,9 @@ export default function Sidebar() {
           <NavLink to="/restaurants/list" end>
             📍 Restaurant List
           </NavLink>
+          <NavLink to="/subscriptions" end>
+            💳 Subscriptions
+          </NavLink>
         </nav>
       </div>
 

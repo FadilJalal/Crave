@@ -9,6 +9,7 @@ import Orders from "./Pages/Orders";
 import Settings from "./Pages/Settings";
 import Bridge from "./Pages/Bridge";
 import BulkUpload from "./Pages/BulkUpload";
+import Promos from "./Pages/Promos";
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
       <Route path="/edit-food/:id" element={<ProtectedRoute><EditFood /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/promos" element={<ProtectedRoute><Promos /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

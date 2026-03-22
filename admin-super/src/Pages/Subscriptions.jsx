@@ -4,9 +4,7 @@ import { toast } from "react-toastify";
 import { BACKEND_URL } from "../config";
 
 const PLANS = {
-  basic:      { name: "Basic",      price: 199, color: "#3b82f6", bg: "#eff6ff" },
-  pro:        { name: "Pro",        price: 399, color: "#8b5cf6", bg: "#f5f3ff" },
-  enterprise: { name: "Enterprise", price: 799, color: "#f59e0b", bg: "#fffbeb" },
+  standard: { name: "Standard", price: 299, color: "#ff4e2a", bg: "#fff5f3" },
 };
 
 const STATUS_STYLE = {
@@ -21,7 +19,7 @@ export default function Subscriptions() {
   const [stats, setStats]       = useState({});
   const [loading, setLoading]   = useState(false);
   const [selected, setSelected] = useState(null);
-  const [form, setForm]         = useState({ plan: "basic", months: "1", notes: "" });
+  const [form, setForm]         = useState({ plan: "standard", months: "1", notes: "" });
   const [saving, setSaving]     = useState(false);
   const [filter, setFilter]     = useState("all");
 
@@ -97,14 +95,13 @@ export default function Subscriptions() {
         ))}
       </div>
 
-      {/* Plans reference */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 24 }}>
-        {Object.entries(PLANS).map(([key, p]) => (
-          <div key={key} style={{ background: p.bg, border: `1px solid ${p.color}33`, borderRadius: 12, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: p.color }}>{p.name}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: p.color }}>AED {p.price}/mo</span>
-          </div>
-        ))}
+      {/* Plan reference */}
+      <div style={{ background: "#fff5f3", border: "1px solid #ff4e2a33", borderRadius: 12, padding: "14px 20px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#ff4e2a" }}>Standard Plan</div>
+          <div style={{ fontSize: 12, color: "#ff4e2a99", marginTop: 2 }}>Full access — unlimited orders, menu items, promo codes & more</div>
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: "#ff4e2a" }}>AED 299<span style={{ fontSize: 13, fontWeight: 400 }}>/mo</span></div>
       </div>
 
       {/* Filter tabs */}
@@ -139,9 +136,9 @@ export default function Subscriptions() {
               </div>
 
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                {plan && (
-                  <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: plan.bg, color: plan.color }}>
-                    {plan.name} · AED {plan.price}/mo
+                {r.plan !== "none" && (
+                  <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: "#fff5f3", color: "#ff4e2a" }}>
+                    Standard · AED 299/mo
                   </span>
                 )}
                 <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: st.bg, color: st.color }}>
@@ -150,7 +147,7 @@ export default function Subscriptions() {
               </div>
 
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => { setSelected(r); setForm({ plan: r.plan !== "none" ? r.plan : "basic", months: "1", notes: r.notes || "" }); }} style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: "#111827", color: "white", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit" }}>
+                <button onClick={() => { setSelected(r); setForm({ plan: "standard", months: "1", notes: r.notes || "" }); }} style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: "#111827", color: "white", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit" }}>
                   Assign Plan
                 </button>
                 {r.status === "active" && (
@@ -172,13 +169,9 @@ export default function Subscriptions() {
             <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800 }}>Assign Plan</h2>
             <p style={{ margin: "0 0 20px", color: "var(--muted)", fontSize: 14 }}>{selected.name}</p>
             <form onSubmit={handleAssign}>
-              <div style={{ marginBottom: 14 }}>
-                <label style={lbl}>Plan</label>
-                <select style={inp} value={form.plan} onChange={e => setForm(p => ({ ...p, plan: e.target.value }))}>
-                  <option value="basic">Basic — AED 199/mo</option>
-                  <option value="pro">Pro — AED 399/mo</option>
-                  <option value="enterprise">Enterprise — AED 799/mo</option>
-                </select>
+              <div style={{ marginBottom: 14, background: "#fff5f3", borderRadius: 10, padding: "12px 14px", border: "1px solid #ff4e2a33" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#ff4e2a" }}>Standard Plan — AED 299/month</div>
+                <div style={{ fontSize: 12, color: "#ff4e2a99", marginTop: 2 }}>Full platform access, unlimited everything</div>
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label style={lbl}>Duration (months)</label>
@@ -193,7 +186,7 @@ export default function Subscriptions() {
               <div style={{ background: "#f9fafb", borderRadius: 10, padding: "12px 14px", marginBottom: 20, fontSize: 13 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "var(--muted)" }}>Plan</span><span style={{ fontWeight: 700 }}>{PLANS[form.plan]?.name}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "var(--muted)" }}>Duration</span><span style={{ fontWeight: 700 }}>{form.months} month(s)</span></div>
-                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e5e7eb", paddingTop: 8, marginTop: 4 }}><span style={{ fontWeight: 700 }}>Total</span><span style={{ fontWeight: 900, color: "#111827" }}>AED {(PLANS[form.plan]?.price || 0) * Number(form.months)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e5e7eb", paddingTop: 8, marginTop: 4 }}><span style={{ fontWeight: 700 }}>Total</span><span style={{ fontWeight: 900, color: "#111827" }}>AED {299 * Number(form.months)}</span></div>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button type="button" onClick={() => setSelected(null)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1px solid var(--border)", background: "white", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Cancel</button>

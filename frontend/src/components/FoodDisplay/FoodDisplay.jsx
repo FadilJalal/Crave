@@ -49,7 +49,8 @@ const FoodDisplay = ({ category }) => {
             <FoodItem key={item._id} id={item._id} name={item.name} description={item.description}
               price={item.price} image={item.image} restaurantId={item.restaurantId}
               customizations={item.customizations || []} dealTag={dealTags[item._id] || null}
-              restaurantOpen={isRestaurantOpen(item.restaurantId)} />
+              restaurantOpen={isRestaurantOpen(item.restaurantId)}
+              avgRating={item.avgRating || 0} ratingCount={item.ratingCount || 0} />
           ))}
         </div>
       )}

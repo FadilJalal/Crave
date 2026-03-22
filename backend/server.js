@@ -16,6 +16,8 @@ import restaurantAdminRoute from "./routes/restaurantAdminRoute.js";
 import paymentRouter from "./routes/paymentRoute.js";
 import chatRouter from "./routes/chatRoute.js";
 import geocodeRouter from "./routes/geocodeRoute.js";
+import promoRouter from "./routes/promoRoute.js";
+import subRouter from "./routes/subscriptionRoute.js";
 
 // ── Process-level crash guards ───────────────────────────────────────────────
 process.on("uncaughtException", (err) => {
@@ -107,6 +109,8 @@ app.use("/api/auth",            authRouter);
 app.use("/api/recommend",       recommendationRouter);
 app.use("/api/chat",            chatRouter);
 app.use("/api/geocode",         geocodeRouter);
+app.use("/api/promo",           promoRouter);
+app.use("/api/subscription",     subRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {

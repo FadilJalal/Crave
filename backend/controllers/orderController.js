@@ -195,6 +195,8 @@ const placeOrder = async (req, res) => {
       deliveryFee: deliveryCharge,
       address: req.body.address,
       paymentMethod: "stripe",
+      promoCode: req.body.promoCode || null,
+      discount: req.body.discount || 0,
     });
 
     await newOrder.save();
@@ -266,6 +268,8 @@ const placeOrderCod = async (req, res) => {
       address: req.body.address,
       payment: true,
       paymentMethod: "cod",
+      promoCode: req.body.promoCode || null,
+      discount: req.body.discount || 0,
     });
 
     await newOrder.save();
