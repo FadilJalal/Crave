@@ -10,6 +10,8 @@ import Settings from "./Pages/Settings";
 import Bridge from "./Pages/Bridge";
 import BulkUpload from "./Pages/BulkUpload";
 import Promos from "./Pages/Promos";
+import Subscription from "./Pages/Subscription";
+import EmailCampaign from "./Pages/EmailCampaign";
 
 export default function App() {
   return (
@@ -28,6 +30,8 @@ export default function App() {
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/promos" element={<ProtectedRoute><Promos /></ProtectedRoute>} />
+      <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
+      <Route path="/email-campaign" element={<ProtectedRoute><EmailCampaign /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

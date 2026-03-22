@@ -18,6 +18,7 @@ import chatRouter from "./routes/chatRoute.js";
 import geocodeRouter from "./routes/geocodeRoute.js";
 import promoRouter from "./routes/promoRoute.js";
 import subRouter from "./routes/subscriptionRoute.js";
+import emailCampaignRouter from "./routes/emailCampaignRoute.js";
 
 // ── Process-level crash guards ───────────────────────────────────────────────
 process.on("uncaughtException", (err) => {
@@ -53,6 +54,8 @@ app.use(cors({
 }));
 
 // ── Body parsing ─────────────────────────────────────────────────────────────
+// Stripe webhook needs raw body — must be registered BEFORE express.json()
+app.use("/api/subscription/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 
 // ── Request timeout — kills hanging requests after 30s ──────────────────────
@@ -111,6 +114,7 @@ app.use("/api/chat",            chatRouter);
 app.use("/api/geocode",         geocodeRouter);
 app.use("/api/promo",           promoRouter);
 app.use("/api/subscription",     subRouter);
+app.use("/api/email-campaign",   emailCampaignRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {

@@ -16,7 +16,7 @@ const restaurantSchema = new mongoose.Schema(
     deliveryRadius: { type: Number, default: 10 }, // km — 0 means unlimited
 
     subscription: {
-      plan:      { type: String, enum: ["none", "standard"], default: "none" },
+      plan:      { type: String, enum: ["none", "basic", "pro", "standard"], default: "none" },
       status:    { type: String, enum: ["active", "expired", "trial", "cancelled"], default: "trial" },
       startDate: { type: Date, default: null },
       expiresAt: { type: Date, default: null },
