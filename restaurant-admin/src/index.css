@@ -37,12 +37,12 @@ a { color: inherit; text-decoration: none; }
   position: sticky;
   top: 0;
   height: 100vh;
-  padding: 20px 16px;
+  padding: 20px 16px 0;
   background: #111827;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 @media (max-width: 980px) { .ra-sidebar { position: relative; height: auto; } }
 
@@ -72,7 +72,8 @@ a { color: inherit; text-decoration: none; }
 .brand p  { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
 
 /* Sidebar nav */
-.nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.nav { display: flex; flex-direction: column; gap: 4px; flex: 1; overflow-y: auto; padding-right: 2px; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
 .nav a {
   padding: 11px 14px;
   border-radius: 12px;

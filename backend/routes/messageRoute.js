@@ -184,4 +184,30 @@ router.get("/restaurant/unread", restaurantAuth, async (req, res) => {
   }
 });
 
+// ── Restaurant: toggle pin ────────────────────────────────────────────────
+router.post("/restaurant/pin/:messageId", restaurantAuth, async (req, res) => {
+  try {
+    const msg = await messageModel.findOne({ _id: req.params.messageId, restaurantId: req.restaurantId });
+    if (!msg) return res.json({ success: false, message: "Message not found." });
+    msg.pinned = !msg.pinned;
+    await msg.save();
+    res.json({ success: true, pinned: msg.pinned });
+  } catch {
+    res.json({ success: false, message: "Failed to update." });
+  }
+});
+
+// ── Restaurant: toggle favourite ─────────────────────────────────────────
+router.post("/restaurant/favourite/:messageId", restaurantAuth, async (req, res) => {
+  try {
+    const msg = await messageModel.findOne({ _id: req.params.messageId, restaurantId: req.restaurantId });
+    if (!msg) return res.json({ success: false, message: "Message not found." });
+    msg.favourited = !msg.favourited;
+    await msg.save();
+    res.json({ success: true, favourited: msg.favourited });
+  } catch {
+    res.json({ success: false, message: "Failed to update." });
+  }
+});
+
 export default router;

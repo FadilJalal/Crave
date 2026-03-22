@@ -8,6 +8,8 @@ const messageSchema = new mongoose.Schema({
   readByAdmin:  { type: Boolean, default: false },
   readByRestaurant: { type: Boolean, default: false },
   sentByEmail:  { type: Boolean, default: false },
+  pinned:       { type: Boolean, default: false },
+  favourited:   { type: Boolean, default: false },
 }, { timestamps: true });
 
 const messageModel = mongoose.models.message || mongoose.model("message", messageSchema);

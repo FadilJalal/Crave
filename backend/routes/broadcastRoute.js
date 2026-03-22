@@ -1,4 +1,4 @@
-    import express from "express";
+import express from "express";
 import { Resend } from "resend";
 import adminAuth from "../middleware/adminAuth.js";
 import restaurantModel from "../models/restaurantModel.js";
@@ -17,14 +17,18 @@ const TYPES = {
 // ── POST /api/broadcast/send ───────────────────────────────────────────────
 router.post("/send", adminAuth, async (req, res) => {
   try {
-    const { subject, heading, body, ctaText, ctaUrl, type } = req.body;
+    const { subject, heading, body, ctaText, ctaUrl, type, restaurantId } = req.body;
     if (!subject || !heading || !body)
       return res.json({ success: false, message: "Subject, heading, and body are required." });
 
-    const restaurants = await restaurantModel
-      .find({})
-      .select("name email")
-      .lean();
+    let restaurants = [];
+    if (!restaurantId || restaurantId === "all") {
+      restaurants = await restaurantModel.find({}).select("name email").lean();
+    } else {
+      const r = await restaurantModel.findById(restaurantId).select("name email").lean();
+      if (!r) return res.json({ success: false, message: "Restaurant not found." });
+      restaurants = [r];
+    }
 
     if (restaurants.length === 0)
       return res.json({ success: false, message: "No restaurants found." });
