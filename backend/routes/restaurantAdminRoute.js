@@ -92,12 +92,14 @@ router.post("/food/add", restaurantAuth, upload.single("image"), async (req, res
 // ── Update restaurant settings (hours, active status, prepTime) ────────────
 router.post("/settings", restaurantAuth, async (req, res) => {
   try {
-    const { openingHours, isActive, avgPrepTime, deliveryRadius, address } = req.body;
+    const { openingHours, isActive, avgPrepTime, deliveryRadius, address, minimumOrder, deliveryTiers } = req.body;
     const update = {};
     if (openingHours    !== undefined) update.openingHours    = openingHours;
     if (isActive        !== undefined) update.isActive        = isActive;
     if (avgPrepTime     !== undefined) update.avgPrepTime     = Number(avgPrepTime);
     if (deliveryRadius  !== undefined) update.deliveryRadius  = Number(deliveryRadius);
+    if (minimumOrder    !== undefined) update.minimumOrder    = Number(minimumOrder);
+    if (deliveryTiers   !== undefined) update.deliveryTiers   = deliveryTiers;
     if (address         !== undefined && address.trim()) update.address = address.trim();
 
     const restaurant = await restaurantModel.findByIdAndUpdate(

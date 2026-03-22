@@ -1,5 +1,5 @@
 // frontend/src/Context/StoreContext.jsx
-import { createContext, useEffect, useState } from "react";
+import { createContext, useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 export const StoreContext = createContext(null);
@@ -10,11 +10,45 @@ const StoreContextProvider = (props) => {
   const [foodListLoading, setFoodListLoading] = useState(true);
   const [token, setToken] = useState("");
   const currency = "AED ";
-  const deliveryCharge = 5;
-
   // cartItems: { cartKey -> { itemId, quantity, selections, extraPrice } }
-  // cartKey = "itemId" for plain items, "itemId::Size:Large|Drink:Pepsi" for customized
   const [cartItems, setCartItems] = useState({});
+
+  // Calculate delivery fee dynamically from restaurant tiers + customer location
+  const deliveryCharge = useMemo(() => {
+    const firstEntry = Object.values(cartItems).find(e => e.quantity > 0);
+    if (!firstEntry) return 5;
+    const food = food_list.find(f => f._id === firstEntry.itemId);
+    const restaurant = food?.restaurantId;
+    if (!restaurant?.deliveryTiers?.length) return 5;
+
+    // Get customer location
+    let customerLoc = null;
+    try {
+      const saved = JSON.parse(localStorage.getItem('crave_location'));
+      if (saved?.lat && saved?.lng) customerLoc = saved;
+    } catch {}
+    if (!customerLoc || !restaurant.location?.lat) return restaurant.deliveryTiers[restaurant.deliveryTiers.length - 1]?.fee ?? 5;
+
+    // Haversine distance
+    const R = 6371;
+    const dLat = (customerLoc.lat - restaurant.location.lat) * Math.PI / 180;
+    const dLng = (customerLoc.lng - restaurant.location.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(restaurant.location.lat * Math.PI/180) * Math.cos(customerLoc.lat * Math.PI/180) * Math.sin(dLng/2)**2;
+    const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    // Find matching tier
+    const sorted = [...restaurant.deliveryTiers].sort((a, b) => {
+      if (a.upToKm === null) return 1;
+      if (b.upToKm === null) return -1;
+      return a.upToKm - b.upToKm;
+    });
+    for (const tier of sorted) {
+      if (tier.upToKm === null || distKm <= tier.upToKm) return tier.fee;
+    }
+    return sorted[sorted.length - 1]?.fee ?? 5;
+  }, [cartItems, food_list]);
+
+  // cartKey = "itemId" for plain items, "itemId::Size:Large|Drink:Pepsi" for customized
 
   const buildCartKey = (itemId, selections = {}) => {
     const selStr = Object.entries(selections)

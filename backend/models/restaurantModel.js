@@ -14,6 +14,15 @@ const restaurantSchema = new mongoose.Schema(
     avgPrepTime: { type: Number, default: 15 },
     isActive: { type: Boolean, default: true },
     deliveryRadius: { type: Number, default: 10 }, // km — 0 means unlimited
+    minimumOrder:  { type: Number, default: 0 },   // AED — 0 means no minimum
+    deliveryTiers: {
+      type: Array,
+      default: [
+        { upToKm: 3,    fee: 5  },
+        { upToKm: 7,    fee: 10 },
+        { upToKm: null, fee: 15 },
+      ]
+    },
 
     subscription: {
       plan:      { type: String, enum: ["none", "basic", "pro", "standard"], default: "none" },

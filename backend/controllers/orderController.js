@@ -11,7 +11,21 @@ const getStripe = () => {
 };
 
 const currency = "usd";
-const deliveryCharge = 5;
+const FLAT_DELIVERY = 5; // fallback if no tiers set
+
+function calcDeliveryFee(tiers, distKm) {
+  if (!tiers || tiers.length === 0) return FLAT_DELIVERY;
+  // Sort tiers by upToKm (nulls last)
+  const sorted = [...tiers].sort((a, b) => {
+    if (a.upToKm === null) return 1;
+    if (b.upToKm === null) return -1;
+    return a.upToKm - b.upToKm;
+  });
+  for (const tier of sorted) {
+    if (tier.upToKm === null || distKm <= tier.upToKm) return tier.fee;
+  }
+  return sorted[sorted.length - 1]?.fee ?? FLAT_DELIVERY;
+}
 const frontend_URL = process.env.FRONTEND_URL || "http://localhost:5174";
 
 // ── Haversine distance (km) ──────────────────────────────────────────────────
@@ -187,12 +201,16 @@ const placeOrder = async (req, res) => {
       return res.json({ success: false, message: radiusCheck.message, outOfRange: true });
     }
 
+    // Calculate delivery fee from tiers
+    const restaurantForFee = await restaurantModel.findById(restaurantId).select("deliveryTiers deliveryRadius");
+    const actualDeliveryFee = calcDeliveryFee(restaurantForFee?.deliveryTiers, radiusCheck.distKm ?? 0);
+
     const newOrder = new orderModel({
       userId: req.body.userId,
       restaurantId,
       items: req.body.items,
       amount: req.body.amount,
-      deliveryFee: deliveryCharge,
+      deliveryFee: actualDeliveryFee,
       address: req.body.address,
       paymentMethod: "stripe",
       promoCode: req.body.promoCode || null,
@@ -215,7 +233,7 @@ const placeOrder = async (req, res) => {
       price_data: {
         currency,
         product_data: { name: "Delivery Charge" },
-        unit_amount: deliveryCharge * 100,
+        unit_amount: actualDeliveryFee * 100,
       },
       quantity: 1,
     });
@@ -263,12 +281,16 @@ const placeOrderCod = async (req, res) => {
       return res.json({ success: false, message: radiusCheck.message, outOfRange: true });
     }
 
+    // Calculate delivery fee from tiers
+    const restaurantForFee = await restaurantModel.findById(restaurantId).select("deliveryTiers deliveryRadius");
+    const actualDeliveryFee = calcDeliveryFee(restaurantForFee?.deliveryTiers, radiusCheck.distKm ?? 0);
+
     const newOrder = new orderModel({
       userId: req.body.userId,
       restaurantId,
       items: req.body.items,
       amount: req.body.amount,
-      deliveryFee: deliveryCharge,
+      deliveryFee: actualDeliveryFee,
       address: req.body.address,
       payment: true,
       paymentMethod: "cod",

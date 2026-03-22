@@ -46,7 +46,7 @@ const MyOrders = () => {
     try {
       const res = await axios.post(url + '/api/order/cancel', { orderId }, { headers: { token } });
       if (res.data.success) {
-        toast.success("Order cancelled.");
+        toast.success(res.data.message, { autoClose: 8000 });
         fetchOrders(true);
       } else {
         toast.error(res.data.message || "Could not cancel order.");

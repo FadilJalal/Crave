@@ -185,6 +185,12 @@ export default function Settings() {
   const [isActive,   setIsActive]   = useState(true);
   const [prepTime,   setPrepTime]   = useState(15);
   const [deliveryRadius, setDeliveryRadius] = useState(10);
+  const [minimumOrder,   setMinimumOrder]   = useState(0);
+  const [deliveryTiers,  setDeliveryTiers]  = useState([
+    { upToKm: 3,    fee: 5  },
+    { upToKm: 7,    fee: 10 },
+    { upToKm: null, fee: 15 },
+  ]);
   const [address,    setAddress]    = useState('');
   const [hours,      setHours]      = useState(DEFAULT_HOURS);
   const [openNow,    setOpenNow]    = useState(false);
@@ -224,6 +230,8 @@ export default function Settings() {
         setIsActive(r.isActive ?? true);
         setPrepTime(r.avgPrepTime ?? 15);
         setDeliveryRadius(r.deliveryRadius ?? 10);
+        setMinimumOrder(r.minimumOrder ?? 0);
+        if (r.deliveryTiers?.length) setDeliveryTiers(r.deliveryTiers);
         setAddress(r.address || '');
         const h = { ...DEFAULT_HOURS, ...(r.openingHours || {}) };
         setHours(h);
@@ -274,7 +282,7 @@ export default function Settings() {
   const save = async () => {
     setSaving(true);
     try {
-      const payload = { isActive, avgPrepTime: prepTime, openingHours: hours, deliveryRadius, address };
+      const payload = { isActive, avgPrepTime: prepTime, openingHours: hours, deliveryRadius, minimumOrder, deliveryTiers, address };
       console.log("[Settings] Saving payload:", payload);
       const res = await api.post("/api/restaurantadmin/settings", payload);
       console.log("[Settings] Server response:", res.data);
@@ -462,6 +470,113 @@ export default function Settings() {
               🗺️ Customers more than <strong>{deliveryRadius} km</strong> from your restaurant will not be able to place an order.
             </div>
           )}
+        </div>
+
+        {/* Minimum Order card */}
+        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
+          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px", marginBottom:14 }}>
+          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
+            <div>
+              <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🛒 Minimum Order Amount</div>
+              <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
+                Orders below this amount will be rejected. Set to <b>0</b> for no minimum.
+              </div>
+            </div>
+            {minimumOrder === 0 && (
+              <div style={{ padding:"4px 12px", borderRadius:999, background:"#f0fdf4",
+                border:"1px solid #86efac", fontSize:11, fontWeight:800, color:"#16a34a", whiteSpace:"nowrap" }}>
+                No Minimum
+              </div>
+            )}
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+            {[0, 20, 30, 50, 75, 100].map(v => (
+              <button key={v} onClick={() => setMinimumOrder(v)} style={{
+                padding:"7px 13px", borderRadius:10,
+                border:`1.5px solid ${minimumOrder === v ? "#ff4e2a" : "var(--border)"}`,
+                background: minimumOrder === v ? "#fff1ee" : "#f9fafb",
+                color: minimumOrder === v ? "#ff4e2a" : "#6b7280",
+                fontWeight:800, fontSize:13, cursor:"pointer", transition:"all 0.15s",
+              }}>{v === 0 ? "None" : `AED ${v}`}</button>
+            ))}
+            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+              <span style={{ fontSize:12, color:"var(--muted)" }}>AED</span>
+              <input type="number" min={0} max={500} value={minimumOrder}
+                onChange={e => setMinimumOrder(Number(e.target.value))}
+                style={{ width:70, padding:"7px 8px", borderRadius:10,
+                  border:"1.5px solid var(--border)", fontSize:13, fontWeight:800,
+                  textAlign:"center", outline:"none", fontFamily:"inherit" }} />
+            </div>
+          </div>
+          {minimumOrder > 0 && (
+            <div style={{ marginTop:14, padding:"10px 14px", borderRadius:10,
+              background:"#fff7ed", border:"1px solid #fed7aa", fontSize:12, color:"#92400e", fontWeight:600 }}>
+              🛒 Customers must order at least <strong>AED {minimumOrder}</strong> to place an order.
+            </div>
+          )}
+        </div>
+
+        {/* Delivery Tiers card */}
+        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
+          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px", marginBottom:14 }}>
+          <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🚚 Delivery Fee Tiers</div>
+          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14 }}>
+            Set fee per distance bracket. Use AED 0 for free delivery on any tier.
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {deliveryTiers.map((tier, i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"#f9fafb", borderRadius:12, border:"1px solid var(--border)" }}>
+                <div style={{ fontSize:13, color:"var(--muted)", fontWeight:700, minWidth:20 }}>#{i+1}</div>
+                <div style={{ display:"flex", alignItems:"center", gap:6, flex:1 }}>
+                  <span style={{ fontSize:12, color:"var(--muted)" }}>Up to</span>
+                  {tier.upToKm === null ? (
+                    <span style={{ fontSize:13, fontWeight:800, color:"#111827", padding:"5px 10px", background:"white", borderRadius:8, border:"1px solid var(--border)" }}>Beyond</span>
+                  ) : (
+                    <input type="number" min={1} max={100} value={tier.upToKm}
+                      onChange={e => {
+                        const next = [...deliveryTiers];
+                        next[i] = { ...next[i], upToKm: Number(e.target.value) };
+                        setDeliveryTiers(next);
+                      }}
+                      style={{ width:60, padding:"5px 8px", borderRadius:8, border:"1px solid var(--border)", fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }} />
+                  )}
+                  <span style={{ fontSize:12, color:"var(--muted)" }}>km</span>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ fontSize:12, color:"var(--muted)" }}>Fee</span>
+                  <span style={{ fontSize:12, color:"var(--muted)" }}>AED</span>
+                  <input type="number" min={0} max={200} value={tier.fee}
+                    onChange={e => {
+                      const next = [...deliveryTiers];
+                      next[i] = { ...next[i], fee: Number(e.target.value) };
+                      setDeliveryTiers(next);
+                    }}
+                    style={{ width:60, padding:"5px 8px", borderRadius:8, border:"1px solid var(--border)", fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }} />
+                  {tier.fee === 0 && <span style={{ fontSize:11, fontWeight:800, color:"#16a34a", background:"#f0fdf4", padding:"2px 8px", borderRadius:999 }}>FREE</span>}
+                </div>
+                {deliveryTiers.length > 1 && tier.upToKm !== null && (
+                  <button onClick={() => setDeliveryTiers(prev => prev.filter((_, j) => j !== i))}
+                    style={{ background:"#fef2f2", border:"none", borderRadius:8, padding:"5px 8px", cursor:"pointer", fontSize:13, color:"#dc2626", fontWeight:700 }}>✕</button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={() => {
+                const last = deliveryTiers[deliveryTiers.length - 1];
+                const secondLast = deliveryTiers[deliveryTiers.length - 2];
+                const newUpTo = last.upToKm !== null ? last.upToKm + 5 : (secondLast?.upToKm ?? 5) + 5;
+                const updated = deliveryTiers.map((t, i) =>
+                  i === deliveryTiers.length - 1 ? { ...t, upToKm: newUpTo } : t
+                );
+                setDeliveryTiers([...updated, { upToKm: null, fee: 20 }]);
+              }}
+              style={{ padding:"8px 14px", borderRadius:10, border:"1.5px dashed var(--border)", background:"white", cursor:"pointer", fontSize:13, fontWeight:700, color:"var(--muted)", fontFamily:"inherit", textAlign:"left" }}>
+              + Add tier
+            </button>
+          </div>
+          <div style={{ marginTop:12, padding:"10px 14px", borderRadius:10, background:"#eff6ff", border:"1px solid #bfdbfe", fontSize:12, color:"#1d4ed8", fontWeight:600 }}>
+            💡 The last tier (Beyond) catches all distances beyond the previous bracket.
+          </div>
         </div>
 
         {/* Location card */}

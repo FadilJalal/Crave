@@ -128,7 +128,6 @@ const PlaceOrder = () => {
     }
     setLoading(true);
     let orderItems = [];
-    // cartItems format: { key -> { itemId, quantity, selections, extraPrice } }
     for (const key in cartItems) {
       const entry = cartItems[key];
       if (entry.quantity > 0) {
@@ -142,6 +141,14 @@ const PlaceOrder = () => {
     const restaurantId = getResId(orderItems[0]);
     if (!restaurantId) { toast.error('Restaurant info missing. Refresh and try again.'); setLoading(false); return; }
     if (orderItems.some(it => getResId(it) !== restaurantId)) { toast.error('You can only order from one restaurant at a time.'); setLoading(false); return; }
+
+    // Minimum order check
+    const restaurant = orderItems[0]?.restaurantId;
+    const minOrder = restaurant?.minimumOrder || 0;
+    if (minOrder > 0 && subtotal < minOrder) {
+      toast.error(`🛒 Minimum order for this restaurant is AED ${minOrder}. Add AED ${(minOrder - subtotal).toFixed(2)} more.`, { autoClose: 6000 });
+      setLoading(false); return;
+    }
 
     const orderData = { address: data, items: orderItems, amount: finalTotal, deliveryFee: deliveryCharge, restaurantId, promoCode: promo?.code || null, discount: discount || 0 };
 

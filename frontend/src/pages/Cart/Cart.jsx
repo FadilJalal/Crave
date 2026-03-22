@@ -22,7 +22,7 @@ const Cart = () => {
     .filter(Boolean);
 
   const subtotal = getTotalCartAmount();
-  // Get restaurantId from first cart item for promo scoping
+  // Get restaurant from first cart item
   const cartRestaurantId = useMemo(() => {
     if (foodListLoading || food_list.length === 0) return null;
     const firstEntry = Object.values(cartItems).find(e => e.quantity > 0);
@@ -31,6 +31,13 @@ const Cart = () => {
     const rid = food?.restaurantId?._id || food?.restaurantId || null;
     return rid ? String(rid) : null;
   }, [cartItems, food_list, foodListLoading]);
+
+  const cartMinimumOrder = useMemo(() => {
+    const firstEntry = Object.values(cartItems).find(e => e.quantity > 0);
+    if (!firstEntry) return 0;
+    const food = food_list.find(f => f._id === firstEntry.itemId);
+    return food?.restaurantId?.minimumOrder || 0;
+  }, [cartItems, food_list]);
   const [availablePromos, setAvailablePromos] = useState([]);
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState(null);
@@ -218,12 +225,20 @@ const Cart = () => {
               <div className='cart-sum-row'><span>Delivery fee</span><span>{subtotal === 0 ? `${currency}0.00` : `${currency}${deliveryCharge}.00`}</span></div>
               <div className='cart-sum-row cart-sum-row-total'><span>Total</span><span>{currency}{subtotal === 0 ? '0.00' : Math.max(0, subtotal - discount + deliveryCharge).toFixed(2)}</span></div>
             </div>
-            <button className='cart-checkout-btn' onClick={() => navigate('/order', { state: { promo: appliedPromo ? { ...appliedPromo, restaurantId: cartRestaurantId } : null } })}>
+            <button className='cart-checkout-btn'
+              disabled={cartMinimumOrder > 0 && subtotal < cartMinimumOrder}
+              style={cartMinimumOrder > 0 && subtotal < cartMinimumOrder ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              onClick={() => { if (cartMinimumOrder > 0 && subtotal < cartMinimumOrder) return; navigate('/order', { state: { promo: appliedPromo ? { ...appliedPromo, restaurantId: cartRestaurantId } : null } }); }}>
               Proceed to Checkout
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
               </svg>
             </button>
+            {cartMinimumOrder > 0 && subtotal < cartMinimumOrder && (
+              <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', fontSize: 13, color: '#92400e', fontWeight: 600 }}>
+                🛒 Minimum order is AED {cartMinimumOrder}. Add AED {(cartMinimumOrder - subtotal).toFixed(2)} more to checkout.
+              </div>
+            )}
             <button className='cart-continue-btn' onClick={() => navigate('/')}>← Continue Shopping</button>
           </div>
         </div>
