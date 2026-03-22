@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react'
 import Home from './pages/Home/Home'
 import Footer from './components/Footer/Footer'
@@ -15,8 +16,8 @@ import RestaurantMenu from './pages/RestaurantMenu/RestaurantMenu'
 import ResetPassword from './pages/ResetPassword/ResetPassword'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 import OrderTracking from './pages/OrderTracking/OrderTracking'
+import { NotificationProvider } from './Context/NotificationContext'
 
-// Scroll to top on every route change
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
@@ -27,7 +28,7 @@ const App = () => {
   const [showLogin, setShowLogin] = useState(false);
 
   return (
-    <>
+    <NotificationProvider>
       <ToastContainer
         position="top-right"
         autoClose={3500}
@@ -59,7 +60,7 @@ const App = () => {
         </ErrorBoundary>
       </div>
       <Footer />
-    </>
+    </NotificationProvider>
   )
 }
 

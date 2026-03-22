@@ -60,4 +60,43 @@ const registerUser = async (req, res) => {
   }
 };
 
-export { loginUser, registerUser };
+const getProfile = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.body.userId).select("name email phone savedAddresses");
+    if (!user) return res.json({ success: false, message: "User not found" });
+    res.json({ success: true, user });
+  } catch (error) {
+    res.json({ success: false, message: "Failed to load profile" });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const { phone, address } = req.body;
+    const update = {};
+    if (phone !== undefined) update.phone = phone;
+
+    if (address) {
+      const user = await userModel.findById(req.body.userId).select("savedAddresses");
+      const addresses = user.savedAddresses || [];
+      // Check if identical address already saved
+      const exists = addresses.some(a =>
+        a.street === address.street &&
+        a.area === address.area &&
+        a.city === address.city &&
+        a.building === address.building
+      );
+      if (!exists) {
+        // Keep max 3 saved addresses, newest first
+        update.savedAddresses = [address, ...addresses].slice(0, 3);
+      }
+    }
+
+    await userModel.findByIdAndUpdate(req.body.userId, update);
+    res.json({ success: true, message: "Profile updated" });
+  } catch (error) {
+    res.json({ success: false, message: "Failed to update profile" });
+  }
+};
+
+export { loginUser, registerUser, getProfile, updateProfile };

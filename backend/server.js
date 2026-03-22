@@ -19,6 +19,7 @@ import geocodeRouter from "./routes/geocodeRoute.js";
 import promoRouter from "./routes/promoRoute.js";
 import subRouter from "./routes/subscriptionRoute.js";
 import emailCampaignRouter from "./routes/emailCampaignRoute.js";
+import { startCampaignScheduler } from "./utils/campaignScheduler.js";
 
 // ── Process-level crash guards ───────────────────────────────────────────────
 process.on("uncaughtException", (err) => {
@@ -129,4 +130,7 @@ app.use((err, req, res, next) => {
   }
 });
 
-app.listen(port, () => console.log(`✅ Server started on http://localhost:${port}`));
+app.listen(port, () => {
+  console.log(`✅ Server started on http://localhost:${port}`);
+  startCampaignScheduler();
+});

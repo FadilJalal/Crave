@@ -167,6 +167,11 @@
     color: var(--brand);
 }
 
+.mo-cancelled {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
 .mo-progress {
     display: flex;
     align-items: flex-start;
@@ -247,6 +252,7 @@
 .mo-card-actions {
     display: flex;
     justify-content: flex-start;
+    gap: 10px;
     margin-top: 16px;
 }
 
@@ -269,4 +275,31 @@
 .mo-track-btn:hover {
     background: var(--brand);
     color: #fff;
+}
+
+.mo-cancel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 20px;
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1.5px solid #fecaca;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.mo-cancel-btn:hover {
+    background: #dc2626;
+    color: #fff;
+    border-color: #dc2626;
+}
+
+.mo-cancel-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }

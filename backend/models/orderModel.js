@@ -70,6 +70,8 @@ const orderSchema = new mongoose.Schema(
       enum: ["cod", "stripe", "split"],
       default: "cod",
     },
+
+    stripeSessionId: { type: String, default: null },
   },
   { timestamps: true }
 );

@@ -229,6 +229,10 @@ const placeOrder = async (req, res) => {
       mode: "payment",
     });
 
+    // Save session ID for potential refunds
+    newOrder.stripeSessionId = session.id;
+    await newOrder.save();
+
     res.json({ success: true, session_url: session.url });
   } catch (error) {
     console.log(error);
@@ -443,4 +447,58 @@ export {
   listRestaurantOrders,
   restaurantUpdateStatus,
   getOrderById,
+  cancelOrder,
 };
+
+// ── CANCEL ORDER (customer) ────────────────────────────────────────────────
+async function cancelOrder(req, res) {
+  try {
+    const { orderId } = req.body;
+    const userId = req.body.userId;
+
+    const order = await orderModel.findById(orderId);
+    if (!order) return res.json({ success: false, message: "Order not found." });
+
+    if (String(order.userId) !== String(userId))
+      return res.status(403).json({ success: false, message: "Not your order." });
+
+    if (order.status !== "Food Processing")
+      return res.json({ success: false, message: "Order cannot be cancelled — it is already being prepared for delivery." });
+
+    const minutesElapsed = (Date.now() - new Date(order.createdAt).getTime()) / 60000;
+    if (minutesElapsed > 5)
+      return res.json({ success: false, message: "Cancellation window has passed. Orders can only be cancelled within 5 minutes of placing." });
+
+    // ── Stripe refund if paid by card ──────────────────────────────────────
+    let refundStatus = null;
+    if (order.paymentMethod === "stripe" && order.payment && order.stripeSessionId) {
+      try {
+        const stripe = getStripe();
+        // Get the payment intent from the session
+        const session = await stripe.checkout.sessions.retrieve(order.stripeSessionId);
+        if (session.payment_intent) {
+          await stripe.refunds.create({ payment_intent: session.payment_intent });
+          refundStatus = "refunded";
+          console.log(`[cancelOrder] Stripe refund issued for order ${orderId}`);
+        }
+      } catch (err) {
+        console.error("[cancelOrder] Stripe refund failed:", err.message);
+        refundStatus = "refund_failed";
+      }
+    }
+
+    order.status = "Cancelled";
+    await order.save();
+
+    const message = refundStatus === "refunded"
+      ? "Order cancelled. Your refund will appear within 5-10 business days."
+      : refundStatus === "refund_failed"
+      ? "Order cancelled. Refund could not be processed automatically — please contact support."
+      : "Order cancelled successfully.";
+
+    res.json({ success: true, message, refundStatus });
+  } catch (err) {
+    console.error("[cancelOrder]", err);
+    res.json({ success: false, message: "Failed to cancel order." });
+  }
+}

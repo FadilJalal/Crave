@@ -3,12 +3,13 @@ import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { toast } from "react-toastify";
 
-const STATUS_OPTIONS = ["Food Processing", "Out for delivery", "Delivered"];
+const STATUS_OPTIONS = ["Food Processing", "Out for delivery", "Delivered", "Cancelled"];
 
 const STATUS_COLORS = {
   "Food Processing": { bg: "#fff7ed", color: "#c2410c", border: "#fed7aa" },
   "Out for delivery": { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
   "Delivered":        { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
+  "Cancelled":        { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" },
 };
 
 const DATE_PRESETS = [
@@ -508,22 +509,26 @@ export default function Orders() {
                         </div>
                         <div style={{ marginTop: 12 }}>
                           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.6px", color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Update Status</div>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            {STATUS_OPTIONS.map((s) => {
-                              const st = STATUS_COLORS[s];
-                              const active = order.status === s;
-                              return (
-                                <button key={s} onClick={(e) => { e.stopPropagation(); updateStatus(order._id, s); }} style={{
-                                  padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: "pointer",
-                                  border: `1px solid ${active ? st.border : "var(--border)"}`,
-                                  background: active ? st.bg : "white",
-                                  color: active ? st.color : "var(--muted)",
-                                }}>
-                                  {s}
-                                </button>
-                              );
-                            })}
-                          </div>
+                          {order.status === "Cancelled" ? (
+                            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, padding: "8px 0" }}>🚫 This order was cancelled by the customer.</div>
+                          ) : (
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              {STATUS_OPTIONS.filter(s => s !== "Cancelled").map((s) => {
+                                const st = STATUS_COLORS[s];
+                                const active = order.status === s;
+                                return (
+                                  <button key={s} onClick={(e) => { e.stopPropagation(); updateStatus(order._id, s); }} style={{
+                                    padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: "pointer",
+                                    border: `1px solid ${active ? st.border : "var(--border)"}`,
+                                    background: active ? st.bg : "white",
+                                    color: active ? st.color : "var(--muted)",
+                                  }}>
+                                    {s}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -71,11 +71,12 @@ export default function Dashboard() {
   useEffect(() => { load(); }, []);
 
   const today         = new Date().toDateString();
-  const todayOrders   = orders.filter(o => new Date(o.createdAt).toDateString() === today);
-  const pendingOrders = orders.filter(o => o.status === "Food Processing");
+  const activeOrders  = orders.filter(o => (o.status || '').toLowerCase() !== 'cancelled');
+  const todayOrders   = activeOrders.filter(o => new Date(o.createdAt).toDateString() === today);
+  const pendingOrders = activeOrders.filter(o => o.status === "Food Processing");
   const todayRevenue  = todayOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
-  const totalRevenue  = orders.reduce((sum, o) => sum + (o.amount || 0), 0);
-  const recentOrders  = orders.slice(0, 6);
+  const totalRevenue  = activeOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+  const recentOrders  = activeOrders.slice(0, 6);
 
   // category breakdown
   const categoryMap = {};

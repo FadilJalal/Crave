@@ -24,8 +24,39 @@ const MyOrders = () => {
   const { url, token, currency, food_list } = useContext(StoreContext);
   const navigate = useNavigate();
   const [fetchError, setFetchError] = useState(false);
-  const [ratings, setRatings] = useState({});       // { foodId: score }
+  const [ratings, setRatings] = useState({});
   const [ratingLoading, setRatingLoading] = useState({});
+  const [cancelling, setCancelling] = useState({});  // { orderId: true }
+  const [cancelModal, setCancelModal] = useState(null); // orderId to confirm
+  const [tick, setTick] = useState(0); // increments every second to force re-render
+
+  // Live countdown ticker
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleCancel = async (orderId) => {
+    setCancelModal(orderId);
+  };
+
+  const confirmCancel = async (orderId) => {
+    setCancelModal(null);
+    setCancelling(prev => ({ ...prev, [orderId]: true }));
+    try {
+      const res = await axios.post(url + '/api/order/cancel', { orderId }, { headers: { token } });
+      if (res.data.success) {
+        toast.success("Order cancelled.");
+        fetchOrders(true);
+      } else {
+        toast.error(res.data.message || "Could not cancel order.");
+      }
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setCancelling(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
 
   // Pre-populate ratings state from food_list data so they survive refresh
   React.useEffect(() => {
@@ -68,7 +99,11 @@ const MyOrders = () => {
       setFetchError(false);
       const res = await axios.post(url + '/api/order/userorders', {}, { headers: { token } });
       if (res.data.success) {
-        setOrders(res.data.data || []);
+        const newOrders = res.data.data || [];
+        setOrders(newOrders);
+        if (newOrders.length > 0 && newOrders.every(o => (o.status || '').toLowerCase().trim() === 'delivered')) {
+          clearInterval(pollRef.current);
+        }
       } else {
         setFetchError(true);
         if (!silent) toast.error(res.data.message || 'Failed to load orders');
@@ -85,17 +120,7 @@ const MyOrders = () => {
     if (!token) return;
     fetchOrders();
 
-    // Poll every 10s — stop if all orders are delivered
-    pollRef.current = setInterval(() => {
-      setOrders(prev => {
-        const hasActive = prev.some(o => (o.status || '').toLowerCase().trim() !== 'delivered');
-        if (!hasActive && prev.length > 0) {
-          clearInterval(pollRef.current);
-        }
-        return prev;
-      });
-      fetchOrders(true);
-    }, POLL_INTERVAL);
+    pollRef.current = setInterval(() => fetchOrders(true), POLL_INTERVAL);
 
     return () => clearInterval(pollRef.current);
   }, [token]);
@@ -145,12 +170,16 @@ const MyOrders = () => {
           <OrderInsights orders={orders} currency={currency} />
           <div className='mo-list'>
             {[...orders].reverse().map((order, i) => {
-              const step = statusIndex(order.status);
-              const isDelivered = (order.status || '').toLowerCase().trim() === 'delivered';
+              const step          = statusIndex(order.status);
+              const isDelivered   = (order.status || '').toLowerCase().trim() === 'delivered';
+              const isCancelled   = (order.status || '').toLowerCase().trim() === 'cancelled';
+              const minutesElapsed = (Date.now() - new Date(order.createdAt).getTime()) / 60000;
+              const secondsLeft   = Math.max(0, Math.round((5 * 60) - (minutesElapsed * 60)));
+              const isCancellable = order.status === 'Food Processing' && minutesElapsed <= 5;
               return (
                 <div key={i} className='mo-card'>
                   <div className='mo-card-top'>
-                    <div className='mo-order-icon'>📦</div>
+                    <div className='mo-order-icon'>{isCancelled ? '🚫' : '📦'}</div>
                     <div className='mo-order-info'>
                       <p className='mo-order-id'>Order #{String(order._id).slice(-6).toUpperCase()}</p>
                       <p className='mo-order-items'>
@@ -161,34 +190,48 @@ const MyOrders = () => {
                     </div>
                     <div className='mo-order-right'>
                       <p className='mo-order-amount'>{currency}{order.amount}.00</p>
-                      <span className={`mo-status-badge ${isDelivered ? 'mo-delivered' : 'mo-active'}`}>
-                        {isDelivered ? '✓ Delivered' : '⏱ ' + (order.status || 'Processing')}
+                      <span className={`mo-status-badge ${isDelivered ? 'mo-delivered' : isCancelled ? 'mo-cancelled' : 'mo-active'}`}>
+                        {isDelivered ? '✓ Delivered' : isCancelled ? '🚫 Cancelled' : '⏱ ' + (order.status || 'Processing')}
                       </span>
                     </div>
                   </div>
 
-                  <div className='mo-progress'>
-                    {STATUS_STEPS.map((s, idx) => (
-                      <React.Fragment key={s}>
-                        <div className='mo-prog-step'>
-                          <div className={`mo-prog-dot ${idx <= step ? 'mo-prog-done' : ''} ${idx === step ? 'mo-prog-current' : ''}`}>
-                            {idx <= step ? '✓' : idx + 1}
+                  {!isCancelled && (
+                    <div className='mo-progress'>
+                      {STATUS_STEPS.map((s, idx) => (
+                        <React.Fragment key={s}>
+                          <div className='mo-prog-step'>
+                            <div className={`mo-prog-dot ${idx <= step ? 'mo-prog-done' : ''} ${idx === step ? 'mo-prog-current' : ''}`}>
+                              {idx <= step ? '✓' : idx + 1}
+                            </div>
+                            <p className={`mo-prog-label ${idx <= step ? 'mo-prog-label-done' : ''}`}>{s}</p>
                           </div>
-                          <p className={`mo-prog-label ${idx <= step ? 'mo-prog-label-done' : ''}`}>{s}</p>
-                        </div>
-                        {idx < STATUS_STEPS.length - 1 && (
-                          <div className={`mo-prog-line ${idx < step ? 'mo-prog-line-done' : ''}`}/>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </div>
+                          {idx < STATUS_STEPS.length - 1 && (
+                            <div className={`mo-prog-line ${idx < step ? 'mo-prog-line-done' : ''}`}/>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+
                   <div className='mo-card-actions'>
-                    <button
-                      className='mo-track-btn'
-                      onClick={() => navigate(`/order/track/${order._id}`)}
-                    >
-                      🛵 Track Order
-                    </button>
+                    {!isCancelled && (
+                      <button className='mo-track-btn' onClick={() => navigate(`/order/track/${order._id}`)}>
+                        🛵 Track Order
+                      </button>
+                    )}
+                    {isCancellable && (
+                      <button
+                        className='mo-cancel-btn'
+                        onClick={() => handleCancel(order._id)}
+                        disabled={cancelling[order._id]}
+                      >
+                        {cancelling[order._id] ? 'Cancelling…' : `✕ Cancel (${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')})`}
+                      </button>
+                    )}
+                    {order.status === 'Food Processing' && !isCancellable && (
+                      <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>Cancellation window passed</span>
+                    )}
                   </div>
                   {isDelivered && (
                     <div style={{ padding: '14px 16px', borderTop: '1px solid var(--border)', marginTop: 12, background: 'var(--bg)', borderRadius: '0 0 16px 16px' }}>
@@ -234,6 +277,35 @@ const MyOrders = () => {
             })}
           </div>
         </>
+      )}
+
+      {/* Cancel confirmation modal */}
+      {cancelModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}
+          onClick={() => setCancelModal(null)}>
+          <div style={{ background: 'white', borderRadius: 20, padding: 28, width: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', margin: '0 16px' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 36, textAlign: 'center', marginBottom: 12 }}>🚫</div>
+            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 900, color: '#111827', textAlign: 'center' }}>Cancel this order?</h3>
+            <p style={{ margin: '0 0 24px', fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 1.5 }}>
+              This cannot be undone. The restaurant will be notified.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setCancelModal(null)}
+                style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid #e5e7eb', background: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', color: '#374151' }}
+              >
+                Keep Order
+              </button>
+              <button
+                onClick={() => confirmCancel(cancelModal)}
+                style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#dc2626', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

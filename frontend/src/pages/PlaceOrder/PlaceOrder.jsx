@@ -42,6 +42,30 @@ const PlaceOrder = () => {
   const { getTotalCartAmount, token, food_list, foodListLoading, cartItems, url, setCartItems, currency, deliveryCharge } = useContext(StoreContext);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Load saved profile (phone + last address) on mount
+  useEffect(() => {
+    if (!token) return;
+    axios.get(url + '/api/user/profile', { headers: { token } })
+      .then(res => {
+        if (res.data.success) {
+          const user = res.data.user;
+          const lastAddress = user.savedAddresses?.[0] || {};
+          setData(prev => ({
+            ...prev,
+            phone: user.phone || prev.phone,
+            street:    lastAddress.street    || prev.street,
+            building:  lastAddress.building  || prev.building,
+            apartment: lastAddress.apartment || prev.apartment,
+            area:      lastAddress.area      || prev.area,
+            city:      lastAddress.city      || prev.city,
+            country:   lastAddress.country   || prev.country,
+            zipcode:   lastAddress.zipcode   || prev.zipcode,
+          }));
+        }
+      })
+      .catch(() => {});
+  }, [token]);
   const promo = location.state?.promo || null;
   const discount = promo ? promo.discount : 0;
   const subtotal = getTotalCartAmount();
@@ -126,6 +150,13 @@ const PlaceOrder = () => {
         const res = await axios.post(url + '/api/order/place', orderData, { headers: { token } });
         if (res.data.success) {
           if (promo?.code) { try { await axios.post(url + '/api/promo/use', { code: promo.code, restaurantId: promo.restaurantId }, { headers: { token } }); } catch {} }
+          // Save phone + address to profile silently
+          try {
+            await axios.put(url + '/api/user/profile', {
+              phone: data.phone,
+              address: { street: data.street, building: data.building, apartment: data.apartment, area: data.area, city: data.city, country: data.country, zipcode: data.zipcode }
+            }, { headers: { token } });
+          } catch {}
           window.location.replace(res.data.session_url);
         }
         else if (res.data.outOfRange) toast.error('🚫 ' + res.data.message, { autoClose: 6000 });
@@ -134,6 +165,13 @@ const PlaceOrder = () => {
         const res = await axios.post(url + '/api/order/placecod', orderData, { headers: { token } });
         if (res.data.success) {
           if (promo?.code) { try { await axios.post(url + '/api/promo/use', { code: promo.code, restaurantId: promo.restaurantId }, { headers: { token } }); } catch {} }
+          // Save phone + address to profile silently
+          try {
+            await axios.put(url + '/api/user/profile', {
+              phone: data.phone,
+              address: { street: data.street, building: data.building, apartment: data.apartment, area: data.area, city: data.city, country: data.country, zipcode: data.zipcode }
+            }, { headers: { token } });
+          } catch {}
           toast.success('Order placed successfully!'); setCartItems({}); navigate('/myorders');
         }
         else if (res.data.outOfRange) toast.error('🚫 ' + res.data.message, { autoClose: 6000 });

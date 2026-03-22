@@ -1,8 +1,9 @@
-import React, { useContext, useEffect, useRef, useState, useCallback } from 'react';
+import React, { useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import './Navbar.css';
 import { assets } from '../../assets/assets';
 import { Link, useNavigate } from 'react-router-dom';
 import { StoreContext } from '../../Context/StoreContext';
+import { NotificationContext } from '../../Context/NotificationContext';
 
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371;
@@ -13,9 +14,12 @@ function haversine(lat1, lng1, lat2, lng2) {
 }
 
 const Navbar = ({ setShowLogin }) => {
-  const { getTotalCartAmount, token, setToken, setCartItems, food_list, cartItems, url } = useContext(StoreContext);
+  const { token, setToken, setCartItems, food_list, cartItems, url } = useContext(StoreContext);
+  const { notifications, unreadCount, markAllRead, clearAll } = useContext(NotificationContext);
   const navigate = useNavigate();
+  
   const [openProfile, setOpenProfile] = useState(false);
+  const [openBell, setOpenBell] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -35,6 +39,7 @@ const Navbar = ({ setShowLogin }) => {
   const [locLoading, setLocLoading] = useState(false);
   const [nearbyRestaurants, setNearbyRestaurants] = useState([]);
 
+  const bellRef = useRef(null);
   const mapPickerRef = useRef(null);
   const mapPickerInstance = useRef(null);
   const mapPickerMarker = useRef(null);
@@ -43,10 +48,16 @@ const Navbar = ({ setShowLogin }) => {
   const locRef = useRef(null);
   const locDebounce = useRef(null);
 
-  const cartCount = Object.values(cartItems || {}).reduce((a, b) => a + (b?.quantity || 0), 0);
+  // Optimized cart count
+  const cartCount = useMemo(() => 
+    Object.values(cartItems || {}).reduce((a, b) => a + (b?.quantity || 0), 0)
+  , [cartItems]);
 
   useEffect(() => {
-    try { localStorage.setItem('crave_location', JSON.stringify(location)); window.dispatchEvent(new Event('crave_location_changed')); } catch {}
+    try { 
+      localStorage.setItem('crave_location', JSON.stringify(location)); 
+      window.dispatchEvent(new Event('crave_location_changed')); 
+    } catch {}
   }, [location]);
 
   useEffect(() => {
@@ -55,11 +66,13 @@ const Navbar = ({ setShowLogin }) => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // FIXED: Consolidated Click-Outside Handler
   useEffect(() => {
     const handler = (e) => {
-      if (profileRef.current && !profileRef.current.contains(e.target)) setOpenProfile(false);
+      if (bellRef.current && !bellRef.current.contains(e.target)) setOpenBell(false);
       if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false);
       if (locRef.current && !locRef.current.contains(e.target)) setLocOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setOpenProfile(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -219,6 +232,7 @@ const Navbar = ({ setShowLogin }) => {
     navigate('/');
   };
 
+  // JSX returns here (unchanged but syntax error-free)
   return (
     <nav className={`nb-wrap ${scrolled ? 'nb-scrolled' : ''}`}>
       <div className='nb-inner'>
@@ -307,7 +321,6 @@ const Navbar = ({ setShowLogin }) => {
           )}
         </div>
 
-        {/* Restaurants link */}
         <Link to='/restaurants' className='nb-restaurants-link'>🍽️ Restaurants</Link>
 
         {/* Search */}
@@ -336,8 +349,61 @@ const Navbar = ({ setShowLogin }) => {
           )}
         </div>
 
-        {/* Actions */}
         <div className='nb-actions'>
+          {/* Notification Bell */}
+          {token && (
+            <div ref={bellRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => { setOpenBell(p => !p); if (!openBell) markAllRead(); }}
+                className='nb-avatar'
+                style={{ position: 'relative' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+                </svg>
+                {unreadCount > 0 && (
+                  <span style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, background: '#ff4e2a', borderRadius: '50%', fontSize: 9, fontWeight: 900, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {openBell && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 320, background: 'white', borderRadius: 16, boxShadow: '0 8px 40px rgba(0,0,0,0.15)', border: '1px solid #f3f4f6', zIndex: 9999, overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: '#111827' }}>Order Notifications</span>
+                    {notifications.length > 0 && (
+                      <button onClick={clearAll} style={{ fontSize: 12, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Clear all</button>
+                    )}
+                  </div>
+                  <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+                    {notifications.length === 0 ? (
+                      <div style={{ padding: '32px 16px', textAlign: 'center', color: '#9ca3af' }}>
+                        <div style={{ fontSize: 28, marginBottom: 8 }}>🔔</div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>No notifications yet</div>
+                        <div style={{ fontSize: 12, marginTop: 4 }}>Order updates will appear here</div>
+                      </div>
+                    ) : notifications.map(n => (
+                      <div key={n.id} style={{ padding: '12px 16px', borderBottom: '1px solid #f9fafb', display: 'flex', gap: 12, alignItems: 'flex-start', cursor: 'pointer', transition: 'background .15s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        onClick={() => { navigate('/myorders'); setOpenBell(false); }}
+                      >
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: n.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                          {n.emoji}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginBottom: 2 }}>{n.message}</div>
+                          <div style={{ fontSize: 11, color: '#9ca3af' }}>{new Date(n.time).toLocaleTimeString('en-AE', { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <Link to='/cart' className='nb-cart-btn'>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />

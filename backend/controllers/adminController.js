@@ -88,10 +88,10 @@ export const getAdminStats = async (req, res) => {
 
     const [totalRestaurants, totalOrders, totalUsers, todayOrders, allOrders, activeRestaurants] = await Promise.all([
       restaurantModel.countDocuments({}),
-      orderModel.countDocuments({}),
+      orderModel.countDocuments({ status: { $ne: "Cancelled" } }),
       userModel.countDocuments({}),
-      orderModel.countDocuments({ createdAt: { $gte: todayStart } }),
-      orderModel.find({}, "amount"),
+      orderModel.countDocuments({ createdAt: { $gte: todayStart }, status: { $ne: "Cancelled" } }),
+      orderModel.find({ status: { $ne: "Cancelled" } }, "amount"),
       restaurantModel.find({ "subscription.status": "active" }, "subscription.price"),
     ]);
 

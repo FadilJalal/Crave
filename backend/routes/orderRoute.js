@@ -12,6 +12,7 @@ import {
   placeOrderCod,
   listRestaurantOrders,
   restaurantUpdateStatus,
+  cancelOrder,
 } from "../controllers/orderController.js";
 
 import orderModel from "../models/orderModel.js";
@@ -23,6 +24,7 @@ orderRouter.post("/userorders", authMiddleware, userOrders);
 orderRouter.post("/place", authMiddleware, placeOrder);
 orderRouter.post("/placecod", authMiddleware, placeOrderCod);
 orderRouter.post("/verify", verifyOrder);
+orderRouter.post("/cancel", authMiddleware, cancelOrder);
 
 // Order tracking by ID (customer must own the order)
 orderRouter.get("/track/:orderId", authMiddleware, async (req, res) => {
