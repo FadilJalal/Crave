@@ -115,13 +115,14 @@ const StoreContextProvider = (props) => {
       if (response.data?.data) {
         setFoodList(response.data.data);
         // Cache for cart fallback
-        try { localStorage.setItem("crave_food_cache", JSON.stringify(response.data.data)); } catch {}
+        try { localStorage.setItem("crave_food_cache", JSON.stringify(response.data.data)); localStorage.setItem("crave_food_cache_v", "2"); } catch {}
       } else {
         setFoodListError(true);
         toast.error("Failed to load menu. Please refresh the page.");
         // Try cache
         try {
-          const cached = JSON.parse(localStorage.getItem("crave_food_cache") || "null");
+          const cacheOk = localStorage.getItem("crave_food_cache_v") === "2";
+          const cached = cacheOk ? JSON.parse(localStorage.getItem("crave_food_cache") || "null") : null;
           if (cached?.length) { setFoodList(cached); setFoodListError(false); }
         } catch {}
       }
@@ -129,7 +130,8 @@ const StoreContextProvider = (props) => {
       setFoodListError(true);
       // Try cache on network failure
       try {
-        const cached = JSON.parse(localStorage.getItem("crave_food_cache") || "null");
+        const cacheOk2 = localStorage.getItem("crave_food_cache_v") === "2";
+        const cached = cacheOk2 ? JSON.parse(localStorage.getItem("crave_food_cache") || "null") : null;
         if (cached?.length) {
           setFoodList(cached);
           setFoodListError(false);

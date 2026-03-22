@@ -380,12 +380,25 @@ export default function Orders() {
                       <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: statusStyle.bg, color: statusStyle.color, border: `1px solid ${statusStyle.border}` }}>
                         {order.status}
                       </span>
-                      <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 9px", borderRadius: 999,
-                        background: order.payment ? "#f0fdf4" : "#fef2f2",
-                        color: order.payment ? "#15803d" : "#dc2626",
-                        border: `1px solid ${order.payment ? "#bbf7d0" : "#fecaca"}` }}>
-                        {order.payment ? "✅ Paid" : "❌ Unpaid"}
-                      </span>
+                      {(() => {
+                        const method = order.paymentMethod || (order.payment ? "stripe" : "cod");
+                        const map = {
+                          cod:    { label: "💵 COD",          bg: "#fef3c7", color: "#92400e", border: "#fde68a" },
+                          stripe: { label: "💳 Paid Online",  bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
+                          split:  { label: "🧮 Split",        bg: "#ede9fe", color: "#5b21b6", border: "#c4b5fd" },
+                        };
+                        const m = map[method] || map.cod;
+                        return (
+                          <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: m.bg, color: m.color, border: `1px solid ${m.border}` }}>
+                            {m.label}
+                          </span>
+                        );
+                      })()}
+                      {!order.payment && order.paymentMethod !== "cod" && (
+                        <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }}>
+                          ❌ Unpaid
+                        </span>
+                      )}
                       {order.createdAt && (
                         <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>
                           🕐 {new Date(order.createdAt).toLocaleString("en-AE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}

@@ -119,8 +119,26 @@ export default function Orders() {
                   </select>
                 </div>
 
-                <div style={{ marginTop: 10, opacity: 0.75, fontSize: 12 }}>
-                  Payment: {order.payment ? "✅ Paid" : "❌ Not paid"}
+                <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  {(() => {
+                    const method = order.paymentMethod || (order.payment ? "stripe" : "cod");
+                    const map = {
+                      cod:    { label: "💵 Cash on Delivery", bg: "#fef3c7", color: "#92400e" },
+                      stripe: { label: "💳 Paid Online",      bg: "#d1fae5", color: "#065f46" },
+                      split:  { label: "🧮 Split Payment",    bg: "#ede9fe", color: "#5b21b6" },
+                    };
+                    const m = map[method] || map.cod;
+                    return (
+                      <span style={{ fontSize: 12, fontWeight: 800, padding: "4px 10px", borderRadius: 50, background: m.bg, color: m.color }}>
+                        {m.label}
+                      </span>
+                    );
+                  })()}
+                  {!order.payment && order.paymentMethod !== "cod" && (
+                    <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 50, background: "#fee2e2", color: "#991b1b" }}>
+                      ❌ Unpaid
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

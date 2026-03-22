@@ -26,29 +26,94 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ── Geocode an address object via our own Nominatim proxy ───────────────────
-async function geocodeAddress(address) {
-  const NOMINATIM = "https://nominatim.openstreetmap.org/search";
-  const HEADERS = { "Accept-Language": "en", "User-Agent": "CraveApp/1.0 (contact@crave.ae)" };
-  const city = address.city || address.state || "";
-  const area = address.area || "";
-  const street = address.street || "";
-  const building = address.building || "";
+// ── Geocode an address object (smart multi-fallback, matches frontend logic) ─
+const NOMINATIM = "https://nominatim.openstreetmap.org/search";
+const GEO_HEADERS = { "Accept-Language": "en", "User-Agent": "CraveApp/1.0 (contact@crave.ae)" };
 
-  const query = [building, street, area, city, "UAE"].filter(Boolean).join(", ");
+function isInUAE(lat, lon) {
+  return lat >= 22 && lat <= 26.5 && lon >= 51 && lon <= 56.5;
+}
+
+function normalizeArea(area) {
+  if (!area) return [];
+  const a = area.trim();
+  const map = {
+    majaz:      ["Al Majaz", "Majaz"],
+    mujarrah:   ["Al Mujarrah", "Mujarrah"],
+    khalidiyah: ["Al Khalidiyah", "Khalidiyah"],
+    nahda:      ["Al Nahda", "Nahda"],
+    qasimia:    ["Al Qasimia", "Qasimia"],
+    taawun:     ["Al Taawun", "Taawun"],
+    mamzar:     ["Al Mamzar", "Mamzar"],
+    rolla:      ["Rolla", "Al Rolla"],
+    butina:     ["Al Butina", "Butina"],
+    yarmuk:     ["Al Yarmuk", "Yarmuk"],
+    khan:       ["Al Khan", "Khan"],
+    ghuwair:    ["Al Ghuwair", "Ghuwair"],
+    barsha:     ["Al Barsha", "Barsha"],
+    karama:     ["Al Karama", "Karama"],
+    quoz:       ["Al Quoz", "Quoz"],
+    qusais:     ["Al Qusais", "Qusais"],
+    muraqqabat: ["Al Muraqqabat", "Muraqqabat"],
+    rigga:      ["Al Rigga", "Rigga"],
+  };
+  const lower = a.toLowerCase().replace(/^al[\s-]/, "");
+  for (const [key, vals] of Object.entries(map)) {
+    if (lower.includes(key) || key.includes(lower)) return [...new Set([a, ...vals])];
+  }
+  return [a];
+}
+
+async function tryGeoFetch(url) {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(
-      `${NOMINATIM}?q=${encodeURIComponent(query)}&format=json&limit=1`,
-      { headers: HEADERS, signal: controller.signal }
-    );
+    const res = await fetch(url, { headers: GEO_HEADERS, signal: controller.signal });
     clearTimeout(timeout);
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      const lat = parseFloat(data[0].lat);
+      const lon = parseFloat(data[0].lon);
+      if (isInUAE(lat, lon)) return { lat, lon };
     }
   } catch (_) {}
+  return null;
+}
+
+async function geocodeAddress(address) {
+  const city    = address.city || address.state || "";
+  const area    = address.area || "";
+  const street  = address.street || "";
+  const building= address.building || "";
+  const areaVariants = normalizeArea(area);
+
+  for (const av of areaVariants) {
+    // Structured query
+    const p = new URLSearchParams({ format: "json", limit: "1", countrycodes: "ae" });
+    const sp = [building, street, av].filter(Boolean).join(" ");
+    if (sp)   p.set("street", sp);
+    if (city) p.set("city", city);
+    p.set("country", "United Arab Emirates");
+    let result = await tryGeoFetch(`${NOMINATIM}?${p}`);
+    if (result) return result;
+
+    // Free-text fallback
+    result = await tryGeoFetch(`${NOMINATIM}?q=${encodeURIComponent(`${av}, ${city}, UAE`)}&format=json&limit=1&countrycodes=ae`);
+    if (result) return result;
+  }
+
+  // Street + city fallback
+  if (street && city) {
+    const result = await tryGeoFetch(`${NOMINATIM}?q=${encodeURIComponent(`${street}, ${city}, UAE`)}&format=json&limit=1&countrycodes=ae`);
+    if (result) return result;
+  }
+
+  // City-only last resort
+  if (city) {
+    const result = await tryGeoFetch(`${NOMINATIM}?q=${encodeURIComponent(`${city}, UAE`)}&format=json&limit=1&countrycodes=ae`);
+    if (result) return result;
+  }
+
   return null;
 }
 
@@ -73,9 +138,11 @@ async function checkDeliveryRadius(restaurantId, address) {
   console.log(`[radius] customer geocode result:`, coords);
 
   if (!coords) {
-    // Can't geocode — allow through but log it
-    console.warn(`[radius] geocode failed for address, allowing order through`);
-    return { ok: true };
+    console.warn(`[radius] geocode failed for address — blocking order`);
+    return {
+      ok: false,
+      message: "We couldn't verify your delivery address. Please double-check your area and city, then try again.",
+    };
   }
 
   const distKm = haversine(
@@ -127,6 +194,7 @@ const placeOrder = async (req, res) => {
       amount: req.body.amount,
       deliveryFee: deliveryCharge,
       address: req.body.address,
+      paymentMethod: "stripe",
     });
 
     await newOrder.save();
@@ -197,6 +265,7 @@ const placeOrderCod = async (req, res) => {
       deliveryFee: deliveryCharge,
       address: req.body.address,
       payment: true,
+      paymentMethod: "cod",
     });
 
     await newOrder.save();

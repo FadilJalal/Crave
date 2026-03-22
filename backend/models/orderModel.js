@@ -61,6 +61,12 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    paymentMethod: {
+      type: String,
+      enum: ["cod", "stripe", "split"],
+      default: "cod",
+    },
   },
   { timestamps: true }
 );

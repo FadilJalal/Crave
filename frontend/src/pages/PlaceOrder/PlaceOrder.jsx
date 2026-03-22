@@ -18,8 +18,9 @@ const PlaceOrder = () => {
   const [payment, setPayment] = useState('cod');
   const [loading, setLoading] = useState(false);
   const [distanceWarning, setDistanceWarning] = useState('');
-  const [data, setData] = useState(() => {
-    const base = { firstName: '', lastName: '', email: '', street: '', apartment: '', area: '', building: '', city: '', state: '', zipcode: '', country: 'UAE', phone: '', deliveryNotes: '' };
+  const baseData = { firstName: '', lastName: '', email: '', street: '', apartment: '', area: '', building: '', city: '', state: '', zipcode: '', country: 'UAE', phone: '', deliveryNotes: '' };
+
+  const parseLocation = (base) => {
     try {
       const saved = JSON.parse(localStorage.getItem('crave_location'));
       if (saved?.label) {
@@ -28,7 +29,16 @@ const PlaceOrder = () => {
       }
     } catch {}
     return base;
-  });
+  };
+
+  const [data, setData] = useState(() => parseLocation(baseData));
+
+  // Re-sync area/city whenever the navbar location changes (same-tab custom event)
+  useEffect(() => {
+    const onLocChange = () => setData(prev => parseLocation({ ...prev }));
+    window.addEventListener('crave_location_changed', onLocChange);
+    return () => window.removeEventListener('crave_location_changed', onLocChange);
+  }, []);
   const { getTotalCartAmount, token, food_list, foodListLoading, cartItems, url, setCartItems, currency, deliveryCharge } = useContext(StoreContext);
   const navigate = useNavigate();
   const subtotal = getTotalCartAmount();
@@ -49,7 +59,7 @@ const PlaceOrder = () => {
         const food = food_list.find(f => f._id === firstItem.itemId);
         if (!food) return;
         const restaurant = food.restaurantId;
-        if (!restaurant?.location?.lat || !restaurant?.deliveryRadius) return;
+        if (!restaurant?.location?.lat || restaurant?.deliveryRadius === undefined || restaurant?.deliveryRadius === null) return;
 
         const radius = restaurant.deliveryRadius;
         if (radius === 0) { setDistanceWarning(''); return; }
@@ -61,7 +71,10 @@ const PlaceOrder = () => {
           body: JSON.stringify({ address: data }),
         });
         const geocoded = await res.json();
-        if (!geocoded.success) return;
+        if (!geocoded.success) {
+          setDistanceWarning("⚠️ We couldn't verify your address. Please check your area and city fields.");
+          return;
+        }
 
         const dist = haversine(
           restaurant.location.lat, restaurant.location.lng,

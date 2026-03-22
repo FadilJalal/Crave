@@ -46,7 +46,7 @@ const Navbar = ({ setShowLogin }) => {
   const cartCount = Object.values(cartItems || {}).reduce((a, b) => a + (b?.quantity || 0), 0);
 
   useEffect(() => {
-    try { localStorage.setItem('crave_location', JSON.stringify(location)); } catch {}
+    try { localStorage.setItem('crave_location', JSON.stringify(location)); window.dispatchEvent(new Event('crave_location_changed')); } catch {}
   }, [location]);
 
   useEffect(() => {
