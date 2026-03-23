@@ -27,7 +27,7 @@ const timeAgo = (dateStr) => {
   return `${Math.floor(days / 365)} year${Math.floor(days / 365) > 1 ? 's' : ''} ago`;
 };
 
-const RestaurantReviews = ({ restaurantId }) => {
+const RestaurantReviews = ({ restaurantId, restaurantName }) => {
   const { url } = useContext(StoreContext);
   const [reviews, setReviews] = useState([]);
   const [avgRating, setAvgRating] = useState(0);
@@ -105,8 +105,21 @@ const RestaurantReviews = ({ restaurantId }) => {
                 </div>
                 <StarRow rating={review.rating} size={15} />
               </div>
+
               {review.comment && (
                 <p className="rr-comment">"{review.comment}"</p>
+              )}
+
+              {/* Restaurant reply */}
+              {review.reply?.text && (
+                <div className="rr-reply">
+                  <div className="rr-reply-header">
+                    <span className="rr-reply-icon">🍽️</span>
+                    <span className="rr-reply-label">{restaurantName || 'Restaurant'} replied</span>
+                    <span className="rr-reply-date">{timeAgo(review.reply.repliedAt)}</span>
+                  </div>
+                  <p className="rr-reply-text">{review.reply.text}</p>
+                </div>
               )}
             </div>
           ))}

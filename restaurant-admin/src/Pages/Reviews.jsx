@@ -27,6 +27,112 @@ const timeAgo = (dateStr) => {
 
 const LABEL = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
 
+const ReplyBox = ({ review, onReplied }) => {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState(review.reply?.text || "");
+  const [loading, setLoading] = useState(false);
+
+  const submit = async () => {
+    if (!text.trim()) return;
+    setLoading(true);
+    try {
+      const res = await api.post(`/api/review/reply/${review._id}`, { text });
+      if (res.data.success) {
+        onReplied(review._id, res.data.reply);
+        setOpen(false);
+      }
+    } catch {}
+    setLoading(false);
+  };
+
+  const hasReply = !!review.reply?.text;
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      {/* Show existing reply */}
+      {hasReply && !open && (
+        <div style={{
+          padding: "10px 14px",
+          background: "rgba(249,115,22,0.06)",
+          borderLeft: "3px solid #f97316",
+          borderRadius: "0 10px 10px 0",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: "#f97316" }}>🍽️ Your reply</span>
+            <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: "auto" }}>{timeAgo(review.reply.repliedAt)}</span>
+            <button
+              onClick={() => setOpen(true)}
+              style={{ background: "none", border: "1px solid #f97316", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, color: "#f97316", cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Edit
+            </button>
+          </div>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text, #111)", lineHeight: 1.6 }}>{review.reply.text}</p>
+        </div>
+      )}
+
+      {/* Reply button if no reply yet */}
+      {!hasReply && !open && (
+        <button
+          onClick={() => setOpen(true)}
+          style={{
+            background: "none", border: "1px solid var(--border, #e5e7eb)",
+            borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700,
+            color: "var(--text-2, #6b7280)", cursor: "pointer", fontFamily: "inherit",
+            display: "flex", alignItems: "center", gap: 5, transition: "all 0.15s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "#f97316"; e.currentTarget.style.color = "#f97316"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border, #e5e7eb)"; e.currentTarget.style.color = "var(--text-2, #6b7280)"; }}
+        >
+          💬 Reply to this review
+        </button>
+      )}
+
+      {/* Reply input */}
+      {open && (
+        <div style={{ marginTop: hasReply ? 10 : 0 }}>
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            maxLength={500}
+            rows={3}
+            placeholder="Write a reply to this customer…"
+            style={{
+              width: "100%", boxSizing: "border-box",
+              padding: "10px 12px", borderRadius: 10,
+              border: "1.5px solid #f97316",
+              background: "var(--card, #fff)", color: "var(--text, #111)",
+              fontFamily: "inherit", fontSize: 13, resize: "none",
+              outline: "none", marginBottom: 8,
+            }}
+          />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <span style={{ fontSize: 11, color: "#9ca3af", alignSelf: "center", marginRight: "auto" }}>{text.length}/500</span>
+            <button
+              onClick={() => { setOpen(false); setText(review.reply?.text || ""); }}
+              style={{ background: "none", border: "1px solid var(--border, #e5e7eb)", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", color: "var(--text-2, #6b7280)" }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              disabled={loading || !text.trim()}
+              style={{
+                background: "#f97316", border: "none", borderRadius: 8,
+                padding: "7px 18px", fontSize: 12, fontWeight: 800,
+                color: "white", cursor: loading ? "wait" : "pointer",
+                fontFamily: "inherit", opacity: (!text.trim() || loading) ? 0.5 : 1,
+              }}
+            >
+              {loading ? "Posting…" : hasReply ? "Update Reply" : "Post Reply"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Reviews() {
   const [reviews, setReviews] = useState([]);
   const [avgRating, setAvgRating] = useState(0);
@@ -48,6 +154,10 @@ export default function Reviews() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const handleReplied = (reviewId, reply) => {
+    setReviews(prev => prev.map(r => r._id === reviewId ? { ...r, reply } : r));
+  };
 
   const filtered = filter === 0 ? reviews : reviews.filter((r) => r.rating === filter);
 
@@ -79,6 +189,7 @@ export default function Reviews() {
           </div>
         ) : (
           <>
+            {/* Summary cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 28 }}>
               <div style={{ background: "var(--card, #fff)", border: "1px solid var(--border, #e5e7eb)", borderRadius: 16, padding: "20px 20px 18px", textAlign: "center" }}>
                 <div style={{ fontSize: 40, fontWeight: 900, color: "var(--text, #111)", lineHeight: 1, marginBottom: 6 }}>
@@ -89,7 +200,6 @@ export default function Reviews() {
                   {total} review{total !== 1 ? "s" : ""}
                 </div>
               </div>
-
               {[5, 4, 3, 2, 1].map((star) => (
                 <div
                   key={star}
@@ -97,11 +207,8 @@ export default function Reviews() {
                   style={{
                     background: filter === star ? "rgba(245,158,11,0.08)" : "var(--card, #fff)",
                     border: filter === star ? "1.5px solid #f59e0b" : "1px solid var(--border, #e5e7eb)",
-                    borderRadius: 16,
-                    padding: "16px 16px 14px",
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                    textAlign: "center",
+                    borderRadius: 16, padding: "16px 16px 14px",
+                    cursor: "pointer", transition: "all 0.15s", textAlign: "center",
                   }}
                 >
                   <div style={{ fontSize: 22, fontWeight: 900, color: "var(--text, #111)", lineHeight: 1 }}>
@@ -141,8 +248,7 @@ export default function Reviews() {
                   <div key={review._id} style={{
                     background: "var(--card, #fff)",
                     border: "1px solid var(--border, #e5e7eb)",
-                    borderRadius: 16,
-                    padding: "18px 20px",
+                    borderRadius: 16, padding: "18px 20px",
                   }}>
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: review.comment ? 10 : 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -175,11 +281,14 @@ export default function Reviews() {
                         </span>
                       </div>
                     </div>
+
                     {review.comment && (
-                      <p style={{ margin: 0, fontSize: 14, color: "var(--text-2, #6b7280)", fontStyle: "italic", lineHeight: 1.6, paddingTop: 2 }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 14, color: "var(--text-2, #6b7280)", fontStyle: "italic", lineHeight: 1.6 }}>
                         "{review.comment}"
                       </p>
                     )}
+
+                    <ReplyBox review={review} onReplied={handleReplied} />
                   </div>
                 ))
               )}

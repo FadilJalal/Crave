@@ -199,3 +199,43 @@
   height: 100px;
   border-radius: 16px;
 }
+
+/* Restaurant reply */
+.rr-reply {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bg, #f9fafb);
+  border-left: 3px solid var(--brand, #f97316);
+  border-radius: 0 10px 10px 0;
+}
+
+.rr-reply-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.rr-reply-icon {
+  font-size: 13px;
+}
+
+.rr-reply-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--brand, #f97316);
+}
+
+.rr-reply-date {
+  font-size: 11px;
+  color: var(--text-2, #6b7280);
+  opacity: 0.6;
+  margin-left: auto;
+}
+
+.rr-reply-text {
+  font-size: 13px;
+  color: var(--text, #111);
+  line-height: 1.6;
+  margin: 0;
+}

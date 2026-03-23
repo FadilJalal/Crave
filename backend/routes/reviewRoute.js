@@ -115,4 +115,29 @@ reviewRouter.get("/restaurant-admin/list", restaurantAuth, async (req, res) => {
   }
 });
 
+// ── POST /api/review/reply/:reviewId — restaurant owner replies ──────────────
+reviewRouter.post("/reply/:reviewId", restaurantAuth, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || !text.trim()) {
+      return res.json({ success: false, message: "Reply text is required." });
+    }
+
+    const review = await reviewModel.findById(req.params.reviewId);
+    if (!review) return res.json({ success: false, message: "Review not found." });
+
+    if (String(review.restaurantId) !== String(req.restaurantId)) {
+      return res.status(403).json({ success: false, message: "Not your review." });
+    }
+
+    review.reply = { text: text.trim().slice(0, 500), repliedAt: new Date() };
+    await review.save();
+
+    res.json({ success: true, message: "Reply posted.", reply: review.reply });
+  } catch (err) {
+    console.error("[review/reply]", err);
+    res.json({ success: false, message: "Error posting reply." });
+  }
+});
+
 export default reviewRouter;

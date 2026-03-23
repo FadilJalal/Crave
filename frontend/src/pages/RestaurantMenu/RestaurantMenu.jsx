@@ -193,7 +193,7 @@ const RestaurantMenu = () => {
       )}
 
       {/* Reviews Section */}
-      <RestaurantReviews restaurantId={id} />
+      <RestaurantReviews restaurantId={id} restaurantName={restaurant?.name} />
     </div>
   );
 };
