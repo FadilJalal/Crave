@@ -20,6 +20,7 @@ export default function Menu() {
   const [catFilter,   setCatFilter]   = useState("all");
   const [sortBy,      setSortBy]      = useState("az");
   const [stockFilter, setStockFilter] = useState("all");
+  const [deletingCat, setDeletingCat] = useState(false);
 
   const loadFoods = async () => {
     try {
@@ -45,6 +46,27 @@ export default function Menu() {
     }
   };
 
+  const deleteByCategory = async (category) => {
+    const count = foods.filter(f => f.category === category).length;
+    if (!window.confirm(`Delete all ${count} item${count !== 1 ? "s" : ""} in "${category}"? This cannot be undone.`)) return;
+    setDeletingCat(true);
+    try {
+      const res = await api.post("/api/food/remove-by-category", { category });
+      if (res.data?.success) {
+        setFoods(prev => prev.filter(f => f.category !== category));
+        setCatFilter("all");
+        alert(res.data.message);
+      } else {
+        alert(res.data?.message || "Failed to delete category items");
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || "Failed to delete category items");
+    } finally {
+      setDeletingCat(false);
+    }
+  };
+
+  // --- FIXED: Added the missing function declaration below ---
   const toggleStock = async (food) => {
     setToggling(prev => ({ ...prev, [food._id]: true }));
     try {
@@ -119,7 +141,6 @@ export default function Menu() {
 
   return (
     <RestaurantLayout>
-
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
         flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <h2 style={{ margin: 0 }}>
@@ -168,12 +189,38 @@ export default function Menu() {
 
             <div>
               <div style={labelStyle}>Category</div>
-              <select value={catFilter} onChange={e => setCatFilter(e.target.value)} style={selectStyle}>
-                <option value="all">All Categories</option>
-                {allCategories.map(c => (
-                  <option key={c} value={c}>{c} ({foods.filter(f => f.category === c).length})</option>
-                ))}
-              </select>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <select value={catFilter} onChange={e => setCatFilter(e.target.value)} style={selectStyle}>
+                  <option value="all">All Categories</option>
+                  {allCategories.map(c => (
+                    <option key={c} value={c}>{c} ({foods.filter(f => f.category === c).length})</option>
+                  ))}
+                </select>
+                {catFilter !== "all" && (
+                  <button
+                    onClick={() => deleteByCategory(catFilter)}
+                    disabled={deletingCat}
+                    title={`Delete all items in "${catFilter}"`}
+                    style={{
+                      flexShrink: 0,
+                      display: "flex", alignItems: "center", gap: 5,
+                      padding: "9px 13px", borderRadius: 10, fontSize: 12, fontWeight: 800,
+                      cursor: deletingCat ? "wait" : "pointer",
+                      border: "1px solid #fca5a5",
+                      background: deletingCat ? "#fee2e2" : "#fff1f1",
+                      color: "#dc2626",
+                      whiteSpace: "nowrap",
+                      opacity: deletingCat ? 0.7 : 1,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                    </svg>
+                    {deletingCat ? "Deleting…" : "Delete All"}
+                  </button>
+                )}
+              </div>
             </div>
 
             <div>

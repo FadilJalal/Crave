@@ -145,6 +145,43 @@ foodRouter.post("/edit", (req, res, next) => {
   }
 });
 
+// ── DELETE ALL ITEMS IN A CATEGORY (restaurant admin) ─────────────────────
+foodRouter.post("/remove-by-category", (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return adminAuth(req, res, next);
+  }
+  return restaurantAuth(req, res, next);
+}, async (req, res) => {
+  try {
+    const { category } = req.body;
+    if (!category) return res.json({ success: false, message: "Category is required" });
+
+    // Build query: restaurant admins can only delete their own items
+    const query = { category };
+    if (req.restaurantId) {
+      query.restaurantId = req.restaurantId;
+    }
+
+    const foods = await foodModel.find(query);
+    if (foods.length === 0) {
+      return res.json({ success: false, message: "No items found in this category" });
+    }
+
+    // Delete image files for each food
+    for (const food of foods) {
+      try { fs.unlinkSync(`uploads/${food.image}`); } catch (e) {}
+    }
+
+    await foodModel.deleteMany(query);
+
+    res.json({ success: true, message: `Deleted ${foods.length} item(s) from "${category}"`, deleted: foods.length });
+  } catch (error) {
+    console.error(error);
+    res.json({ success: false, message: "Error deleting category items" });
+  }
+});
+
 // ── Customer: rate a food item ─────────────────────────────────────────────
 foodRouter.post("/rate", authMiddleware, async (req, res) => {
   try {
