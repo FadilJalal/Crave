@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import './FoodItem.css';
 import { StoreContext } from '../../Context/StoreContext';
 
-const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, avgRating = 0, ratingCount = 0 }) => {
+const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, avgRating = 0, ratingCount = 0, inStock = true }) => {
   const { cartItems, addToCart, removeFromCart, getItemCount, url, currency } = useContext(StoreContext);
 
   const count = getItemCount(id);
@@ -50,8 +50,6 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
         }
       }
     }
-    // Convert index-keyed selections { 0: "val" } → title-keyed { "Group Title": "val" }
-    // so the restaurant admin sees meaningful labels on orders
     const namedSelections = {};
     customizations.forEach((group, gi) => {
       const sel = selections[gi];
@@ -76,7 +74,11 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
     <>
       <div className='fi-card'>
         <div className='fi-img-wrap'>
-          {dealTag && (  <div className='fi-deal-tag' style={{ background: dealTag.bg, border: `1px solid ${dealTag.border}`, color: dealTag.color }}>    {dealTag.label}  </div>)}
+          {dealTag && (
+            <div className='fi-deal-tag' style={{ background: dealTag.bg, border: `1px solid ${dealTag.border}`, color: dealTag.color }}>
+              {dealTag.label}
+            </div>
+          )}
           <img className='fi-img' src={url + '/images/' + image} alt={name}
             onError={e => { e.target.src = 'https://via.placeholder.com/300x200?text=Food'; }} />
 
@@ -90,8 +92,25 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
             </div>
           )}
 
+          {/* Out of stock overlay */}
+          {!inStock && (
+            <div style={{
+              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: 6, backdropFilter: 'blur(2px)',
+              borderRadius: 'inherit',
+            }}>
+              <div style={{ fontSize: 28 }}>🚫</div>
+              <span style={{ color: 'white', fontWeight: 800, fontSize: 13,
+                background: 'rgba(0,0,0,0.5)', padding: '4px 12px',
+                borderRadius: 20, letterSpacing: '0.5px' }}>
+                Out of Stock
+              </span>
+            </div>
+          )}
+
           {/* Closed overlay */}
-          {!restaurantOpen && (
+          {!restaurantOpen && inStock && (
             <div style={{
               position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
               display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -108,7 +127,7 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
           )}
 
           <div className='fi-cart-ctrl'>
-            {!restaurantOpen ? null : count === 0 ? (
+            {(!restaurantOpen || !inStock) ? null : count === 0 ? (
               hasCustomizations ? (
                 <button className='fi-customize-btn' onClick={openCustomize}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -167,14 +186,12 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
         </div>
       </div>
 
-      {/* CUSTOMIZE MODAL */}
       {showCustomize && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(4px)' }}
           onClick={() => setShowCustomize(false)}>
           <div style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 460, maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}
             onClick={e => e.stopPropagation()}>
 
-            {/* Header */}
             <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', borderRadius: '24px 24px 0 0', zIndex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
@@ -186,7 +203,6 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
               </div>
             </div>
 
-            {/* Body */}
             <div style={{ padding: '20px 24px' }}>
               {customizations.map((group, gi) => (
                 <div key={gi} style={{ marginBottom: 24 }}>
@@ -215,7 +231,6 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
               ))}
             </div>
 
-            {/* Footer */}
             <div style={{ padding: '0 24px 24px', position: 'sticky', bottom: 0, background: '#fff' }}>
               {extraPrice > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid #f3f4f6', marginBottom: 12, fontSize: 14, fontWeight: 700, color: '#374151' }}>

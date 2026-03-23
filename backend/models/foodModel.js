@@ -1,4 +1,3 @@
-// backend/models/foodModel.js
 import mongoose from "mongoose";
 
 const foodSchema = new mongoose.Schema({
@@ -16,18 +15,19 @@ const foodSchema = new mongoose.Schema({
 
     avgRating: { type: Number, default: 0 },
     ratingCount: { type: Number, default: 0 },
-    ratings: [{ userId: String, score: Number }],  // one rating per user
+    ratings: [{ userId: String, score: Number }],
 
-    // ✅ CUSTOMIZATIONS FIELD
+    inStock: { type: Boolean, default: true },
+
     customizations: [
         {
-            title: { type: String, required: true },        // e.g. "Size", "Extras"
-            required: { type: Boolean, default: false },    // must user pick one?
-            multiSelect: { type: Boolean, default: false }, // can pick multiple?
+            title: { type: String, required: true },
+            required: { type: Boolean, default: false },
+            multiSelect: { type: Boolean, default: false },
             options: [
                 {
-                    label: { type: String, required: true },  // e.g. "Large"
-                    extraPrice: { type: Number, default: 0 }  // e.g. 5 (added to base price)
+                    label: { type: String, required: true },
+                    extraPrice: { type: Number, default: 0 }
                 }
             ]
         }

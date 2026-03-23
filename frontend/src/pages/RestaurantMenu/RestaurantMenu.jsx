@@ -149,8 +149,10 @@ const RestaurantMenu = () => {
               const next = nextOpeningTime(restaurant);
               if (!next) return null;
               return (
-                <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8,
-                  background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '6px 14px' }}>
+                <div style={{
+                  marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '6px 14px'
+                }}>
                   <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
                     🕐 <strong style={{ color: 'white' }}>{next}</strong>
                   </span>
@@ -186,6 +188,7 @@ const RestaurantMenu = () => {
                 customizations={item.customizations || []}
                 avgRating={item.avgRating || 0}
                 ratingCount={item.ratingCount || 0}
+                inStock={item.inStock !== false}
               />
             ))}
           </div>

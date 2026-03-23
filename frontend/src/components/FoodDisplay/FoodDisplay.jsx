@@ -50,11 +50,13 @@ const FoodDisplay = ({ category }) => {
               price={item.price} image={item.image} restaurantId={item.restaurantId}
               customizations={item.customizations || []} dealTag={dealTags[item._id] || null}
               restaurantOpen={isRestaurantOpen(item.restaurantId)}
-              avgRating={item.avgRating || 0} ratingCount={item.ratingCount || 0} />
+              avgRating={item.avgRating || 0} ratingCount={item.ratingCount || 0}
+              inStock={item.inStock !== false} />
           ))}
         </div>
       )}
     </div>
   );
 };
+
 export default FoodDisplay;
