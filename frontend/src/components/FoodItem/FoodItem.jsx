@@ -79,7 +79,7 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
               {dealTag.label}
             </div>
           )}
-          <img className='fi-img' src={url + '/images/' + image} alt={name}
+          <img className='fi-img' src={image?.startsWith('http') ? image : url + '/images/' + image} alt={name}
             onError={e => { e.target.src = 'https://via.placeholder.com/300x200?text=Food'; }} />
 
           {restName && (

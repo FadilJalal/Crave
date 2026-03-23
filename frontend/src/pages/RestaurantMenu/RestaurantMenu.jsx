@@ -81,7 +81,7 @@ const RestaurantMenu = () => {
         <div className='rm-hero-content'>
           <div className='rm-logo-wrap'>
             {restaurant.logo
-              ? <img src={`${url}/images/${restaurant.logo}`} alt={restaurant.name} className='rm-logo' onError={e => e.target.style.display = 'none'} />
+              ? <img src={restaurant.logo?.startsWith('http') ? restaurant.logo : `${url}/images/${restaurant.logo}`} alt={restaurant.name} className='rm-logo' onError={e => e.target.style.display = 'none'} />
               : <div className='rm-logo-initial'>{restaurant.name[0]}</div>
             }
           </div>
