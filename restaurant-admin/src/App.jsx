@@ -14,6 +14,7 @@ import Subscription from "./Pages/Subscription";
 import EmailCampaign from "./Pages/EmailCampaign";
 import Customers from "./Pages/Customers";
 import Messages from "./Pages/Messages";
+import Reviews from "./Pages/Reviews";
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/email-campaign" element={<ProtectedRoute><EmailCampaign /></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+      <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

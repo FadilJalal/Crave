@@ -5,25 +5,35 @@ import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import { StoreContext } from '../../Context/StoreContext';
 import FoodItem from '../../components/FoodItem/FoodItem';
-
 import { isRestaurantOpen, nextOpeningTime } from '../../utils/restaurantHours';
+import RestaurantReviews from '../../components/RestaurantReviews/RestaurantReviews';
+
 const RestaurantMenu = () => {
   const { id } = useParams();
   const { url, food_list } = useContext(StoreContext);
   const [restaurant, setRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('All');
+  const [restaurantAvgRating, setRestaurantAvgRating] = useState(null);
+  const [restaurantReviewCount, setRestaurantReviewCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchRestaurant = async () => {
       try {
-        const res = await axios.get(`${url}/api/restaurant/list`);
-        if (res.data.success) {
-          const found = res.data.data.find(r => r._id === id);
+        const [restRes, reviewRes] = await Promise.all([
+          axios.get(`${url}/api/restaurant/list`),
+          axios.get(`${url}/api/review/restaurant/${id}`),
+        ]);
+        if (restRes.data.success) {
+          const found = restRes.data.data.find(r => r._id === id);
           setRestaurant(found || null);
         } else {
-          toast.error(res.data.message || 'Failed to load restaurant');
+          toast.error(restRes.data.message || 'Failed to load restaurant');
+        }
+        if (reviewRes.data.success) {
+          setRestaurantAvgRating(reviewRes.data.avgRating || 0);
+          setRestaurantReviewCount(reviewRes.data.total || 0);
         }
       } catch (err) {
         toast.error(err?.response?.data?.message || 'Could not connect to server.');
@@ -64,7 +74,6 @@ const RestaurantMenu = () => {
 
   return (
     <div className='rm-page'>
-      {/* Hero Section */}
       <div className='rm-hero'>
         <button className='rm-back' onClick={() => navigate('/restaurants')}>
           ← Back
@@ -89,14 +98,16 @@ const RestaurantMenu = () => {
                 {openStatus ? '● Open Now' : '● Closed'}
               </span>
               <span>🕐 {restaurant.avgPrepTime || 30} min prep</span>
-              <span>⭐ 4.5 rating</span>
+              {restaurantAvgRating > 0
+                ? <span>⭐ {restaurantAvgRating.toFixed(1)} ({restaurantReviewCount} review{restaurantReviewCount !== 1 ? 's' : ''})</span>
+                : <span>⭐ No reviews yet</span>
+              }
               <span>🍽️ {menuItems.length} items</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Category Selection */}
       {categories.length > 1 && (
         <div className='rm-cats'>
           {categories.map(cat => (
@@ -116,7 +127,6 @@ const RestaurantMenu = () => {
         <span className='rm-menu-count'>{filtered.length} items</span>
       </div>
 
-      {/* Closed / Unavailable Banner */}
       {!openStatus && (
         <div style={{
           position: 'relative', marginBottom: 24,
@@ -151,7 +161,6 @@ const RestaurantMenu = () => {
         </div>
       )}
 
-      {/* Menu Grid */}
       {filtered.length === 0 ? (
         <div className='rm-empty'>
           <p>🍽️ No menu items found for this category.</p>
@@ -182,6 +191,9 @@ const RestaurantMenu = () => {
           </div>
         </div>
       )}
+
+      {/* Reviews Section */}
+      <RestaurantReviews restaurantId={id} />
     </div>
   );
 };

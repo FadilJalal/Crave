@@ -22,6 +22,7 @@ import emailCampaignRouter from "./routes/emailCampaignRoute.js";
 import { startCampaignScheduler } from "./utils/campaignScheduler.js";
 import broadcastRouter from "./routes/broadcastRoute.js";
 import messageRouter from "./routes/messageRoute.js";
+import reviewRouter from "./routes/reviewRoute.js";
 
 // ── Process-level crash guards ───────────────────────────────────────────────
 process.on("uncaughtException", (err) => {
@@ -120,6 +121,7 @@ app.use("/api/subscription",     subRouter);
 app.use("/api/email-campaign",   emailCampaignRouter);
 app.use("/api/broadcast",        broadcastRouter);
 app.use("/api/messages",         messageRouter);
+app.use("/api/review",           reviewRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {
