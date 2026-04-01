@@ -2,7 +2,7 @@
 import { useState, useEffect, useContext } from "react";
 import axios from "axios";
 import { StoreContext } from "../../Context/StoreContext";
-import { isRestaurantOpen } from "../../utils/restaurantHours";
+import { isRestaurantOpen, mergeRestaurantFromDirectory } from "../../utils/restaurantHours";
 import "./AIRecommendations.css";
 
 // ── Per-card reason tag ───────────────────────────────────────────
@@ -59,7 +59,7 @@ const TasteProfile = ({ profile, totalOrders }) => {
 };
 
 // ── Order Again ───────────────────────────────────────────────────
-const OrderAgain = ({ items, url, currency, addToCart, getItemCount, removeFromCart, cartItems }) => {
+const OrderAgain = ({ items, url, currency, addToCart, getItemCount, removeFromCart, cartItems, restaurantsById }) => {
   if (!items || items.length === 0) return null;
   return (
     <div className="oa-wrap">
@@ -73,7 +73,7 @@ const OrderAgain = ({ items, url, currency, addToCart, getItemCount, removeFromC
       <div className="oa-list">
         {items.map((food, i) => {
           const count  = getItemCount(food._id);
-          const isOpen = isRestaurantOpen(food.restaurantId);
+          const isOpen = isRestaurantOpen(mergeRestaurantFromDirectory(food, restaurantsById));
           return (
             <div key={food._id} className="oa-card" style={{ animationDelay: `${i * 60}ms` }}>
               <img
@@ -112,7 +112,7 @@ const OrderAgain = ({ items, url, currency, addToCart, getItemCount, removeFromC
 
 // ── Main Component ────────────────────────────────────────────────
 const AIRecommendations = () => {
-  const { url, token, addToCart, getItemCount, removeFromCart, cartItems, currency } =
+  const { url, token, addToCart, getItemCount, removeFromCart, cartItems, currency, restaurantsById = {} } =
     useContext(StoreContext);
 
   const [recommendations, setRecommendations] = useState([]);
@@ -186,6 +186,7 @@ const AIRecommendations = () => {
             items={orderAgain} url={url} currency={currency}
             addToCart={addToCart} getItemCount={getItemCount}
             removeFromCart={removeFromCart} cartItems={cartItems}
+            restaurantsById={restaurantsById}
           />
         </div>
       )}
@@ -247,7 +248,7 @@ const AIRecommendations = () => {
               const count  = getItemCount(food._id);
               const liked  = likes[food._id];
               const isNew  = food.tag?.color === "green";
-              const isOpen = isRestaurantOpen(food.restaurantId);
+              const isOpen = isRestaurantOpen(mergeRestaurantFromDirectory(food, restaurantsById));
 
               return (
                 <div key={food._id} className="ai-card" style={{ animationDelay: `${i * 80}ms` }}>

@@ -28,7 +28,7 @@ const RestaurantMenu = () => {
           axios.get(`${url}/api/review/restaurant/${id}`),
         ]);
         if (restRes.data.success) {
-          const found = restRes.data.data.find(r => r._id === id);
+          const found = restRes.data.data.find((r) => String(r._id) === String(id));
           setRestaurant(found || null);
         } else {
           toast.error(restRes.data.message || 'Failed to load restaurant');
@@ -193,6 +193,7 @@ const RestaurantMenu = () => {
                 avgRating={item.avgRating || 0}
                 ratingCount={item.ratingCount || 0}
                 inStock={item.inStock !== false}
+                restaurantOpen={openStatus}
               />
             ))}
           </div>

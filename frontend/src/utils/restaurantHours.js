@@ -1,7 +1,46 @@
 const DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 
+/** Map any casing (Monday / MONDAY) to our schema keys */
+function normalizeOpeningHours(hours) {
+  if (!hours || typeof hours !== "object") return null;
+  const out = {};
+  for (const [k, v] of Object.entries(hours)) {
+    const key = String(k).toLowerCase();
+    if (DAYS.includes(key)) out[key] = v;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/**
+ * Merge embedded populate from /food with canonical /restaurant/list (hours + isActive stay in sync).
+ * Handles restaurantId as populated doc, raw ObjectId, or id string.
+ */
+export function mergeRestaurantFromDirectory(food, restaurantsById) {
+  if (!food) return null;
+  const embedded = food.restaurantId;
+  let rid = null;
+  if (embedded != null && typeof embedded === "object" && !Array.isArray(embedded)) {
+    rid = embedded._id ?? null;
+  } else if (embedded != null) {
+    rid = embedded;
+  }
+  const ridStr = rid != null ? String(rid) : null;
+  const fromList = ridStr && restaurantsById ? restaurantsById[ridStr] : null;
+
+  if (fromList) {
+    if (embedded != null && typeof embedded === "object" && !Array.isArray(embedded)) {
+      return { ...embedded, ...fromList };
+    }
+    return fromList;
+  }
+  if (embedded != null && typeof embedded === "object" && !Array.isArray(embedded)) {
+    return embedded;
+  }
+  return null;
+}
+
 function getDubaiNowParts() {
-  const fmt = new Intl.DateTimeFormat("en-GB", {
+  const fmt = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Dubai",
     weekday: "long",
     hour: "2-digit",
@@ -22,16 +61,29 @@ function parseTimeToMins(t) {
   return h * 60 + m;
 }
 
+function to12h(mins) {
+  const hh = Math.floor(mins / 60) % 24;
+  const mm = mins % 60;
+  const ampm = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 || 12;
+  return `${h12}:${String(mm).padStart(2, "0")} ${ampm}`;
+}
+
+function weekdayLabel(dayKey) {
+  return dayKey.charAt(0).toUpperCase() + dayKey.slice(1);
+}
+
 /**
  * Returns true if a restaurant is currently open.
  * Handles overnight spans (e.g. 09:00 → 03:00 next day).
  */
 export function isRestaurantOpen(r) {
-  // If restaurant payload is missing/partial (e.g. stale cached food list),
-  // avoid showing false "Closed" overlays.
-  if (!r || typeof r !== "object") return true;
+  // No restaurant doc ⇒ do not treat as open (blocks ordering when data is broken).
+  if (!r || typeof r !== "object") return false;
   if (r.isActive === false) return false;
-  const hours = r.openingHours;
+  const hours =
+    normalizeOpeningHours(r.openingHours) ||
+    (r.openingHours && typeof r.openingHours === "object" ? r.openingHours : null);
   if (!hours || typeof hours !== "object") return true;
 
   const { weekday, mins } = getDubaiNowParts();
@@ -75,24 +127,35 @@ export function isRestaurantOpen(r) {
  * e.g. "Opens today at 9:00 AM" or "Opens Monday at 9:00 AM"
  */
 export function nextOpeningTime(r) {
-  if (!r?.openingHours) return null;
-  const now     = new Date();
-  const todayIdx = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  if (!r || typeof r !== "object") return null;
+  if (r.isActive === false) return null;
+  const oh =
+    normalizeOpeningHours(r.openingHours) ||
+    (r.openingHours && typeof r.openingHours === "object" ? r.openingHours : null);
+  if (!oh || typeof oh !== "object") return null;
 
-  for (let offset = 1; offset <= 7; offset++) {
-    const idx  = (todayIdx + offset) % 7;
-    const day  = DAYS[idx];
-    const h    = r.openingHours[day];
+  const { weekday, mins } = getDubaiNowParts();
+  const todayIdx = Math.max(0, DAYS.indexOf(weekday));
+
+  // First pass: include "later today" if closed right now.
+  for (let offset = 0; offset <= 7; offset++) {
+    const idx = (todayIdx + offset) % 7;
+    const day = DAYS[idx];
+    const h = oh[day];
     if (!h || h.closed) continue;
+    if (h.open === "00:00" && h.close === "23:59") return null;
 
-    const [hh, mm] = h.open.split(":").map(Number);
-    const ampm = hh >= 12 ? "PM" : "AM";
-    const h12  = hh % 12 || 12;
-    const time = `${h12}:${String(mm).padStart(2,"0")} ${ampm}`;
+    const openMins = parseTimeToMins(h.open);
+    if (openMins === null) continue;
 
-    if (offset === 1) return `Opens tomorrow at ${time}`;
-    const label = day.charAt(0).toUpperCase() + day.slice(1);
-    return `Opens ${label} at ${time}`;
+    if (offset === 0) {
+      // Later today only (if open time already passed, next opening is another day).
+      if (openMins > mins) return `Opens today at ${to12h(openMins)}`;
+      continue;
+    }
+
+    if (offset === 1) return `Opens tomorrow at ${to12h(openMins)}`;
+    return `Opens ${weekdayLabel(day)} at ${to12h(openMins)}`;
   }
   return null;
 }

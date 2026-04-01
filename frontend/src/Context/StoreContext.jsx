@@ -2,12 +2,15 @@
 import { createContext, useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { mergeRestaurantFromDirectory, isRestaurantOpen } from "../utils/restaurantHours.js";
 export const StoreContext = createContext(null);
 
 const StoreContextProvider = (props) => {
   const url = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
   const [food_list, setFoodList] = useState([]);
   const [foodListLoading, setFoodListLoading] = useState(true);
+  /** Canonical restaurant docs keyed by id — keeps menu cards in sync with /restaurant/list */
+  const [restaurantsById, setRestaurantsById] = useState({});
   const [token, setToken] = useState("");
   const currency = "AED ";
   // cartItems: { cartKey -> { itemId, quantity, selections, extraPrice } }
@@ -75,6 +78,11 @@ const StoreContextProvider = (props) => {
 
   const addToCart = async (itemId, selections = {}) => {
     const food = food_list.find((f) => f._id === itemId);
+    const merged = mergeRestaurantFromDirectory(food, restaurantsById);
+    if (!isRestaurantOpen(merged)) {
+      toast.error("This restaurant is not accepting orders right now.");
+      return;
+    }
     const extraPrice = calcExtraPrice(food, selections);
     const key = buildCartKey(itemId, selections);
 
@@ -142,29 +150,49 @@ const StoreContextProvider = (props) => {
 
   const [foodListError, setFoodListError] = useState(false);
 
+  const fetchRestaurants = async () => {
+    try {
+      const response = await axios.get(`${url}/api/restaurant/list`);
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        const m = {};
+        response.data.data.forEach((r) => {
+          m[String(r._id)] = r;
+        });
+        setRestaurantsById(m);
+      }
+    } catch {
+      /* keep previous map */
+    }
+  };
+
   const fetchFoodList = async () => {
     try {
       setFoodListError(false);
       const response = await axios.get(url + "/api/food/list/public");
       if (response.data?.data) {
         setFoodList(response.data.data);
-        // Cache for cart fallback
-        try { localStorage.setItem("crave_food_cache", JSON.stringify(response.data.data)); localStorage.setItem("crave_food_cache_v", "2"); } catch {}
+        try {
+          localStorage.setItem("crave_food_cache", JSON.stringify(response.data.data));
+          localStorage.setItem("crave_food_cache_v", "4");
+        } catch {}
       } else {
         setFoodListError(true);
         toast.error("Failed to load menu. Please refresh the page.");
         // Try cache
         try {
-          const cacheOk = localStorage.getItem("crave_food_cache_v") === "2";
+          const cacheOk = localStorage.getItem("crave_food_cache_v") === "4";
           const cached = cacheOk ? JSON.parse(localStorage.getItem("crave_food_cache") || "null") : null;
-          if (cached?.length) { setFoodList(cached); setFoodListError(false); }
+          if (cached?.length) {
+            setFoodList(cached);
+            setFoodListError(false);
+          }
         } catch {}
       }
     } catch {
       setFoodListError(true);
       // Try cache on network failure
       try {
-        const cacheOk2 = localStorage.getItem("crave_food_cache_v") === "2";
+        const cacheOk2 = localStorage.getItem("crave_food_cache_v") === "4";
         const cached = cacheOk2 ? JSON.parse(localStorage.getItem("crave_food_cache") || "null") : null;
         if (cached?.length) {
           setFoodList(cached);
@@ -207,7 +235,7 @@ const StoreContextProvider = (props) => {
 
   useEffect(() => {
     async function loadData() {
-      await fetchFoodList();
+      await Promise.all([fetchFoodList(), fetchRestaurants()]);
       const savedToken = localStorage.getItem("token");
       if (savedToken) {
         setToken(savedToken);
@@ -216,13 +244,16 @@ const StoreContextProvider = (props) => {
     }
     loadData();
 
-    // Refresh food list every 60s so menu changes appear without reload
-    const foodPoll = setInterval(() => fetchFoodList(), 60000);
+    // Refresh food + restaurants so open/closed stays accurate
+    const foodPoll = setInterval(() => {
+      fetchFoodList();
+      fetchRestaurants();
+    }, 60000);
     return () => clearInterval(foodPoll);
   }, []);
 
   const contextValue = {
-    url, food_list, foodListLoading, foodListError,
+    url, food_list, foodListLoading, foodListError, restaurantsById,
     cartItems, addToCart, removeFromCart,
     getTotalCartAmount, getItemCount, buildCartKey,
     token, setToken, loadCartData, setCartItems,

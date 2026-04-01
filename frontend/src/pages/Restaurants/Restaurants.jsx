@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { StoreContext } from '../../Context/StoreContext';
 
-import { isRestaurantOpen } from '../../utils/restaurantHours';
+import { isRestaurantOpen, nextOpeningTime } from '../../utils/restaurantHours';
 
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371;
@@ -119,12 +119,20 @@ const Restaurants = () => {
             const dist = fmtDist(r.distance);
             const outOfRange = isOutOfRange(r);
             const radius = r.deliveryRadius ?? 10;
+            const closedNow = !open && !outOfRange;
+            const nextTxt = closedNow ? nextOpeningTime(r) : null;
             return (
               <div
                 key={r._id}
-                className={`rp-card ${outOfRange ? 'rp-card-disabled' : ''}`}
+                className={`rp-card ${outOfRange ? 'rp-card-disabled' : ''} ${closedNow ? 'rp-card-closed' : ''}`}
                 onClick={() => !outOfRange && navigate(`/restaurants/${r._id}`)}
-                title={outOfRange ? `Delivery only within ${radius} km` : ''}
+                title={
+                  outOfRange
+                    ? `Delivery only within ${radius} km`
+                    : closedNow
+                      ? (nextTxt || 'Closed — you can still browse the menu')
+                      : ''
+                }
               >
                 <div className='rp-card-img'>
                   {r.logo ? (
@@ -143,6 +151,12 @@ const Restaurants = () => {
                   <span className={`rp-status ${open ? 'rp-open' : 'rp-closed'}`}>
                     {open ? 'Open' : 'Closed'}
                   </span>
+                  {closedNow && (
+                    <div className="rp-closed-overlay" aria-hidden>
+                      <span className="rp-closed-overlay-icon">🔒</span>
+                      <span className="rp-closed-overlay-text">Not taking orders</span>
+                    </div>
+                  )}
                   {dist && (
                     <span className='rp-distance'>📍 {dist}</span>
                   )}
@@ -170,8 +184,23 @@ const Restaurants = () => {
                   )}
                 </div>
                 <div className='rp-card-footer'>
-                  <button className={`rp-view-btn ${outOfRange ? 'rp-view-btn-disabled' : ''}`} disabled={outOfRange}>
-                    {outOfRange ? `Out of delivery range` : 'View Menu →'}
+                  {closedNow && nextTxt && (
+                    <p className="rp-next-open">{nextTxt}</p>
+                  )}
+                  <button
+                    type="button"
+                    className={`rp-view-btn ${outOfRange ? 'rp-view-btn-disabled' : ''} ${closedNow ? 'rp-view-btn-muted' : ''}`}
+                    disabled={outOfRange}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!outOfRange) navigate(`/restaurants/${r._id}`);
+                    }}
+                  >
+                    {outOfRange
+                      ? 'Out of delivery range'
+                      : closedNow
+                        ? 'Browse menu →'
+                        : 'View Menu →'}
                   </button>
                 </div>
               </div>

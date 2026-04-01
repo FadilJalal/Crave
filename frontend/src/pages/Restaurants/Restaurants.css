@@ -78,10 +78,20 @@
   position: relative;
 }
 
-.rp-card:hover:not(.rp-card-disabled) {
+.rp-card:hover:not(.rp-card-disabled):not(.rp-card-closed) {
   transform: translateY(-6px);
   box-shadow: 0 14px 32px rgba(0,0,0,0.10);
   border-color: transparent;
+}
+
+.rp-card-closed {
+  border-color: #fecaca;
+  box-shadow: 0 4px 16px rgba(185, 28, 28, 0.08);
+}
+
+.rp-card-closed:hover:not(.rp-card-disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.08);
 }
 
 .rp-card-img {
@@ -119,7 +129,62 @@
 }
 
 .rp-open { background: #dcfce7; color: #166534; }
-.rp-closed { background: #fee2e2; color: #991b1b; }
+.rp-closed { background: #fee2e2; color: #991b1b; z-index: 5; }
+
+/* Closed restaurant — clear visual beyond the small badge */
+.rp-card-closed .rp-card-img img {
+  filter: brightness(0.72);
+}
+
+.rp-closed-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.42);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  padding: 10px;
+  pointer-events: none;
+}
+
+.rp-closed-overlay-icon {
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+}
+
+.rp-closed-overlay-text {
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+.rp-next-open {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9ca3af;
+  margin: 0 0 10px;
+  line-height: 1.35;
+}
+
+.rp-view-btn-muted {
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
+  border-color: #e5e7eb !important;
+}
+
+.rp-view-btn-muted:hover:not(:disabled) {
+  background: #e5e7eb !important;
+  color: #374151 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
 
 .rp-distance {
   position: absolute;

@@ -1,6 +1,7 @@
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 import restaurantModel from "../models/restaurantModel.js";
+import { isRestaurantOpen } from "../utils/restaurantHours.js";
 import Stripe from "stripe";
 
 // ✅ FIXED: lazy-init Stripe so a missing key doesn't crash the server at startup
@@ -194,6 +195,20 @@ const placeOrder = async (req, res) => {
       return res.json({ success: false, message: "restaurantId missing in items" });
     }
 
+    const restaurantDoc = await restaurantModel
+      .findById(restaurantId)
+      .select("isActive openingHours deliveryTiers deliveryRadius")
+      .lean();
+    if (!restaurantDoc) {
+      return res.json({ success: false, message: "Restaurant not found" });
+    }
+    if (!isRestaurantOpen(restaurantDoc)) {
+      return res.json({
+        success: false,
+        message: "This restaurant is not accepting orders right now.",
+      });
+    }
+
     // ── Delivery radius check ──────────────────────────────────────────────
     const radiusCheck = await checkDeliveryRadius(restaurantId, req.body.address);
     console.log(`[placeOrder] radiusCheck:`, radiusCheck);
@@ -201,9 +216,7 @@ const placeOrder = async (req, res) => {
       return res.json({ success: false, message: radiusCheck.message, outOfRange: true });
     }
 
-    // Calculate delivery fee from tiers
-    const restaurantForFee = await restaurantModel.findById(restaurantId).select("deliveryTiers deliveryRadius");
-    const actualDeliveryFee = calcDeliveryFee(restaurantForFee?.deliveryTiers, radiusCheck.distKm ?? 0);
+    const actualDeliveryFee = calcDeliveryFee(restaurantDoc?.deliveryTiers, radiusCheck.distKm ?? 0);
 
     const newOrder = new orderModel({
       userId: req.body.userId,
@@ -274,6 +287,20 @@ const placeOrderCod = async (req, res) => {
       return res.json({ success: false, message: "restaurantId missing in items" });
     }
 
+    const restaurantDocCod = await restaurantModel
+      .findById(restaurantId)
+      .select("isActive openingHours deliveryTiers deliveryRadius")
+      .lean();
+    if (!restaurantDocCod) {
+      return res.json({ success: false, message: "Restaurant not found" });
+    }
+    if (!isRestaurantOpen(restaurantDocCod)) {
+      return res.json({
+        success: false,
+        message: "This restaurant is not accepting orders right now.",
+      });
+    }
+
     // ── Delivery radius check ──────────────────────────────────────────────
     const radiusCheck = await checkDeliveryRadius(restaurantId, req.body.address);
     console.log(`[placeOrderCod] radiusCheck:`, radiusCheck);
@@ -281,9 +308,7 @@ const placeOrderCod = async (req, res) => {
       return res.json({ success: false, message: radiusCheck.message, outOfRange: true });
     }
 
-    // Calculate delivery fee from tiers
-    const restaurantForFee = await restaurantModel.findById(restaurantId).select("deliveryTiers deliveryRadius");
-    const actualDeliveryFee = calcDeliveryFee(restaurantForFee?.deliveryTiers, radiusCheck.distKm ?? 0);
+    const actualDeliveryFee = calcDeliveryFee(restaurantDocCod?.deliveryTiers, radiusCheck.distKm ?? 0);
 
     const newOrder = new orderModel({
       userId: req.body.userId,

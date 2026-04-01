@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useContext } from "react";
 import { StoreContext } from "../../Context/StoreContext";
-import { isRestaurantOpen } from "../../utils/restaurantHours";
+import { isRestaurantOpen, mergeRestaurantFromDirectory } from "../../utils/restaurantHours";
 import "./FoodChat.css";
 
 const FoodChat = () => {
-  const { food_list, currency, addToCart, url } = useContext(StoreContext);
+  const { food_list, currency, addToCart, url, restaurantsById = {} } = useContext(StoreContext);
   const [open, setOpen]         = useState(false);
   const [input, setInput]       = useState("");
   const [messages, setMessages] = useState([
@@ -84,7 +84,7 @@ const FoodChat = () => {
                 {msg.foods?.length > 0 && (
                   <div className="fc-suggestions">
                     {msg.foods.map(food => {
-                      const isOpen = isRestaurantOpen(food.restaurantId);
+                      const isOpen = isRestaurantOpen(mergeRestaurantFromDirectory(food, restaurantsById));
                       return (
                         <div key={food._id} className="fc-food-card">
                           <img src={url + "/images/" + food.image} alt={food.name}

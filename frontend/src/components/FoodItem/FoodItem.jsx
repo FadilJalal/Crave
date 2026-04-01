@@ -63,6 +63,7 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
   };
 
   const handleAddToCart = () => {
+    if (!restaurantOpen || !inStock) return;
     for (const [gi, group] of customizations.entries()) {
       if (group.required) {
         const sel = selections[gi];
@@ -85,6 +86,7 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
   };
 
   const openCustomize = () => {
+    if (!restaurantOpen || !inStock) return;
     setSelections({});
     setShowCustomize(true);
   };

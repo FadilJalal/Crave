@@ -2,10 +2,11 @@ import { useState, useContext, useRef } from "react";
 import axios from "axios";
 import { StoreContext } from "../../Context/StoreContext";
 import FoodItem from "../FoodItem/FoodItem";
+import { isRestaurantOpen, mergeRestaurantFromDirectory } from "../../utils/restaurantHours";
 import "./SmartSearch.css";
 
 const SmartSearch = () => {
-  const { url } = useContext(StoreContext);
+  const { url, restaurantsById = {} } = useContext(StoreContext);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [parsed, setParsed] = useState(null);
@@ -106,6 +107,7 @@ const SmartSearch = () => {
                   avgRating={item.avgRating || 0}
                   ratingCount={item.ratingCount || 0}
                   inStock={item.inStock !== false}
+                  restaurantOpen={isRestaurantOpen(mergeRestaurantFromDirectory(item, restaurantsById))}
                 />
                 <div className="ss-item-tags">
                   {item.dietaryTags?.map((t) => (

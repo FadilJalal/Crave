@@ -2,6 +2,7 @@ import { useState, useContext } from "react";
 import axios from "axios";
 import { StoreContext } from "../../Context/StoreContext";
 import FoodItem from "../FoodItem/FoodItem";
+import { isRestaurantOpen, mergeRestaurantFromDirectory } from "../../utils/restaurantHours";
 import "./MoodPicker.css";
 
 const MOODS = [
@@ -16,7 +17,7 @@ const MOODS = [
 ];
 
 const MoodPicker = () => {
-  const { url } = useContext(StoreContext);
+  const { url, restaurantsById = {} } = useContext(StoreContext);
   const [activeMood, setActiveMood] = useState(null);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -75,6 +76,7 @@ const MoodPicker = () => {
                   avgRating={item.avgRating || 0}
                   ratingCount={item.ratingCount || 0}
                   inStock={item.inStock !== false}
+                  restaurantOpen={isRestaurantOpen(mergeRestaurantFromDirectory(item, restaurantsById))}
                 />
                 <div className="mp-tags">
                   {item.dietaryTags?.map((t) => (

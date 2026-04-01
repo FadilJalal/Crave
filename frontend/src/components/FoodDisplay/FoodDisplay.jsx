@@ -2,7 +2,7 @@ import { useContext, useMemo } from 'react';
 import './FoodDisplay.css';
 import FoodItem from '../FoodItem/FoodItem';
 import { StoreContext } from '../../Context/StoreContext';
-import { isRestaurantOpen } from '../../utils/restaurantHours';
+import { isRestaurantOpen, mergeRestaurantFromDirectory } from '../../utils/restaurantHours';
 
 const computeTags = (food_list) => {
   const tags = {};
@@ -28,7 +28,7 @@ const computeTags = (food_list) => {
 };
 
 const FoodDisplay = ({ category }) => {
-  const { food_list = [] } = useContext(StoreContext);
+  const { food_list = [], restaurantsById = {} } = useContext(StoreContext);
   const dealTags = useMemo(() => computeTags(food_list), [food_list]);
   const filtered = food_list.filter(item => category === 'All' || item.category === category);
 
@@ -49,7 +49,7 @@ const FoodDisplay = ({ category }) => {
             <FoodItem key={item._id} id={item._id} name={item.name} description={item.description}
               price={item.price} image={item.image} restaurantId={item.restaurantId}
               customizations={item.customizations || []} dealTag={dealTags[item._id] || null}
-              restaurantOpen={isRestaurantOpen(item.restaurantId)}
+              restaurantOpen={isRestaurantOpen(mergeRestaurantFromDirectory(item, restaurantsById))}
               avgRating={item.avgRating || 0} ratingCount={item.ratingCount || 0}
               inStock={item.inStock !== false} />
           ))}
