@@ -1,45 +1,46 @@
+/* ── Food Chat Widget ── */
 .fc-bubble {
   position: fixed; bottom: 28px; right: 28px; z-index: 9998;
   display: flex; align-items: center; gap: 8px;
-  background: linear-gradient(135deg, #E8380D, #ff6a3d);
+  background: linear-gradient(135deg, var(--brand), #ff6a3d);
   color: #fff; border: none; border-radius: 50px;
-  padding: 14px 20px; cursor: pointer; font-family: inherit;
-  box-shadow: 0 8px 28px rgba(232,56,13,0.45);
-  transition: all 0.25s; font-size: 14px; font-weight: 700;
+  padding: 14px 20px; cursor: pointer; font-family: var(--font-body);
+  box-shadow: 0 8px 28px rgba(255,48,8,0.40);
+  transition: all 0.25s cubic-bezier(0.4,0,0.2,1); font-size: 14px; font-weight: 700;
 }
-.fc-bubble:hover { transform: translateY(-3px) scale(1.04); }
+.fc-bubble:hover { transform: translateY(-3px) scale(1.04); box-shadow: 0 12px 36px rgba(255,48,8,0.45); }
 .fc-bubble-open { padding: 14px; border-radius: 50%; }
 .fc-bubble-label { white-space: nowrap; }
 
 .fc-window {
   position: fixed; bottom: 90px; right: 28px; z-index: 9997;
-  width: 360px; max-height: 560px;
-  background: #fff; border-radius: 24px;
+  width: 370px; max-height: 560px;
+  background: var(--card); border-radius: 24px;
   box-shadow: 0 24px 72px rgba(0,0,0,0.18);
   display: flex; flex-direction: column;
-  border: 1px solid #f3f4f6;
-  animation: fc-in 0.25s ease;
+  border: 1px solid var(--border);
+  animation: fc-in 0.25s cubic-bezier(0.22,1,0.36,1);
 }
 @keyframes fc-in { from { opacity:0; transform:scale(0.93) translateY(12px); } to { opacity:1; transform:none; } }
 
 .fc-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 18px;
-  background: linear-gradient(135deg, #0f0f0f, #1f1210);
+  background: linear-gradient(135deg, var(--text), #1f1210);
   border-radius: 24px 24px 0 0;
 }
 .fc-header-left { display: flex; align-items: center; gap: 10px; }
 .fc-avatar {
   width: 36px; height: 36px; border-radius: 50%;
-  background: linear-gradient(135deg, #E8380D, #ff8c42);
+  background: linear-gradient(135deg, var(--brand), #ff8c42);
   display: flex; align-items: center; justify-content: center; font-size: 18px;
 }
-.fc-header-name { font-size: 14px; font-weight: 800; color: #fff; margin: 0 0 2px; }
+.fc-header-name { font-size: 14px; font-weight: 800; color: #fff; margin: 0 0 2px; font-family: var(--font-display); }
 .fc-header-sub  { font-size: 11px; color: #9ca3af; margin: 0; }
 .fc-close {
   background: rgba(255,255,255,0.1); border: none; color: #9ca3af;
-  width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 13px;
-  display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
 }
 .fc-close:hover { background: rgba(255,255,255,0.2); color: #fff; }
 
@@ -51,12 +52,12 @@
 .fc-msg-wrap { display: flex; flex-direction: column; gap: 8px; }
 .fc-user { align-items: flex-end; }
 .fc-bot  { align-items: flex-start; }
-.fc-msg { max-width: 85%; padding: 10px 14px; font-size: 13.5px; line-height: 1.5; border-radius: 16px; }
-.fc-msg-user { background: linear-gradient(135deg, #E8380D, #ff6a3d); color: #fff; border-radius: 16px 16px 4px 16px; }
-.fc-msg-bot  { background: #f3f4f6; color: #111827; border-radius: 16px 16px 16px 4px; }
+.fc-msg { max-width: 85%; padding: 10px 14px; font-size: 13.5px; line-height: 1.55; border-radius: 16px; }
+.fc-msg-user { background: linear-gradient(135deg, var(--brand), #ff6a3d); color: #fff; border-radius: 16px 16px 4px 16px; }
+.fc-msg-bot  { background: var(--bg); color: var(--text); border-radius: 16px 16px 16px 4px; }
 
 .fc-typing { display: flex; align-items: center; gap: 5px; padding: 14px 18px; }
-.fc-typing span { width: 7px; height: 7px; background: #9ca3af; border-radius: 50%; animation: fc-dot 1.2s ease infinite; }
+.fc-typing span { width: 7px; height: 7px; background: var(--text-3); border-radius: 50%; animation: fc-dot 1.2s ease infinite; }
 .fc-typing span:nth-child(2) { animation-delay: 0.2s; }
 .fc-typing span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes fc-dot { 0%,80%,100% { transform:scale(0.7); opacity:0.5; } 40% { transform:scale(1); opacity:1; } }
@@ -64,41 +65,43 @@
 .fc-suggestions { display: flex; flex-direction: column; gap: 7px; max-width: 85%; }
 .fc-food-card {
   display: flex; align-items: center; gap: 10px;
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 8px 12px 8px 8px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px 8px 8px;
+  transition: all 0.15s;
 }
-.fc-food-card:hover { border-color: #ffd5cc; background: #fff5f3; }
+.fc-food-card:hover { border-color: var(--brand-mid); background: var(--brand-soft); }
 .fc-food-card img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 .fc-food-info { flex: 1; min-width: 0; }
-.fc-food-name  { font-size: 12px; font-weight: 700; color: #111827; margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fc-food-price { font-size: 11px; color: #E8380D; font-weight: 700; margin: 0; }
+.fc-food-name  { font-size: 12px; font-weight: 700; color: var(--text); margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-food-price { font-size: 11px; color: var(--brand); font-weight: 700; margin: 0; }
 .fc-food-add {
-  padding: 5px 12px; background: #E8380D; color: #fff; border: none;
-  border-radius: 50px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit;
+  padding: 5px 12px; background: var(--brand); color: #fff; border: none;
+  border-radius: 50px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--font-body);
+  transition: background 0.15s;
 }
-.fc-food-add:hover { background: #c42e09; }
+.fc-food-add:hover { background: var(--brand-dark); }
 
 .fc-quick { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 12px; }
 .fc-quick-btn {
-  padding: 7px 13px; background: #f3f4f6; border: 1px solid #e5e7eb;
-  border-radius: 50px; font-size: 12px; font-weight: 600; color: #374151;
-  cursor: pointer; font-family: inherit; transition: all 0.15s;
+  padding: 7px 14px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 50px; font-size: 12px; font-weight: 600; color: var(--text-2);
+  cursor: pointer; font-family: var(--font-body); transition: all 0.15s;
 }
-.fc-quick-btn:hover { background: #fff5f3; border-color: #ffd5cc; color: #E8380D; }
+.fc-quick-btn:hover { background: var(--brand-soft); border-color: var(--brand-mid); color: var(--brand); }
 
-.fc-input-row { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid #f3f4f6; }
+.fc-input-row { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
 .fc-input {
-  flex: 1; border: 1.5px solid #e5e7eb; border-radius: 50px;
-  padding: 10px 16px; font-size: 13.5px; font-family: inherit; color: #111827;
-  outline: none; background: #fafafa; transition: border-color 0.2s;
+  flex: 1; border: 1.5px solid var(--border); border-radius: 50px;
+  padding: 10px 16px; font-size: 13.5px; font-family: var(--font-body); color: var(--text);
+  outline: none; background: var(--bg); transition: border-color 0.2s, background 0.2s;
 }
-.fc-input:focus { border-color: #E8380D; background: #fff; }
-.fc-input::placeholder { color: #9ca3af; }
+.fc-input:focus { border-color: var(--brand); background: #fff; }
+.fc-input::placeholder { color: var(--text-3); }
 .fc-send {
   width: 38px; height: 38px; border-radius: 50%;
-  background: #E8380D; color: #fff; border: none;
+  background: var(--brand); color: #fff; border: none;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; box-shadow: 0 4px 12px rgba(232,56,13,0.3); transition: all 0.15s;
+  cursor: pointer; box-shadow: 0 4px 12px rgba(255,48,8,0.3); transition: all 0.15s;
 }
-.fc-send:hover:not(:disabled) { background: #c42e09; transform: scale(1.08); }
+.fc-send:hover:not(:disabled) { background: var(--brand-dark); transform: scale(1.08); }
 .fc-send:disabled { opacity: 0.4; cursor: not-allowed; }
 @media (max-width: 420px) { .fc-window { width: calc(100vw - 32px); right: 16px; } .fc-bubble { right: 16px; bottom: 16px; } }

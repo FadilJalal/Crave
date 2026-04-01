@@ -7,6 +7,8 @@ import { StoreContext } from '../../Context/StoreContext';
 import FoodItem from '../../components/FoodItem/FoodItem';
 import { isRestaurantOpen, nextOpeningTime } from '../../utils/restaurantHours';
 import RestaurantReviews from '../../components/RestaurantReviews/RestaurantReviews';
+import SurgeIndicator from '../../components/SurgeIndicator/SurgeIndicator';
+import SentimentSummary from '../../components/SentimentSummary/SentimentSummary';
 
 const RestaurantMenu = () => {
   const { id } = useParams();
@@ -122,6 +124,8 @@ const RestaurantMenu = () => {
         </div>
       )}
 
+      <SurgeIndicator restaurantId={id} />
+
       <div className='rm-menu-header'>
         <h2 className='rm-menu-title'>Menu</h2>
         <span className='rm-menu-count'>{filtered.length} items</span>
@@ -194,6 +198,9 @@ const RestaurantMenu = () => {
           </div>
         </div>
       )}
+
+      {/* AI Sentiment Summary */}
+      <SentimentSummary restaurantId={id} />
 
       {/* Reviews Section */}
       <RestaurantReviews restaurantId={id} restaurantName={restaurant?.name} />

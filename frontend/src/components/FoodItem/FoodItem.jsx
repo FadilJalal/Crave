@@ -1,6 +1,26 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useMemo } from 'react';
 import './FoodItem.css';
 import { StoreContext } from '../../Context/StoreContext';
+
+const DIET_RULES = {
+  vegan:      { m: /vegan|plant.?based|tofu|falafel|hummus|lentil|chickpea/i, x: /chicken|beef|lamb|meat|fish|shrimp|egg|cheese|cream|butter|milk|honey/i },
+  vegetarian: { m: /veg|vegetarian|paneer|cheese|mushroom|spinach|potato|corn|beans|falafel/i, x: /chicken|beef|lamb|meat|fish|shrimp|pepperoni|bacon|ham|sausage/i },
+  glutenFree: { m: /gluten.?free|rice|salad|grilled|bowl/i, x: /bread|bun|wrap|tortilla|pasta|noodle|pizza|flour|naan|cake|pastry/i },
+  keto:       { m: /keto|grilled|steak|wings|kebab|salad|egg/i, x: /rice|bread|pasta|noodle|potato|fries|pizza|tortilla|sugar|cake|sweet/i },
+};
+const DIET_COLORS = {
+  vegan: { bg: "#dcfce7", color: "#15803d" }, vegetarian: { bg: "#d1fae5", color: "#047857" },
+  glutenFree: { bg: "#fef3c7", color: "#92400e" }, keto: { bg: "#ede9fe", color: "#6d28d9" },
+  spicy: { bg: "#fee2e2", color: "#dc2626" }, healthy: { bg: "#ecfdf5", color: "#059669" },
+};
+function getDietTags(name, desc, cat) {
+  const t = `${name} ${desc} ${cat}`.toLowerCase();
+  const tags = [];
+  for (const [d, { m, x }] of Object.entries(DIET_RULES)) { if (m.test(t) && !x.test(t)) tags.push(d); }
+  if (/spicy|chilli|chili|pepper|jalapeño|sriracha|buffalo|masala|vindaloo/i.test(t)) tags.push("spicy");
+  if (/grilled|baked|steamed|fresh|salad|light|lean/i.test(t)) tags.push("healthy");
+  return tags;
+}
 
 const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, avgRating = 0, ratingCount = 0, inStock = true }) => {
   const { cartItems, addToCart, removeFromCart, getItemCount, url, currency } = useContext(StoreContext);
@@ -9,6 +29,8 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
   const restName = restaurantId?.name || '';
   const restLogo = restaurantId?.logo ? `${url}/images/${restaurantId.logo}` : null;
   const hasCustomizations = customizations && customizations.length > 0;
+  const category = restaurantId?.category || '';
+  const dietTags = useMemo(() => getDietTags(name, description, category), [name, description, category]);
 
   const [showCustomize, setShowCustomize] = useState(false);
   const [selections, setSelections] = useState({});
@@ -176,6 +198,18 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
             </div>
           </div>
           <p className='fi-desc'>{description}</p>
+          {dietTags.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '2px 0 6px' }}>
+              {dietTags.map(t => (
+                <span key={t} style={{
+                  padding: '2px 8px', borderRadius: 50, fontSize: 9.5, fontWeight: 600,
+                  background: DIET_COLORS[t]?.bg || 'var(--bg)',
+                  color: DIET_COLORS[t]?.color || 'var(--text-2)',
+                  letterSpacing: '0.2px',
+                }}>{t}</span>
+              ))}
+            </div>
+          )}
           <div className='fi-footer'>
             <p className='fi-price'>{currency}{price}</p>
             <div className='fi-footer-right'>

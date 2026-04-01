@@ -1,0 +1,6 @@
+/* ── Home Page ── */
+.home-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 12px 0;
+}

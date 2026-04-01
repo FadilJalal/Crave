@@ -1,0 +1,91 @@
+/* ── Smart Search ── */
+.ss-wrap { padding: 20px 0 32px; }
+
+.ss-header { margin-bottom: 18px; }
+.ss-title {
+  font-family: var(--font-display);
+  font-size: 22px; font-weight: 800; color: var(--text); margin: 0 0 4px;
+}
+.ss-sub { font-size: 13px; color: var(--text-3); margin: 0; font-weight: 500; }
+
+.ss-bar {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 50px; padding: 10px 20px;
+  box-shadow: var(--shadow-sm); transition: all 0.2s;
+}
+.ss-bar:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(255,48,8,0.08), var(--shadow-sm);
+}
+.ss-bar svg { color: var(--text-3); flex-shrink: 0; }
+.ss-bar input {
+  flex: 1; border: none; outline: none; font-size: 14px; font-weight: 500;
+  color: var(--text); background: transparent; font-family: var(--font-body);
+}
+.ss-bar input::placeholder { color: var(--text-3); font-weight: 400; }
+.ss-clear {
+  background: var(--bg); border: none; border-radius: 50%; width: 26px; height: 26px;
+  cursor: pointer; font-size: 12px; color: var(--text-3);
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.ss-clear:hover { background: var(--brand-soft); color: var(--brand); }
+
+.ss-suggestions {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;
+}
+.ss-chip {
+  padding: 8px 16px; border-radius: 50px; border: 1.5px solid var(--border);
+  background: var(--card); font-size: 13px; font-weight: 600;
+  color: var(--text-2); cursor: pointer; transition: all 0.18s;
+  font-family: var(--font-body); white-space: nowrap;
+}
+.ss-chip:hover {
+  border-color: var(--brand); color: var(--brand);
+  background: var(--brand-soft); transform: translateY(-1px);
+}
+
+.ss-parsed {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 14px; padding: 10px 16px;
+  background: #f0faf5; border: 1px solid #c6f0d8; border-radius: var(--radius-sm);
+}
+.ss-parsed-label { font-size: 11px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 0.3px; }
+.ss-tag {
+  padding: 3px 10px; border-radius: 50px; font-size: 11px; font-weight: 700;
+  background: #dcfce7; color: #15803d;
+}
+.ss-tag-diet { background: #dbeafe; color: #1d4ed8; }
+
+.ss-loading {
+  text-align: center; padding: 32px; color: var(--text-3); font-weight: 600; font-size: 14px;
+}
+.ss-empty {
+  text-align: center; padding: 32px; color: var(--text-3); font-weight: 500; font-size: 14px;
+}
+
+.ss-results { margin-top: 20px; animation: fadeUp 0.35s ease both; }
+.ss-count { font-size: 13px; font-weight: 600; color: var(--text-3); margin: 0 0 14px; }
+.ss-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;
+}
+.ss-item-wrap { position: relative; }
+.ss-item-tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 10px 0; }
+.ss-dtag {
+  padding: 2px 8px; border-radius: 50px; font-size: 10px; font-weight: 700;
+  background: var(--bg); color: var(--text-2);
+}
+.ss-dtag-vegan { background: #dcfce7; color: #15803d; }
+.ss-dtag-vegetarian { background: #d1fae5; color: #047857; }
+.ss-dtag-glutenFree { background: #fef3c7; color: #92400e; }
+.ss-dtag-keto { background: #ede9fe; color: #6d28d9; }
+.ss-dtag-spicy { background: #fee2e2; color: #dc2626; }
+.ss-dtag-healthy { background: #ecfdf5; color: #059669; }
+.ss-cal { font-size: 10px; font-weight: 600; color: var(--text-3); }
+
+@media (max-width: 768px) {
+  .ss-title { font-size: 19px; }
+  .ss-bar { padding: 9px 16px; gap: 10px; }
+  .ss-bar input { font-size: 13px; }
+  .ss-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+}

@@ -18,6 +18,7 @@ const PlaceOrder = () => {
   const [payment, setPayment] = useState('cod');
   const [loading, setLoading] = useState(false);
   const [distanceWarning, setDistanceWarning] = useState('');
+  const [eta, setEta] = useState(null);
   const baseData = { firstName: '', lastName: '', email: '', street: '', apartment: '', area: '', building: '', city: '', state: '', zipcode: '', country: 'UAE', phone: '', deliveryNotes: '' };
 
   const parseLocation = (base) => {
@@ -66,6 +67,21 @@ const PlaceOrder = () => {
       })
       .catch(() => {});
   }, [token]);
+  // Fetch AI ETA
+  useEffect(() => {
+    if (!food_list.length || !Object.keys(cartItems).length) return;
+    const first = Object.values(cartItems).find(e => e.quantity > 0);
+    if (!first) return;
+    const food = food_list.find(f => f._id === first.itemId);
+    const rid = food?.restaurantId?._id || food?.restaurantId;
+    if (!rid) return;
+    let loc = null;
+    try { loc = JSON.parse(localStorage.getItem('crave_location')); } catch {}
+    axios.post(url + '/api/ai/eta', { restaurantId: rid, userLat: loc?.lat, userLng: loc?.lng })
+      .then(res => { if (res.data.success) setEta(res.data.data); })
+      .catch(() => {});
+  }, [food_list, cartItems, url]);
+
   const promo = location.state?.promo || null;
   const discount = promo ? promo.discount : 0;
   const subtotal = getTotalCartAmount();
@@ -274,6 +290,30 @@ const PlaceOrder = () => {
               <div className='po-sum-row'><span>Delivery</span><span>{currency}{deliveryCharge}.00</span></div>
               <div className='po-sum-row po-sum-total'><span>Total</span><span>{currency}{finalTotal.toFixed(2)}</span></div>
             </div>
+            {eta && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 14px', borderRadius: 'var(--radius-sm)', marginBottom: 12,
+                background: 'var(--card)', border: '1.5px solid var(--border)',
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, background: 'var(--brand-soft)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                    Est. delivery: {eta.estimatedMinutes} min
+                  </p>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-3)', fontWeight: 500 }}>
+                    {eta.distanceKm} km away
+                  </p>
+                </div>
+              </div>
+            )}
             {distanceWarning && (
               <div style={{
                 padding: '12px 16px', borderRadius: 10, marginBottom: 12,

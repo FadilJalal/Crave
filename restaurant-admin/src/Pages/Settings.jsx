@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
+import { BASE_URL } from "../utils/api";
 import { toast } from "react-toastify";
 
 const DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
@@ -182,15 +183,21 @@ export default function Settings() {
   const [loading,    setLoading]    = useState(true);
   const [saving,     setSaving]     = useState(false);
   const [savingLoc,  setSavingLoc]  = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoFile,      setLogoFile]      = useState(null);
+  const [logoPreview,   setLogoPreview]   = useState("");
+  const [logoFilename,  setLogoFilename]  = useState("");
   const [isActive,   setIsActive]   = useState(true);
   const [prepTime,   setPrepTime]   = useState(15);
   const [deliveryRadius, setDeliveryRadius] = useState(10);
   const [minimumOrder,   setMinimumOrder]   = useState(0);
+
   const [deliveryTiers,  setDeliveryTiers]  = useState([
     { upToKm: 3,    fee: 5  },
     { upToKm: 7,    fee: 10 },
     { upToKm: null, fee: 15 },
   ]);
+
   const [address,    setAddress]    = useState('');
   const [hours,      setHours]      = useState(DEFAULT_HOURS);
   const [openNow,    setOpenNow]    = useState(false);
@@ -227,11 +234,14 @@ export default function Settings() {
       const res = await api.get("/api/restaurantadmin/me");
       if (res.data?.success) {
         const r = res.data.data;
+        setLogoFilename(r.logo || "");
         setIsActive(r.isActive ?? true);
         setPrepTime(r.avgPrepTime ?? 15);
         setDeliveryRadius(r.deliveryRadius ?? 10);
         setMinimumOrder(r.minimumOrder ?? 0);
+
         if (r.deliveryTiers?.length) setDeliveryTiers(r.deliveryTiers);
+
         setAddress(r.address || '');
         const h = { ...DEFAULT_HOURS, ...(r.openingHours || {}) };
         setHours(h);
@@ -248,6 +258,16 @@ export default function Settings() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!logoFile) {
+      setLogoPreview("");
+      return;
+    }
+    const url = URL.createObjectURL(logoFile);
+    setLogoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [logoFile]);
 
   useEffect(() => {
     setOpenNow(computeIsOpenNow(hours, isActive));
@@ -285,6 +305,7 @@ export default function Settings() {
       const payload = { isActive, avgPrepTime: prepTime, openingHours: hours, deliveryRadius, minimumOrder, deliveryTiers, address };
       console.log("[Settings] Saving payload:", payload);
       const res = await api.post("/api/restaurantadmin/settings", payload);
+
       console.log("[Settings] Server response:", res.data);
       if (res.data?.success) {
         toast.success(`Settings saved! Address → "${res.data.data?.address}"`);
@@ -302,6 +323,40 @@ export default function Settings() {
     finally  { setSaving(false); }
   };
 
+  const uploadLogo = async () => {
+    if (!logoFile) {
+      toast.error("Please choose a logo image first");
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const form = new FormData();
+      form.append("logo", logoFile);
+
+      const res = await api.post("/api/restaurantadmin/logo", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.data?.success) {
+        const updated = res.data.data;
+        setLogoFilename(updated?.logo || "");
+        setLogoFile(null);
+        try {
+          const info = JSON.parse(localStorage.getItem("restaurantInfo") || "{}");
+          localStorage.setItem("restaurantInfo", JSON.stringify({ ...info, ...updated }));
+        } catch {}
+        toast.success("Logo updated!");
+      } else {
+        toast.error(res.data?.message || "Failed to update logo");
+      }
+    } catch (e) {
+      console.error("[Settings] Logo upload error:", e);
+      toast.error("Network error");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   if (loading) return (
     <RestaurantLayout>
       <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
@@ -313,7 +368,6 @@ export default function Settings() {
   return (
     <RestaurantLayout>
       <div style={{ maxWidth: 680 }}>
-
         {/* Page header */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:24 }}>
           <div>
@@ -337,6 +391,68 @@ export default function Settings() {
               color:"white", fontWeight:800, fontSize:14, cursor: saving ? "not-allowed":"pointer",
               opacity: saving ? 0.7 : 1, boxShadow:"0 4px 14px rgba(255,78,42,0.3)",
             }}>{saving ? "Saving…" : "Save Settings"}</button>
+          </div>
+        </div>
+
+        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
+          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px", marginBottom:14 }}>
+          <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🏷️ Restaurant Logo</div>
+          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
+            Upload a square logo for your sidebar and restaurant card.
+          </div>
+
+          <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+            <div style={{ width:56, height:56, borderRadius:14, border:"1px solid var(--border)", background:"#f9fafb",
+              display:"grid", placeItems:"center", overflow:"hidden" }}>
+              {(logoPreview || logoFilename) ? (
+                <img
+                  src={logoPreview || `${BASE_URL}/images/${logoFilename}`}
+                  alt="Logo"
+                  style={{ width:"100%", height:"100%", objectFit:"cover" }}
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+              ) : (
+                <span style={{ fontSize:12, color:"var(--muted)", fontWeight:800 }}>No logo</span>
+              )}
+            </div>
+
+            <div style={{ display:"flex", flexDirection:"column", gap:8, flex:1, minWidth:240 }}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                style={{ width:"100%" }}
+              />
+              <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+                <button
+                  onClick={uploadLogo}
+                  disabled={uploadingLogo || !logoFile}
+                  style={{
+                    padding:"8px 18px",
+                    borderRadius:10,
+                    border:"none",
+                    background:"linear-gradient(135deg, #ff4e2a, #ff6a3d)",
+                    color:"white",
+                    fontWeight:800,
+                    fontSize:13,
+                    cursor: (uploadingLogo || !logoFile) ? "not-allowed" : "pointer",
+                    opacity: (uploadingLogo || !logoFile) ? 0.7 : 1,
+                    boxShadow:"0 4px 14px rgba(255,78,42,0.3)",
+                  }}
+                >
+                  {uploadingLogo ? "Uploading…" : "Upload Logo"}
+                </button>
+                {logoFile && (
+                  <button
+                    onClick={() => setLogoFile(null)}
+                    style={{ padding:"8px 14px", borderRadius:10, border:"1px solid var(--border)", background:"#f9fafb",
+                      color:"#374151", fontWeight:700, fontSize:13, cursor:"pointer" }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 

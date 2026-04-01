@@ -99,8 +99,14 @@
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: 22px 24px;
+    padding: 24px 26px;
     animation: fadeUp 0.3s ease;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.25s;
+}
+
+.mo-card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.07);
 }
 
 .mo-card-top {
@@ -205,6 +211,7 @@
     border-color: var(--brand);
     background: var(--brand);
     color: #fff;
+    box-shadow: 0 2px 8px rgba(255,48,8,0.22);
 }
 
 .mo-prog-current {
@@ -229,9 +236,10 @@
 
 .mo-prog-line {
     flex: 1;
-    height: 2px;
+    height: 3px;
     background: var(--border);
     margin: 14px -4px 0;
+    border-radius: 2px;
     transition: background 0.3s;
 }
 
@@ -275,6 +283,8 @@
 .mo-track-btn:hover {
     background: var(--brand);
     color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(255,48,8,0.22);
 }
 
 .mo-cancel-btn {

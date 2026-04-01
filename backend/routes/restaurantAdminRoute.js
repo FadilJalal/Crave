@@ -115,6 +115,30 @@ router.post("/settings", restaurantAuth, async (req, res) => {
   }
 });
 
+// ── Update restaurant logo ─────────────────────────────────────────────────
+router.post("/logo", restaurantAuth, upload.single("logo"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "Logo image is required" });
+    }
+
+    const restaurant = await restaurantModel.findByIdAndUpdate(
+      req.restaurantId,
+      { $set: { logo: req.file.filename } },
+      { new: true }
+    ).select("-password");
+
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: "Restaurant not found" });
+    }
+
+    res.json({ success: true, data: restaurant, message: "Logo updated" });
+  } catch (e) {
+    console.error("Logo update error:", e);
+    res.status(500).json({ success: false, message: "Failed to update logo" });
+  }
+});
+
 // ── Update restaurant location ────────────────────────────────────────────
 router.post("/location", restaurantAuth, async (req, res) => {
   try {

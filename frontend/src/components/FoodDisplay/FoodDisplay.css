@@ -1,7 +1,8 @@
-.fd-wrap { padding: 12px 0 60px; }
-.fd-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
+/* ── Food Display ── */
+.fd-wrap { padding: 8px 0 64px; }
+.fd-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; }
 .fd-title { font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--text); }
-.fd-count { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+.fd-count { font-size: 13px; color: var(--text-3); margin-top: 4px; font-weight: 500; }
 .fd-category-tag {
   padding: 6px 16px;
   background: var(--brand-soft);
@@ -13,12 +14,12 @@
 }
 .fd-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 22px;
 }
-.fd-empty { text-align: center; padding: 60px 20px; color: var(--text-3); }
-.fd-empty-icon { font-size: 48px; margin-bottom: 12px; }
-.fd-empty p { font-size: 15px; font-weight: 500; }
+.fd-empty { text-align: center; padding: 80px 20px; color: var(--text-3); }
+.fd-empty-icon { font-size: 52px; margin-bottom: 16px; opacity: 0.8; }
+.fd-empty p { font-size: 15px; font-weight: 500; line-height: 1.6; }
 
 @media (max-width: 600px) {
   .fd-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }

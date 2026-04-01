@@ -15,6 +15,7 @@ import EmailCampaign from "./Pages/EmailCampaign";
 import Customers from "./Pages/Customers";
 import Messages from "./Pages/Messages";
 import Reviews from "./Pages/Reviews";
+import AIInsights from "./Pages/AIInsights";
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
       <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
       <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
+      <Route path="/ai-insights" element={<ProtectedRoute><AIInsights /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
