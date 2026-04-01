@@ -69,34 +69,6 @@ const Header = () => (
 
       {/* ── Right: Bento grid ── */}
       <div className='hero-bento'>
-        {/* How it works */}
-        <div className='hb-card hb-how'>
-          <p className='hb-how-label'>How It Works</p>
-          <div className='hb-steps'>
-            <div className='hb-step'>
-              <span className='hb-step-num'>1</span>
-              <div>
-                <p className='hb-step-title'>Pick your food</p>
-                <p className='hb-step-desc'>Browse menus & customize</p>
-              </div>
-            </div>
-            <div className='hb-step'>
-              <span className='hb-step-num'>2</span>
-              <div>
-                <p className='hb-step-title'>Place your order</p>
-                <p className='hb-step-desc'>Pay online or cash on delivery</p>
-              </div>
-            </div>
-            <div className='hb-step'>
-              <span className='hb-step-num'>3</span>
-              <div>
-                <p className='hb-step-title'>Enjoy your meal</p>
-                <p className='hb-step-desc'>Track it live to your door</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Cuisine tiles */}
         <div className='hb-card hb-cuisines'>
           <p className='hb-cuisines-label'>Browse Cuisines</p>
