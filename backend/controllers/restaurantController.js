@@ -18,14 +18,17 @@ export const addRestaurant = async (req, res) => {
     let { name, email, password, address, location, avgPrepTime, lat, lng } = req.body;
 
     if (typeof location === "string") {
-      try { location = JSON.parse(location); } catch { }
+      try { location = JSON.parse(location); } catch { location = null; }
     }
 
-    const finalLat = location?.lat ?? lat;
-    const finalLng = location?.lng ?? lng;
+    const finalLat = Number(location?.lat ?? lat);
+    const finalLng = Number(location?.lng ?? lng);
 
-    if (!name || !email || !password || !address || !finalLat || !finalLng) {
+    if (!name || !email || !password || !address?.trim()) {
       return res.json({ success: false, message: "Missing required fields" });
+    }
+    if (!Number.isFinite(finalLat) || !Number.isFinite(finalLng)) {
+      return res.json({ success: false, message: "Invalid map location — set lat/lng on the map before submitting" });
     }
 
     const exists = await restaurantModel.findOne({ email: email.toLowerCase() });

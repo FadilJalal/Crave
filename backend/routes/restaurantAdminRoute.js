@@ -91,7 +91,7 @@ router.post("/food/add", restaurantAuth, upload.single("image"), async (req, res
 // ── Update restaurant settings ────────────────────────────────────────────
 router.post("/settings", restaurantAuth, async (req, res) => {
   try {
-    const { openingHours, isActive, avgPrepTime, deliveryRadius, address, minimumOrder, deliveryTiers } = req.body;
+    const { openingHours, isActive, avgPrepTime, deliveryRadius, address, minimumOrder, deliveryTiers, location } = req.body;
     const update = {};
     if (openingHours   !== undefined) update.openingHours   = openingHours;
     if (isActive       !== undefined) update.isActive       = isActive;
@@ -100,6 +100,20 @@ router.post("/settings", restaurantAuth, async (req, res) => {
     if (minimumOrder   !== undefined) update.minimumOrder   = Number(minimumOrder);
     if (deliveryTiers  !== undefined) update.deliveryTiers  = deliveryTiers;
     if (address        !== undefined && address.trim()) update.address = address.trim();
+
+    if (location !== undefined && location !== null) {
+      let loc = location;
+      if (typeof loc === "string") {
+        try { loc = JSON.parse(loc); } catch { loc = null; }
+      }
+      if (loc && typeof loc === "object") {
+        const lat = Number(loc.lat);
+        const lng = Number(loc.lng);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          update.location = { lat, lng };
+        }
+      }
+    }
 
     const restaurant = await restaurantModel.findByIdAndUpdate(
       req.restaurantId,
@@ -146,13 +160,18 @@ router.post("/location", restaurantAuth, async (req, res) => {
     if (lat === undefined || lng === undefined) {
       return res.json({ success: false, message: "lat and lng are required" });
     }
+    const nLat = Number(lat);
+    const nLng = Number(lng);
+    if (!Number.isFinite(nLat) || !Number.isFinite(nLng)) {
+      return res.json({ success: false, message: "Invalid coordinates" });
+    }
 
     let addressText = null;
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
       const nominatimRes = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
+        `https://nominatim.openstreetmap.org/reverse?lat=${nLat}&lon=${nLng}&format=json&addressdetails=1`,
         { headers: { "Accept-Language": "en", "User-Agent": "CraveApp/1.0 (contact@crave.ae)" }, signal: controller.signal }
       );
       clearTimeout(timeout);
@@ -172,7 +191,7 @@ router.post("/location", restaurantAuth, async (req, res) => {
       console.warn("[location] reverse-geocode failed:", geoErr.message);
     }
 
-    const updateFields = { "location.lat": Number(lat), "location.lng": Number(lng) };
+    const updateFields = { "location.lat": nLat, "location.lng": nLng };
     if (addressText) updateFields.address = addressText;
 
     const restaurant = await restaurantModel.findByIdAndUpdate(

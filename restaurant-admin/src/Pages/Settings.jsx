@@ -15,19 +15,52 @@ const DEFAULT_HOURS = Object.fromEntries(
 function computeIsOpenNow(openingHours, isActive) {
   if (!isActive) return false;
   if (!openingHours) return isActive;
-  const now = new Date();
-  const day = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
-  const h = openingHours[day];
-  if (!h || h.closed) return false;
-  if (h.open === "00:00" && h.close === "23:59") return true;
-  const [oh, om] = h.open.split(":").map(Number);
-  const [ch, cm] = h.close.split(":").map(Number);
-  const mins     = now.getHours() * 60 + now.getMinutes();
-  const openMins = oh * 60 + om;
-  const closeMins = ch * 60 + cm;
-  // Overnight span (e.g. 09:00 → 03:00 next day)
-  if (closeMins <= openMins) return mins >= openMins || mins < closeMins;
-  return mins >= openMins && mins < closeMins;
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Dubai",
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date());
+  const weekday = (parts.find((p) => p.type === "weekday")?.value || "monday").toLowerCase();
+  const hour = Number(parts.find((p) => p.type === "hour")?.value || 0);
+  const minute = Number(parts.find((p) => p.type === "minute")?.value || 0);
+  const mins = hour * 60 + minute;
+
+  const idx = Math.max(0, DAYS.indexOf(weekday));
+  const today = DAYS[idx];
+  const prev = DAYS[(idx + 6) % 7];
+
+  const parse = (t) => {
+    if (!t || !t.includes(":")) return null;
+    const [h, m] = t.split(":").map(Number);
+    return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+  };
+
+  const h = openingHours[today];
+  if (h && !h.closed) {
+    if (h.open === "00:00" && h.close === "23:59") return true;
+    const openMins = parse(h.open);
+    const closeMins = parse(h.close);
+    if (openMins !== null && closeMins !== null) {
+      if (closeMins <= openMins) {
+        if (mins >= openMins) return true;
+      } else if (mins >= openMins && mins < closeMins) {
+        return true;
+      }
+    }
+  }
+
+  const prevH = openingHours[prev];
+  if (prevH && !prevH.closed) {
+    const prevOpen = parse(prevH.open);
+    const prevClose = parse(prevH.close);
+    if (prevOpen !== null && prevClose !== null && prevClose <= prevOpen) {
+      if (mins < prevClose) return true;
+    }
+  }
+  return false;
 }
 
 function fmt12(t) {
@@ -51,18 +84,34 @@ function LocationMap({ location, onChange }) {
   // Keep onChangeRef current on every render
   useEffect(() => { onChangeRef.current = onChange; });
 
-  // Search via Nominatim
+  const resultsRef = useRef([]);
+  useEffect(() => { resultsRef.current = results; });
+
+  // Search via Nominatim (UAE-biased — same region as your restaurants)
   const doSearch = async (q) => {
     if (!q || q.length < 3) { setResults([]); return; }
     setSearching(true);
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`,
-        { headers: { "Accept-Language": "en" } }
-      );
-      setResults(await res.json());
-    } catch { setResults([]); }
-    finally { setSearching(false); }
+      const params = new URLSearchParams({
+        format: "json",
+        limit: "8",
+        q,
+        countrycodes: "ae",
+        addressdetails: "1",
+        // Prefer UAE bbox (lon min, lat min, lon max, lat max)
+        viewbox: "51.5,22.5,56.5,26.5",
+        bounded: "0",
+      });
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+        headers: { "Accept-Language": "en", Accept: "application/json" },
+      });
+      const data = await res.json();
+      setResults(Array.isArray(data) ? data : []);
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
   };
 
   useEffect(() => {
@@ -71,8 +120,10 @@ function LocationMap({ location, onChange }) {
   }, [search]);
 
   const pickResult = (r) => {
+    if (!r) return;
     const lat = parseFloat(r.lat);
     const lng = parseFloat(r.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
     if (leafletRef.current && markerRef.current) {
       markerRef.current.setLatLng([lat, lng]);
       leafletRef.current.flyTo([lat, lng], 17, { duration: 1.2 });
@@ -88,8 +139,9 @@ function LocationMap({ location, onChange }) {
     const L = window.L;
 
     leafletRef.current = L.map(mapRef.current, { zoomControl: true });
-    L.tileLayer("https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?language=en", {
-      attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
       maxZoom: 20,
     }).addTo(leafletRef.current);
     mapRef.current.style.cursor = "crosshair";
@@ -135,36 +187,59 @@ function LocationMap({ location, onChange }) {
     leafletRef.current.flyTo([location.lat, location.lng], 17, { duration: 1.2 });
   }, [location.lat, location.lng]);
 
+  const onSearchKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const list = resultsRef.current;
+    if (list.length > 0) {
+      pickResult(list[0]);
+    } else if (!searching && search.trim().length >= 3) {
+      toast.warning("No matches yet — wait for results or try e.g. “Al Heera, Sharjah”.");
+    }
+  };
+
   return (
     <div>
-      {/* Search bar */}
-      <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--border)", position:"relative" }}>
+      {/* z-index above Leaflet map tiles so the dropdown is not hidden under the map */}
+      <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--border)", position:"relative", zIndex: 5000 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10,
           border:"1.5px solid var(--border)", borderRadius:10,
           padding:"8px 14px", background:"#f9fafb" }}>
           <span style={{ fontSize:16 }}>🔍</span>
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search for a location, street or area..."
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={onSearchKeyDown}
+            placeholder="Search UAE — then click a result or press Enter"
             style={{ flex:1, border:"none", background:"transparent",
-              outline:"none", fontSize:14, fontFamily:"inherit", color:"#111827" }} />
+              outline:"none", fontSize:14, fontFamily:"inherit", color:"#111827" }}
+          />
           {searching && <span style={{ fontSize:12, color:"var(--muted)" }}>searching…</span>}
           {search && (
-            <button onClick={() => { setSearch(""); setResults([]); }}
+            <button type="button" onClick={() => { setSearch(""); setResults([]); }}
               style={{ background:"none", border:"none", cursor:"pointer",
                 fontSize:18, color:"var(--muted)", lineHeight:1, padding:0 }}>×</button>
           )}
         </div>
+        <p style={{ margin:"8px 0 0", fontSize:11, color:"var(--muted)", lineHeight:1.4 }}>
+          Results appear below — <strong>click one</strong> or press <strong>Enter</strong> to move the pin. Typing alone does not move the map.
+        </p>
         {results.length > 0 && (
-          <div style={{ position:"absolute", top:"calc(100% - 8px)", left:16, right:16,
+          <div style={{
+            position:"absolute", top:"calc(100% - 4px)", left:16, right:16,
             background:"white", border:"1px solid var(--border)", borderRadius:10,
-            boxShadow:"0 8px 24px rgba(0,0,0,0.1)", zIndex:9999, overflow:"hidden" }}>
-            {results.map(r => (
-              <div key={r.place_id} onClick={() => pickResult(r)}
+            boxShadow:"0 12px 32px rgba(0,0,0,0.15)", zIndex:6000, overflow:"hidden", maxHeight:220, overflowY:"auto",
+          }}>
+            {results.map((r, i) => (
+              <div
+                key={`${r.place_id ?? r.osm_id ?? "r"}-${i}-${r.lat}`}
+                onClick={() => pickResult(r)}
                 style={{ padding:"10px 14px", cursor:"pointer", fontSize:13,
                   borderBottom:"1px solid #f3f4f6" }}
-                onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
-                onMouseLeave={e => e.currentTarget.style.background = "white"}>
-                <div style={{ fontWeight:700, color:"#111827" }}>{r.display_name.split(",")[0]}</div>
+                onMouseEnter={e => { e.currentTarget.style.background = "#f9fafb"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "white"; }}
+              >
+                <div style={{ fontWeight:700, color:"#111827" }}>{(r.display_name || "").split(",")[0]}</div>
                 <div style={{ color:"var(--muted)", fontSize:11, marginTop:2,
                   overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                   {r.display_name}
@@ -173,8 +248,13 @@ function LocationMap({ location, onChange }) {
             ))}
           </div>
         )}
+        {!searching && search.length >= 3 && results.length === 0 && (
+          <p style={{ margin:"8px 0 0", fontSize:11, color:"#b45309" }}>
+            No places found — try simpler text (e.g. “Al Heera Sharjah”).
+          </p>
+        )}
       </div>
-      <div ref={mapRef} style={{ height:280, width:"100%", cursor:"crosshair" }} />
+      <div ref={mapRef} style={{ height:280, width:"100%", cursor:"crosshair", position:"relative", zIndex:1 }} />
     </div>
   );
 }
@@ -204,7 +284,6 @@ export default function Settings() {
   const [is24_7,     setIs24_7]     = useState(false);
   const [savedHours, setSavedHours] = useState(null);
   const [location,   setLocation]   = useState({ lat: 25.2048, lng: 55.2708 });
-  const [mapKey,     setMapKey]     = useState(0);
   const locationRef  = useRef({ lat: 25.2048, lng: 55.2708 }); // always-fresh ref
 
   const updateLocation = (coords) => {
@@ -246,8 +325,10 @@ export default function Settings() {
         const h = { ...DEFAULT_HOURS, ...(r.openingHours || {}) };
         setHours(h);
         setOpenNow(computeIsOpenNow(h, r.isActive ?? true));
-        if (r.location?.lat && r.location?.lng) {
-          updateLocation({ lat: r.location.lat, lng: r.location.lng });
+        const lat = Number(r.location?.lat);
+        const lng = Number(r.location?.lng);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          updateLocation({ lat, lng });
         }
         // Detect if already saved as 24/7
         const all24 = DAYS.every(d => h[d]?.open === "00:00" && h[d]?.close === "23:59" && !h[d]?.closed);
@@ -300,9 +381,25 @@ export default function Settings() {
   };
 
   const save = async () => {
+    const { lat, lng } = locationRef.current;
+    const nLat = Number(lat);
+    const nLng = Number(lng);
+    if (!Number.isFinite(nLat) || !Number.isFinite(nLng)) {
+      toast.error("Set a valid location on the map first.");
+      return;
+    }
     setSaving(true);
     try {
-      const payload = { isActive, avgPrepTime: prepTime, openingHours: hours, deliveryRadius, minimumOrder, deliveryTiers, address };
+      const payload = {
+        isActive,
+        avgPrepTime: prepTime,
+        openingHours: hours,
+        deliveryRadius,
+        minimumOrder,
+        deliveryTiers,
+        address,
+        location: { lat: nLat, lng: nLng },
+      };
       console.log("[Settings] Saving payload:", payload);
       const res = await api.post("/api/restaurantadmin/settings", payload);
 
@@ -311,7 +408,17 @@ export default function Settings() {
         toast.success(`Settings saved! Address → "${res.data.data?.address}"`);
         try {
           const info = JSON.parse(localStorage.getItem("restaurantInfo") || "{}");
-          localStorage.setItem("restaurantInfo", JSON.stringify({ ...info, isActive, avgPrepTime: prepTime, openingHours: hours }));
+          const loc = res.data.data?.location;
+          localStorage.setItem(
+            "restaurantInfo",
+            JSON.stringify({
+              ...info,
+              isActive,
+              avgPrepTime: prepTime,
+              openingHours: hours,
+              ...(loc?.lat != null && loc?.lng != null ? { location: loc } : {}),
+            })
+          );
         } catch {}
       } else {
         toast.error("Save failed: " + (res.data?.message || "Unknown error"));
@@ -367,14 +474,14 @@ export default function Settings() {
 
   return (
     <RestaurantLayout>
-      <div style={{ maxWidth: 680 }}>
+      <div className="settings-page">
         {/* Page header */}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:24 }}>
+        <div className="settings-header">
           <div>
             <h2 style={{ margin:0, fontSize:26, fontWeight:900, letterSpacing:"-0.5px" }}>Settings</h2>
-            <p style={{ margin:"4px 0 0", fontSize:13, color:"var(--muted)" }}>Manage availability and opening hours</p>
+            <p style={{ margin:"4px 0 0", fontSize:13, color:"var(--muted)" }}>Manage your store profile, delivery rules, and opening hours</p>
           </div>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div className="settings-actions">
             <div style={{ display:"flex", alignItems:"center", gap:7, padding:"8px 14px", borderRadius:12,
               background: openNow ? "#f0fdf4" : "#fef2f2",
               border:`1px solid ${openNow ? "#86efac" : "#fecaca"}` }}>
@@ -394,8 +501,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
-          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px", marginBottom:14 }}>
+        <div className="settings-card">
           <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🏷️ Restaurant Logo</div>
           <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
             Upload a square logo for your sidebar and restaurant card.
@@ -457,8 +563,7 @@ export default function Settings() {
         </div>
 
         {/* Display Address */}
-        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
-          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px", marginBottom:14 }}>
+        <div className="settings-card">
           <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>📍 Display Address</div>
           <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
             This is the address shown on your restaurant card on the homepage.
@@ -477,7 +582,7 @@ export default function Settings() {
         </div>
 
         {/* Status + Prep time side by side */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
+        <div className="settings-grid-2">
 
           {/* Active toggle */}
           <div style={{ background:"white", borderRadius:16,
@@ -511,8 +616,7 @@ export default function Settings() {
           </div>
 
           {/* Prep time */}
-          <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
-            boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px" }}>
+          <div className="settings-card" style={{ marginBottom:0 }}>
             <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>Prep Time</div>
             <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>Shown to customers as wait time</div>
             <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
@@ -538,8 +642,7 @@ export default function Settings() {
         </div>
 
         {/* Delivery Radius card */}
-        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
-          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px", marginBottom:14 }}>
+        <div className="settings-card">
           <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
             <div>
               <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🚴 Delivery Radius</div>
@@ -589,8 +692,7 @@ export default function Settings() {
         </div>
 
         {/* Minimum Order card */}
-        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
-          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px", marginBottom:14 }}>
+        <div className="settings-card">
           <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
             <div>
               <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🛒 Minimum Order Amount</div>
@@ -633,8 +735,7 @@ export default function Settings() {
         </div>
 
         {/* Delivery Tiers card */}
-        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
-          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px", marginBottom:14 }}>
+        <div className="settings-card">
           <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🚚 Delivery Fee Tiers</div>
           <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14 }}>
             Set fee per distance bracket. Use AED 0 for free delivery on any tier.
@@ -695,18 +796,19 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Location card */}
+        {/* Location card — overflow visible so search dropdown is not clipped under the map */}
         <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
-          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", overflow:"hidden", marginBottom:14 }}>
+          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", overflow:"visible", marginBottom:14 }}>
           <div style={{ padding:"18px 22px 16px", borderBottom:"1px solid var(--border)",
             display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
             <div>
               <div style={{ fontWeight:900, fontSize:15, color:"#111827" }}>📍 Restaurant Location</div>
               <div style={{ fontSize:12, color:"var(--muted)", marginTop:2 }}>
-                Click the map or drag the pin to set your exact location. This powers the live delivery map.
+                Click the map or drag the pin. <strong>Save Settings</strong> (top) saves your pin with other settings.
+                Use <strong>Save Location</strong> if you only want to update the map and auto-fill the display address from the pin.
               </div>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div className="settings-map-actions">
               <button onClick={() => {
                 if (!navigator.geolocation) return toast.error("Geolocation not supported");
                 navigator.geolocation.getCurrentPosition(

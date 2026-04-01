@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import { Plus, Mail, Lock, MapPin, LocateFixed, Image as ImageIcon, Loader2 } from "lucide-react";
-import { api, BASE_URL as BACKEND_URL } from "../utils/api";
+import { api } from "../utils/api";
 import "leaflet/dist/leaflet.css";
 
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -60,7 +60,6 @@ export default function AddRestaurant() {
     address: "",
     lat: DEFAULT_COORDS.lat,
     lng: DEFAULT_COORDS.lng,
-    avgPrepTime: 15,
   });
 
   useEffect(() => {
@@ -97,9 +96,11 @@ export default function AddRestaurant() {
       );
       const results = await res.json();
       const filtered = results.filter(
-        (item) => item.address.road || item.address.suburb || item.address.building || item.address.amenity
+        (item) =>
+          item.address &&
+          (item.address.road || item.address.suburb || item.address.building || item.address.amenity || item.address.city)
       );
-      setAddressResults(filtered);
+      setAddressResults(filtered.length ? filtered : results.slice(0, 6));
     } catch (error) {
       console.error("UAE Search Error:", error);
     } finally {
@@ -145,7 +146,15 @@ export default function AddRestaurant() {
           payload.append(key, formData[key]);
         }
       });
-      payload.append("location", JSON.stringify({ lat: formData.lat, lng: formData.lng }));
+      payload.append("avgPrepTime", "15");
+      const lat = Number(formData.lat);
+      const lng = Number(formData.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        toast.error("Set a valid pin on the map (click or drag the marker).");
+        setIsSubmitting(false);
+        return;
+      }
+      payload.append("location", JSON.stringify({ lat, lng }));
       if (logo) payload.append("logo", logo);
 
       // ✅ Fixed: uses api instance with auth token
@@ -166,7 +175,10 @@ export default function AddRestaurant() {
     }
   };
 
-  const markerPosition = useMemo(() => [formData.lat, formData.lng], [formData.lat, formData.lng]);
+  const markerPosition = useMemo(
+    () => [Number(formData.lat) || 25.2048, Number(formData.lng) || 55.2708],
+    [formData.lat, formData.lng]
+  );
 
   return (
     <div style={styles.container}>
@@ -225,16 +237,6 @@ export default function AddRestaurant() {
                   required
                 />
               </div>
-            </FormField>
-
-            <FormField label="Avg Preparation Time (Mins)">
-              <input
-                style={styles.input}
-                type="number"
-                name="avgPrepTime"
-                value={formData.avgPrepTime}
-                onChange={handleInputChange}
-              />
             </FormField>
           </div>
 
@@ -304,7 +306,11 @@ export default function AddRestaurant() {
 
           <div style={styles.mapContainer}>
             <MapContainer center={markerPosition} zoom={13} style={{ height: "100%", width: "100%" }}>
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+                maxZoom={20}
+              />
               <MapUpdater center={{ lat: formData.lat, lng: formData.lng }} />
               <MapClickSetter onPick={(lat, lng) => setFormData((p) => ({ ...p, lat, lng }))} />
               <Marker
