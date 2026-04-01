@@ -6,8 +6,8 @@ import adminModel from "./models/adminModel.js";
 const run = async () => {
   await mongoose.connect(process.env.MONGO_URL);
 
-  const email = "superadmin@tomato.com";
-  const password = "super123";
+  const email = "Craveadmin@gmail.com";
+  const password = "CRAVE123";
 
   const existing = await adminModel.findOne({ email });
   if (existing) {

@@ -173,14 +173,14 @@ const StoreContextProvider = (props) => {
         setFoodList(response.data.data);
         try {
           localStorage.setItem("crave_food_cache", JSON.stringify(response.data.data));
-          localStorage.setItem("crave_food_cache_v", "4");
+          localStorage.setItem("crave_food_cache_v", "5");
         } catch {}
       } else {
         setFoodListError(true);
         toast.error("Failed to load menu. Please refresh the page.");
         // Try cache
         try {
-          const cacheOk = localStorage.getItem("crave_food_cache_v") === "4";
+          const cacheOk = localStorage.getItem("crave_food_cache_v") === "5";
           const cached = cacheOk ? JSON.parse(localStorage.getItem("crave_food_cache") || "null") : null;
           if (cached?.length) {
             setFoodList(cached);
@@ -192,7 +192,7 @@ const StoreContextProvider = (props) => {
       setFoodListError(true);
       // Try cache on network failure
       try {
-        const cacheOk2 = localStorage.getItem("crave_food_cache_v") === "4";
+        const cacheOk2 = localStorage.getItem("crave_food_cache_v") === "5";
         const cached = cacheOk2 ? JSON.parse(localStorage.getItem("crave_food_cache") || "null") : null;
         if (cached?.length) {
           setFoodList(cached);

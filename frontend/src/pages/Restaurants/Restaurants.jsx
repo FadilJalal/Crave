@@ -53,7 +53,9 @@ const Restaurants = () => {
       ? haversine(userLocation.lat, userLocation.lng, r.location.lat, r.location.lng)
       : null,
   })).sort((a, b) => {
-    // Open first, then by distance
+    // Active first, then open, then by distance
+    const aActive = a.isActive !== false, bActive = b.isActive !== false;
+    if (aActive !== bActive) return aActive ? -1 : 1;
     const aOpen = isRestaurantOpen(a), bOpen = isRestaurantOpen(b);
     if (aOpen !== bOpen) return aOpen ? -1 : 1;
     if (a.distance !== null && b.distance !== null) return a.distance - b.distance;
@@ -115,7 +117,8 @@ const Restaurants = () => {
       ) : (
         <div className='rp-grid'>
           {filtered.map(r => {
-            const open = isRestaurantOpen(r);
+            const active = r.isActive !== false;
+            const open = active && isRestaurantOpen(r);
             const dist = fmtDist(r.distance);
             const outOfRange = isOutOfRange(r);
             const radius = r.deliveryRadius ?? 10;
@@ -149,7 +152,7 @@ const Restaurants = () => {
                     {r.name[0]}
                   </div>
                   <span className={`rp-status ${open ? 'rp-open' : 'rp-closed'}`}>
-                    {open ? 'Open' : 'Closed'}
+                    {!active ? 'Unavailable' : open ? 'Open' : 'Closed'}
                   </span>
                   {closedNow && (
                     <div className="rp-closed-overlay" aria-hidden>

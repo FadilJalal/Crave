@@ -132,15 +132,16 @@ router.post("/", authMiddleware, async (req, res) => {
 
     const recommendations = recommendedIds
       .map(id => recFoods.find(f => String(f._id) === id))
-      .filter(Boolean)
+      .filter(f => f && f.restaurantId && f.restaurantId.isActive !== false)
       .map(f => ({ ...f, tag: cardTags[String(f._id)] || null }));
 
     // ── Step 7: Order Again ──────────────────────────────────────────
     const orderAgainIds = lastOrderedItems.map(i => String(i._id));
-    const orderAgainFoods = await foodModel
+    const orderAgainRaw = await foodModel
       .find({ _id: { $in: orderAgainIds } })
       .populate("restaurantId", "name logo isActive openingHours")
       .lean();
+    const orderAgainFoods = orderAgainRaw.filter(f => f.restaurantId && f.restaurantId.isActive !== false);
 
     // ── Step 8: Taste Profile ────────────────────────────────────────
     const totalCat = Object.values(myCategoryCounts).reduce((a, b) => a + b, 0);

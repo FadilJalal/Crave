@@ -22,12 +22,13 @@ function getDietTags(name, desc, cat) {
   return tags;
 }
 
-const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, avgRating = 0, ratingCount = 0, inStock = true }) => {
+const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, restaurantActive = true, avgRating = 0, ratingCount = 0, inStock = true }) => {
   const { cartItems, addToCart, removeFromCart, getItemCount, url, currency } = useContext(StoreContext);
 
   const count = getItemCount(id);
   const restName = restaurantId?.name || '';
   const restLogo = restaurantId?.logo ? `${url}/images/${restaurantId.logo}` : null;
+  const restActive = restaurantActive;
   const hasCustomizations = customizations && customizations.length > 0;
   const category = restaurantId?.category || '';
   const dietTags = useMemo(() => getDietTags(name, description, category), [name, description, category]);
@@ -63,7 +64,7 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
   };
 
   const handleAddToCart = () => {
-    if (!restaurantOpen || !inStock) return;
+    if (!restaurantOpen || !inStock || !restActive) return;
     for (const [gi, group] of customizations.entries()) {
       if (group.required) {
         const sel = selections[gi];
@@ -86,7 +87,7 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
   };
 
   const openCustomize = () => {
-    if (!restaurantOpen || !inStock) return;
+    if (!restaurantOpen || !inStock || !restActive) return;
     setSelections({});
     setShowCustomize(true);
   };
@@ -133,8 +134,25 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
             </div>
           )}
 
+          {/* Unavailable — restaurant disabled */}
+          {!restActive && inStock && (
+            <div style={{
+              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: 6, backdropFilter: 'blur(2px)',
+              borderRadius: 'inherit',
+            }}>
+              <div style={{ fontSize: 28 }}>⚠️</div>
+              <span style={{ color: 'white', fontWeight: 800, fontSize: 13,
+                background: 'rgba(0,0,0,0.5)', padding: '4px 12px',
+                borderRadius: 20, letterSpacing: '0.5px' }}>
+                Unavailable
+              </span>
+            </div>
+          )}
+
           {/* Closed overlay */}
-          {!restaurantOpen && inStock && (
+          {!restaurantOpen && restActive && inStock && (
             <div style={{
               position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
               display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -151,7 +169,7 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
           )}
 
           <div className='fi-cart-ctrl'>
-            {(!restaurantOpen || !inStock) ? null : count === 0 ? (
+            {(!restaurantOpen || !inStock || !restActive) ? null : count === 0 ? (
               hasCustomizations ? (
                 <button className='fi-customize-btn' onClick={openCustomize}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

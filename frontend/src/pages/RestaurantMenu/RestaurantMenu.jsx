@@ -194,6 +194,7 @@ const RestaurantMenu = () => {
                 ratingCount={item.ratingCount || 0}
                 inStock={item.inStock !== false}
                 restaurantOpen={openStatus}
+                restaurantActive={restaurant?.isActive !== false}
               />
             ))}
           </div>

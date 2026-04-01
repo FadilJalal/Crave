@@ -73,7 +73,10 @@ const OrderAgain = ({ items, url, currency, addToCart, getItemCount, removeFromC
       <div className="oa-list">
         {items.map((food, i) => {
           const count  = getItemCount(food._id);
-          const isOpen = isRestaurantOpen(mergeRestaurantFromDirectory(food, restaurantsById));
+          const oaMerged = mergeRestaurantFromDirectory(food, restaurantsById);
+          const oaActive = oaMerged?.isActive !== false;
+          const oaOpen = oaActive && isRestaurantOpen(oaMerged);
+          const oaCanOrder = oaActive && oaOpen;
           return (
             <div key={food._id} className="oa-card" style={{ animationDelay: `${i * 60}ms` }}>
               <img
@@ -86,10 +89,10 @@ const OrderAgain = ({ items, url, currency, addToCart, getItemCount, removeFromC
                 <p className="oa-name">{food.name}</p>
                 <p className="oa-price">{currency}{food.price}</p>
               </div>
-              {!isOpen ? (
+              {!oaCanOrder ? (
                 <span style={{ fontSize: 11, fontWeight: 700, color: "#ef4444",
                   background: "#fef2f2", border: "1px solid #fecaca",
-                  borderRadius: 20, padding: "4px 10px" }}>Closed</span>
+                  borderRadius: 20, padding: "4px 10px" }}>{!oaActive ? 'Unavailable' : 'Closed'}</span>
               ) : count === 0 ? (
                 <button className="oa-add" onClick={() => addToCart(food._id)}>+ Add</button>
               ) : (
@@ -248,7 +251,10 @@ const AIRecommendations = () => {
               const count  = getItemCount(food._id);
               const liked  = likes[food._id];
               const isNew  = food.tag?.color === "green";
-              const isOpen = isRestaurantOpen(mergeRestaurantFromDirectory(food, restaurantsById));
+              const merged = mergeRestaurantFromDirectory(food, restaurantsById);
+              const isActive = merged?.isActive !== false;
+              const isOpen = isActive && isRestaurantOpen(merged);
+              const canOrder = isActive && isOpen;
 
               return (
                 <div key={food._id} className="ai-card" style={{ animationDelay: `${i * 80}ms` }}>
@@ -267,14 +273,14 @@ const AIRecommendations = () => {
                       AI Pick
                     </div>
                     {isNew && <div className="ai-new-badge">NEW</div>}
-                    {!isOpen && (
+                    {!canOrder && (
                       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.52)",
                         display: "flex", flexDirection: "column", alignItems: "center",
                         justifyContent: "center", gap: 6, backdropFilter: "blur(2px)" }}>
-                        <div style={{ fontSize: 24 }}>🔒</div>
+                        <div style={{ fontSize: 24 }}>{!isActive ? '⚠️' : '🔒'}</div>
                         <span style={{ color: "white", fontWeight: 800, fontSize: 12,
                           background: "rgba(0,0,0,0.5)", padding: "3px 12px", borderRadius: 20 }}>
-                          Closed
+                          {!isActive ? 'Unavailable' : 'Closed'}
                         </span>
                       </div>
                     )}
@@ -298,10 +304,10 @@ const AIRecommendations = () => {
                     <p className="ai-desc">{food.description}</p>
                     <div className="ai-footer">
                       <p className="ai-price">{currency}{food.price}</p>
-                      {!isOpen ? (
+                      {!canOrder ? (
                         <span style={{ fontSize: 11, fontWeight: 700, color: "#ef4444",
                           background: "#fef2f2", border: "1px solid #fecaca",
-                          borderRadius: 20, padding: "5px 12px" }}>Closed</span>
+                          borderRadius: 20, padding: "5px 12px" }}>{!isActive ? 'Unavailable' : 'Closed'}</span>
                       ) : count === 0 ? (
                         <button className="ai-add" onClick={() => addToCart(food._id)}>
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="12" height="12">

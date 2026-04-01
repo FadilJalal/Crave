@@ -77,6 +77,7 @@ const MoodPicker = () => {
                   ratingCount={item.ratingCount || 0}
                   inStock={item.inStock !== false}
                   restaurantOpen={isRestaurantOpen(mergeRestaurantFromDirectory(item, restaurantsById))}
+                  restaurantActive={mergeRestaurantFromDirectory(item, restaurantsById)?.isActive !== false}
                 />
                 <div className="mp-tags">
                   {item.dietaryTags?.map((t) => (
