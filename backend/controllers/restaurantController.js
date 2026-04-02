@@ -17,6 +17,8 @@ export const addRestaurant = async (req, res) => {
   try {
     let { name, email, password, address, location, avgPrepTime, lat, lng } = req.body;
 
+    console.log("[ADD] Request body:", { name, email, password, address, location, avgPrepTime, lat, lng });
+
     if (typeof location === "string") {
       try { location = JSON.parse(location); } catch { location = null; }
     }
@@ -24,7 +26,10 @@ export const addRestaurant = async (req, res) => {
     const finalLat = Number(location?.lat ?? lat);
     const finalLng = Number(location?.lng ?? lng);
 
+    console.log("[ADD] Parsed location:", { finalLat, finalLng, location });
+
     if (!name || !email || !password || !address?.trim()) {
+      console.log("[ADD] ❌ Missing fields - name:", name, "email:", email, "password:", password, "address:", address);
       return res.json({ success: false, message: "Missing required fields" });
     }
     if (!Number.isFinite(finalLat) || !Number.isFinite(finalLng)) {
@@ -50,6 +55,7 @@ export const addRestaurant = async (req, res) => {
       logo: logoFilename,
     });
 
+    console.log(`[ADD] ✅ Restaurant "${name}" created successfully`);
     res.json({ success: true, message: "Restaurant added successfully", data: restaurant });
   } catch (err) {
     console.log(err);
@@ -61,11 +67,23 @@ export const addRestaurant = async (req, res) => {
 export const removeRestaurant = async (req, res) => {
   try {
     const { id } = req.body;
-    await restaurantModel.findByIdAndDelete(id);
+    
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Restaurant ID is required" });
+    }
+
+    console.log(`[DELETE] Removing restaurant: ${id}`);
+    const result = await restaurantModel.findByIdAndDelete(id);
+    
+    if (!result) {
+      return res.status(404).json({ success: false, message: "Restaurant not found" });
+    }
+
+    console.log(`[DELETE] ✅ Restaurant deleted successfully`);
     res.json({ success: true, message: "Restaurant removed" });
   } catch (err) {
-    console.log(err);
-    res.json({ success: false, message: "Error removing restaurant" });
+    console.error("[DELETE] Error:", err.message);
+    res.status(500).json({ success: false, message: "Error removing restaurant" });
   }
 };
 
@@ -74,18 +92,19 @@ export const toggleActive = async (req, res) => {
   try {
     const { id } = req.body;
     const restaurant = await restaurantModel.findById(id);
-    if (!restaurant) return res.json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return res.status(404).json({ success: false, message: "Restaurant not found" });
 
     restaurant.isActive = !restaurant.isActive;
     await restaurant.save();
 
+    console.log(`[TOGGLE] Restaurant ${id} is now ${restaurant.isActive ? "ACTIVE" : "INACTIVE"}`);
     res.json({
       success: true,
       message: restaurant.isActive ? "Restaurant activated" : "Restaurant deactivated",
     });
   } catch (err) {
-    console.log(err);
-    res.json({ success: false, message: "Error toggling status" });
+    console.error("[TOGGLE] Error:", err);
+    res.status(500).json({ success: false, message: "Error toggling status" });
   }
 };
 
@@ -94,14 +113,14 @@ export const editRestaurant = async (req, res) => {
   try {
     const { id, name, email, address, avgPrepTime } = req.body;
 
-    if (!id) return res.json({ success: false, message: "Restaurant id is required" });
+    if (!id) return res.status(400).json({ success: false, message: "Restaurant id is required" });
 
     const restaurant = await restaurantModel.findById(id);
-    if (!restaurant) return res.json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return res.status(404).json({ success: false, message: "Restaurant not found" });
 
     if (email && email.toLowerCase() !== restaurant.email) {
       const existing = await restaurantModel.findOne({ email: email.toLowerCase() });
-      if (existing) return res.json({ success: false, message: "Email already in use by another restaurant" });
+      if (existing) return res.status(409).json({ success: false, message: "Email already in use by another restaurant" });
       restaurant.email = email.toLowerCase();
     }
 
@@ -111,10 +130,11 @@ export const editRestaurant = async (req, res) => {
     if (req.file)    restaurant.logo        = req.file.filename;
 
     await restaurant.save();
+    console.log(`[EDIT] Restaurant ${id} updated`);
     res.json({ success: true, message: "Restaurant updated", data: restaurant });
   } catch (err) {
-    console.log(err);
-    res.json({ success: false, message: "Error updating restaurant" });
+    console.error("[EDIT] Error:", err);
+    res.status(500).json({ success: false, message: "Error updating restaurant" });
   }
 };
 
@@ -123,19 +143,20 @@ export const resetRestaurantPassword = async (req, res) => {
   try {
     const { id, newPassword } = req.body;
 
-    if (!id)          return res.json({ success: false, message: "Restaurant id is required" });
-    if (!newPassword) return res.json({ success: false, message: "New password is required" });
-    if (newPassword.length < 6) return res.json({ success: false, message: "Password must be at least 6 characters" });
+    if (!id)          return res.status(400).json({ success: false, message: "Restaurant id is required" });
+    if (!newPassword) return res.status(400).json({ success: false, message: "New password is required" });
+    if (newPassword.length < 6) return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
 
     const restaurant = await restaurantModel.findById(id);
-    if (!restaurant) return res.json({ success: false, message: "Restaurant not found" });
+    if (!restaurant) return res.status(404).json({ success: false, message: "Restaurant not found" });
 
     restaurant.password = await bcrypt.hash(newPassword, 10);
     await restaurant.save();
 
+    console.log(`[PASSWORD] Reset for restaurant ${id}`);
     res.json({ success: true, message: `Password reset for ${restaurant.name}` });
   } catch (err) {
-    console.log(err);
-    res.json({ success: false, message: "Error resetting password" });
+    console.error("[PASSWORD] Error:", err);
+    res.status(500).json({ success: false, message: "Error resetting password" });
   }
 };

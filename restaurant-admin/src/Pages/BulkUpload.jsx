@@ -218,7 +218,7 @@ const pLimit = (tasks, limit) => {
 const downloadTemplate = async () => {
   const XLSX = await loadXLSX();
   const ws = XLSX.utils.aoa_to_sheet([
-    COLUMNS.map((c) => c.key),
+    TEMPLATE_COLS.map((c) => c.key),
     ["Margherita Pizza", "Pizza",   "12.99", "Classic tomato and mozzarella",   "margherita.jpg", "", "Cheese:0.2, Flour:0.3"],
     ["Spicy Ramen",      "Noodles", "14.50", "Rich broth with noodles and egg", "ramen.jpg",
       JSON.stringify([{ title: "Spice Level", required: true, multiSelect: false,
@@ -686,7 +686,7 @@ export default function BulkUpload() {
             <div style={{ background: "#f8f9fa", borderRadius: 14, padding: "18px 22px", marginBottom: 24 }}>
               <p style={{ fontWeight: 800, fontSize: 14, marginBottom: 10 }}>📋 Expected columns:</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 8 }}>
-                {COLUMNS.map(c => (
+                {TEMPLATE_COLS.map(c => (
                   <div key={c.key} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 14px" }}>
                     <code style={{ fontSize: 12, fontWeight: 800, color: c.required ? "#dc2626" : "#374151" }}>{c.label}</code>
                     <p style={{ fontSize: 11.5, color: "#6b7280", margin: "3px 0 0" }}>{c.hint}</p>

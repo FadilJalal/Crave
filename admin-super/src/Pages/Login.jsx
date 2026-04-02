@@ -78,7 +78,7 @@ export default function Login() {
         </form>
 
         <div style={styles.hint}>
-          Use: <b>superadmin@tomato.com</b> / <b>super123</b>
+          Use: <b>Craveadmin@gmail.com</b> / <b>CRAVE123</b>
         </div>
       </div>
     </div>

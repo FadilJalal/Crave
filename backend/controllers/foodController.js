@@ -55,26 +55,49 @@ const listFood = async (req, res) => {
 
   try {
 
-    let foods;
+    // Get pagination params from query (e.g., ?page=1&limit=50)
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit) || 50); // Cap at 100
+    const skip = (page - 1) * limit;
+
+    let foods, total;
 
     if(req.admin.role === "restaurantadmin"){
 
-        foods = await foodModel.find({
+        total = await foodModel.countDocuments({
           restaurantId:req.admin.restaurantId
         });
+
+        foods = await foodModel.find({
+          restaurantId:req.admin.restaurantId
+        })
+        .skip(skip)
+        .limit(limit)
+        .lean();
 
     }
 
     else{
 
+        total = await foodModel.countDocuments({});
+
         foods = await foodModel.find({})
-        .populate("restaurantId","name");
+        .populate("restaurantId","name")
+        .skip(skip)
+        .limit(limit)
+        .lean();
 
     }
 
     res.json({
       success:true,
-      data:foods
+      data:foods,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
     });
 
   }

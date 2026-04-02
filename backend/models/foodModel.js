@@ -34,5 +34,12 @@ const foodSchema = new mongoose.Schema({
     ]
 });
 
+// ── Performance Indexes ──────────────────────────────────────────────────────
+// These indexes dramatically speed up queries on commonly filtered fields
+foodSchema.index({ restaurantId: 1 });
+foodSchema.index({ category: 1 });
+foodSchema.index({ restaurantId: 1, category: 1 });
+foodSchema.index({ inStock: 1 });
+
 const foodModel = mongoose.models.food || mongoose.model("food", foodSchema);
 export default foodModel;

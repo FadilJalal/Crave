@@ -268,11 +268,14 @@ const placeOrder = async (req, res) => {
     // ── Automatically deduct inventory for ordered items ──────────────────
     const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
     console.log("[placeOrder] Inventory deduction result:", inventoryDeduction);
+    if (!inventoryDeduction.success) {
+      console.warn("[placeOrder] Inventory deduction failed but order already placed. Manual review needed.", inventoryDeduction);
+    }
 
     res.json({ success: true, session_url: session.url });
   } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: "Error placing order" });
+    console.error("[placeOrder] Error:", error.message);
+    res.status(500).json({ success: false, message: error.message || "Error placing order" });
   }
 };
 
@@ -282,14 +285,14 @@ const placeOrder = async (req, res) => {
 const placeOrderCod = async (req, res) => {
   try {
     if (!req.body.items || req.body.items.length === 0) {
-      return res.json({ success: false, message: "Cart is empty" });
+      return res.status(400).json({ success: false, message: "Cart is empty" });
     }
 
     const raw = req.body.items[0].restaurantId;
     const restaurantId = raw?._id ? String(raw._id) : String(raw);
     console.log(`[placeOrderCod] restaurantId="${restaurantId}" address city="${req.body.address?.city}"`);
     if (!restaurantId) {
-      return res.json({ success: false, message: "restaurantId missing in items" });
+      return res.status(400).json({ success: false, message: "restaurantId missing in items" });
     }
 
     const restaurantDocCod = await restaurantModel
@@ -297,10 +300,10 @@ const placeOrderCod = async (req, res) => {
       .select("isActive openingHours deliveryTiers deliveryRadius")
       .lean();
     if (!restaurantDocCod) {
-      return res.json({ success: false, message: "Restaurant not found" });
+      return res.status(404).json({ success: false, message: "Restaurant not found" });
     }
     if (!isRestaurantOpen(restaurantDocCod)) {
-      return res.json({
+      return res.status(400).json({
         success: false,
         message: "This restaurant is not accepting orders right now.",
       });
@@ -310,7 +313,7 @@ const placeOrderCod = async (req, res) => {
     const radiusCheck = await checkDeliveryRadius(restaurantId, req.body.address);
     console.log(`[placeOrderCod] radiusCheck:`, radiusCheck);
     if (!radiusCheck.ok) {
-      return res.json({ success: false, message: radiusCheck.message, outOfRange: true });
+      return res.status(400).json({ success: false, message: radiusCheck.message, outOfRange: true });
     }
 
     const actualDeliveryFee = calcDeliveryFee(restaurantDocCod?.deliveryTiers, radiusCheck.distKm ?? 0);
@@ -334,11 +337,14 @@ const placeOrderCod = async (req, res) => {
     // ── Automatically deduct inventory for ordered items ──────────────────
     const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
     console.log("[placeOrderCod] Inventory deduction result:", inventoryDeduction);
+    if (!inventoryDeduction.success) {
+      console.warn("[placeOrderCod] Inventory deduction failed but order already placed. Manual review needed.", inventoryDeduction);
+    }
 
     res.json({ success: true, message: "Order Placed Successfully" });
   } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: "Error placing order" });
+    console.error("[placeOrderCod] Error:", error.message);
+    res.status(500).json({ success: false, message: error.message || "Error placing order" });
   }
 };
 
@@ -351,15 +357,34 @@ const listOrders = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
+    // Pagination
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit) || 50);
+    const skip = (page - 1) * limit;
+
+    const total = await orderModel.countDocuments({});
+
     const orders = await orderModel
       .find({})
       .populate("restaurantId", "name address location logo")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
-    res.json({ success: true, data: orders });
+    res.json({ 
+      success: true, 
+      data: orders,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     console.log(error);
-    res.json({ success: false, message: "Error fetching orders" });
+    res.status(500).json({ success: false, message: "Error fetching orders" });
   }
 };
 

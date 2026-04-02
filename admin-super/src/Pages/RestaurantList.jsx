@@ -29,10 +29,20 @@ export default function RestaurantList() {
   const fetchRestaurants = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${BACKEND_URL}/api/restaurant/list`);
-      if (res.data.success) setRestaurants(res.data.data || []);
-      else toast.error(res.data.message || "Error fetching restaurants");
+      console.log("📥 Fetching restaurants...");
+      // Use the authenticated api instance instead of plain axios
+      const res = await api.get(`/api/restaurant/list`);
+      console.log("📊 Restaurants response:", res.data);
+      if (res.data.success) {
+        console.log("✅ Loaded", res.data.data?.length, "restaurants");
+        setRestaurants(res.data.data || []);
+      }
+      else {
+        toast.error(res.data.message || "Error fetching restaurants");
+        console.error("❌ Error:", res.data.message);
+      }
     } catch (err) {
+      console.error("❌ Fetch error:", err);
       toast.error(err?.response?.data?.message || "Network error");
     } finally {
       setLoading(false);
@@ -44,16 +54,37 @@ export default function RestaurantList() {
   const removeRestaurant = async (id) => {
     if (!window.confirm("Delete this restaurant? This cannot be undone.")) return;
     try {
-      const res = await api.post(`${BACKEND_URL}/api/restaurant/remove`, { id });
-      if (res.data.success) { toast.success("Restaurant removed"); fetchRestaurants(); }
+      console.log("🗑️ Deleting restaurant:", id);
+      const res = await api.post(`/api/restaurant/remove`, { id });
+      console.log("📊 Delete response:", res.data);
+      if (res.data.success) { 
+        toast.success("Restaurant removed");
+        // Update state directly instead of refetching to avoid cache issues
+        setRestaurants((prev) => prev.filter((r) => r._id !== id));
+      }
       else toast.error(res.data.message);
-    } catch { toast.error("Failed to remove"); }
+    } catch (err) {
+      console.error("❌ Delete error:", err);
+      // If restaurant not found (404), it's already deleted - remove from UI anyway
+      if (err?.response?.status === 404) {
+        toast.success("Restaurant deleted (already removed from database)");
+        setRestaurants((prev) => prev.filter((r) => r._id !== id));
+      } else {
+        toast.error(err?.response?.data?.message || "Failed to remove"); 
+      }
+    }
   };
 
   const toggleActive = async (id) => {
     try {
-      const res = await api.post(`${BACKEND_URL}/api/restaurant/toggle-active`, { id });
-      if (res.data.success) { toast.success(res.data.message); fetchRestaurants(); }
+      const res = await api.post(`/api/restaurant/toggle-active`, { id });
+      if (res.data.success) { 
+        toast.success(res.data.message);
+        // Update state directly for immediate UI feedback
+        setRestaurants((prev) => 
+          prev.map((r) => r._id === id ? { ...r, isActive: !r.isActive } : r)
+        );
+      }
       else toast.error(res.data.message);
     } catch { toast.error("Failed to update status"); }
   };
@@ -81,9 +112,7 @@ export default function RestaurantList() {
       formData.append("avgPrepTime", editItem.avgPrepTime);
       if (editLogo) formData.append("logo", editLogo);
 
-      const res = await api.post(`${BACKEND_URL}/api/restaurant/edit`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await api.post(`/api/restaurant/edit`, formData);
       if (res.data.success) {
         toast.success("Restaurant updated!");
         setRestaurants((prev) => prev.map((r) => r._id === editItem._id ? res.data.data : r));
@@ -103,7 +132,7 @@ export default function RestaurantList() {
     if (newPassword.length < 6)   { toast.error("Password must be at least 6 characters"); return; }
     setResetting(true);
     try {
-      const res = await api.post(`${BACKEND_URL}/api/restaurant/reset-password`, {
+      const res = await api.post(`/api/restaurant/reset-password`, {
         id: resetTarget._id, newPassword,
       });
       if (res.data.success) { toast.success(res.data.message); closeReset(); }

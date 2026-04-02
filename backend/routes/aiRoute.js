@@ -262,7 +262,7 @@ router.post("/upsell", async (req, res) => {
     res.json({ success: true, data: enriched });
   } catch (e) {
     console.error("[ai/upsell]", e);
-    res.json({ success: true, data: [] });
+    res.status(500).json({ success: false, message: "Failed to fetch upsell recommendations", data: [] });
   }
 });
 

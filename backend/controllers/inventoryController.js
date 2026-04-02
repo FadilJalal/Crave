@@ -110,8 +110,11 @@ const addInventoryItem = async (req, res) => {
             data: newItem
         });
     } catch (error) {
-        console.error("Error adding inventory item:", error);
-        res.status(500).json({ success: false, message: "Failed to add inventory item" });
+        console.error("Error adding inventory item:", error.message || error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Failed to add inventory item: " + (error.message || "Unknown error")
+        });
     }
 };
 

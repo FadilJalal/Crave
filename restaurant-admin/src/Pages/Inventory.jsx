@@ -22,6 +22,30 @@ const SORT_OPTIONS = [
   { value: "expiry", label: "Expiry Date" },
 ];
 
+// ── Stock bar color helper ──
+function stockColor(current, min, max) {
+  if (current <= 0) return "#dc2626";
+  if (current <= min * 0.5) return "#dc2626";
+  if (current <= min) return "#f59e0b";
+  if (current >= max) return "#3b82f6";
+  return "#16a34a";
+}
+
+function stockPct(current, max) {
+  if (max <= 0) return 0;
+  return Math.min(100, Math.round((current / max) * 100));
+}
+
+function timeAgo(date) {
+  if (!date) return "Never";
+  const d = (Date.now() - new Date(date).getTime()) / 864e5;
+  if (d < 1) return "Today";
+  if (d < 2) return "Yesterday";
+  if (d < 7) return `${Math.floor(d)}d ago`;
+  if (d < 30) return `${Math.floor(d / 7)}w ago`;
+  return `${Math.floor(d / 30)}mo ago`;
+}
+
 const InventoryCard = memo(({ item, ai, isSelected, catEmoji, onToggleSelect, onQuickAdjust, onStockUpdate, onEdit, onDelete, onLink }) => {
   const urgency = ai?.urgency || 0;
   const pct = stockPct(item.currentStock, item.maximumStock);
@@ -206,30 +230,6 @@ const s = {
   aiLoadBtn: { padding: "7px 14px", borderRadius: 10, border: "1.5px solid #c4b5fd", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 12, color: "#7c3aed", fontFamily: "inherit", marginLeft: "auto" },
 };
 
-// ── Stock bar color helper ──
-function stockColor(current, min, max) {
-  if (current <= 0) return "#dc2626";
-  if (current <= min * 0.5) return "#dc2626";
-  if (current <= min) return "#f59e0b";
-  if (current >= max) return "#3b82f6";
-  return "#16a34a";
-}
-
-function stockPct(current, max) {
-  if (max <= 0) return 0;
-  return Math.min(100, Math.round((current / max) * 100));
-}
-
-function timeAgo(date) {
-  if (!date) return "Never";
-  const d = (Date.now() - new Date(date).getTime()) / 864e5;
-  if (d < 1) return "Today";
-  if (d < 2) return "Yesterday";
-  if (d < 7) return `${Math.floor(d)}d ago`;
-  if (d < 30) return `${Math.floor(d / 7)}w ago`;
-  return `${Math.floor(d / 30)}mo ago`;
-}
-
 export default function Inventory() {
   const [inventory, setInventory] = useState([]);
   const [alerts, setAlerts] = useState({});
@@ -255,6 +255,8 @@ export default function Inventory() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [importing, setImporting] = useState(false);
   const [importStatus, setImportStatus] = useState("");
+  const [showImportPreview, setShowImportPreview] = useState(false);
+  const [previewData, setPreviewData] = useState([]);
   const importRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -288,6 +290,10 @@ export default function Inventory() {
     }
   }, []);
 
+  useEffect(() => {
+    loadInventory();
+  }, [loadInventory]);
+
   const loadAI = async () => {
     setAiLoading(true);
     try {
@@ -299,9 +305,11 @@ export default function Inventory() {
 
   const downloadInventoryTemplate = () => {
     const rows = [
-      ["itemName","category","unit","currentStock","minimumStock","maximumStock","unitCost","supplier","expiryDate","notes","linkedMenuItemId","linkedMenuQtyPerOrder"],
-      ["Tomato","food_ingredient","kg",100,10,200,2.5,"{\"name\":\"Supplier A\",\"contact\":\"123\"}","2026-12-31","Fresh stock","",""],
-      ["Cooking Oil","food_ingredient","l",50,5,100,10,"{\"name\":\"Oil Supplier\"}","2026-12-31","Vegetable oil","<menuId>","0.05"]
+      ["Item Name","Category","Unit","Current Stock","Unit Cost (AED)","Minimum Stock","Maximum Stock","Expiry Date","Supplier Name","Supplier Contact","Notes"],
+      ["Coleslaw Small","food_ingredient","pieces","0","0","10","100","mm/dd/yyyy","Name","Phone",""],
+      ["Cooking Oil","food_ingredient","liters","50","15","5","100","12/31/2026","Oil Supplier","123-456-7890","Vegetable oil"],
+      ["Cheese","food_ingredient","kg","25","30","10","50","01/15/2027","Dairy Farm","987-654-3210","Fresh cheese"],
+      ["Flour","food_ingredient","kg","100","2","20","200","06/30/2026","Flour Mill","555-123-4567","All-purpose flour"]
     ];
 
     const csvContent = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -333,6 +341,25 @@ export default function Inventory() {
     return XLSX.utils.sheet_to_json(worksheet, { defval: "" });
   };
 
+  const mapCategoryValue = (categoryInput) => {
+    if (!categoryInput) return "food_ingredient";
+    const input = String(categoryInput).toLowerCase().trim();
+    
+    // Map both labels and values to correct enum values
+    const categoryMap = {
+      "ingredients": "food_ingredient",
+      "food_ingredient": "food_ingredient",
+      "food ingredient": "food_ingredient",
+      "beverages": "beverage",
+      "beverage": "beverage",
+      "packaging": "packaging",
+      "equipment": "equipment",
+      "other": "other"
+    };
+    
+    return categoryMap[input] || "food_ingredient";
+  };
+
   const handleImportInventory = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -342,42 +369,78 @@ export default function Inventory() {
 
     try {
       const rows = await parseInventorySpreadsheet(file);
-      const toUpdate = [];
+      console.log("[Import] Parsed rows:", rows);
+      const previewItems = [];
 
       rows.forEach(row => {
-        const name = String(row.itemName || row.name || row["Item Name"] || "").trim();
+        console.log("[Import] Processing row:", row);
+        const name = String(row["Item Name"] || row.itemName || row.name || "").trim();
         if (!name) return;
 
         const match = inventory.find(item => item.itemName.toLowerCase() === name.toLowerCase());
-        if (!match) return;
+        
+        if (match) {
+          // Preview update
+          const updatePreview = {
+            type: "update",
+            itemName: name,
+            existingItem: match,
+            changes: {}
+          };
+          
+          if (row["Current Stock"] !== undefined && row["Current Stock"] !== "") updatePreview.changes.currentStock = Number(row["Current Stock"]);
+          if (row["Minimum Stock"] !== undefined && row["Minimum Stock"] !== "") updatePreview.changes.minimumStock = Number(row["Minimum Stock"]);
+          if (row["Maximum Stock"] !== undefined && row["Maximum Stock"] !== "") updatePreview.changes.maximumStock = Number(row["Maximum Stock"]);
+          if (row["Unit Cost (AED)"] !== undefined && row["Unit Cost (AED)"] !== "") updatePreview.changes.unitCost = Number(row["Unit Cost (AED)"]);
+          if (row["Unit"] !== undefined && row["Unit"] !== "") updatePreview.changes.unit = String(row["Unit"]).trim();
+          if (row["Category"] !== undefined && row["Category"] !== "") updatePreview.changes.category = mapCategoryValue(row["Category"]);
+          if (row["Expiry Date"] !== undefined && row["Expiry Date"] !== "") updatePreview.changes.expiryDate = String(row["Expiry Date"]).trim();
+          if (row["Notes"] !== undefined && row["Notes"] !== "") updatePreview.changes.notes = String(row["Notes"]).trim();
+          if (row["Supplier Name"] || row["Supplier Contact"]) {
+            const supplierName = String(row["Supplier Name"] || "").trim();
+            const supplierContact = String(row["Supplier Contact"] || "").trim();
+            updatePreview.changes.supplier = { name: supplierName, contact: supplierContact, email: "" };
+          }
 
-        const updates = { id: match._id };
-        if (row.currentStock !== undefined && row.currentStock !== "") updates.currentStock = Number(row.currentStock);
-        if (row.minimumStock !== undefined && row.minimumStock !== "") updates.minimumStock = Number(row.minimumStock);
-        if (row.maximumStock !== undefined && row.maximumStock !== "") updates.maximumStock = Number(row.maximumStock);
-        if (row.unitCost !== undefined && row.unitCost !== "") updates.unitCost = Number(row.unitCost);
-        if (row.unit !== undefined && row.unit !== "") updates.unit = String(row.unit).trim();
-        if (row.supplier || row.supplier_name) {
-          const supplierText = row.supplier || row.supplier_name;
-          try {
-            updates.supplier = typeof supplierText === "string" && supplierText.trim().startsWith("{")
-              ? JSON.parse(supplierText)
-              : { name: String(supplierText).trim() };
-          } catch { updates.supplier = { name: String(supplierText).trim() }; }
+          if (Object.keys(updatePreview.changes).length > 0) previewItems.push(updatePreview);
+        } else {
+          // Preview create
+          const createPreview = {
+            type: "create",
+            itemName: name,
+            newItem: {
+              category: mapCategoryValue(row["Category"]),
+              unit: row["Unit"] || "pieces",
+              currentStock: row["Current Stock"] ? Number(row["Current Stock"]) : 0,
+              minimumStock: row["Minimum Stock"] ? Number(row["Minimum Stock"]) : 10,
+              maximumStock: row["Maximum Stock"] ? Number(row["Maximum Stock"]) : 100,
+              unitCost: row["Unit Cost (AED)"] ? Number(row["Unit Cost (AED)"]) : 0,
+              supplier: row["Supplier Name"] || row["Supplier Contact"] ? 
+                { 
+                  name: String(row["Supplier Name"] || "").trim(), 
+                  contact: String(row["Supplier Contact"] || "").trim(), 
+                  email: "" 
+                } 
+                : { name: "", contact: "", email: "" },
+              expiryDate: row["Expiry Date"] || "",
+              notes: row["Notes"] || ""
+            }
+          };
+          previewItems.push(createPreview);
         }
-
-        if (Object.keys(updates).length > 1) toUpdate.push(updates);
       });
 
-      if (toUpdate.length === 0) {
-        setImportStatus("No matching inventory rows found to update.");
+      if (previewItems.length === 0) {
+        setImportStatus("No inventory items found to update or create.");
+        setImporting(false);
         return;
       }
 
-      setImportStatus(`Applying ${toUpdate.length} updates...`);
-      await api.post("/api/inventory/bulk-update", { updates: toUpdate });
-      await loadInventory();
-      setImportStatus(`Updated ${toUpdate.length} items successfully.`);
+      // Show preview modal
+      console.log("[Import] Preview items:", previewItems);
+      setPreviewData(previewItems);
+      setShowImportPreview(true);
+      setImportStatus("");
     } catch (error) {
       console.error(error);
       setImportStatus("Import failed: " + (error.message || "Unknown error"));
@@ -387,8 +450,70 @@ export default function Inventory() {
     }
   };
 
-  useEffect(() => { loadInventory(); }, [loadInventory]);
-  useEffect(() => { if (inventory.length > 0) loadAI(); }, [inventory.length]);
+  const confirmImport = async () => {
+    setImporting(true);
+    setImportStatus("Processing import...");
+
+    try {
+      const toUpdate = [];
+      const toCreate = [];
+
+      previewData.forEach(item => {
+        if (item.type === "update") {
+          const updates = { id: item.existingItem._id, ...item.changes };
+          toUpdate.push(updates);
+        } else {
+          const newItem = { itemName: item.itemName, ...item.newItem };
+          toCreate.push(newItem);
+        }
+      });
+
+      // Update existing items
+      if (toUpdate.length > 0) {
+        setImportStatus(`Updating ${toUpdate.length} existing items...`);
+        try {
+          const res = await api.post("/api/inventory/bulk-update", { updates: toUpdate });
+          console.log("[Import] Bulk update response:", res.data);
+        } catch (err) {
+          console.error("[Import] Bulk update failed:", err.response?.data || err);
+          throw new Error(`Update failed: ${err.response?.data?.message || err.message}`);
+        }
+      }
+
+      // Create new items
+      let createdCount = 0;
+      if (toCreate.length > 0) {
+        setImportStatus(`Creating ${toCreate.length} new items...`);
+        for (const item of toCreate) {
+          try {
+            const payload = { ...item, supplier: JSON.stringify(item.supplier) };
+            console.log("[Import] Creating item payload:", JSON.stringify(payload));
+            const res = await api.post("/api/inventory/add", payload);
+            console.log("[Import] Item created:", res.data);
+            createdCount++;
+          } catch (err) {
+            const errorMsg = err.response?.data?.message || err.message || "Unknown error";
+            console.error("[Import] Failed to create item:", item.itemName);
+            console.error("[Import] Error details:", errorMsg);
+            console.error("[Import] Full error:", err.response?.data);
+          }
+        }
+        if (createdCount === 0 && toCreate.length > 0) {
+          throw new Error(`Failed to create any items. Check console for details.`);
+        }
+      }
+
+      await loadInventory();
+      setImportStatus(`✅ Updated ${toUpdate.length} items and created ${createdCount} new items successfully.`);
+      setShowImportPreview(false);
+      setPreviewData([]);
+    } catch (error) {
+      console.error("[Import] Error:", error);
+      setImportStatus("❌ " + (error.message || "Unknown error"));
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const resetForm = () => {
     setFormData({ itemName: "", category: "food_ingredient", unit: "kg", currentStock: 0, minimumStock: 10, maximumStock: 100, unitCost: 0, supplier: { name: "", contact: "", email: "" }, expiryDate: "", notes: "" });
@@ -431,14 +556,19 @@ export default function Inventory() {
   const handleDelete = async (id) => {
     if (!window.confirm("Remove this item from inventory?")) return;
     try {
-      await api.delete(`/api/inventory/${id}`);
+      console.log("[Inventory] Deleting item:", id);
+      const res = await api.delete(`/api/inventory/${id}`);
+      console.log("[Inventory] Delete response:", res.data);
       setInventory(prev => prev.filter(i => i._id !== id));
       setSelectedIds(prev => {
         const next = new Set(prev);
         next.delete(id);
         return next;
       });
-    } catch (err) { alert(err?.response?.data?.message || "Failed to remove"); }
+    } catch (err) { 
+      console.error("[Inventory] Delete error:", err);
+      alert(err?.response?.data?.message || "Failed to remove"); 
+    }
   };
 
   const toggleSelect = (id) => setSelectedIds(prev => {
@@ -608,7 +738,7 @@ export default function Inventory() {
         />
       );
     });
-  }, [filtered, aiMap, selectedIds, catEmoji, handleQuickAdjust, handleStockUpdate, handleEdit, handleDelete]);
+  }, [filtered, aiMap, selectedIds, handleQuickAdjust, handleStockUpdate, handleEdit, handleDelete]);
 
   if (loading) {
     return (
@@ -1003,6 +1133,136 @@ export default function Inventory() {
                 Update {selectedIds.size} Items
               </button>
               <button type="button" className="btn btn-outline" onClick={() => { setShowBulkUpdateModal(false); setBulkUpdateField(""); setBulkUpdateValue(""); }} style={{ flex: 1 }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Import Preview ── */}
+      {showImportPreview && (
+        <div style={s.overlay} onClick={() => setShowImportPreview(false)}>
+          <div style={{ ...s.modal, maxWidth: 800, maxHeight: "85vh" }} onClick={e => e.stopPropagation()}>
+            <h2 style={s.modalTitle}>📋 Import Preview - {previewData.length} Items</h2>
+            <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 14px", fontWeight: 500 }}>
+              Review the changes before confirming. Items will be updated or created as shown below.
+            </p>
+
+            <div style={{ maxHeight: 400, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 8, marginBottom: 16 }}>
+              {previewData.map((item, idx) => (
+                <div key={idx} style={{ 
+                  padding: "12px 14px", 
+                  borderBottom: idx < previewData.length - 1 ? "1px solid #f3f4f6" : "none",
+                  background: item.type === "create" ? "#f0fdf4" : "#eff6ff"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ 
+                      fontSize: 11, 
+                      padding: "2px 6px", 
+                      borderRadius: 4, 
+                      background: item.type === "create" ? "#16a34a" : "#2563eb", 
+                      color: "white", 
+                      fontWeight: 700 
+                    }}>
+                      {item.type === "create" ? "CREATE" : "UPDATE"}
+                    </span>
+                    <strong style={{ fontSize: 14, color: "var(--text)" }}>{item.itemName}</strong>
+                  </div>
+
+                  {item.type === "update" ? (
+                    <div style={{ fontSize: 12, color: "#374151" }}>
+                      <div style={{ marginBottom: 4 }}>
+                        <span style={{ color: "#6b7280", fontWeight: 600 }}>Current:</span> {item.existingItem.currentStock} {item.existingItem.unit} @ AED {item.existingItem.unitCost}
+                      </div>
+                      {Object.keys(item.changes).length > 0 && (
+                        <div>
+                          <span style={{ color: "#6b7280", fontWeight: 600 }}>Changes:</span>
+                          <ul style={{ margin: "4px 0 0 16px", padding: 0, listStyle: "none" }}>
+                            {item.changes.currentStock !== undefined && (
+                              <li>Stock: {item.existingItem.currentStock} → {item.changes.currentStock}</li>
+                            )}
+                            {item.changes.unitCost !== undefined && (
+                              <li>Cost: AED {item.existingItem.unitCost} → AED {item.changes.unitCost}</li>
+                            )}
+                            {item.changes.unit && (
+                              <li>Unit: {item.existingItem.unit} → {item.changes.unit}</li>
+                            )}
+                            {item.changes.category && (
+                              <li>Category: {item.existingItem.category} → {item.changes.category}</li>
+                            )}
+                            {item.changes.minimumStock !== undefined && (
+                              <li>Min Stock: {item.existingItem.minimumStock} → {item.changes.minimumStock}</li>
+                            )}
+                            {item.changes.maximumStock !== undefined && (
+                              <li>Max Stock: {item.existingItem.maximumStock} → {item.changes.maximumStock}</li>
+                            )}
+                            {item.changes.expiryDate && (
+                              <li>Expiry: {item.existingItem.expiryDate || "none"} → {item.changes.expiryDate}</li>
+                            )}
+                            {item.changes.supplier && (
+                              <li>Supplier: {item.changes.supplier.name || "none"} ({item.changes.supplier.contact || "no contact"})</li>
+                            )}
+                            {item.changes.notes && (
+                              <li>Notes: {item.changes.notes}</li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: "#374151" }}>
+                      <div style={{ marginBottom: 4 }}>
+                        <span style={{ color: "#6b7280", fontWeight: 600 }}>New Item:</span>
+                      </div>
+                      <ul style={{ margin: "4px 0 0 16px", padding: 0, listStyle: "none" }}>
+                        <li>Category: {item.newItem.category}</li>
+                        <li>Stock: {item.newItem.currentStock} {item.newItem.unit}</li>
+                        <li>Cost: AED {item.newItem.unitCost}</li>
+                        <li>Min/Max: {item.newItem.minimumStock}/{item.newItem.maximumStock}</li>
+                        {item.newItem.expiryDate && <li>Expiry: {item.newItem.expiryDate}</li>}
+                        {item.newItem.supplier.name && (
+                          <li>Supplier: {item.newItem.supplier.name} ({item.newItem.supplier.contact})</li>
+                        )}
+                        {item.newItem.notes && <li>Notes: {item.newItem.notes}</li>}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {importStatus && (
+              <div style={{ 
+                padding: "8px 12px", 
+                borderRadius: 8, 
+                background: "#f3f4f6", 
+                fontSize: 12, 
+                fontWeight: 600, 
+                color: "var(--text)",
+                marginBottom: 16 
+              }}>
+                {importStatus}
+              </div>
+            )}
+
+            <div style={s.formBtns}>
+              <button 
+                type="button" 
+                className="btn" 
+                onClick={confirmImport} 
+                disabled={importing}
+                style={{ flex: 1 }}
+              >
+                {importing ? "Processing..." : `Confirm Import (${previewData.length} items)`}
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                onClick={() => setShowImportPreview(false)} 
+                disabled={importing}
+                style={{ flex: 1 }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

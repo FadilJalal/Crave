@@ -416,6 +416,10 @@ export default function Settings() {
               isActive,
               avgPrepTime: prepTime,
               openingHours: hours,
+              deliveryRadius,
+              minimumOrder,
+              deliveryTiers,
+              address,
               ...(loc?.lat != null && loc?.lng != null ? { location: loc } : {}),
             })
           );

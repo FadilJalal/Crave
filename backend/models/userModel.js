@@ -9,5 +9,8 @@ const userSchema = new mongoose.Schema({
     cartData:{type:Object,default:{}}
 }, { minimize: false })
 
+// ── Performance Indexes ──────────────────────────────────────────────────────
+userSchema.index({ email: 1 });
+
 const userModel = mongoose.models.user || mongoose.model("user", userSchema);
 export default userModel;

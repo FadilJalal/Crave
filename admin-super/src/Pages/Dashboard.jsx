@@ -19,7 +19,12 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => { loadStats(); }, []);
+  useEffect(() => { 
+    loadStats();
+    // Refresh stats every 30 seconds to catch real-time changes
+    const interval = setInterval(loadStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const statCards = stats ? [
     { label: "Total Restaurants", value: stats.totalRestaurants, color: "#8b5cf6", bg: "#f5f3ff", icon: "🍽️" },

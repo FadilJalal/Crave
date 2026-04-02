@@ -76,6 +76,13 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// ── Performance Indexes ──────────────────────────────────────────────────────
+// Speed up queries by userId and restaurantId
+orderSchema.index({ userId: 1 });
+orderSchema.index({ restaurantId: 1 });
+orderSchema.index({ createdAt: -1 }); // For sorting by date
+orderSchema.index({ status: 1 }); // For filtering by status
+
 const orderModel =
   mongoose.models.order || mongoose.model("order", orderSchema);
 

@@ -157,11 +157,12 @@ export default function AddRestaurant() {
       payload.append("location", JSON.stringify({ lat, lng }));
       if (logo) payload.append("logo", logo);
 
+      console.log("🔍 Submitting restaurant form...");
       // ✅ Fixed: uses api instance with auth token
-      const { data } = await api.post(`/api/restaurant/add`, payload, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // NOTE: Do NOT set Content-Type header — axios auto-detects FormData
+      const { data } = await api.post(`/api/restaurant/add`, payload);
 
+      console.log("📊 Response:", data);
       if (data.success) {
         toast.success("Restaurant registered successfully");
         navigate("/restaurants/list");
@@ -169,7 +170,9 @@ export default function AddRestaurant() {
         toast.error(data.message || "Registration failed");
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Registration failed");
+      console.error("❌ Error submitting form:", err);
+      const errorMsg = err?.response?.data?.message || err?.message || "Registration failed";
+      toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }

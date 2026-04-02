@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import compression from "compression";
 import authRouter from "./routes/authRoute.js";
 import recommendationRouter from "./routes/recommendationRoute.js";
 import { connectDB } from "./config/db.js";
@@ -28,6 +29,14 @@ import aiRestaurantRouter from "./routes/aiRestaurantRoute.js";
 import aiAdminRouter from "./routes/aiAdminRoute.js";
 import inventoryRouter from "./routes/inventoryRoute.js";
 
+// ── Validate critical environment variables ──────────────────────────────────
+const requiredEnvVars = ["MONGO_URL", "JWT_SECRET"];
+const missingEnvVars = requiredEnvVars.filter(env => !process.env[env]);
+if (missingEnvVars.length > 0) {
+  console.error(`❌ [ERROR] Missing required environment variables: ${missingEnvVars.join(", ")}`);
+  process.exit(1);
+}
+
 // ── Process-level crash guards ───────────────────────────────────────────────
 process.on("uncaughtException", (err) => {
   console.error("[FATAL] Uncaught Exception — server kept alive:", err.message);
@@ -43,6 +52,13 @@ const port = process.env.PORT || 4000;
 
 // ── Security headers ─────────────────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+
+// ── Response Compression (gzip) ──────────────────────────────────────────────
+// Reduces response size by 50-80% — massive performance gain!
+app.use(compression({
+  level: 6, // Balance between compression ratio and speed
+  threshold: 1024, // Only compress responses larger than 1KB
+}));
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
 const allowedOrigins = (
@@ -65,6 +81,11 @@ app.use(cors({
 // Stripe webhook needs raw body — must be registered BEFORE express.json()
 app.use("/api/subscription/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
+
+// ── File upload (multer) ──────────────────────────────────────────────────────
+// Configured in individual route handlers to work with FormData
+// NOTE: multer is NOT applied globally — it's attached to specific routes
 
 // ── Request timeout — kills hanging requests after 30s ──────────────────────
 app.use((req, res, next) => {
@@ -73,6 +94,19 @@ app.use((req, res, next) => {
       res.status(503).json({ success: false, message: "Request timed out" });
     }
   });
+  next();
+});
+
+// ── Cache Control Headers ────────────────────────────────────────────────────
+// Enables browser caching for read-only endpoints (restaurant list, food items, etc.)
+app.use((req, res, next) => {
+  // Cache GET requests for 5 minutes
+  if (req.method === "GET") {
+    // Don't cache auth, user, or cart endpoints
+    if (!req.path.includes("/user") && !req.path.includes("/cart") && !req.path.includes("/order")) {
+      res.set("Cache-Control", "public, max-age=300, must-revalidate");
+    }
+  }
   next();
 });
 
