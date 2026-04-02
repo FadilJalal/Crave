@@ -138,6 +138,7 @@ const uploadRow = async (row) => {
     notes: row.notes || "",
   };
 
+  // Always add inventory items for ingredients if specified
   if (row.inventory_unit || row.inventory_currentStock || row.inventory_minimumStock || row.inventory_maximumStock || row.inventory_unitCost || row.inventory_supplier) {
     try {
       await api.post("/api/inventory/add", inventoryPayload);
@@ -145,6 +146,9 @@ const uploadRow = async (row) => {
       console.warn("Inventory add for row failed", invErr?.response?.data?.message || invErr.message);
     }
   }
+
+  // Note: Ingredient linking is now handled in submitAll() via linkIngredientsForFood()
+  // to avoid duplicate processing and linking
 
   return res.data;
 };
@@ -543,6 +547,19 @@ export default function BulkUpload() {
     loadInv();
   }, []);
 
+  // Reload inventory items when entering review step to show updated matches
+  useEffect(() => {
+    if (step === 1) {
+      const reloadInv = async () => {
+        try {
+          const res = await api.get("/api/inventory");
+          if (res.data?.success) setInventoryItems(res.data.data);
+        } catch { }
+      };
+      reloadInv();
+    }
+  }, [step]);
+
   const handleSheetFiles = useCallback(async (files) => {
     const sheetFile = Array.from(files).find(f => /\.(xlsx|xls|csv)$/i.test(f.name));
     if (!sheetFile) return alert("Please upload a .xlsx, .xls, or .csv file.");
@@ -577,9 +594,11 @@ export default function BulkUpload() {
     let done = 0;
     
     // Load fresh inventory items before uploading
+    let freshInventoryItems = inventoryItems;
     try {
       const res = await api.get("/api/inventory");
       if (res.data?.success) {
+        freshInventoryItems = res.data.data;
         setInventoryItems(res.data.data);
       }
     } catch (err) {
@@ -589,8 +608,8 @@ export default function BulkUpload() {
     const createdCache = []; // shared cache so common ingredients aren't duplicated
     const pendingCreations = new Map(); // prevents concurrent duplicate creates
     
-    // Get current inventory items to avoid stale closure
-    const currentInventoryItems = [...inventoryItems];
+    // Use fresh inventory items directly, not stale state
+    const currentInventoryItems = [...freshInventoryItems];
     
     const tasks = pending.map(row => async () => {
       dispatch({ type: "SET_STATUS", id: row.id, status: "uploading" });
@@ -610,7 +629,13 @@ export default function BulkUpload() {
       setProgress(Math.round((done / pending.length) * 100));
     });
     await pLimit(tasks, CONCURRENCY);
-    setCreatedInvItems(createdCache);
+    
+    // Deduplicate createdCache by itemName to avoid showing the same ingredient multiple times
+    const uniqueCreatedItems = Array.from(
+      new Map(createdCache.map(item => [item.itemName?.toLowerCase(), item])).values()
+    );
+    
+    setCreatedInvItems(uniqueCreatedItems);
     setSubmit(false); setStep(2);
   };
 

@@ -99,6 +99,7 @@ const addInventoryItem = async (req, res) => {
             supplier: supplier ? JSON.parse(supplier) : {},
             expiryDate: expiryDate ? new Date(expiryDate) : null,
             notes,
+            isActive: true,
             lastRestocked: new Date()
         });
 
@@ -180,24 +181,24 @@ const deleteInventoryItem = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const item = await inventoryModel.findOne({
-            _id: id,
-            restaurantId: req.restaurantId
-        });
+        // Soft delete by setting isActive to false (with restaurantId verification)
+        const result = await inventoryModel.findOneAndUpdate(
+            { _id: id, restaurantId: req.restaurantId },
+            { isActive: false },
+            { new: true }
+        );
 
-        if (!item) {
+        if (!result) {
             return res.status(404).json({
                 success: false,
-                message: "Inventory item not found"
+                message: "Inventory item not found or you don't have permission to delete it"
             });
         }
 
-        // Soft delete by setting isActive to false
-        await inventoryModel.findByIdAndUpdate(id, { isActive: false });
-
         res.json({
             success: true,
-            message: "Inventory item removed successfully"
+            message: "Inventory item removed successfully",
+            data: result
         });
     } catch (error) {
         console.error("Error deleting inventory item:", error);
@@ -212,14 +213,40 @@ const bulkDeleteInventoryItems = async (req, res) => {
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
             return res.status(400).json({ success: false, message: "Please provide an array of item IDs" });
         }
+
+        // Verify all items belong to this restaurant before deleting
+        const itemsToDelete = await inventoryModel.find({
+            _id: { $in: ids },
+            restaurantId: req.restaurantId
+        });
+
+        if (itemsToDelete.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No items found to delete or you don't have permission"
+            });
+        }
+
+        // Perform bulk soft delete
         const result = await inventoryModel.updateMany(
             { _id: { $in: ids }, restaurantId: req.restaurantId },
-            { isActive: false }
+            { isActive: false },
+            { multi: true }
         );
+
+        // Verify the update actually happened
+        if (result.modifiedCount === 0) {
+            return res.status(500).json({
+                success: false,
+                message: "Failed to delete items - no records were updated"
+            });
+        }
+
         res.json({
             success: true,
             message: `${result.modifiedCount} item${result.modifiedCount !== 1 ? "s" : ""} removed successfully`,
-            count: result.modifiedCount
+            count: result.modifiedCount,
+            deletedCount: itemsToDelete.length
         });
     } catch (error) {
         console.error("Error bulk deleting inventory items:", error);

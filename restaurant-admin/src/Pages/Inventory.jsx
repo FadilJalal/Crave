@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef, memo } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
+import { toast } from "react-toastify";
 
 const CATEGORIES = [
   { value: "all", label: "All", emoji: "📋" },
@@ -268,9 +269,10 @@ export default function Inventory() {
   const loadInventory = useCallback(async () => {
     try {
       setLoading(true);
+      const timestamp = new Date().getTime();
       const [invRes, alertsRes] = await Promise.all([
-        api.get("/api/inventory"),
-        api.get("/api/inventory/alerts")
+        api.get("/api/inventory?t=" + timestamp),
+        api.get("/api/inventory/alerts?t=" + timestamp)
       ]);
       console.log("[Inventory] Raw inventory response:", invRes.data?.data);
       if (invRes.data?.success) { 
@@ -542,7 +544,7 @@ export default function Inventory() {
     setSaving(false);
   };
 
-  const handleEdit = (item) => {
+  const handleEdit = useCallback((item) => {
     setFormData({
       itemName: item.itemName, category: item.category, unit: item.unit,
       currentStock: item.currentStock, minimumStock: item.minimumStock, maximumStock: item.maximumStock,
@@ -551,46 +553,32 @@ export default function Inventory() {
     });
     setEditingItem(item);
     setShowModal(true);
-  };
+  }, []);
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     if (!window.confirm("Remove this item from inventory?")) return;
     try {
       console.log("[Inventory] Deleting item:", id);
       const res = await api.delete(`/api/inventory/${id}`);
       console.log("[Inventory] Delete response:", res.data);
-      setInventory(prev => prev.filter(i => i._id !== id));
-      setSelectedIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      
+      if (res.data?.success) {
+        toast.success(res.data?.message || "Item removed successfully");
+        await loadInventory();
+      } else {
+        toast.error(res.data?.message || "Failed to remove item");
+      }
     } catch (err) { 
       console.error("[Inventory] Delete error:", err);
-      alert(err?.response?.data?.message || "Failed to remove"); 
+      toast.error(err?.response?.data?.message || "Failed to remove item"); 
     }
-  };
+  }, [loadInventory]);
 
-  const toggleSelect = (id) => setSelectedIds(prev => {
+  const toggleSelect = useCallback((id) => setSelectedIds(prev => {
     const next = new Set(prev);
     next.has(id) ? next.delete(id) : next.add(id);
     return next;
-  });
-
-  const selectAllFiltered = () => {
-    if (selectedIds.size === filtered.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(filtered.map(i => i._id)));
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedIds.size === 0) return;
-    if (!window.confirm(`Remove ${selectedIds.size} selected item${selectedIds.size !== 1 ? "s" : ""} from inventory?`)) return;
-    try {
-      await api.post("/api/inventory/bulk-delete", { ids: [...selectedIds] });
-      setInventory(prev => prev.filter(i => !selectedIds.has(i._id)));
-      setSelectedIds(new Set());
-    } catch (err) { alert(err?.response?.data?.message || "Failed to delete"); }
-  };
+  }), []);
 
   const handleBulkUpdate = async () => {
     if (selectedIds.size === 0 || !bulkUpdateField) return;
@@ -619,20 +607,21 @@ export default function Inventory() {
     } catch (err) { alert(err?.response?.data?.message || "Failed to update"); }
   };
 
-  const handleQuickAdjust = async (id, adjustment) => {
+  const handleQuickAdjust = useCallback(async (id, adjustment) => {
     try {
       await api.patch(`/api/inventory/${id}/stock`, { adjustment });
-      setInventory(prev => prev.map(i => i._id === id ? { ...i, currentStock: Math.max(0, i.currentStock + adjustment) } : i));
+      await loadInventory();
     } catch (err) { alert(err?.response?.data?.message || "Failed to adjust stock"); }
-  };
+  }, [loadInventory]);
 
-  const handleStockUpdate = async (id, newStock) => {
+  const handleStockUpdate = useCallback(async (id, newStock) => {
     try {
       await api.patch(`/api/inventory/${id}/stock`, { newStock: Number(newStock) });
+      await loadInventory();
     } catch (err) { alert(err?.response?.data?.message || "Failed to update"); }
-  };
+  }, [loadInventory]);
 
-  const openLinkModal = async (item) => {
+  const openLinkModal = useCallback(async (item) => {
     setLinkingItem(item);
     setLinkFoodId("");
     setLinkQty(1);
@@ -642,7 +631,7 @@ export default function Inventory() {
         if (res.data?.success) setMenuFoods(res.data.data);
       } catch { /* silent */ }
     }
-  };
+  }, [menuFoods]);
 
   const handleLink = async () => {
     if (!linkFoodId || linkQty <= 0) return;
@@ -708,6 +697,53 @@ export default function Inventory() {
     });
   }, [inventory, catFilter, search, sortBy, aiMap]);
 
+  const selectAllFiltered = useCallback(() => {
+    setSelectedIds(prevSelected => {
+      const allFilteredIds = new Set(filtered.map(i => i._id));
+      // If all are selected, deselect all; otherwise select all filtered
+      const shouldSelectAll = prevSelected.size !== allFilteredIds.size;
+      console.log("[Inventory] selectAllFiltered called. shouldSelectAll:", shouldSelectAll, "filtered.length:", filtered.length);
+      return shouldSelectAll ? allFilteredIds : new Set();
+    });
+  }, [filtered]);
+
+  const handleBulkDelete = useCallback(async () => {
+    console.log("[Inventory] handleBulkDelete called. selectedIds.size:", selectedIds.size, "selectedIds:", [...selectedIds]);
+    
+    if (selectedIds.size === 0) {
+      console.log("[Inventory] No items selected, returning");
+      toast.warning("Please select items to delete");
+      return;
+    }
+    
+    const confirmMsg = `Remove ${selectedIds.size} selected item${selectedIds.size !== 1 ? "s" : ""} from inventory?`;
+    console.log("[Inventory] Showing confirmation:", confirmMsg);
+    
+    if (!window.confirm(confirmMsg)) {
+      console.log("[Inventory] User canceled deletion");
+      return;
+    }
+    
+    try {
+      console.log("[Inventory] Bulk deleting items:", [...selectedIds]);
+      const res = await api.post("/api/inventory/bulk-delete", { ids: [...selectedIds] });
+      console.log("[Inventory] Bulk delete response:", res.data);
+      
+      if (res.data?.success) {
+        console.log("[Inventory] Deletion successful, reloading inventory");
+        setSelectedIds(new Set());
+        toast.success(res.data?.message || `${res.data?.count || 0} items removed successfully`);
+        await loadInventory();
+      } else {
+        console.log("[Inventory] API returned unsuccessful response:", res.data);
+        toast.error(res.data?.message || "Failed to delete items");
+      }
+    } catch (err) { 
+      console.error("[Inventory] Bulk delete error:", err?.response?.data || err.message);
+      toast.error(err?.response?.data?.message || "Failed to delete items"); 
+    }
+  }, [selectedIds, loadInventory]);
+
   const categoryCounts = useMemo(() => {
     const counts = { all: inventory.length, food_ingredient: 0, beverage: 0, packaging: 0, equipment: 0, other: 0 };
     inventory.forEach(item => {
@@ -738,7 +774,7 @@ export default function Inventory() {
         />
       );
     });
-  }, [filtered, aiMap, selectedIds, handleQuickAdjust, handleStockUpdate, handleEdit, handleDelete]);
+  }, [filtered, aiMap, selectedIds, handleQuickAdjust, handleStockUpdate, handleEdit, handleDelete, openLinkModal]);
 
   if (loading) {
     return (
