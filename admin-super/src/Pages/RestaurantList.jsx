@@ -30,8 +30,13 @@ export default function RestaurantList() {
     try {
       setLoading(true);
       console.log("📥 Fetching restaurants...");
-      // Use the authenticated api instance instead of plain axios
+      
+      // Clear any potential cached state first
+      setRestaurants([]);
+      
+      // Axios now handles cache-busting automatically
       const res = await api.get(`/api/restaurant/list`);
+      
       console.log("📊 Restaurants response:", res.data);
       if (res.data.success) {
         console.log("✅ Loaded", res.data.data?.length, "restaurants");
@@ -49,7 +54,38 @@ export default function RestaurantList() {
     }
   };
 
-  useEffect(() => { fetchRestaurants(); }, []);
+  useEffect(() => { 
+    fetchRestaurants(); 
+  }, []);
+
+  // Refresh data when window gains focus (user navigates back to this tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchRestaurants();
+    };
+    
+    // Also refresh when page becomes visible again
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchRestaurants();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Log restaurants state changes for debugging
+  useEffect(() => {
+    if (restaurants.length > 0) {
+      console.log("🔄 Restaurants updated:", restaurants.length, "restaurants");
+    }
+  }, [restaurants]);
 
   const removeRestaurant = async (id) => {
     if (!window.confirm("Delete this restaurant? This cannot be undone.")) return;

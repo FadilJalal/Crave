@@ -102,8 +102,8 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   // Cache GET requests for 5 minutes
   if (req.method === "GET") {
-    // Don't cache auth, user, or cart endpoints
-    if (!req.path.includes("/user") && !req.path.includes("/cart") && !req.path.includes("/order")) {
+    // Don't cache auth, user, cart, order, or restaurant endpoints
+    if (!req.path.includes("/user") && !req.path.includes("/cart") && !req.path.includes("/order") && !req.path.includes("/restaurant")) {
       res.set("Cache-Control", "public, max-age=300, must-revalidate");
     }
   }
