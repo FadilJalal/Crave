@@ -42,6 +42,7 @@ export default function RestaurantLayout({ children }) {
 
           <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.6px", padding: "8px 12px 2px" }}>Business</div>
           {link("/orders",         "🧾 Orders")}
+          {link("/inventory",      "📦 Inventory")}
           {link("/customers",      "👥 Customers")}
           {link("/promos",         "🏷️ Promos")}
           {link("/email-campaign", "📧 Campaigns")}

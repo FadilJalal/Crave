@@ -26,6 +26,7 @@ import reviewRouter from "./routes/reviewRoute.js";
 import aiRouter from "./routes/aiRoute.js";
 import aiRestaurantRouter from "./routes/aiRestaurantRoute.js";
 import aiAdminRouter from "./routes/aiAdminRoute.js";
+import inventoryRouter from "./routes/inventoryRoute.js";
 
 // ── Process-level crash guards ───────────────────────────────────────────────
 process.on("uncaughtException", (err) => {
@@ -128,6 +129,7 @@ app.use("/api/review",           reviewRouter);
 app.use("/api/ai",               aiRouter);
 app.use("/api/ai/restaurant",    aiRestaurantRouter);
 app.use("/api/ai/admin",         aiAdminRouter);
+app.use("/api/inventory",        inventoryRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {

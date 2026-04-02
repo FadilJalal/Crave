@@ -81,7 +81,7 @@ router.post("/food/add", restaurantAuth, upload.single("image"), async (req, res
     });
 
     await food.save();
-    res.json({ success: true, message: "Food added" });
+    res.json({ success: true, message: "Food added", data: food });
   } catch (e) {
     console.error("Error adding food:", e);
     res.status(500).json({ success: false, message: "Failed to add food" });

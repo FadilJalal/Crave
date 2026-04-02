@@ -8,7 +8,8 @@ const uid = () => Math.random().toString(36).slice(2);
 const EMPTY_ITEM = (category = "", customizations = []) => ({
   id: uid(), name: "", category, price: "", description: "",
   image: null, customizations: JSON.parse(JSON.stringify(customizations)),
-  status: "idle", error: "",
+  ingredients: [], // [{inventoryId, itemName, unit, quantityPerOrder}]
+  status: "idle", error: "", uploadedFoodId: null,
 });
 
 const EMPTY_GROUP = () => ({ id: uid(), title: "", required: false, multiSelect: false, options: [{ id: uid(), label: "", extraPrice: 0 }] });
@@ -153,7 +154,7 @@ function StepSetup({ categories, setCategories, templates, setTemplates, onNext 
 }
 
 // ─── Step 2: Add items using the setup ──────────────────────────
-function StepItems({ items, setItems, categories, templates, onBack, onNext }) {
+function StepItems({ items, setItems, categories, templates, inventoryItems, onBack, onNext }) {
   const addItem = (cat = "") => setItems(p => [...p, EMPTY_ITEM(cat)]);
 
   const updateItem = (id, k, v) => setItems(p => p.map(it => it.id === id ? { ...it, [k]: v } : it));
@@ -168,6 +169,29 @@ function StepItems({ items, setItems, categories, templates, onBack, onNext }) {
   };
 
   const clearCustomizations = (id) => setItems(p => p.map(it => it.id === id ? { ...it, customizations: [] } : it));
+
+  // ── Ingredient helpers ──
+  const [ingSelectId, setIngSelectId] = useState({});  // {itemId: inventoryId}
+  const [ingSelectQty, setIngSelectQty] = useState({}); // {itemId: qty}
+
+  const addIngredient = (itemId) => {
+    const invId = ingSelectId[itemId];
+    const qty = Number(ingSelectQty[itemId]) || 1;
+    if (!invId || qty <= 0) return;
+    const inv = inventoryItems.find(i => i._id === invId);
+    if (!inv) return;
+    setItems(p => p.map(it => {
+      if (it.id !== itemId) return it;
+      if (it.ingredients.some(i => i.inventoryId === invId)) return it;
+      return { ...it, ingredients: [...it.ingredients, { inventoryId: inv._id, itemName: inv.itemName, unit: inv.unit, quantityPerOrder: qty }] };
+    }));
+    setIngSelectId(p => ({ ...p, [itemId]: "" }));
+    setIngSelectQty(p => ({ ...p, [itemId]: 1 }));
+  };
+
+  const removeIngredient = (itemId, inventoryId) => {
+    setItems(p => p.map(it => it.id === itemId ? { ...it, ingredients: it.ingredients.filter(i => i.inventoryId !== inventoryId) } : it));
+  };
 
   const grouped = categories.reduce((acc, c) => {
     acc[c.name] = items.filter(it => it.category === c.name);
@@ -213,6 +237,33 @@ function StepItems({ items, setItems, categories, templates, onBack, onNext }) {
               {item.customizations.length > 0 && (
                 <button type="button" onClick={() => clearCustomizations(item.id)} style={{ fontSize: 11, fontWeight: 700, color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 999, padding: "3px 8px", cursor: "pointer" }}>✕ Clear</button>
               )}
+            </div>
+          )}
+
+          {/* Inventory ingredients */}
+          {inventoryItems.length > 0 && (
+            <div style={{ marginTop: 8, padding: "8px 10px", background: "#f0fdf4", border: "1px solid #dcfce7", borderRadius: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#166534", marginBottom: 6 }}>📦 Inventory Ingredients</div>
+              {item.ingredients.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
+                  {item.ingredients.map(ing => (
+                    <span key={ing.inventoryId} style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 999, background: "#dcfce7", color: "#15803d", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      {ing.itemName} × {ing.quantityPerOrder} {ing.unit}
+                      <button type="button" onClick={() => removeIngredient(item.id, ing.inventoryId)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 11, fontWeight: 900, padding: 0, lineHeight: 1 }}>✕</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <select className="input" value={ingSelectId[item.id] || ""} onChange={e => setIngSelectId(p => ({ ...p, [item.id]: e.target.value }))} style={{ fontSize: 11, padding: "4px 8px", flex: "1 1 140px" }}>
+                  <option value="">+ Add ingredient...</option>
+                  {inventoryItems.filter(inv => !item.ingredients.some(i => i.inventoryId === inv._id)).map(inv => (
+                    <option key={inv._id} value={inv._id}>{inv.itemName} ({inv.currentStock} {inv.unit})</option>
+                  ))}
+                </select>
+                <input className="input" type="number" min="0.01" step="0.01" value={ingSelectQty[item.id] || 1} onChange={e => setIngSelectQty(p => ({ ...p, [item.id]: e.target.value }))} style={{ width: 60, fontSize: 11, padding: "4px 6px", textAlign: "center" }} />
+                <button type="button" onClick={() => addIngredient(item.id)} disabled={!ingSelectId[item.id]} style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "1px solid #bbf7d0", background: ingSelectId[item.id] ? "#16a34a" : "#e5e7eb", color: ingSelectId[item.id] ? "white" : "#9ca3af", cursor: ingSelectId[item.id] ? "pointer" : "default" }}>+</button>
+              </div>
             </div>
           )}
         </div>
@@ -299,7 +350,18 @@ function StepReview({ items, setItems, onBack }) {
         form.append("image", item.image);
         form.append("customizations", JSON.stringify(item.customizations));
         const res = await api.post("/api/restaurantadmin/food/add", form, { headers: { "Content-Type": "multipart/form-data" } });
-        updateStatus(item.id, res.data?.success ? "success" : "error", res.data?.message || "");
+        if (res.data?.success) {
+          const foodId = res.data.data?._id || res.data.foodId;
+          // Link inventory ingredients if any
+          if (foodId && item.ingredients?.length > 0) {
+            for (const ing of item.ingredients) {
+              try { await api.post(`/api/inventory/${ing.inventoryId}/link`, { foodId, quantityPerOrder: ing.quantityPerOrder }); } catch { }
+            }
+          }
+          updateStatus(item.id, "success", "");
+        } else {
+          updateStatus(item.id, "error", res.data?.message || "");
+        }
       } catch (err) {
         updateStatus(item.id, "error", err?.response?.data?.message || "Network error");
       }
@@ -344,6 +406,7 @@ function StepReview({ items, setItems, onBack }) {
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>
                   {item.category} · AED {item.price}
                   {item.customizations.length > 0 && ` · ${item.customizations.length} customization group${item.customizations.length !== 1 ? "s" : ""}`}
+                  {item.ingredients?.length > 0 && <span style={{ color: "#16a34a" }}> · 📦 {item.ingredients.length} ingredient{item.ingredients.length !== 1 ? "s" : ""}</span>}
                 </div>
               </div>
               {item.status === "uploading" && <span style={{ fontSize: 12, color: "#3b82f6", fontWeight: 700 }}>Uploading...</span>}
@@ -376,6 +439,17 @@ export default function AddFood() {
   const [categories, setCategories] = useState([{ id: uid(), name: "" }]);
   const [templates, setTemplates] = useState([]);
   const [items, setItems] = useState([]);
+  const [inventoryItems, setInventoryItems] = useState([]);
+
+  useEffect(() => {
+    const loadInv = async () => {
+      try {
+        const res = await api.get("/api/inventory");
+        if (res.data?.success) setInventoryItems(res.data.data);
+      } catch { }
+    };
+    loadInv();
+  }, []);
 
   return (
     <RestaurantLayout>
@@ -398,6 +472,7 @@ export default function AddFood() {
           <StepItems
             items={items} setItems={setItems}
             categories={categories} templates={templates}
+            inventoryItems={inventoryItems}
             onBack={() => setStep(0)}
             onNext={() => setStep(2)}
           />

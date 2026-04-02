@@ -20,6 +20,12 @@ export default function EditFood() {
   // ✅ Customizations state
   const [customizations, setCustomizations] = useState([]);
 
+  // ── Inventory ingredient linking ──
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [ingredients, setIngredients] = useState([]); // [{inventoryId, itemName, unit, quantityPerOrder}]
+  const [addIngId, setAddIngId] = useState("");
+  const [addIngQty, setAddIngQty] = useState(1);
+
   const previewUrl = useMemo(() => {
     if (!image) return "";
     return URL.createObjectURL(image);
@@ -70,6 +76,32 @@ export default function EditFood() {
       } catch { }
     };
     loadCategories();
+
+    const loadInventory = async () => {
+      try {
+        const res = await api.get("/api/inventory");
+        if (res.data?.success) {
+          setInventoryItems(res.data.data);
+          // Find inventory items that are linked to this food
+          const linked = [];
+          for (const inv of res.data.data) {
+            const match = inv.linkedMenuItems?.find(
+              (l) => (typeof l.foodId === "object" ? l.foodId?._id : l.foodId) === id
+            );
+            if (match) {
+              linked.push({
+                inventoryId: inv._id,
+                itemName: inv.itemName,
+                unit: inv.unit,
+                quantityPerOrder: match.quantityPerOrder,
+              });
+            }
+          }
+          setIngredients(linked);
+        }
+      } catch { }
+    };
+    loadInventory();
   }, [id, navigate]);
 
   // ── Customization helpers ────────────────────────────────────────────────
@@ -115,7 +147,38 @@ export default function EditFood() {
       )
     );
   };
+  // ── Ingredient helpers ──────────────────────────────────────────────────
+  const addIngredient = () => {
+    if (!addIngId || addIngQty <= 0) return;
+    const inv = inventoryItems.find((i) => i._id === addIngId);
+    if (!inv) return;
+    if (ingredients.some((i) => i.inventoryId === addIngId)) return;
+    setIngredients((prev) => [
+      ...prev,
+      { inventoryId: inv._id, itemName: inv.itemName, unit: inv.unit, quantityPerOrder: Number(addIngQty) },
+    ]);
+    setAddIngId("");
+    setAddIngQty(1);
+  };
+
+  const removeIngredient = (inventoryId) => {
+    setIngredients((prev) => prev.filter((i) => i.inventoryId !== inventoryId));
+  };
+
+  const updateIngredientQty = (inventoryId, qty) => {
+    setIngredients((prev) =>
+      prev.map((i) => (i.inventoryId === inventoryId ? { ...i, quantityPerOrder: Number(qty) } : i))
+    );
+  };
   // ────────────────────────────────────────────────────────────────────────
+
+  // Track original ingredients for diffing on save
+  const [originalIngredients, setOriginalIngredients] = useState([]);
+  useEffect(() => {
+    if (ingredients.length > 0 && originalIngredients.length === 0) {
+      setOriginalIngredients(JSON.parse(JSON.stringify(ingredients)));
+    }
+  }, [ingredients]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -140,6 +203,18 @@ export default function EditFood() {
       if (!res.data?.success) {
         alert(res.data?.message || "Failed to update food");
         return;
+      }
+
+      // ── Sync inventory ingredient links ──
+      // Unlink removed ingredients
+      for (const orig of originalIngredients) {
+        if (!ingredients.some((i) => i.inventoryId === orig.inventoryId)) {
+          try { await api.post(`/api/inventory/${orig.inventoryId}/unlink`, { foodId: id }); } catch { }
+        }
+      }
+      // Link new or updated ingredients
+      for (const ing of ingredients) {
+        try { await api.post(`/api/inventory/${ing.inventoryId}/link`, { foodId: id, quantityPerOrder: ing.quantityPerOrder }); } catch { }
       }
 
       alert("✅ Food updated");
@@ -354,6 +429,118 @@ export default function EditFood() {
               </button>
             </div>
             {/* END CUSTOMIZATIONS */}
+
+            {/* ── INVENTORY INGREDIENTS SECTION ── */}
+            <div className="field" style={{ gridColumn: "1 / -1" }}>
+              <div className="label" style={{ marginBottom: 12 }}>
+                📦 Inventory Ingredients{" "}
+                <span style={{ fontWeight: 400, color: "#9ca3af", fontSize: 12 }}>
+                  (auto-deducts stock when this item is ordered)
+                </span>
+              </div>
+
+              {/* Already linked ingredients */}
+              {ingredients.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+                  {ingredients.map((ing) => (
+                    <div
+                      key={ing.inventoryId}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 10,
+                        padding: "10px 14px", background: "#f0fdf4",
+                        border: "1px solid #bbf7d0", borderRadius: 12,
+                      }}
+                    >
+                      <span style={{ fontSize: 16 }}>📦</span>
+                      <span style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{ing.itemName}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <input
+                          className="input"
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={ing.quantityPerOrder}
+                          onChange={(e) => updateIngredientQty(ing.inventoryId, e.target.value)}
+                          style={{ width: 70, textAlign: "center", padding: "5px 8px" }}
+                        />
+                        <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 600 }}>{ing.unit}/order</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeIngredient(ing.inventoryId)}
+                        style={{
+                          background: "#fff1f1", border: "1px solid #fca5a5",
+                          color: "#dc2626", borderRadius: 8, padding: "5px 10px",
+                          cursor: "pointer", fontWeight: 700, fontSize: 13,
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add new ingredient */}
+              {inventoryItems.length > 0 ? (
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+                  <div style={{ flex: "2 1 200px" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>Inventory Item</div>
+                    <select
+                      className="input"
+                      value={addIngId}
+                      onChange={(e) => setAddIngId(e.target.value)}
+                    >
+                      <option value="">Select inventory item...</option>
+                      {inventoryItems
+                        .filter((inv) => !ingredients.some((i) => i.inventoryId === inv._id))
+                        .map((inv) => (
+                          <option key={inv._id} value={inv._id}>
+                            {inv.itemName} ({inv.currentStock} {inv.unit} in stock)
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div style={{ flex: "0 0 120px" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>Qty per order</div>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={addIngQty}
+                      onChange={(e) => setAddIngQty(e.target.value)}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={addIngredient}
+                    disabled={!addIngId || addIngQty <= 0}
+                    style={{ fontSize: 13, padding: "9px 18px" }}
+                  >
+                    + Add
+                  </button>
+                </div>
+              ) : (
+                <p style={{ fontSize: 13, color: "#9ca3af" }}>
+                  No inventory items found. Add items in the Inventory page first.
+                </p>
+              )}
+
+              {ingredients.length > 0 && (
+                <div style={{ marginTop: 10, padding: "8px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, fontSize: 12, color: "#1e40af", fontWeight: 600 }}>
+                  💡 When a customer orders this item, the system will automatically deduct:{" "}
+                  {ingredients.map((i, idx) => (
+                    <span key={i.inventoryId}>
+                      {idx > 0 && ", "}<strong>{i.quantityPerOrder} {i.unit}</strong> of {i.itemName}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* END INVENTORY INGREDIENTS */}
           </div>
 
           <div className="actions" style={{ marginTop: 16 }}>

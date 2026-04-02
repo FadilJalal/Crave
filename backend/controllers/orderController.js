@@ -2,6 +2,7 @@ import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 import restaurantModel from "../models/restaurantModel.js";
 import { isRestaurantOpen } from "../utils/restaurantHours.js";
+import { deductInventoryForOrder } from "./inventoryController.js";
 import Stripe from "stripe";
 
 // ✅ FIXED: lazy-init Stripe so a missing key doesn't crash the server at startup
@@ -11,7 +12,7 @@ const getStripe = () => {
   return new Stripe(key);
 };
 
-const currency = "usd";
+const currency = "aed";
 const FLAT_DELIVERY = 5; // fallback if no tiers set
 
 function calcDeliveryFee(tiers, distKm) {
@@ -264,6 +265,10 @@ const placeOrder = async (req, res) => {
     newOrder.stripeSessionId = session.id;
     await newOrder.save();
 
+    // ── Automatically deduct inventory for ordered items ──────────────────
+    const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
+    console.log("[placeOrder] Inventory deduction result:", inventoryDeduction);
+
     res.json({ success: true, session_url: session.url });
   } catch (error) {
     console.log(error);
@@ -325,6 +330,10 @@ const placeOrderCod = async (req, res) => {
 
     await newOrder.save();
     await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
+
+    // ── Automatically deduct inventory for ordered items ──────────────────
+    const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
+    console.log("[placeOrderCod] Inventory deduction result:", inventoryDeduction);
 
     res.json({ success: true, message: "Order Placed Successfully" });
   } catch (error) {

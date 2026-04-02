@@ -1,4 +1,4 @@
-import { useCallback, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 
@@ -17,13 +17,14 @@ const loadXLSX = () =>
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const COLUMNS = [
-  { key: "name",                label: "name *",              required: true,  hint: "Item name" },
-  { key: "category",            label: "category",            required: false, hint: "e.g. Pizza, Burgers" },
-  { key: "price",               label: "price *",             required: true,  hint: "Numeric price" },
-  { key: "description",         label: "description *",       required: true,  hint: "Item description" },
+const TEMPLATE_COLS = [
+  { key: "name",                label: "name",                required: true,  hint: "e.g. Margherita Pizza" },
+  { key: "category",            label: "category",            required: true,  hint: "e.g. pizza, burger, pasta" },
+  { key: "price",               label: "price",               required: true,  hint: "e.g. 12.99" },
+  { key: "description",         label: "description",         required: true,  hint: "Detailed description" },
   { key: "image_filename",      label: "image_filename",      required: false, hint: "e.g. pizza.jpg" },
   { key: "customizations_json", label: "customizations_json", required: false, hint: "JSON array (optional)" },
+  { key: "ingredients",         label: "ingredients",         required: false, hint: "e.g. Chicken:2, Oil:0.5" },
 ];
 
 const CONCURRENCY = 3;
@@ -48,6 +49,15 @@ const normaliseRow = (r) => ({
   description:         String(r.description || r.Description || "").trim(),
   image_filename:      String(r.image_filename || r["Image Filename"] || r.image || "").trim(),
   customizations_json: String(r.customizations_json || r.customizations || "").trim(),
+  ingredients:         String(r.ingredients || "").trim(),
+
+  inventory_unit:       String(r.inventory_unit || r.unit || "").trim(),
+  inventory_currentStock: String(r.inventory_currentStock || r.currentStock || "").trim(),
+  inventory_minimumStock: String(r.inventory_minimumStock || r.minimumStock || "").trim(),
+  inventory_maximumStock: String(r.inventory_maximumStock || r.maximumStock || "").trim(),
+  inventory_unitCost:   String(r.inventory_unitCost || r.unitCost || "").trim(),
+  inventory_supplier:   String(r.inventory_supplier || r.supplier || "").trim(),
+
   imageFile:      null,
   imagePreview:   null,
   customizations: [],
@@ -88,6 +98,13 @@ const validateRow = (row) => {
   if (!row.price || isNaN(Number(row.price))) errors.push("Invalid price");
   if (!row.description)                       errors.push("Missing description");
   if (!row.imageFile)                         errors.push("No image matched");
+
+  if (row.inventory_unit && !row.inventory_currentStock) errors.push("Missing current inventory stock");
+  if (row.inventory_currentStock && isNaN(Number(row.inventory_currentStock))) errors.push("Invalid inventory currentStock");
+  if (row.inventory_minimumStock && isNaN(Number(row.inventory_minimumStock))) errors.push("Invalid inventory minimumStock");
+  if (row.inventory_maximumStock && isNaN(Number(row.inventory_maximumStock))) errors.push("Invalid inventory maximumStock");
+  if (row.inventory_unitCost && isNaN(Number(row.inventory_unitCost))) errors.push("Invalid inventory unitCost");
+
   return errors;
 };
 
@@ -102,10 +119,88 @@ const uploadRow = async (row) => {
   form.append("description",    row.description);
   form.append("image",          row.imageFile);
   form.append("customizations", JSON.stringify(row.customizations));
+
   const res = await api.post("/api/restaurantadmin/food/add", form, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   if (!res.data?.success) throw new Error(res.data?.message || "Failed");
+
+  const inventoryPayload = {
+    itemName: row.name,
+    category: row.category || "food_ingredient",
+    unit: row.inventory_unit || "pieces",
+    currentStock: row.inventory_currentStock ? Number(row.inventory_currentStock) : 0,
+    minimumStock: row.inventory_minimumStock ? Number(row.inventory_minimumStock) : 10,
+    maximumStock: row.inventory_maximumStock ? Number(row.inventory_maximumStock) : 100,
+    unitCost: row.inventory_unitCost ? Number(row.inventory_unitCost) : 0,
+    supplier: row.inventory_supplier ? (row.inventory_supplier.startsWith("{") ? JSON.parse(row.inventory_supplier) : { name: row.inventory_supplier }) : {},
+    expiryDate: row.expiryDate ? row.expiryDate : null,
+    notes: row.notes || "",
+  };
+
+  if (row.inventory_unit || row.inventory_currentStock || row.inventory_minimumStock || row.inventory_maximumStock || row.inventory_unitCost || row.inventory_supplier) {
+    try {
+      await api.post("/api/inventory/add", inventoryPayload);
+    } catch (invErr) {
+      console.warn("Inventory add for row failed", invErr?.response?.data?.message || invErr.message);
+    }
+  }
+
+  return res.data;
+};
+
+const parseIngredientString = (str) => {
+  if (!str || !str.trim()) return [];
+  return str.split(",").map(s => {
+    const [name, qty] = s.trim().split(":");
+    return { name: (name || "").trim(), qty: parseFloat(qty) || 1 };
+  }).filter(i => i.name);
+};
+
+const guessCategory = (name) => {
+  const n = name.toLowerCase();
+  const packaging = ["packaging", "box", "bag", "container", "cup", "lid", "wrap", "foil", "napkin", "straw", "spoon", "fork", "knife", "tray", "plate"];
+  const beverage  = ["juice", "soda", "water", "milk", "syrup", "coffee", "tea", "drink"];
+  const equipment = ["machine", "blender", "oven", "fryer", "grill", "mixer"];
+  if (packaging.some(k => n.includes(k))) return "packaging";
+  if (beverage.some(k => n.includes(k)))  return "beverage";
+  if (equipment.some(k => n.includes(k))) return "equipment";
+  return "food_ingredient";
+};
+
+const guessUnit = (name) => {
+  const n = name.toLowerCase();
+  if (["oil", "sauce", "syrup", "milk", "water", "juice", "broth"].some(k => n.includes(k))) return "l";
+  if (["flour", "sugar", "salt", "cheese", "butter", "rice"].some(k => n.includes(k))) return "kg";
+  return "pieces";
+};
+
+const linkIngredientsForFood = async (foodId, parsedIngredients, inventoryItems, createdCache, pendingCreations) => {
+  for (const ing of parsedIngredients) {
+    const lowerName = ing.name.toLowerCase();
+    let match = inventoryItems.find(inv => inv.itemName.toLowerCase() === lowerName)
+             || createdCache.find(inv => inv.itemName.toLowerCase() === lowerName);
+    if (!match) {
+      // If another concurrent task is already creating this item, wait for it
+      if (pendingCreations.has(lowerName)) {
+        match = await pendingCreations.get(lowerName);
+      } else {
+        // Create and store the promise so concurrent tasks can await it
+        const createPromise = api.post("/api/inventory/add", {
+          itemName: ing.name,
+          category: guessCategory(ing.name),
+          unit: guessUnit(ing.name),
+          currentStock: 0, minimumStock: 10, maximumStock: 100, unitCost: 0,
+        }).then(r => r.data?.success ? r.data.data : null).catch(() => null);
+        pendingCreations.set(lowerName, createPromise);
+        match = await createPromise;
+        if (match) createdCache.push(match);
+      }
+    }
+    if (match) {
+      try { await api.post(`/api/inventory/${match._id}/link`, { foodId, quantityPerOrder: ing.qty }); } catch { }
+    }
+  }
 };
 
 const pLimit = (tasks, limit) => {
@@ -124,12 +219,13 @@ const downloadTemplate = async () => {
   const XLSX = await loadXLSX();
   const ws = XLSX.utils.aoa_to_sheet([
     COLUMNS.map((c) => c.key),
-    ["Margherita Pizza", "Pizza",   "12.99", "Classic tomato and mozzarella",   "margherita.jpg", ""],
+    ["Margherita Pizza", "Pizza",   "12.99", "Classic tomato and mozzarella",   "margherita.jpg", "", "Cheese:0.2, Flour:0.3"],
     ["Spicy Ramen",      "Noodles", "14.50", "Rich broth with noodles and egg", "ramen.jpg",
       JSON.stringify([{ title: "Spice Level", required: true, multiSelect: false,
-        options: [{ label: "Mild", extraPrice: 0 }, { label: "Hot", extraPrice: 0 }] }])],
+        options: [{ label: "Mild", extraPrice: 0 }, { label: "Hot", extraPrice: 0 }] }]),
+      "Noodles:1, Broth:0.5, Egg:2"],
   ]);
-  ws["!cols"] = [20, 14, 8, 36, 22, 60].map((w) => ({ wch: w }));
+  ws["!cols"] = [20, 14, 8, 36, 22, 60, 40].map((w) => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Menu Items");
   XLSX.writeFile(wb, "crave_menu_template.xlsx");
@@ -189,15 +285,15 @@ const DropZone = ({ label, sub, icon, onDrop, onBrowse, browseLabel }) => {
       onDragOver={(e) => { e.preventDefault(); setHover(true); }}
       onDragLeave={() => setHover(false)}
       onClick={onBrowse}
-      style={{ border: `2px dashed ${hover ? "#ff4e2a" : "#d1d5db"}`, borderRadius: 20,
-        padding: "52px 32px", textAlign: "center", cursor: "pointer",
+      style={{ border: `2px dashed ${hover ? "#ff4e2a" : "#d1d5db"}`, borderRadius: 16,
+        padding: "28px 24px", textAlign: "center", cursor: "pointer",
         background: hover ? "#fff5f3" : "#fafafa", transition: "all 0.2s" }}>
-      <div style={{ fontSize: 52, marginBottom: 16 }}>{icon}</div>
-      <p style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>{label}</p>
-      <p style={{ color: "#9ca3af", fontSize: 14, marginBottom: 20 }}>{sub}</p>
+      <div style={{ fontSize: 36, marginBottom: 10 }}>{icon}</div>
+      <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>{label}</p>
+      <p style={{ color: "#9ca3af", fontSize: 13, marginBottom: 14 }}>{sub}</p>
       <button type="button" onClick={(e) => { e.stopPropagation(); onBrowse(); }}
-        style={{ padding: "11px 28px", borderRadius: 50, background: "#111", color: "#fff",
-          border: "none", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+        style={{ padding: "9px 22px", borderRadius: 50, background: "#111", color: "#fff",
+          border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
         {browseLabel}
       </button>
     </div>
@@ -234,7 +330,7 @@ const StepBar = ({ current }) => {
 // ─── Customization Builder Modal ──────────────────────────────────────────────
 
 const emptyGroup  = () => ({ id: uid(), title: "", required: false, multiSelect: false, options: [] });
-const emptyOption = () => ({ id: uid(), label: "", extraPrice: 0 });
+const emptyOption= () => ({ id: uid(), label: "", extraPrice: 0 });
 
 function CustomizationModal({ rowName, initial, onSave, onClose }) {
   const [groups, setGroups] = useState(() =>
@@ -428,12 +524,24 @@ export default function BulkUpload() {
   const [submitting, setSubmit] = useState(false);
   const [progress, setProgress] = useState(0);
   const [custModal, setCustModal] = useState(null); // { rowId, rowName, customizations }
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [createdInvItems, setCreatedInvItems] = useState([]);
 
   const sheetRef = useRef();
   const imgRef   = useRef();
 
   const [parsedRows, setParsedRows] = useState([]);
   const [imageMap,   setImageMap]   = useState({});
+
+  useEffect(() => {
+    const loadInv = async () => {
+      try {
+        const res = await api.get("/api/inventory");
+        if (res.data?.success) setInventoryItems(res.data.data);
+      } catch { }
+    };
+    loadInv();
+  }, []);
 
   const handleSheetFiles = useCallback(async (files) => {
     const sheetFile = Array.from(files).find(f => /\.(xlsx|xls|csv)$/i.test(f.name));
@@ -445,7 +553,8 @@ export default function BulkUpload() {
   }, []);
 
   const handleImageFiles = useCallback((files) => {
-    setImageMap(buildImageMap(Array.from(files).filter(f => f.type.startsWith("image/"))));
+    const newMap = buildImageMap(Array.from(files).filter(f => f.type.startsWith("image/")));
+    setImageMap(prev => ({ ...prev, ...newMap }));
   }, []);
 
   const proceed = useCallback(() => {
@@ -466,10 +575,33 @@ export default function BulkUpload() {
     if (!pending.length) return;
     setSubmit(true); setProgress(0);
     let done = 0;
+    
+    // Load fresh inventory items before uploading
+    try {
+      const res = await api.get("/api/inventory");
+      if (res.data?.success) {
+        setInventoryItems(res.data.data);
+      }
+    } catch (err) {
+      console.error("[BulkUpload] Failed to load inventory items:", err);
+    }
+    
+    const createdCache = []; // shared cache so common ingredients aren't duplicated
+    const pendingCreations = new Map(); // prevents concurrent duplicate creates
+    
+    // Get current inventory items to avoid stale closure
+    const currentInventoryItems = [...inventoryItems];
+    
     const tasks = pending.map(row => async () => {
       dispatch({ type: "SET_STATUS", id: row.id, status: "uploading" });
       try {
-        await uploadRow(row);
+        const data = await uploadRow(row);
+        const foodId = data.data?._id;
+        // Link inventory ingredients if specified
+        if (foodId && row.ingredients) {
+          const parsed = parseIngredientString(row.ingredients);
+          await linkIngredientsForFood(foodId, parsed, currentInventoryItems, createdCache, pendingCreations);
+        }
         dispatch({ type: "SET_STATUS", id: row.id, status: "success" });
       } catch (err) {
         dispatch({ type: "SET_STATUS", id: row.id, status: "error", error: err.message || "Network error" });
@@ -478,6 +610,7 @@ export default function BulkUpload() {
       setProgress(Math.round((done / pending.length) * 100));
     });
     await pLimit(tasks, CONCURRENCY);
+    setCreatedInvItems(createdCache);
     setSubmit(false); setStep(2);
   };
 
@@ -540,7 +673,7 @@ export default function BulkUpload() {
               <div>
                 <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
                   2. Food Images (optional) {Object.keys(imageMap).length > 0 &&
-                    <span style={{ color: "#16a34a" }}>✓ {Object.keys(imageMap).length / 2} images loaded</span>}
+                    <span style={{ color: "#16a34a" }}>✓ {new Set(Object.values(imageMap)).size} images loaded</span>}
                 </p>
                 <input ref={imgRef} type="file" accept="image/*" multiple style={{ display: "none" }}
                   onChange={e => handleImageFiles(e.target.files)} />
@@ -602,7 +735,7 @@ export default function BulkUpload() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                      {["", "Image", "Name", "Category", "Price", "Description", "Customizations", "Status", ""].map((h, i) => (
+                      {["", "Image", "Name", "Category", "Price", "Description", "Customizations", "Ingredients", "Status", ""].map((h, i) => (
                         <th key={i} style={{ padding: "10px 12px", textAlign: "left",
                           fontWeight: 700, color: "#6b7280", fontSize: 12, whiteSpace: "nowrap" }}>{h}</th>
                       ))}
@@ -678,6 +811,41 @@ export default function BulkUpload() {
                             </button>
                           </td>
 
+                          {/* ── Ingredients cell ── */}
+                          <td style={{ padding: "10px 12px" }} onClick={e => e.stopPropagation()}>
+                            {(() => {
+                              const parsed = parseIngredientString(row.ingredients);
+                              const ingCount = parsed.length;
+                              const hasInv = inventoryItems.length > 0;
+                              return (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  {ingCount > 0 && (
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                                      {parsed.map((ing, pi) => {
+                                        const matched = inventoryItems.find(iv => iv.itemName.toLowerCase() === ing.name.toLowerCase());
+                                        return (
+                                          <Pill key={pi}
+                                            color={matched ? "#166534" : "#1d4ed8"}
+                                            bg={matched ? "#f0fdf4" : "#eff6ff"}
+                                            border={matched ? "#bbf7d0" : "#bfdbfe"}>
+                                            {matched ? "📦" : "✚"} {ing.name}:{ing.qty}{!matched ? " (new)" : ""}
+                                          </Pill>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  <input
+                                    value={row.ingredients}
+                                    onChange={e => updateField(row.id, "ingredients", e.target.value)}
+                                    placeholder={hasInv ? "e.g. Chicken:2, Oil:0.5" : "No inventory items"}
+                                    style={{ fontSize: 11, padding: "4px 8px", border: "1px solid #e5e7eb",
+                                      borderRadius: 6, width: 140, fontFamily: "inherit", outline: "none" }}
+                                  />
+                                </div>
+                              );
+                            })()}
+                          </td>
+
                           {/* Status / errors */}
                           <td style={{ padding: "10px 12px" }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -739,6 +907,25 @@ export default function BulkUpload() {
               <div style={{ width: `${(successCount / rows.length) * 100}%`, height: "100%",
                 background: "linear-gradient(90deg,#ff4e2a,#ff6a3d)", borderRadius: 999, transition: "width 0.5s" }} />
             </div>
+            {createdInvItems.length > 0 && (
+              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 14,
+                padding: "16px 20px", marginBottom: 24, textAlign: "left", maxWidth: 480, margin: "0 auto 24px" }}>
+                <p style={{ fontWeight: 800, fontSize: 13, color: "#15803d", marginBottom: 10 }}>
+                  📦 {createdInvItems.length} inventory item{createdInvItems.length !== 1 ? "s" : ""} created
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {createdInvItems.map((item, i) => (
+                    <Pill key={i} color="#166534" bg="#f0fdf4" border="#bbf7d0">
+                      ✚ {item.itemName}
+                    </Pill>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11, color: "#6b7280", marginTop: 8, marginBottom: 0 }}>
+                  These have been added to your Inventory with stock at 0 — head to Inventory to restock.
+                </p>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
               {errorCount > 0 && (
                 <button onClick={submitAll}
@@ -747,11 +934,16 @@ export default function BulkUpload() {
                   Retry {errorCount} failed
                 </button>
               )}
-              <button onClick={() => { setStep(0); setParsedRows([]); setImageMap({}); }}
+              <button onClick={() => { setStep(0); setParsedRows([]); setImageMap({}); setCreatedInvItems([]); }}
                 style={{ padding: "11px 24px", borderRadius: 50, border: "1.5px solid #e5e7eb",
                   background: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
                 Upload another batch
               </button>
+              <a href="/inventory" style={{ padding: "11px 24px", borderRadius: 50,
+                border: "1.5px solid #bbf7d0", background: "#f0fdf4",
+                color: "#15803d", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
+                View Inventory →
+              </a>
               <a href="/menu" style={{ padding: "11px 24px", borderRadius: 50, background: "#111",
                 color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
                 View Menu →

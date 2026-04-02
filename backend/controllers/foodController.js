@@ -28,7 +28,8 @@ const addFood = async (req, res) => {
 
     res.json({
       success:true,
-      message:"Food Added"
+      message:"Food Added",
+      data: food
     });
 
   }
