@@ -25,12 +25,41 @@ const restaurantSchema = new mongoose.Schema(
     },
 
     subscription: {
-      plan:      { type: String, enum: ["none", "basic", "pro", "standard"], default: "none" },
-      status:    { type: String, enum: ["active", "expired", "trial", "cancelled"], default: "trial" },
+      plan:      { type: String, enum: ["free", "starter", "professional", "enterprise"], default: "free" },
+      status:    { type: String, enum: ["active", "expired", "trial", "cancelled", "paused"], default: "trial" },
+      tier:      { type: Number, enum: [0, 1, 2, 3], default: 0 }, // 0=free, 1=starter, 2=pro, 3=enterprise
       startDate: { type: Date, default: null },
       expiresAt: { type: Date, default: null },
       price:     { type: Number, default: 0 },   // AED per month
       notes:     { type: String, default: "" },
+      // Feature flags
+      features: {
+        // Basic Features
+        dashboard:             { type: Boolean, default: true },
+        orders:                { type: Boolean, default: true },
+        menu:                  { type: Boolean, default: true },
+        messages:              { type: Boolean, default: true },
+        reviews:               { type: Boolean, default: true },
+        menuItems:             { type: Boolean, default: true },
+        bulkUpload:            { type: Boolean, default: true },
+        // Marketing
+        promoCodes:            { type: Boolean, default: true },
+        broadcasts:            { type: Boolean, default: false },
+        emailCampaigns:        { type: Boolean, default: false },
+        // Advanced
+        inventory:             { type: Boolean, default: false },
+        inventoryAnalytics:    { type: Boolean, default: false },
+        customers:             { type: Boolean, default: false },
+        // AI Features
+        aiInsights:            { type: Boolean, default: false },
+        aiMenuGenerator:       { type: Boolean, default: false },
+        aIPriceOptimization:   { type: Boolean, default: false },
+        aiCustomerSegmentation:{ type: Boolean, default: false },
+        // Analytics
+        analytics:             { type: Boolean, default: false },
+      },
+      stripeCustomerId: String,
+      stripeSubscriptionId: String,
     },
 
     // Opening hours per day: { open: "09:00", close: "22:00", closed: false }

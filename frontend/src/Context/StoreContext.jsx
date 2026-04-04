@@ -168,19 +168,27 @@ const StoreContextProvider = (props) => {
   const fetchFoodList = async () => {
     try {
       setFoodListError(false);
-      const response = await axios.get(url + "/api/food/list/public");
+      console.log(`[FETCH] Getting food list from /api/food/list/public`);
+      // Add cache-busting parameter to force fresh data
+      const response = await axios.get(url + "/api/food/list/public", {
+        params: { _t: Date.now() }
+      });
       if (response.data?.data) {
+        console.log(`[FETCH] Got ${response.data.data.length} items`);
+        response.data.data.forEach(f => {
+          if (!f.inStock) console.log(`  [FETCH] ${f.name} inStock FALSE`);
+        });
         setFoodList(response.data.data);
         try {
           localStorage.setItem("crave_food_cache", JSON.stringify(response.data.data));
-          localStorage.setItem("crave_food_cache_v", "5");
+          localStorage.setItem("crave_food_cache_v", "6");
         } catch {}
       } else {
         setFoodListError(true);
         toast.error("Failed to load menu. Please refresh the page.");
         // Try cache
         try {
-          const cacheOk = localStorage.getItem("crave_food_cache_v") === "5";
+          const cacheOk = localStorage.getItem("crave_food_cache_v") === "6";
           const cached = cacheOk ? JSON.parse(localStorage.getItem("crave_food_cache") || "null") : null;
           if (cached?.length) {
             setFoodList(cached);
@@ -190,9 +198,10 @@ const StoreContextProvider = (props) => {
       }
     } catch {
       setFoodListError(true);
+      console.error(`[FETCH ERROR] Failed to fetch food list`);
       // Try cache on network failure
       try {
-        const cacheOk2 = localStorage.getItem("crave_food_cache_v") === "5";
+        const cacheOk2 = localStorage.getItem("crave_food_cache_v") === "6";
         const cached = cacheOk2 ? JSON.parse(localStorage.getItem("crave_food_cache") || "null") : null;
         if (cached?.length) {
           setFoodList(cached);
@@ -248,7 +257,7 @@ const StoreContextProvider = (props) => {
     const foodPoll = setInterval(() => {
       fetchFoodList();
       fetchRestaurants();
-    }, 60000);
+    }, 15000); // Increased frequency to 15 seconds for faster stock updates
     return () => clearInterval(foodPoll);
   }, []);
 
@@ -258,6 +267,7 @@ const StoreContextProvider = (props) => {
     getTotalCartAmount, getItemCount, buildCartKey,
     token, setToken, loadCartData, setCartItems,
     currency, deliveryCharge,
+    fetchFoodList, // Expose for manual refresh
   };
 
   return (

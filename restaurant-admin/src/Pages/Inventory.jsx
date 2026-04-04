@@ -609,16 +609,65 @@ export default function Inventory() {
 
   const handleQuickAdjust = useCallback(async (id, adjustment) => {
     try {
+      // Optimistic update - update local state immediately
+      setInventory(prev => prev.map(item => 
+        item._id === id 
+          ? { ...item, currentStock: Math.max(0, item.currentStock + adjustment) }
+          : item
+      ));
+      
+      // Make API call in background
       await api.patch(`/api/inventory/${id}/stock`, { adjustment });
+      
+      // Silently reload in background without showing loading state
+      const timestamp = new Date().getTime();
+      const [invRes, alertsRes] = await Promise.all([
+        api.get("/api/inventory?t=" + timestamp),
+        api.get("/api/inventory/alerts?t=" + timestamp)
+      ]);
+      if (invRes.data?.success) { 
+        setInventory(invRes.data.data); 
+        setSummary(invRes.data.summary); 
+      }
+      if (alertsRes.data?.success) setAlerts(alertsRes.data.data);
+    } catch (err) { 
+      // Reload on error to sync state
       await loadInventory();
-    } catch (err) { alert(err?.response?.data?.message || "Failed to adjust stock"); }
+      alert(err?.response?.data?.message || "Failed to adjust stock"); 
+    }
   }, [loadInventory]);
 
   const handleStockUpdate = useCallback(async (id, newStock) => {
+    const numStock = Number(newStock);
+    if (isNaN(numStock) || numStock < 0) return;
+    
     try {
-      await api.patch(`/api/inventory/${id}/stock`, { newStock: Number(newStock) });
+      // Optimistic update - update local state immediately
+      setInventory(prev => prev.map(item => 
+        item._id === id 
+          ? { ...item, currentStock: numStock }
+          : item
+      ));
+      
+      // Make API call in background
+      await api.patch(`/api/inventory/${id}/stock`, { newStock: numStock });
+      
+      // Silently reload in background without showing loading state
+      const timestamp = new Date().getTime();
+      const [invRes, alertsRes] = await Promise.all([
+        api.get("/api/inventory?t=" + timestamp),
+        api.get("/api/inventory/alerts?t=" + timestamp)
+      ]);
+      if (invRes.data?.success) { 
+        setInventory(invRes.data.data); 
+        setSummary(invRes.data.summary); 
+      }
+      if (alertsRes.data?.success) setAlerts(alertsRes.data.data);
+    } catch (err) { 
+      // Reload on error to sync state
       await loadInventory();
-    } catch (err) { alert(err?.response?.data?.message || "Failed to update"); }
+      alert(err?.response?.data?.message || "Failed to update"); 
+    }
   }, [loadInventory]);
 
   const openLinkModal = useCallback(async (item) => {
@@ -813,6 +862,9 @@ export default function Inventory() {
             {importStatus && <p style={{ ...s.sub, fontSize: 12, color: importing ? "#1d4ed8" : "#16a34a", marginTop: 4 }}>{importStatus}</p>}
           </div>
           <div style={s.hdrBtns}>
+            <button className="btn btn-outline" onClick={() => window.location.href = '/inventory/analytics'} style={{ fontSize: 13, padding: "9px 14px" }}>
+              📊 View Analytics
+            </button>
             <button className="btn btn-outline" onClick={loadAI} disabled={aiLoading} style={{ fontSize: 13, padding: "9px 14px" }}>
               {aiLoading ? "Analyzing..." : "🤖 Refresh AI"}
             </button>

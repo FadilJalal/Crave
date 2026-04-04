@@ -101,9 +101,16 @@ const inventorySchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Index for efficient queries
+// Indexes for efficient queries and analytics
+inventorySchema.index({ restaurantId: 1, isActive: 1 });
 inventorySchema.index({ restaurantId: 1, category: 1 });
 inventorySchema.index({ restaurantId: 1, itemName: 1 });
+inventorySchema.index({ restaurantId: 1, unitCost: 1 });
+inventorySchema.index({ restaurantId: 1, expiryDate: 1 });
+inventorySchema.index({ restaurantId: 1, lastRestocked: 1 });
+inventorySchema.index({ restaurantId: 1, currentStock: 1 });
+inventorySchema.index({ restaurantId: 1, createdAt: -1 });
+inventorySchema.index({ "deductionLog.date": -1 });
 
 const inventoryModel = mongoose.models.inventory || mongoose.model("inventory", inventorySchema);
 export default inventoryModel;

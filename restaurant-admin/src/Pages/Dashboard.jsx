@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
+import { hasFeatureAccess } from "../utils/featureAccess";
 
 const STATUS_COLOR = {
   "Food Processing": { bg: "#fef3c7", color: "#92400e" },
@@ -83,12 +84,16 @@ function PeakHoursChart({ data }) {
 }
 
 function StatCard({ icon, label, value, sub, accent, loading, badge }) {
+  const [hovered, setHovered] = useState(false);
   return (
     <div style={{
       background: "white", borderRadius: 20, padding: "22px 24px",
-      border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
-      position: "relative", overflow: "hidden",
-    }}>
+      border: "1px solid rgba(0,0,0,0.06)", boxShadow: hovered ? `0 12px 32px ${accent}30` : "0 4px 24px rgba(0,0,0,0.06)",
+      position: "relative", overflow: "hidden", transition: "all 0.3s ease", cursor: "pointer",
+      transform: hovered ? "translateY(-4px)" : "translateY(0)", minHeight: 160, display: "flex", flexDirection: "column", justifyContent: "space-between"
+    }}
+    onMouseEnter={() => setHovered(true)}
+    onMouseLeave={() => setHovered(false)}>
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: accent, borderRadius: "20px 20px 0 0" }} />
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
@@ -138,16 +143,19 @@ export default function Dashboard() {
   });
   const [reengageSending, setReengageSending] = useState(false);
   const [reengageResult, setReengageResult] = useState(null);
+  const [sub, setSub] = useState(null);
 
   const load = async () => {
     try {
       setLoading(true);
-      const [foodRes, orderRes] = await Promise.all([
+      const [foodRes, orderRes, subRes] = await Promise.all([
         api.get("/api/restaurantadmin/foods"),
         api.get("/api/order/restaurant/list"),
+        api.get("/api/subscription/mine"),
       ]);
       if (foodRes.data?.success) setFoods(foodRes.data.data || []);
       if (orderRes.data?.success) setOrders(orderRes.data.data || []);
+      if (subRes.data?.success) setSub(subRes.data.data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -190,9 +198,48 @@ export default function Dashboard() {
   const todayRevenue = todayOrders.reduce((s, o) => s + (o.amount || 0), 0);
   const recentOrders = activeOrders.slice(0, 6);
   const growth = analytics?.revenueGrowth;
+  
+  // Calculate performance metrics
+  const completedOrders = activeOrders.filter(o => o.status === "Delivered").length;
+  const completionRate = activeOrders.length > 0 ? Math.round((completedOrders / activeOrders.length) * 100) : 0;
+  const avgRating = foods.length > 0 
+    ? Math.round((foods.reduce((sum, f) => sum + (f.avgRating || 0), 0) / foods.length) * 10) / 10 
+    : 0;
+  const outOfStockCount = foods.filter(f => !f.inStock).length;
+  
+  // Advanced metrics
+  const healthScore = Math.min(100, Math.round(
+    (completionRate * 0.35) + 
+    (avgRating > 0 ? (avgRating / 5) * 100 * 0.35 : 0) + 
+    ((1 - (outOfStockCount / Math.max(foods.length, 1))) * 100 * 0.2) +
+    (pendingOrders.length < 5 ? 10 : 0)
+  ));
+  
+  const yesterdayOrders = orders.filter(o => {
+    const orderDate = new Date(o.createdAt);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return orderDate.toDateString() === yesterday.toDateString() && (o.status || "").toLowerCase() !== "cancelled";
+  });
+  const yesterdayRevenue = yesterdayOrders.reduce((s, o) => s + (o.amount || 0), 0);
+  const revenueTrend = yesterdayRevenue > 0 ? Math.round(((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100) : 0;
+  
+  const avgOrderValue = activeOrders.length > 0 ? Math.round(orders.reduce((s, o) => s + (o.amount || 0), 0) / activeOrders.length) : 0;
+  const todayAvgOrder = todayOrders.length > 0 ? Math.round(todayRevenue / todayOrders.length) : 0;
+  
+  // Predict rest of day
+  const currentHour = new Date().getHours();
+  const hoursLeft = 24 - currentHour;
+  const predictedOrders = Math.max(0, activeOrders.length > 0 ? Math.round((activeOrders.length / (currentHour || 1)) * hoursLeft) : 0);
+  const predictedRevenue = Math.max(0, Math.round((todayRevenue / (currentHour || 1)) * hoursLeft));
 
   const fmtDate = (d) => { const dt = new Date(d); return `${dt.getDate()}/${dt.getMonth() + 1}`; };
   const fmtHour = (h) => h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h - 12}pm`;
+
+  const subForFeatures = sub ? { status: sub.status || "trial", features: sub.features } : null;
+  const canMenu = !subForFeatures || hasFeatureAccess(subForFeatures, "menu");
+  const goMenuOrBilling = () => { if (canMenu) navigate("/menu"); else navigate("/subscription"); };
+  const goAddFoodOrBilling = () => { if (canMenu) navigate("/add-food"); else navigate("/subscription"); };
 
   return (
     <RestaurantLayout>
@@ -214,8 +261,23 @@ export default function Dashboard() {
                 </span>
               )}
             </button>
-            <button onClick={() => navigate("/add-food")} style={{ padding: "10px 18px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #ff4e2a, #ff6a3d)", color: "white", fontWeight: 800, cursor: "pointer", fontSize: 13, boxShadow: "0 4px 14px rgba(255,78,42,0.35)" }}>
-              + Add Food
+            <button
+              onClick={goAddFoodOrBilling}
+              title={canMenu ? "" : "Menu management is off — open Subscription to upgrade"}
+              style={{
+                padding: "10px 18px",
+                borderRadius: 12,
+                border: "none",
+                background: canMenu ? "linear-gradient(135deg, #ff4e2a, #ff6a3d)" : "linear-gradient(135deg, #9ca3af, #6b7280)",
+                color: "white",
+                fontWeight: 800,
+                cursor: "pointer",
+                fontSize: 13,
+                boxShadow: canMenu ? "0 4px 14px rgba(255,78,42,0.35)" : "0 2px 8px rgba(0,0,0,0.12)",
+                opacity: canMenu ? 1 : 0.95,
+              }}
+            >
+              {canMenu ? "+ Add Food" : "+ Add Food (plan)"}
             </button>
           </div>
         </div>
@@ -234,7 +296,201 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Revenue chart */}
+        {/* Performance & Health */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+          <StatCard icon="✅" label="Completion Rate" value={`${completionRate}%`} sub={`${completedOrders} of ${activeOrders.length} delivered`} accent="#10b981" loading={loading} 
+            badge={completionRate > 90 ? { text: "Excellent!", positive: true } : completionRate > 70 ? { text: "Good", positive: true } : { text: "Needs work", positive: false }}
+          />
+          <StatCard icon="⭐" label="Avg Rating" value={avgRating > 0 ? `${avgRating}★` : "—"} sub={foods.length > 0 ? `Across ${foods.length} items` : "no ratings yet"} accent="#f59e0b" loading={loading} />
+          <StatCard icon="🍽️" label="Menu Items" value={foods.length} sub={outOfStockCount > 0 ? `${outOfStockCount} out of stock` : "All in stock"} accent="#3b82f6" loading={loading}
+            badge={outOfStockCount > 0 ? { text: `${outOfStockCount} out`, positive: false } : { text: "All ready", positive: true }}
+          />
+        </div>
+
+        {/* Alerts & Quick Actions */}
+        {(outOfStockCount > 0 || pendingOrders.length > 3) && (
+          <div style={{ display: "grid", gridTemplateColumns: outOfStockCount > 0 && pendingOrders.length > 3 ? "1fr 1fr" : "1fr", gap: 16, marginBottom: 24 }}>
+            {outOfStockCount > 0 && (
+              <div style={{ background: "linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)", borderRadius: 14, border: "1px solid #fde68a", padding: 18, transition: "all 0.3s ease", cursor: "pointer" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = "0 16px 40px rgba(245,158,11,0.2)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 900, fontSize: 15, color: "#92400e", marginBottom: 4 }}>⚠️ {outOfStockCount} Items Out of Stock</div>
+                    <div style={{ fontSize: 12, color: "#b45309", marginBottom: 12 }}>Update availability to maintain customer satisfaction</div>
+                    <button
+                      onClick={goMenuOrBilling}
+                      title={canMenu ? "" : "Menu management is off — open Subscription to upgrade"}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: 10,
+                        border: "none",
+                        background: canMenu ? "#f59e0b" : "#9ca3af",
+                        color: "white",
+                        fontWeight: 800,
+                        fontSize: 12,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      {canMenu ? "📝 Update Menu →" : "🔒 Menu — view plans"}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 32, flexShrink: 0 }}>📦</div>
+                </div>
+              </div>
+            )}
+            {pendingOrders.length > 3 && (
+              <div style={{ background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)", borderRadius: 14, border: "1px solid #fecaca", padding: 18, transition: "all 0.3s ease", cursor: "pointer" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = "0 16px 40px rgba(239,68,68,0.2)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 900, fontSize: 15, color: "#991b1b", marginBottom: 4 }}>🔥 {pendingOrders.length} Orders Pending</div>
+                    <div style={{ fontSize: 12, color: "#b91c1c", marginBottom: 12 }}>Process these to reduce delivery time and improve ratings</div>
+                    <button onClick={() => navigate("/orders")} style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: "#ef4444", color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                      ⏳ View Orders →
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 32, flexShrink: 0 }}>⏰</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Quick Access */}
+        <div style={{ background: "white", borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", padding: 18, marginBottom: 24, transition: "all 0.3s ease" }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.1)"; }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,0,0,0.06)"; }}>
+          <div style={{ fontWeight: 900, fontSize: 15, color: "#111827", marginBottom: 12 }}>⚡ Quick Access</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+            <button onClick={() => navigate("/inventory")} style={{ padding: "14px 12px", borderRadius: 10, border: "1px solid #e5e7eb", background: "white", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, fontFamily: "inherit", transition: "all 0.2s", fontSize: 12, fontWeight: 700 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.transform = "scale(1.05) translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "white"; e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <span style={{ fontSize: 20 }}>📦</span>
+              Inventory
+            </button>
+            <button onClick={() => navigate("/promos")} style={{ padding: "14px 12px", borderRadius: 10, border: "1px solid #e5e7eb", background: "white", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, fontFamily: "inherit", transition: "all 0.2s", fontSize: 12, fontWeight: 700 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.transform = "scale(1.05) translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "white"; e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <span style={{ fontSize: 20 }}>🏷️</span>
+              Promos
+            </button>
+            <button onClick={() => navigate("/ai-insights")} style={{ padding: "14px 12px", borderRadius: 10, border: "1px solid #e5e7eb", background: "white", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, fontFamily: "inherit", transition: "all 0.2s", fontSize: 12, fontWeight: 700 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.transform = "scale(1.05) translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "white"; e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <span style={{ fontSize: 20 }}>🤖</span>
+              AI Insights
+            </button>
+            <button onClick={() => navigate("/customers")} style={{ padding: "14px 12px", borderRadius: 10, border: "1px solid #e5e7eb", background: "white", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, fontFamily: "inherit", transition: "all 0.2s", fontSize: 12, fontWeight: 700 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.transform = "scale(1.05) translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "white"; e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <span style={{ fontSize: 20 }}>👥</span>
+              Customers
+            </button>
+            <button
+              onClick={goMenuOrBilling}
+              title={canMenu ? "" : "Menu management is off — open Subscription to upgrade"}
+              style={{
+                padding: "14px 12px",
+                borderRadius: 10,
+                border: `1px solid ${canMenu ? "#e5e7eb" : "#e5e7eb"}`,
+                background: canMenu ? "white" : "#f9fafb",
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 6,
+                fontFamily: "inherit",
+                transition: "all 0.2s",
+                fontSize: 12,
+                fontWeight: 700,
+                opacity: canMenu ? 1 : 0.75,
+              }}
+              onMouseEnter={e => {
+                if (!canMenu) return;
+                e.currentTarget.style.background = "#f9fafb";
+                e.currentTarget.style.borderColor = "#d1d5db";
+                e.currentTarget.style.transform = "scale(1.05) translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.1)";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = canMenu ? "white" : "#f9fafb";
+                e.currentTarget.style.borderColor = "#e5e7eb";
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              <span style={{ fontSize: 20 }}>{canMenu ? "🍽️" : "🔒"}</span>
+              {canMenu ? "Menu" : "Menu (locked)"}
+            </button>
+          </div>
+        </div>
+
+        {/* Health Score & Predictions */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 24 }}>
+          <div style={{ background: "white", borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", padding: 18, transition: "all 0.3s ease", cursor: "pointer", minHeight: 150, display: "flex", flexDirection: "column", justifyContent: "space-between" }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 16px 40px rgba(22,163,74,0.15)"; e.currentTarget.style.transform = "translateY(-6px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,0,0,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+            <div style={{ fontWeight: 700, fontSize: 12, color: "#9ca3af", textTransform: "uppercase", marginBottom: 8 }}>Restaurant Health</div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: healthScore > 75 ? "#16a34a" : healthScore > 50 ? "#f59e0b" : "#ef4444", letterSpacing: "-0.6px" }}>
+                  {healthScore}
+                </div>
+                <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+                  {healthScore > 75 ? "Excellent" : healthScore > 50 ? "Good" : "Needs attention"}
+                </div>
+              </div>
+              <div style={{ width: 60, height: 60, borderRadius: 999, background: healthScore > 75 ? "#f0fdf4" : healthScore > 50 ? "#fffbeb" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
+                {healthScore > 75 ? "😊" : healthScore > 50 ? "😐" : "😟"}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: "white", borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", padding: 18, transition: "all 0.3s ease", cursor: "pointer", minHeight: 150, display: "flex", flexDirection: "column", justifyContent: "space-between" }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 16px 40px rgba(245,158,11,0.15)"; e.currentTarget.style.transform = "translateY(-6px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,0,0,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+            <div style={{ fontWeight: 700, fontSize: 12, color: "#9ca3af", textTransform: "uppercase", marginBottom: 8 }}>Revenue vs Yesterday</div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: revenueTrend >= 0 ? "#16a34a" : "#ef4444", letterSpacing: "-0.6px" }}>
+                  {revenueTrend >= 0 ? "+" : ""}{revenueTrend}%
+                </div>
+                <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+                  Yesterday: AED {yesterdayRevenue}
+                </div>
+              </div>
+              <div style={{ fontSize: 28, flexShrink: 0 }}>
+                {revenueTrend >= 0 ? "📈" : "📉"}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: "white", borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", padding: 18, transition: "all 0.3s ease", cursor: "pointer", minHeight: 150, display: "flex", flexDirection: "column", justifyContent: "space-between" }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 16px 40px rgba(139,92,246,0.15)"; e.currentTarget.style.transform = "translateY(-6px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,0,0,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+            <div style={{ fontWeight: 700, fontSize: 12, color: "#9ca3af", textTransform: "uppercase", marginBottom: 8 }}>Rest of Day Forecast</div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#8b5cf6", letterSpacing: "-0.4px" }}>
+                  ~AED {predictedRevenue}
+                </div>
+                <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+                  {predictedOrders} more orders expected
+                </div>
+              </div>
+              <div style={{ fontSize: 28, flexShrink: 0 }}>🔮</div>
+            </div>
+          </div>
+        </div>
+
+        
         <div style={{ background: "white", borderRadius: 20, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", padding: "22px 24px", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div>
@@ -264,7 +520,63 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Peak hours + Best sellers */}
+        {/* AI Recommendations */}
+        {analytics && (
+          <div style={{ background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)", borderRadius: 14, border: "1px solid #7dd3fc", padding: 18, marginBottom: 20, transition: "all 0.3s ease", cursor: "pointer" }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 16px 40px rgba(3,105,161,0.15)"; e.currentTarget.style.transform = "translateY(-4px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; }}>
+            <div style={{ fontWeight: 900, fontSize: 15, color: "#0369a1", marginBottom: 12 }}>💡 AI Recommendations</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {completionRate < 70 && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>📈</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#075985" }}>Improve Completion Rate</div>
+                    <div style={{ fontSize: 12, color: "#0c4a6e", marginTop: 2 }}>Your {completionRate}% completion rate is below average. Focus on faster processing to boost customer satisfaction.</div>
+                  </div>
+                </div>
+              )}
+              {pendingOrders.length > activeOrders.length * 0.3 && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>⏱️</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#075985" }}>High Pending Volume</div>
+                    <div style={{ fontSize: 12, color: "#0c4a6e", marginTop: 2 }}>{pendingOrders.length} orders are waiting. Clear these quickly to reduce avg delivery time.</div>
+                  </div>
+                </div>
+              )}
+              {avgRating > 0 && avgRating < 4 && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>⭐</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#075985" }}>Improve Menu Quality</div>
+                    <div style={{ fontSize: 12, color: "#0c4a6e", marginTop: 2 }}>Your {avgRating}★ rating needs work. Review low-rated items and consider improving recipes or presentation.</div>
+                  </div>
+                </div>
+              )}
+              {growth !== null && growth < 0 && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>📉</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#075985" }}>Revenue Declining</div>
+                    <div style={{ fontSize: 12, color: "#0c4a6e", marginTop: 2 }}>Revenue is down {Math.abs(growth)}% vs last week. Consider running a promotion or launching new menu items.</div>
+                  </div>
+                </div>
+              )}
+              {completionRate > 80 && avgRating > 4.5 && growth > 0 && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>🌟</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#075985" }}>Great Performance!</div>
+                    <div style={{ fontSize: 12, color: "#0c4a6e", marginTop: 2 }}>You're doing excellent! Keep maintaining quality and consider expanding your menu to capitalize on momentum.</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
 
           <div style={{ background: "white", borderRadius: 20, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", padding: "22px 24px" }}>

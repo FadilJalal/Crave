@@ -2,7 +2,7 @@ import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 import restaurantModel from "../models/restaurantModel.js";
 import { isRestaurantOpen } from "../utils/restaurantHours.js";
-import { deductInventoryForOrder } from "./inventoryController.js";
+import { deductInventoryForOrder, restoreInventoryForCancelledOrder } from "./inventoryController.js";
 import Stripe from "stripe";
 
 // ✅ FIXED: lazy-init Stripe so a missing key doesn't crash the server at startup
@@ -570,6 +570,23 @@ async function cancelOrder(req, res) {
 
     order.status = "Cancelled";
     await order.save();
+
+    // ── Restore inventory for cancelled order ────────────────────────────────
+    try {
+      const inventoryResult = await restoreInventoryForCancelledOrder(
+        order.restaurantId,
+        order.items,
+        order._id
+      );
+      
+      if (!inventoryResult.success) {
+        console.error("[cancelOrder] Failed to restore inventory:", inventoryResult.message);
+      } else {
+        console.log(`[cancelOrder] Restored inventory for order ${orderId}:`, inventoryResult.message);
+      }
+    } catch (invError) {
+      console.error("[cancelOrder] Inventory restoration error:", invError);
+    }
 
     const message = refundStatus === "refunded"
       ? "Order cancelled. Your refund will appear within 5-10 business days."

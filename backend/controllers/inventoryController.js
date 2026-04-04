@@ -784,6 +784,104 @@ const getDeductionLog = async (req, res) => {
     }
 };
 
+// ── Restore Inventory for Cancelled Orders ───────────────────────────────
+const restoreInventoryForCancelledOrder = async (restaurantId, orderItems, orderId) => {
+    try {
+        if (!orderItems || orderItems.length === 0) {
+            return { success: true, message: "No items to restore" };
+        }
+
+        // Build a map of foodId -> quantity ordered
+        const orderedMap = {};
+        for (const oi of orderItems) {
+            const fid = oi._id || oi.foodId;
+            if (!fid) continue;
+            const key = String(fid);
+            orderedMap[key] = (orderedMap[key] || 0) + (Number(oi.quantity) || 0);
+        }
+
+        // Find inventory items that have deductions for this order
+        const inventoryItems = await inventoryModel.find({
+            restaurantId,
+            isActive: true,
+            "deductionLog.orderId": orderId,
+            "deductionLog.reverted": { $ne: true }
+        });
+
+        if (inventoryItems.length === 0) {
+            return { success: true, message: "No inventory deductions found for this order" };
+        }
+
+        const restorationResults = [];
+
+        for (const inv of inventoryItems) {
+            let invCurrentStock = Number(inv.currentStock) || 0;
+            let totalRestored = 0;
+
+            // Process each linked menu item
+            for (const link of inv.linkedMenuItems) {
+                const foodKey = String(link.foodId);
+                const qtyOrdered = Number(orderedMap[foodKey] || 0);
+                if (!qtyOrdered || Number(link.quantityPerOrder) <= 0) continue;
+
+                const linkQtyPerOrder = Number(link.quantityPerOrder);
+                const qtyToRestore = Number((qtyOrdered * linkQtyPerOrder).toFixed(4));
+                
+                // Find and mark deduction entries as reverted
+                const deductionEntries = inv.deductionLog.filter(log => 
+                    log.orderId === orderId && 
+                    String(log.foodId) === foodKey && 
+                    !log.reverted
+                );
+
+                for (const entry of deductionEntries) {
+                    entry.reverted = true;
+                    entry.revertedAt = new Date();
+                    entry.restoredQty = qtyToRestore;
+                }
+
+                invCurrentStock += qtyToRestore;
+                totalRestored += qtyToRestore;
+
+                restorationResults.push({
+                    inventoryItem: inv.itemName,
+                    inventoryId: inv._id,
+                    foodId: foodKey,
+                    qtyOrdered,
+                    qtyRestored: qtyToRestore,
+                    stockBefore: invCurrentStock - qtyToRestore,
+                    stockAfter: invCurrentStock,
+                    success: true
+                });
+            }
+
+            // Update inventory item with restored stock and updated deduction log
+            await inventoryModel.findByIdAndUpdate(inv._id, {
+                currentStock: invCurrentStock,
+                deductionLog: inv.deductionLog,
+                $push: {
+                    restorationLog: {
+                        orderId: orderId || "unknown",
+                        totalRestored,
+                        restoredAt: new Date(),
+                        reason: "Order cancelled"
+                    }
+                }
+            });
+        }
+
+        console.log(`[inventory] Restored ${restorationResults.length} entries for cancelled order ${orderId || "?"}`);
+        return { 
+            success: true, 
+            message: "Inventory restoration completed", 
+            restorations: restorationResults 
+        };
+    } catch (error) {
+        console.error("Error restoring inventory:", error);
+        return { success: false, message: "Failed to restore inventory", error: error.message };
+    }
+};
+
 // ── Preview inventory deduction for a hypothetical order without writing changes
 const previewInventoryDeduction = async (req, res) => {
     try {
@@ -828,6 +926,437 @@ const previewInventoryDeduction = async (req, res) => {
     }
 };
 
+// ── ANALYTICS ENDPOINTS ────────────────────────────────────────────────────
+
+// Get inventory value analytics with trends
+const getInventoryAnalytics = async (req, res) => {
+    try {
+        const { timeframe = "30d" } = req.query;
+        
+        // Validate timeframe
+        const validTimeframes = ["7d", "30d", "60d", "90d", "1y"];
+        if (!validTimeframes.includes(timeframe)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid timeframe. Must be one of: 7d, 30d, 60d, 90d, 1y" 
+            });
+        }
+
+        // Map timeframe to days
+        const timeframeMap = { "7d": 7, "30d": 30, "60d": 60, "90d": 90, "1y": 365 };
+        const days = timeframeMap[timeframe];
+        const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+        // Get current inventory snapshot
+        const currentInventory = await inventoryModel
+            .find({ restaurantId: req.restaurantId, isActive: true })
+            .select("itemName category unit currentStock unitCost minimumStock maximumStock deductionLog")
+            .lean();
+
+        if (!currentInventory.length) {
+            return res.json({
+                success: true,
+                data: {
+                    current: {
+                        totalValue: 0,
+                        totalItems: 0,
+                        totalUnits: 0,
+                        byCategory: []
+                    },
+                    history: [],
+                    summary: {
+                        timeframe,
+                        avgDailyUsage: 0,
+                        totalDaysTracked: 0,
+                        projectedMonthlyUsage: 0
+                    }
+                }
+            });
+        }
+
+        // Calculate current analytics
+        const byCategory = {};
+        let totalValue = 0;
+        let totalItems = 0;
+        let totalUnits = 0;
+
+        currentInventory.forEach(item => {
+            const itemValue = item.currentStock * item.unitCost;
+            totalValue += itemValue;
+            totalItems += 1;
+            totalUnits += item.currentStock;
+
+            if (!byCategory[item.category]) {
+                byCategory[item.category] = { value: 0, items: 0, units: 0 };
+            }
+            byCategory[item.category].value += itemValue;
+            byCategory[item.category].items += 1;
+            byCategory[item.category].units += item.currentStock;
+        });
+
+        // Calculate usage trends from deduction logs
+        const usageByDay = {};
+        const dailyDeductions = {};
+
+        currentInventory.forEach(item => {
+            (item.deductionLog || [])
+                .filter(log => new Date(log.date) >= startDate)
+                .forEach(log => {
+                    const day = new Date(log.date).toISOString().split('T')[0];
+                    if (!dailyDeductions[day]) dailyDeductions[day] = 0;
+                    dailyDeductions[day] += log.qtyDeducted * item.unitCost;
+                });
+        });
+
+        // Generate sorted history points
+        const history = [];
+        let currentDate = new Date(startDate);
+        while (currentDate <= new Date()) {
+            const day = currentDate.toISOString().split('T')[0];
+            history.push({
+                date: day,
+                usage: dailyDeductions[day] || 0
+            });
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // Calculate summary metrics
+        const avgDailyUsage = history.length > 0 
+            ? Math.round((history.reduce((s, h) => s + h.usage, 0) / history.length) * 100) / 100
+            : 0;
+
+        res.json({
+            success: true,
+            data: {
+                current: {
+                    totalValue: Math.round(totalValue * 100) / 100,
+                    totalItems,
+                    totalUnits: Math.round(totalUnits * 100) / 100,
+                    byCategory: Object.entries(byCategory).map(([cat, data]) => ({
+                        category: cat,
+                        value: Math.round(data.value * 100) / 100,
+                        items: data.items,
+                        units: Math.round(data.units * 100) / 100,
+                        percentage: Math.round((data.value / totalValue) * 100)
+                    })).sort((a, b) => b.value - a.value)
+                },
+                history: history.slice(-30), // Last 30 days
+                summary: {
+                    timeframe,
+                    avgDailyUsage,
+                    totalDaysTracked: history.length,
+                    projectedMonthlyUsage: Math.round(avgDailyUsage * 30 * 100) / 100
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching inventory analytics:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch analytics" });
+    }
+};
+
+// Get stock turnover rates by category
+const getStockTurnoverAnalytics = async (req, res) => {
+    try {
+        const { timeframe = "30d" } = req.query;
+        
+        // Validate timeframe
+        const validTimeframes = ["7d", "30d", "60d", "90d"];
+        if (!validTimeframes.includes(timeframe)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid timeframe. Must be one of: 7d, 30d, 60d, 90d" 
+            });
+        }
+
+        const timeframeMap = { "7d": 7, "30d": 30, "60d": 60, "90d": 90 };
+        const days = timeframeMap[timeframe];
+        const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+        const inventory = await inventoryModel
+            .find({ restaurantId: req.restaurantId, isActive: true })
+            .select("category itemName currentStock unitCost deductionLog")
+            .lean();
+
+        const byCategory = {};
+
+        inventory.forEach(item => {
+            if (!byCategory[item.category]) {
+                byCategory[item.category] = {
+                    category: item.category,
+                    items: [],
+                    totalUsed: 0,
+                    totalValue: 0
+                };
+            }
+
+            const usedQty = (item.deductionLog || [])
+                .filter(log => new Date(log.date) >= startDate)
+                .reduce((sum, log) => sum + log.qtyDeducted, 0);
+
+            const usedValue = usedQty * item.unitCost;
+            const turnoverRate = item.currentStock > 0 ? Math.round((usedQty / (usedQty + item.currentStock)) * 100) : 0;
+
+            byCategory[item.category].items.push({
+                name: item.itemName,
+                usedQty: Math.round(usedQty * 100) / 100,
+                usedValue: Math.round(usedValue * 100) / 100,
+                currentStock: item.currentStock,
+                turnoverRate,
+                efficiency: turnoverRate > 70 ? "high" : turnoverRate > 40 ? "medium" : "low"
+            });
+
+            byCategory[item.category].totalUsed += usedQty;
+            byCategory[item.category].totalValue += usedValue;
+        });
+
+        const results = Object.values(byCategory).map(cat => ({
+            ...cat,
+            avgTurnover: cat.items.length > 0 
+                ? Math.round((cat.items.reduce((s, i) => s + i.turnoverRate, 0) / cat.items.length))
+                : 0,
+            items: cat.items.sort((a, b) => b.turnoverRate - a.turnoverRate)
+        }));
+
+        res.json({
+            success: true,
+            data: results.sort((a, b) => b.avgTurnover - a.avgTurnover)
+        });
+    } catch (error) {
+        console.error("Error fetching turnover analytics:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch turnover analytics" });
+    }
+};
+
+// Get supplier performance analytics
+const getSupplierAnalytics = async (req, res) => {
+    try {
+        const inventory = await inventoryModel
+            .find({ 
+                restaurantId: req.restaurantId, 
+                isActive: true,
+                "supplier.name": { $exists: true, $ne: "" }
+            })
+            .select("itemName supplier unitCost currentStock expiryDate lastRestocked")
+            .lean();
+
+        const bySupplier = {};
+
+        inventory.forEach(item => {
+            const supplierName = item.supplier?.name || "Unknown";
+            if (!bySupplier[supplierName]) {
+                bySupplier[supplierName] = {
+                    name: supplierName,
+                    contact: item.supplier?.contact || "",
+                    email: item.supplier?.email || "",
+                    items: [],
+                    totalValue: 0,
+                    itemCount: 0,
+                    avgLeadTime: 0,
+                    qualityScore: 100
+                };
+            }
+
+            const itemValue = item.currentStock * item.unitCost;
+            bySupplier[supplierName].items.push({
+                name: item.itemName,
+                value: Math.round(itemValue * 100) / 100,
+                stock: item.currentStock,
+                expiryDate: item.expiryDate,
+                lastRestocked: item.lastRestocked
+            });
+
+            bySupplier[supplierName].totalValue += itemValue;
+            bySupplier[supplierName].itemCount += 1;
+
+            // Simple quality score based on expiry issues
+            if (item.expiryDate) {
+                const daysToExpiry = Math.ceil((new Date(item.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+                if (daysToExpiry < 0) bySupplier[supplierName].qualityScore -= 10;
+                else if (daysToExpiry < 7) bySupplier[supplierName].qualityScore -= 5;
+            }
+        });
+
+        const results = Object.values(bySupplier).map(supplier => ({
+            ...supplier,
+            totalValue: Math.round(supplier.totalValue * 100) / 100,
+            qualityScore: Math.max(0, supplier.qualityScore),
+            items: supplier.items.sort((a, b) => b.value - a.value)
+        })).sort((a, b) => b.totalValue - a.totalValue);
+
+        res.json({
+            success: true,
+            data: results
+        });
+    } catch (error) {
+        console.error("Error fetching supplier analytics:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch supplier analytics" });
+    }
+};
+
+// Get paginated inventory with advanced filtering
+const getInventoryPaginated = async (req, res) => {
+    try {
+        const { 
+            page = 1, 
+            limit = 20, 
+            category = "all", 
+            search = "",
+            sortBy = "name",
+            status = "all"
+        } = req.query;
+
+        // Validate pagination params
+        const pageNum = Math.max(1, parseInt(page) || 1);
+        const pageLimit = Math.min(Math.max(1, parseInt(limit) || 20), 100); // Max 100 per page
+        const skip = (pageNum - 1) * pageLimit;
+
+        // Build filter
+        const filter = { 
+            restaurantId: req.restaurantId,
+            isActive: true
+        };
+
+        // Validate category
+        const validCategories = ["food_ingredient", "beverage", "packaging", "equipment", "other"];
+        if (category !== "all" && validCategories.includes(category)) {
+            filter.category = category;
+        }
+
+        // Build search filter
+        if (search && typeof search === "string" && search.trim()) {
+            filter.itemName = { $regex: search.trim(), $options: "i" };
+        }
+
+        // Build sort
+        const sortMap = {
+            name: { itemName: 1 },
+            stock_high: { currentStock: -1 },
+            stock_low: { currentStock: 1 },
+            value: { currentStock: -1, unitCost: -1 },
+            recent: { lastRestocked: -1 },
+            expensive: { unitCost: -1 }
+        };
+        const sortOptions = sortMap[sortBy] || sortMap.name;
+
+        // Execute queries in parallel
+        const [items, total] = await Promise.all([
+            inventoryModel
+                .find(filter)
+                .select("itemName category unit currentStock minimumStock maximumStock unitCost supplier expiryDate lastRestocked linkedMenuItems")
+                .sort(sortOptions)
+                .skip(skip)
+                .limit(pageLimit)
+                .lean(),
+            inventoryModel.countDocuments(filter)
+        ]);
+
+        // Add computed fields
+        const enrichedItems = items.map(item => {
+            const itemValue = item.currentStock * (item.unitCost || 0);
+            let statusBadge = "normal";
+            if (item.currentStock <= 0) statusBadge = "critical";
+            else if (item.currentStock <= item.minimumStock) statusBadge = "low";
+            else if (item.currentStock >= item.maximumStock) statusBadge = "high";
+
+            return {
+                ...item,
+                value: Math.round(itemValue * 100) / 100,
+                status: statusBadge,
+                linkedCount: (item.linkedMenuItems || []).length
+            };
+        });
+
+        res.json({
+            success: true,
+            data: enrichedItems,
+            pagination: {
+                page: pageNum,
+                limit: pageLimit,
+                total,
+                pages: Math.ceil(total / pageLimit),
+                hasMore: skip + pageLimit < total
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching paginated inventory:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch inventory" });
+    }
+};
+
+// Get cost analysis
+const getCostAnalysis = async (req, res) => {
+    try {
+        const inventory = await inventoryModel
+            .find({ restaurantId: req.restaurantId, isActive: true })
+            .select("itemName category currentStock unitCost deductionLog")
+            .lean();
+
+        const analysis = {
+            current: {
+                totalCapitalInvested: 0,
+                averageUnitCost: 0,
+                highestCostItems: [],
+                lowestCostItems: []
+            },
+            usage: {
+                totalCostUsed: 0,
+                avgCostPerDay: 0,
+                costByCategory: {}
+            }
+        };
+
+        const allCosts = [];
+        const categoryCosts = {};
+
+        inventory.forEach(item => {
+            const itemValue = item.currentStock * item.unitCost;
+            allCosts.push({ name: item.itemName, cost: item.unitCost });
+            analysis.current.totalCapitalInvested += itemValue;
+
+            if (!categoryCosts[item.category]) {
+                categoryCosts[item.category] = { total: 0, items: 0, avgUnitCost: 0 };
+            }
+            categoryCosts[item.category].total += itemValue;
+            categoryCosts[item.category].items += 1;
+            categoryCosts[item.category].avgUnitCost = categoryCosts[item.category].total / categoryCosts[item.category].items;
+
+            // Calculate usage cost
+            const usedQty = (item.deductionLog || []).reduce((sum, log) => sum + log.qtyDeducted, 0);
+            analysis.usage.totalCostUsed += usedQty * item.unitCost;
+        });
+
+        analysis.current.totalCapitalInvested = Math.round(analysis.current.totalCapitalInvested * 100) / 100;
+        analysis.current.averageUnitCost = allCosts.length > 0
+            ? Math.round((allCosts.reduce((s, c) => s + c.cost, 0) / allCosts.length) * 100) / 100
+            : 0;
+        analysis.current.highestCostItems = allCosts
+            .sort((a, b) => b.cost - a.cost)
+            .slice(0, 5)
+            .map(c => ({ name: c.name, cost: c.cost }));
+        analysis.current.lowestCostItems = allCosts
+            .sort((a, b) => a.cost - b.cost)
+            .slice(0, 5)
+            .map(c => ({ name: c.name, cost: c.cost }));
+
+        analysis.usage.totalCostUsed = Math.round(analysis.usage.totalCostUsed * 100) / 100;
+        analysis.usage.costByCategory = Object.entries(categoryCosts).map(([cat, data]) => ({
+            category: cat,
+            totalValue: Math.round(data.total * 100) / 100,
+            items: data.items,
+            avgUnitCost: Math.round(data.avgUnitCost * 100) / 100
+        })).sort((a, b) => b.totalValue - a.totalValue);
+
+        res.json({
+            success: true,
+            data: analysis
+        });
+    } catch (error) {
+        console.error("Error fetching cost analysis:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch cost analysis" });
+    }
+};
+
 export {
     getInventory,
     addInventoryItem,
@@ -839,9 +1368,15 @@ export {
     getInventoryAlerts,
     getAIInsights,
     deductInventoryForOrder,
+    restoreInventoryForCancelledOrder,
     linkMenuItem,
     unlinkMenuItem,
     getRestaurantFoods,
     getDeductionLog,
-    previewInventoryDeduction
+    previewInventoryDeduction,
+    getInventoryAnalytics,
+    getStockTurnoverAnalytics,
+    getSupplierAnalytics,
+    getInventoryPaginated,
+    getCostAnalysis
 };

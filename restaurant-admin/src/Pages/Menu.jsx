@@ -16,22 +16,80 @@ export default function Menu() {
   const [toggling, setToggling] = useState({});
   const navigate = useNavigate();
 
-  const [search,      setSearch]      = useState("");
-  const [catFilter,   setCatFilter]   = useState("all");
-  const [sortBy,      setSortBy]      = useState("az");
-  const [stockFilter, setStockFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("az");
   const [deletingCat, setDeletingCat] = useState(false);
 
   const loadFoods = async () => {
     try {
       setLoading(true);
+      console.log("[LOAD FOODS] Starting to fetch menu items...");
       const res = await api.get("/api/restaurantadmin/foods");
-      if (res.data?.success) setFoods(res.data.data || []);
-      else alert(res.data?.message || "Failed to load menu");
+      console.log("[LOAD FOODS RESPONSE]", res.data);
+      if (res.data?.success) {
+        const foods = res.data.data || [];
+        console.log(`[LOAD FOODS SUCCESS] Loaded ${foods.length} items`);
+        setFoods(foods);
+      } else {
+        const errorMsg = res.data?.message || "Failed to load menu";
+        console.error("[LOAD FOODS FAILED]", errorMsg);
+        alert(errorMsg);
+      }
     } catch (err) {
-      alert(err?.response?.data?.message || "Failed to load menu");
+      const errorMsg = err?.response?.data?.message || err?.message || "Failed to load menu";
+      console.error("[LOAD FOODS ERROR]", {
+        message: errorMsg,
+        status: err?.response?.status,
+        data: err?.response?.data
+      });
+      alert(errorMsg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleItemAvailability = async (id, currentStatus) => {
+    setToggling(prev => ({ ...prev, [id]: true }));
+    try {
+      // Check if authenticated
+      const token = localStorage.getItem("restaurantToken");
+      if (!token) {
+        throw new Error("No authentication token found. Please log in again.");
+      }
+      console.log("[TOGGLE] Token exists:", !!token);
+      
+      const newStatus = !currentStatus;
+      console.log(`[TOGGLE] Item ${id}: ${currentStatus} → ${newStatus}`);
+      
+      const res = await api.post(`/api/restaurantadmin/food/${id}/toggle-availability`, { 
+        inStock: newStatus
+      });
+      
+      console.log("[TOGGLE RESPONSE]", res.data);
+      
+      if (res.data?.success) {
+        console.log(`[TOGGLE SUCCESS] Item ${id} now inStock=${newStatus}`);
+        setFoods(prev => prev.map(f => 
+          f._id === id ? { ...f, inStock: newStatus } : f
+        ));
+        alert(`Item ${newStatus ? "enabled ✓" : "disabled ✕"}`);
+      } else {
+        const errorMsg = res.data?.message || "Failed to toggle availability";
+        console.error("[TOGGLE FAILED]", errorMsg, res.data);
+        alert(errorMsg);
+      }
+    } catch (err) {
+      const errorMsg = err?.response?.data?.message || err?.message || "Network or server error";
+      console.error("[TOGGLE ERROR]", {
+        message: errorMsg,
+        status: err?.response?.status,
+        data: err?.response?.data,
+        fullError: err
+      });
+      alert(errorMsg);
+    } finally {
+      setToggling(prev => ({ ...prev, [id]: false }));
     }
   };
 
@@ -66,27 +124,7 @@ export default function Menu() {
     }
   };
 
-  // --- FIXED: Added the missing function declaration below ---
-  const toggleStock = async (food) => {
-    setToggling(prev => ({ ...prev, [food._id]: true }));
-    try {
-      const res = await api.post("/api/restaurantadmin/food/stock", {
-        foodId: food._id,
-        inStock: !food.inStock,
-      });
-      if (res.data?.success) {
-        setFoods(prev => prev.map(f =>
-          f._id === food._id ? { ...f, inStock: res.data.inStock } : f
-        ));
-      } else {
-        alert(res.data?.message || "Failed to update stock");
-      }
-    } catch {
-      alert("Error updating stock status");
-    } finally {
-      setToggling(prev => ({ ...prev, [food._id]: false }));
-    }
-  };
+  // --- REMOVED: Stock toggle functionality moved to Inventory section ---
 
   useEffect(() => { loadFoods(); }, []);
 
@@ -97,14 +135,12 @@ export default function Menu() {
   const activeFilterCount = [
     search.trim() !== "",
     catFilter !== "all",
-    stockFilter !== "all",
   ].filter(Boolean).length;
 
   const clearFilters = () => {
     setSearch("");
     setCatFilter("all");
     setSortBy("az");
-    setStockFilter("all");
   };
 
   const filtered = useMemo(() => {
@@ -112,10 +148,7 @@ export default function Menu() {
     let result = foods.filter(f => {
       const matchesCat    = catFilter === "all" || f.category === catFilter;
       const matchesSearch = !q || f.name.toLowerCase().includes(q) || f.category?.toLowerCase().includes(q);
-      const matchesStock  = stockFilter === "all" ? true
-        : stockFilter === "in" ? f.inStock !== false
-        : f.inStock === false;
-      return matchesCat && matchesSearch && matchesStock;
+      return matchesCat && matchesSearch;
     });
     result.sort((a, b) => {
       if (sortBy === "az")      return a.name.localeCompare(b.name);
@@ -125,9 +158,7 @@ export default function Menu() {
       return 0;
     });
     return result;
-  }, [foods, search, catFilter, sortBy, stockFilter]);
-
-  const outOfStockCount = foods.filter(f => f.inStock === false).length;
+  }, [foods, search, catFilter, sortBy]);
 
   const selectStyle = {
     width: "100%", padding: "9px 12px", borderRadius: 10,
@@ -149,20 +180,6 @@ export default function Menu() {
             ({filtered.length}{filtered.length !== foods.length ? ` of ${foods.length}` : ""} items)
           </span>
         </h2>
-        {outOfStockCount > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 10 }}>
-            <span style={{ fontSize: 14 }}>⚠️</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#92400e" }}>
-              {outOfStockCount} item{outOfStockCount !== 1 ? "s" : ""} out of stock
-            </span>
-            <button
-              onClick={() => setStockFilter("out")}
-              style={{ background: "none", border: "none", color: "#b45309", fontWeight: 800, fontSize: 12, cursor: "pointer", textDecoration: "underline", padding: 0 }}
-            >
-              View
-            </button>
-          </div>
-        )}
       </div>
 
       {!loading && (
@@ -224,15 +241,6 @@ export default function Menu() {
             </div>
 
             <div>
-              <div style={labelStyle}>Stock Status</div>
-              <select value={stockFilter} onChange={e => setStockFilter(e.target.value)} style={selectStyle}>
-                <option value="all">All Items</option>
-                <option value="in">In Stock</option>
-                <option value="out">Out of Stock</option>
-              </select>
-            </div>
-
-            <div>
               <div style={labelStyle}>Price Range</div>
               <select style={selectStyle} defaultValue="all">
                 <option value="all">All Prices</option>
@@ -287,38 +295,21 @@ export default function Menu() {
       ) : (
         <div className="list">
           {filtered.map(f => {
-            const isInStock = f.inStock !== false;
             return (
-              <div key={f._id} className="list-row" style={{ opacity: isInStock ? 1 : 0.75 }}>
+              <div key={f._id} className="list-row">
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ position: "relative" }}>
                     <img
                       src={`${BASE_URL}/images/${f.image}`}
                       alt={f.name}
                       style={{ width: 52, height: 52, borderRadius: 10, objectFit: "cover",
-                        border: "1px solid #e2e8f0",
-                        filter: isInStock ? "none" : "grayscale(60%)" }}
+                        border: "1px solid #e2e8f0" }}
                       onError={e => { e.target.style.display = "none"; }}
                     />
-                    {!isInStock && (
-                      <div style={{
-                        position: "absolute", inset: 0, borderRadius: 10,
-                        background: "rgba(0,0,0,0.45)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        <span style={{ fontSize: 18 }}>🚫</span>
-                      </div>
-                    )}
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ fontWeight: 700 }}>
                       {f.name}
-                      {!isInStock && (
-                        <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 7px",
-                          borderRadius: 999, background: "#fee2e2", color: "#991b1b" }}>
-                          OUT OF STOCK
-                        </span>
-                      )}
                     </div>
                     <div className="muted" style={{ fontSize: 12 }}>{f.category}</div>
                   </div>
@@ -327,35 +318,21 @@ export default function Menu() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ fontWeight: 700 }}>AED {f.price}</div>
 
-                  <button
-                    onClick={() => toggleStock(f)}
+                  <button 
+                    onClick={() => toggleItemAvailability(f._id, f.inStock ?? true)}
                     disabled={toggling[f._id]}
-                    title={isInStock ? "Mark as out of stock" : "Mark as in stock"}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-                      cursor: toggling[f._id] ? "wait" : "pointer",
-                      border: isInStock ? "1px solid #bbf7d0" : "1px solid #fca5a5",
-                      background: isInStock ? "#f0fdf4" : "#fff1f1",
-                      color: isInStock ? "#166534" : "#dc2626",
-                      transition: "all 0.15s",
-                      opacity: toggling[f._id] ? 0.6 : 1,
-                    }}
-                  >
-                    <div style={{
-                      width: 28, height: 16, borderRadius: 999,
-                      background: isInStock ? "#22c55e" : "#d1d5db",
-                      position: "relative", transition: "background 0.2s", flexShrink: 0,
+                    style={{ 
+                      padding: "6px 14px", 
+                      borderRadius: 8, 
+                      border: (f.inStock ?? true) ? "1px solid #86efac" : "1px solid #fca5a5",
+                      background: (f.inStock ?? true) ? "#f0fdf4" : "#fff1f1", 
+                      color: (f.inStock ?? true) ? "#16a34a" : "#dc2626", 
+                      fontWeight: 700,
+                      cursor: toggling[f._id] ? "not-allowed" : "pointer", 
+                      fontSize: 13,
+                      opacity: toggling[f._id] ? 0.6 : 1
                     }}>
-                      <div style={{
-                        position: "absolute", top: 2,
-                        left: isInStock ? 14 : 2,
-                        width: 12, height: 12, borderRadius: "50%",
-                        background: "white", transition: "left 0.2s",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                      }} />
-                    </div>
-                    {toggling[f._id] ? "…" : isInStock ? "In Stock" : "Out of Stock"}
+                    {(f.inStock ?? true) ? "✓ ON" : "✕ OFF"}
                   </button>
 
                   <button onClick={() => navigate(`/edit-food/${f._id}`)}

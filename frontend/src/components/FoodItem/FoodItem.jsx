@@ -129,13 +129,13 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
               <span style={{ color: 'white', fontWeight: 800, fontSize: 13,
                 background: 'rgba(0,0,0,0.5)', padding: '4px 12px',
                 borderRadius: 20, letterSpacing: '0.5px' }}>
-                Out of Stock
+                Not Available
               </span>
             </div>
           )}
 
           {/* Unavailable — restaurant disabled */}
-          {!restActive && inStock && (
+          {!restActive && (
             <div style={{
               position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
               display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -152,7 +152,7 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
           )}
 
           {/* Closed overlay */}
-          {!restaurantOpen && restActive && inStock && (
+          {!restaurantOpen && restActive && (
             <div style={{
               position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
               display: 'flex', flexDirection: 'column', alignItems: 'center',

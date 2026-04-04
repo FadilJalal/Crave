@@ -33,12 +33,16 @@ const upload = multer({
 foodRouter.get("/list/public", async (req, res) => {
   try {
     const foods = await foodModel
-      .find({})
+      .find({ inStock: true })
       .populate("restaurantId", "name logo isActive openingHours location deliveryRadius minimumOrder deliveryTiers")
       .lean();
+    
+    console.log(`[PUBLIC API] Returning ${foods.length} foods (filtered to inStock=true)`);
+    
     res.json({ success: true, data: foods });
   } catch (error) {
-    res.json({ success: false, message: "Error listing foods" });
+    console.error("[PUBLIC LIST ERROR]", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

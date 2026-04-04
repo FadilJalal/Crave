@@ -51,6 +51,55 @@ router.get("/foods", restaurantAuth, async (req, res) => {
   }
 });
 
+// ── Toggle food item availability ──────────────────────────────────────────
+router.post("/food/:id/toggle-availability", restaurantAuth, async (req, res) => {
+  try {
+    const { inStock } = req.body;
+    console.log(`[TOGGLE API] Item: ${req.params.id}, inStock: ${inStock}, restaurantId: ${req.restaurantId}`);
+    
+    if (inStock === undefined) {
+      return res.status(400).json({ success: false, message: "inStock is required" });
+    }
+    
+    // Ensure inStock is a proper boolean
+    const inStockBool = Boolean(inStock);
+    
+    // First verify the food exists
+    const beforeUpdate = await foodModel.findById(req.params.id);
+    console.log(`[BEFORE] Food found: ${!!beforeUpdate}, inStock was: ${beforeUpdate?.inStock}, restaurantId: ${beforeUpdate?.restaurantId}`);
+    
+    // Verify this restaurant owns this food
+    if (beforeUpdate && beforeUpdate.restaurantId.toString() !== req.restaurantId.toString()) {
+      return res.status(403).json({ success: false, message: "Unauthorized: You don't own this item" });
+    }
+    
+    // Update using direct update method
+    const result = await foodModel.updateOne(
+      { _id: req.params.id, restaurantId: req.restaurantId },
+      { $set: { inStock: inStockBool } }
+    );
+    console.log(`[UPDATE RESULT] Matched: ${result.matchedCount}, Modified: ${result.modifiedCount}`);
+    
+    // Fetch the updated document
+    const food = await foodModel.findById(req.params.id);
+    console.log(`[AFTER UPDATE] Food found: ${!!food}, inStock now: ${food?.inStock}`);
+    
+    if (!food) {
+      console.error(`[TOGGLE ERROR] Food not found for id: ${req.params.id}`);
+      return res.status(404).json({ success: false, message: "Food item not found" });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Item ${inStockBool ? "enabled" : "disabled"}`,
+      data: food 
+    });
+  } catch (e) {
+    console.error("Error toggling food availability:", e);
+    res.status(500).json({ success: false, message: "Failed to toggle availability" });
+  }
+});
+
 // ── Add food (with customizations) ────────────────────────────────────────
 router.post("/food/add", restaurantAuth, upload.single("image"), async (req, res) => {
   try {

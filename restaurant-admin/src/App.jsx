@@ -16,7 +16,12 @@ import Customers from "./Pages/Customers";
 import Messages from "./Pages/Messages";
 import Reviews from "./Pages/Reviews";
 import AIInsights from "./Pages/AIInsights";
+import AIMenuGenerator from "./Pages/AIMenuGenerator";
+import AIPriceOptimization from "./Pages/AIPriceOptimization";
+import AICustomerSegmentation from "./Pages/AICustomerSegmentation";
 import Inventory from "./Pages/Inventory";
+import InventoryAnalytics from "./Pages/InventoryAnalytics";
+import ProtectedFeature from "./components/ProtectedFeature";
 
 export default function App() {
   return (
@@ -28,10 +33,10 @@ export default function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/menu" element={<ProtectedRoute><Menu /></ProtectedRoute>} />
-      <Route path="/add-food" element={<ProtectedRoute><AddFood /></ProtectedRoute>} />
-      <Route path="/bulk-upload" element={<ProtectedRoute><BulkUpload /></ProtectedRoute>} />
-      <Route path="/edit-food/:id" element={<ProtectedRoute><EditFood /></ProtectedRoute>} />
+      <Route path="/menu" element={<ProtectedRoute><ProtectedFeature featureName="menu"><Menu /></ProtectedFeature></ProtectedRoute>} />
+      <Route path="/add-food" element={<ProtectedRoute><ProtectedFeature featureName="menu"><AddFood /></ProtectedFeature></ProtectedRoute>} />
+      <Route path="/bulk-upload" element={<ProtectedRoute><ProtectedFeature featureName="bulkUpload"><BulkUpload /></ProtectedFeature></ProtectedRoute>} />
+      <Route path="/edit-food/:id" element={<ProtectedRoute><ProtectedFeature featureName="menu"><EditFood /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/promos" element={<ProtectedRoute><Promos /></ProtectedRoute>} />
@@ -41,7 +46,11 @@ export default function App() {
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
       <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
       <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+      <Route path="/inventory/analytics" element={<ProtectedRoute><InventoryAnalytics /></ProtectedRoute>} />
       <Route path="/ai-insights" element={<ProtectedRoute><AIInsights /></ProtectedRoute>} />
+      <Route path="/ai-menu-generator" element={<ProtectedRoute><AIMenuGenerator /></ProtectedRoute>} />
+      <Route path="/ai-price-optimization" element={<ProtectedRoute><AIPriceOptimization /></ProtectedRoute>} />
+      <Route path="/ai-customer-segmentation" element={<ProtectedRoute><AICustomerSegmentation /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

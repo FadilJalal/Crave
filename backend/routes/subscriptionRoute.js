@@ -10,9 +10,181 @@ const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
 const subRouter = express.Router();
 
 const PLANS = {
-  basic: { name: "Basic", price: 299 },
-  pro:   { name: "Pro",   price: 399 },
+  starter: {
+    tier: 1,
+    name: "Starter",
+    price: 299,
+    description: "Perfect for small restaurants",
+    billingPeriod: "month",
+    features: {
+      // Basic Features
+      dashboard: true,
+      orders: true,
+      menu: true,
+      messages: true,
+      reviews: true,
+      menuItems: true,
+      bulkUpload: true,
+      // Marketing
+      promoCodes: true,
+      broadcasts: false,
+      emailCampaigns: false,
+      // Advanced
+      inventory: false,
+      inventoryAnalytics: false,
+      customers: false,
+      aiInsights: false,
+      aiMenuGenerator: false,
+      aIPriceOptimization: false,
+      aiCustomerSegmentation: false,
+      analytics: false,
+    },
+  },
+  professional: {
+    tier: 2,
+    name: "Professional",
+    price: 399,
+    description: "For growing restaurants",
+    billingPeriod: "month",
+    features: {
+      // Basic Features
+      dashboard: true,
+      orders: true,
+      menu: true,
+      messages: true,
+      reviews: true,
+      menuItems: true,
+      bulkUpload: true,
+      // Marketing
+      promoCodes: true,
+      broadcasts: true,
+      emailCampaigns: true,
+      // Advanced
+      inventory: true,
+      inventoryAnalytics: true,
+      customers: true,
+      aiInsights: true,
+      aiMenuGenerator: true,
+      aIPriceOptimization: true,
+      aiCustomerSegmentation: true,
+      analytics: true,
+    },
+  },
+  enterprise: {
+    tier: 3,
+    name: "Enterprise",
+    price: 599,
+    description: "For large & established restaurants",
+    billingPeriod: "month",
+    features: {
+      // Basic Features
+      dashboard: true,
+      orders: true,
+      menu: true,
+      messages: true,
+      reviews: true,
+      menuItems: true,
+      bulkUpload: true,
+      // Marketing
+      promoCodes: true,
+      broadcasts: true,
+      emailCampaigns: true,
+      // Advanced
+      inventory: true,
+      inventoryAnalytics: true,
+      customers: true,
+      aiInsights: true,
+      aiMenuGenerator: true,
+      aIPriceOptimization: true,
+      aiCustomerSegmentation: true,
+      analytics: true,
+    },
+  },
 };
+
+// ── SIMPLE TEST: Check if API is working ─────────────────────────────────
+subRouter.get("/health", async (req, res) => {
+  res.json({ 
+    success: true, 
+    message: "✅ Subscription API is working!",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ── Restaurant: confirm payment and activate subscription ──────────────────
+subRouter.post("/confirm-payment", restaurantAuth, async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) return res.json({ success: false, message: "Session ID required" });
+    
+    if (!stripe) return res.json({ success: false, message: "Stripe not configured" });
+
+    // Retrieve the session from Stripe
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    console.log("🔍 Retrieved Stripe session:", {
+      id: session.id,
+      status: session.payment_status,
+      metadata: session.metadata,
+    });
+
+    // Check if payment was successful
+    if (session.payment_status !== "paid") {
+      return res.json({ 
+        success: false, 
+        message: "Payment not completed",
+        paymentStatus: session.payment_status 
+      });
+    }
+
+    // Get metadata
+    const { plan, months, price } = session.metadata || {};
+    if (!plan || !months) {
+      return res.json({ success: false, message: "Invalid session metadata" });
+    }
+
+    const planInfo = PLANS[plan];
+    if (!planInfo) {
+      return res.json({ success: false, message: "Invalid plan" });
+    }
+
+    // Update subscription
+    const startDate = new Date();
+    const expiresAt = new Date();
+    expiresAt.setMonth(expiresAt.getMonth() + Number(months));
+
+    console.log("✅ CONFIRMING PAYMENT: Updating subscription");
+    const result = await restaurantModel.findByIdAndUpdate(
+      req.restaurantId,
+      {
+        "subscription.plan": plan,
+        "subscription.tier": planInfo.tier,
+        "subscription.status": "active",
+        "subscription.startDate": startDate,
+        "subscription.expiresAt": expiresAt,
+        "subscription.price": Number(price || planInfo.price),
+        "subscription.features": planInfo.features,
+        "subscription.notes": "Stripe payment confirmed via checkout session",
+        isActive: true,
+      },
+      { new: true }
+    );
+
+    console.log("✅ Subscription activated:", {
+      plan: result.subscription.plan,
+      status: result.subscription.status,
+      expiresAt: result.subscription.expiresAt,
+    });
+
+    res.json({
+      success: true,
+      message: "✅ Payment confirmed! Subscription activated.",
+      data: result.subscription,
+    });
+  } catch (err) {
+    console.error("❌ Confirm payment error:", err.message);
+    res.json({ success: false, message: err.message });
+  }
+});
 
 // ── Restaurant: create Stripe checkout ────────────────────────────────────
 subRouter.post("/checkout", restaurantAuth, async (req, res) => {
@@ -50,11 +222,11 @@ subRouter.post("/checkout", restaurantAuth, async (req, res) => {
         months: String(months),
         price:  String(planInfo.price),
       },
-      success_url: `${process.env.RESTAURANT_ADMIN_URL || "http://localhost:5175"}/subscription?success=1`,
+      success_url: `${process.env.RESTAURANT_ADMIN_URL || "http://localhost:5175"}/subscription?success=1&sessionId=${session.id}`,
       cancel_url:  `${process.env.RESTAURANT_ADMIN_URL || "http://localhost:5175"}/subscription?cancelled=1`,
     });
 
-    res.json({ success: true, url: session.url });
+    res.json({ success: true, url: session.url, sessionId: session.id });
   } catch (err) {
     console.error("[sub/checkout]", err);
     res.json({ success: false, message: "Failed to create checkout session." });
@@ -76,23 +248,127 @@ subRouter.post("/webhook", express.raw({ type: "application/json" }), async (req
 
   if (event.type === "checkout.session.completed") {
     const { restaurantId, plan, months, price } = event.data.object.metadata || {};
+    console.log("✅ Webhook received:", { restaurantId, plan, months, price });
+    
     if (restaurantId && plan && months) {
-      const startDate = new Date();
-      const expiresAt = new Date();
-      expiresAt.setMonth(expiresAt.getMonth() + Number(months));
-      await restaurantModel.findByIdAndUpdate(restaurantId, {
-        "subscription.plan":      plan,
-        "subscription.status":    "active",
-        "subscription.startDate": startDate,
-        "subscription.expiresAt": expiresAt,
-        "subscription.price":     Number(price),
-        "subscription.notes":     "Self-serve payment via Stripe",
-        isActive: true,
-      });
+      const planInfo = PLANS[plan];
+      if (planInfo) {
+        const startDate = new Date();
+        const expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + Number(months));
+        
+        console.log("📝 Updating subscription:", {
+          plan,
+          status: "active",
+          expiresAt,
+          price: Number(price),
+        });
+        
+        const result = await restaurantModel.findByIdAndUpdate(restaurantId, {
+          "subscription.plan":      plan,
+          "subscription.tier":      planInfo.tier,
+          "subscription.status":    "active",
+          "subscription.startDate": startDate,
+          "subscription.expiresAt": expiresAt,
+          "subscription.price":     Number(price),
+          "subscription.features":  planInfo.features,
+          "subscription.notes":     "Self-serve payment via Stripe",
+          isActive: true,
+        }, { new: true });
+        
+        console.log("✅ Update result:", result?.subscription);
+      } else {
+        console.error("❌ Plan not found:", plan);
+      }
+    } else {
+      console.error("❌ Missing metadata:", { restaurantId, plan, months });
     }
+  } else {
+    console.log("ℹ️ Event type ignored:", event.type);
   }
 
   res.json({ received: true });
+});
+
+// ── TEST: Manually trigger webhook (for testing only) ──────────────────────
+subRouter.post("/test-webhook", restaurantAuth, async (req, res) => {
+  try {
+    const { plan, months, price } = req.body;
+    if (!plan || !months) {
+      return res.json({ success: false, message: "Missing plan or months" });
+    }
+
+    const restaurantId = req.restaurantId;
+    const planInfo = PLANS[plan];
+    
+    if (!planInfo) {
+      return res.json({ success: false, message: "Invalid plan" });
+    }
+
+    const startDate = new Date();
+    const expiresAt = new Date();
+    expiresAt.setMonth(expiresAt.getMonth() + Number(months));
+
+    console.log("🧪 TEST WEBHOOK: Simulating payment completion");
+    console.log("📝 Updating subscription:", {
+      restaurantId,
+      plan,
+      status: "active",
+      expiresAt,
+    });
+
+    const result = await restaurantModel.findByIdAndUpdate(
+      restaurantId,
+      {
+        "subscription.plan": plan,
+        "subscription.tier": planInfo.tier,
+        "subscription.status": "active",
+        "subscription.startDate": startDate,
+        "subscription.expiresAt": expiresAt,
+        "subscription.price": Number(price || planInfo.price),
+        "subscription.features": planInfo.features,
+        "subscription.notes": "TEST: Manual webhook trigger",
+        isActive: true,
+      },
+      { new: true }
+    );
+
+    console.log("✅ TEST UPDATE SUCCEEDED:", result?.subscription);
+
+    res.json({
+      success: true,
+      message: "Test webhook executed. Reload your subscription page.",
+      data: result?.subscription,
+    });
+  } catch (err) {
+    console.error("❌ TEST WEBHOOK ERROR:", err);
+    res.json({ success: false, message: err.message });
+  }
+});
+
+// ── TEST: Check current subscription data ────────────────────────────────────
+subRouter.get("/test-data", restaurantAuth, async (req, res) => {
+  try {
+    const restaurant = await restaurantModel
+      .findById(req.restaurantId)
+      .select("_id name subscription isActive");
+    
+    console.log("🔍 DEBUG DATA:");
+    console.log("Restaurant ID:", restaurant._id);
+    console.log("Restaurant Name:", restaurant.name);
+    console.log("Full Subscription Object:", JSON.stringify(restaurant.subscription, null, 2));
+
+    res.json({
+      success: true,
+      restaurantId: restaurant._id,
+      restaurantName: restaurant.name,
+      subscription: restaurant.subscription || {},
+      isActive: restaurant.isActive,
+    });
+  } catch (err) {
+    console.error("❌ Test data error:", err);
+    res.json({ success: false, message: err.message });
+  }
 });
 
 // ── Restaurant: view own subscription ─────────────────────────────────────
@@ -109,6 +385,19 @@ subRouter.get("/mine", restaurantAuth, async (req, res) => {
       ? Math.ceil((new Date(sub.expiresAt) - now) / (1000 * 60 * 60 * 24))
       : null;
 
+    console.log("📊 Subscription data retrieved:", {
+      plan: sub.plan || "none",
+      status: sub.status || "trial",
+      expiresAt: sub.expiresAt,
+      daysLeft,
+    });
+
+    const baseFeatures = { ...PLANS.starter.features };
+    const mergedFeatures = {
+      ...baseFeatures,
+      ...(sub.features && typeof sub.features === "object" ? sub.features : {}),
+    };
+
     res.json({
       success: true,
       data: {
@@ -121,6 +410,7 @@ subRouter.get("/mine", restaurantAuth, async (req, res) => {
         expiringSoon: daysLeft !== null && daysLeft <= 7 && daysLeft > 0,
         isExpired:    daysLeft !== null && daysLeft <= 0,
         isActive:     restaurant.isActive,
+        features:     mergedFeatures,
       },
     });
   } catch (err) {
@@ -189,10 +479,12 @@ subRouter.post("/assign", adminAuth, async (req, res) => {
       restaurantId,
       {
         "subscription.plan":      plan,
+        "subscription.tier":      planInfo.tier,
         "subscription.status":    "active",
         "subscription.startDate": startDate,
         "subscription.expiresAt": expiresAt,
         "subscription.price":     planInfo.price,
+        "subscription.features":  planInfo.features,
         "subscription.notes":     notes || "",
         isActive: true,
       },

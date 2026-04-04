@@ -1,4 +1,5 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import './RestaurantMenu.css';
 import axios from 'axios';
@@ -12,13 +13,61 @@ import SentimentSummary from '../../components/SentimentSummary/SentimentSummary
 
 const RestaurantMenu = () => {
   const { id } = useParams();
-  const { url, food_list } = useContext(StoreContext);
+  const [searchParams] = useSearchParams();
+  const { url, food_list, fetchFoodList } = useContext(StoreContext);
   const [restaurant, setRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('All');
   const [restaurantAvgRating, setRestaurantAvgRating] = useState(null);
   const [restaurantReviewCount, setRestaurantReviewCount] = useState(0);
   const navigate = useNavigate();
+
+  // ✅ Force refresh when admin toggles food (detects ?refresh= param from Menu.jsx hack)
+  useEffect(() => {
+    const refreshParam = searchParams.get('refresh');
+    if (refreshParam) {
+      console.log(`[MENU REFRESH] Admin food toggle detected (${refreshParam}), forcing immediate data refresh`);
+      fetchFoodList();
+      
+      // Also refetch restaurant data
+      const fetchRestaurant = async () => {
+        try {
+          const [restRes, reviewRes] = await Promise.all([
+            axios.get(`${url}/api/restaurant/list`),
+            axios.get(`${url}/api/review/restaurant/${id}`),
+          ]);
+          if (restRes.data.success) {
+            const found = restRes.data.data.find((r) => String(r._id) === String(id));
+            setRestaurant(found || null);
+          }
+          if (reviewRes.data.success) {
+            setRestaurantAvgRating(reviewRes.data.avgRating || 0);
+            setRestaurantReviewCount(reviewRes.data.total || 0);
+          }
+        } catch (err) {
+          console.error('[MENU REFRESH] Restaurant refetch failed:', err);
+        }
+      };
+      fetchRestaurant();
+      
+      // Clean URL param without reload
+      const urlObj = new URL(window.location);
+      urlObj.searchParams.delete('refresh');
+      window.history.replaceState({}, '', urlObj.toString());
+    }
+  }, [searchParams, fetchFoodList, url, id]);
+
+  // Refresh food list when page loads and periodically to catch updates
+  useEffect(() => {
+    console.log(`[MENU] Mounted, calling fetchFoodList immediately`);
+    fetchFoodList();
+    // Poll for updates every 5 seconds while viewing menu
+    const interval = setInterval(() => {
+      console.log(`[MENU] Polling for updates...`);
+      fetchFoodList();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [id]);
 
   useEffect(() => {
     const fetchRestaurant = async () => {
