@@ -16,6 +16,42 @@ function tokenize(text = "") {
     .filter((w) => w.length >= 2);
 }
 
+function extractBudget(question = "") {
+  const q = String(question).toLowerCase();
+  if (!/under\s*aed\s*\d+|under\s*\d+\s*aed|under\s*\d+|below\s*\d+|less than\s*\d+/i.test(q)) {
+    return null;
+  }
+  const n = Number(q.match(/(\d+)/)?.[1] || 0);
+  return n > 0 ? n : null;
+}
+
+function buildStrictBudgetReply(question = "", items = []) {
+  const budget = extractBudget(question);
+  if (!budget) return null;
+
+  const valid = items
+    .filter((i) => Number(i.price) > 0 && Number(i.price) <= budget)
+    .sort((a, b) => Number(a.price) - Number(b.price))
+    .slice(0, 6);
+
+  if (valid.length) {
+    const lines = valid.map((i, idx) => `${idx + 1}. ${i.name} - AED ${Number(i.price)}`);
+    return `Great budget choice. Here are options under AED ${budget}:\n${lines.join("\n")}`;
+  }
+
+  const closest = items
+    .filter((i) => Number(i.price) > 0)
+    .sort((a, b) => Number(a.price) - Number(b.price))
+    .slice(0, 3)
+    .map((i) => `${i.name} (AED ${Number(i.price)})`);
+
+  if (closest.length) {
+    return `I could not find items under AED ${budget}. Lowest-priced options are: ${closest.join(", ")}.`;
+  }
+
+  return `I could not find priced items under AED ${budget} right now.`;
+}
+
 function formatAssistantReply(text = "") {
   const plain = String(text)
     // Remove markdown emphasis and code ticks.
@@ -35,7 +71,8 @@ function formatAssistantReply(text = "") {
 
   // Put numbered recommendations on separate lines for readability.
   // Only split single-digit list markers (1.-9.) to avoid breaking prices like "AED 42.".
-  const numbered = compact.replace(/\s([1-9]\.)\s/g, "\n$1 ");
+  const withFirstListBreak = compact.replace(/:\s([1-9]\.)\s/g, ":\n$1 ");
+  const numbered = withFirstListBreak.replace(/\s([1-9]\.)\s/g, "\n$1 ");
 
   // Keep paragraphs compact in chat bubble.
   return numbered
@@ -322,6 +359,12 @@ router.post("/", async (req, res) => {
     const menuItems = parseMenuContext(menuContext);
     const workingItems = menuItems.length ? menuItems : dbContext.foods;
     const scopedContext = buildScopedContext(q, dbContext, menuItems);
+
+    // Strict budget guard: never return items above budget for "under AED X" queries.
+    const budgetReply = buildStrictBudgetReply(q, workingItems);
+    if (budgetReply) {
+      return res.json({ success: true, reply: formatAssistantReply(budgetReply) });
+    }
 
     const mergedContext = {
       ...scopedContext,

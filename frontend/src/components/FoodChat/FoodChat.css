@@ -54,7 +54,7 @@
 .fc-bot  { align-items: flex-start; }
 .fc-msg { max-width: 85%; padding: 10px 14px; font-size: 13.5px; line-height: 1.55; border-radius: 16px; }
 .fc-msg-user { background: linear-gradient(135deg, var(--brand), #ff6a3d); color: #fff; border-radius: 16px 16px 4px 16px; }
-.fc-msg-bot  { background: var(--bg); color: var(--text); border-radius: 16px 16px 16px 4px; }
+.fc-msg-bot  { background: var(--bg); color: var(--text); border-radius: 16px 16px 16px 4px; white-space: pre-line; }
 
 .fc-typing { display: flex; align-items: center; gap: 5px; padding: 14px 18px; }
 .fc-typing span { width: 7px; height: 7px; background: var(--text-3); border-radius: 50%; animation: fc-dot 1.2s ease infinite; }
