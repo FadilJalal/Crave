@@ -140,8 +140,6 @@ export default function RestaurantLayout({ children }) {
 
           <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.6px", padding: "8px 12px 2px" }}>AI Tools</div>
           {link("/ai-insights",    "🧠 AI Insights")}
-          {link("/ai-menu-generator", "🍽️ AI Menu")}
-          {link("/ai-price-optimization", "💰 Price Optimizer")}
           {link("/ai-customer-segmentation", "👥 Customer Segmentation")}
 
           <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.6px", padding: "8px 12px 2px" }}>Account</div>

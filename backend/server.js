@@ -37,6 +37,15 @@ if (missingEnvVars.length > 0) {
   process.exit(1);
 }
 
+// ── Check optional AI configuration ──────────────────────────────────────────
+if (!process.env.GROQ_API_KEY) {
+  console.warn("⚠️  [OPTIONAL] GROQ_API_KEY not set — Real AI features disabled.");
+  console.warn("   Get free key at: https://console.groq.com/keys");
+  console.warn("   Then add GROQ_API_KEY to .env and restart server");
+} else {
+  console.log("✅ [AI] Groq API enabled — Real AI features active");
+}
+
 // ── Process-level crash guards ───────────────────────────────────────────────
 process.on("uncaughtException", (err) => {
   console.error("[FATAL] Uncaught Exception — server kept alive:", err.message);
@@ -102,8 +111,8 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   // Cache GET requests for 5 minutes
   if (req.method === "GET") {
-    // Don't cache auth, user, cart, order, or restaurant endpoints
-    if (!req.path.includes("/user") && !req.path.includes("/cart") && !req.path.includes("/order") && !req.path.includes("/restaurant")) {
+    // Don't cache endpoints where freshness matters for customer-visible state.
+    if (!req.path.includes("/user") && !req.path.includes("/cart") && !req.path.includes("/order") && !req.path.includes("/restaurant") && !req.path.includes("/food")) {
       res.set("Cache-Control", "public, max-age=300, must-revalidate");
     }
   }

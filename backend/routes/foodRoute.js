@@ -32,13 +32,19 @@ const upload = multer({
 // ── PUBLIC: customer food list (includes customizations) ───────────────────
 foodRouter.get("/list/public", async (req, res) => {
   try {
+    // Menu availability and counts must reflect admin changes immediately.
+    res.set({
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+      "Surrogate-Control": "no-store",
+    });
+
     const foods = await foodModel
-      .find({ inStock: true })
+      .find({})
       .populate("restaurantId", "name logo isActive openingHours location deliveryRadius minimumOrder deliveryTiers")
       .lean();
-    
-    console.log(`[PUBLIC API] Returning ${foods.length} foods (filtered to inStock=true)`);
-    
+
     res.json({ success: true, data: foods });
   } catch (error) {
     console.error("[PUBLIC LIST ERROR]", error);

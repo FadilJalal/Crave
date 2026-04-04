@@ -80,6 +80,8 @@ function weekdayLabel(dayKey) {
 export function isRestaurantOpen(r) {
   // No restaurant doc ⇒ do not treat as open (blocks ordering when data is broken).
   if (!r || typeof r !== "object") return false;
+  // Deactivated restaurants are never open.
+  if (r.isActive === false) return false;
   const hours =
     normalizeOpeningHours(r.openingHours) ||
     (r.openingHours && typeof r.openingHours === "object" ? r.openingHours : null);

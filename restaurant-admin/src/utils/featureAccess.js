@@ -55,8 +55,6 @@ export const FEATURE_DESCRIPTIONS = {
   
   // AI Features
   aiInsights: "AI-powered sales forecasts and insights",
-  aiMenuGenerator: "Auto-generate menu items with AI",
-  aIPriceOptimization: "AI-powered dynamic pricing recommendations",
   aiCustomerSegmentation: "Behavioral customer segmentation & targeting",
   
   // Analytics

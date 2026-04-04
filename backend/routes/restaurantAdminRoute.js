@@ -55,44 +55,44 @@ router.get("/foods", restaurantAuth, async (req, res) => {
 router.post("/food/:id/toggle-availability", restaurantAuth, async (req, res) => {
   try {
     const { inStock } = req.body;
-    console.log(`[TOGGLE API] Item: ${req.params.id}, inStock: ${inStock}, restaurantId: ${req.restaurantId}`);
-    
+    const foodId = req.params.id;
+    const restId = req.restaurantId;
+
+    console.log(`[TOGGLE] Request: foodId=${foodId}, restId=${restId}, inStock=${inStock}, type=${typeof inStock}`);
+
     if (inStock === undefined) {
+      console.log(`[TOGGLE] ERROR: inStock is undefined`);
       return res.status(400).json({ success: false, message: "inStock is required" });
     }
-    
-    // Ensure inStock is a proper boolean
-    const inStockBool = Boolean(inStock);
-    
-    // First verify the food exists
-    const beforeUpdate = await foodModel.findById(req.params.id);
-    console.log(`[BEFORE] Food found: ${!!beforeUpdate}, inStock was: ${beforeUpdate?.inStock}, restaurantId: ${beforeUpdate?.restaurantId}`);
-    
-    // Verify this restaurant owns this food
-    if (beforeUpdate && beforeUpdate.restaurantId.toString() !== req.restaurantId.toString()) {
-      return res.status(403).json({ success: false, message: "Unauthorized: You don't own this item" });
-    }
-    
-    // Update using direct update method
+
+    // Safe boolean parse — Boolean("false") === true which is a bug, so be explicit
+    const inStockBool = inStock === true || inStock === "true" || inStock === 1 || inStock === "1";
+    console.log(`[TOGGLE] Parsed boolean: ${inStockBool}`);
+
+    // Check if food exists first
+    const foodBefore = await foodModel.findById(foodId);
+    console.log(`[TOGGLE] Before: food found=${!!foodBefore}, owned by rest=${foodBefore?.restaurantId.toString() === restId.toString()}, was inStock=${foodBefore?.inStock}`);
+
     const result = await foodModel.updateOne(
-      { _id: req.params.id, restaurantId: req.restaurantId },
+      { _id: foodId, restaurantId: restId },
       { $set: { inStock: inStockBool } }
     );
-    console.log(`[UPDATE RESULT] Matched: ${result.matchedCount}, Modified: ${result.modifiedCount}`);
-    
-    // Fetch the updated document
-    const food = await foodModel.findById(req.params.id);
-    console.log(`[AFTER UPDATE] Food found: ${!!food}, inStock now: ${food?.inStock}`);
-    
-    if (!food) {
-      console.error(`[TOGGLE ERROR] Food not found for id: ${req.params.id}`);
-      return res.status(404).json({ success: false, message: "Food item not found" });
+
+    console.log(`[TOGGLE] Update: matched=${result.matchedCount}, modified=${result.modifiedCount}`);
+
+    if (result.matchedCount === 0) {
+      console.log(`[TOGGLE] ERROR: No match found! Food not owned by this restaurant`);
+      return res.status(404).json({ success: false, message: "Food item not found or not owned by you" });
     }
-    
-    res.json({ 
-      success: true, 
+
+    // Verify update worked
+    const foodAfter = await foodModel.findById(foodId);
+    console.log(`[TOGGLE] After: inStock=${foodAfter?.inStock}`);
+
+    res.json({
+      success: true,
       message: `Item ${inStockBool ? "enabled" : "disabled"}`,
-      data: food 
+      data: { _id: foodId, inStock: inStockBool }
     });
   } catch (e) {
     console.error("Error toggling food availability:", e);

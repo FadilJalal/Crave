@@ -16,8 +16,6 @@ import Customers from "./Pages/Customers";
 import Messages from "./Pages/Messages";
 import Reviews from "./Pages/Reviews";
 import AIInsights from "./Pages/AIInsights";
-import AIMenuGenerator from "./Pages/AIMenuGenerator";
-import AIPriceOptimization from "./Pages/AIPriceOptimization";
 import AICustomerSegmentation from "./Pages/AICustomerSegmentation";
 import Inventory from "./Pages/Inventory";
 import InventoryAnalytics from "./Pages/InventoryAnalytics";
@@ -48,8 +46,6 @@ export default function App() {
       <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
       <Route path="/inventory/analytics" element={<ProtectedRoute><InventoryAnalytics /></ProtectedRoute>} />
       <Route path="/ai-insights" element={<ProtectedRoute><AIInsights /></ProtectedRoute>} />
-      <Route path="/ai-menu-generator" element={<ProtectedRoute><AIMenuGenerator /></ProtectedRoute>} />
-      <Route path="/ai-price-optimization" element={<ProtectedRoute><AIPriceOptimization /></ProtectedRoute>} />
       <Route path="/ai-customer-segmentation" element={<ProtectedRoute><AICustomerSegmentation /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

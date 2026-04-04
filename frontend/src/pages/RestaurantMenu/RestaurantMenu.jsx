@@ -26,7 +26,6 @@ const RestaurantMenu = () => {
   useEffect(() => {
     const refreshParam = searchParams.get('refresh');
     if (refreshParam) {
-      console.log(`[MENU REFRESH] Admin food toggle detected (${refreshParam}), forcing immediate data refresh`);
       fetchFoodList();
       
       // Also refetch restaurant data
@@ -45,7 +44,7 @@ const RestaurantMenu = () => {
             setRestaurantReviewCount(reviewRes.data.total || 0);
           }
         } catch (err) {
-          console.error('[MENU REFRESH] Restaurant refetch failed:', err);
+          console.error('Restaurant refetch failed:', err);
         }
       };
       fetchRestaurant();
@@ -59,11 +58,9 @@ const RestaurantMenu = () => {
 
   // Refresh food list when page loads and periodically to catch updates
   useEffect(() => {
-    console.log(`[MENU] Mounted, calling fetchFoodList immediately`);
     fetchFoodList();
     // Poll for updates every 5 seconds while viewing menu
     const interval = setInterval(() => {
-      console.log(`[MENU] Polling for updates...`);
       fetchFoodList();
     }, 5000);
     return () => clearInterval(interval);
@@ -100,6 +97,8 @@ const RestaurantMenu = () => {
     return String(resId) === String(id);
   });
 
+
+
   const categories = ['All', ...new Set(menuItems.map(i => i.category))];
   const filtered = category === 'All' ? menuItems : menuItems.filter(i => i.category === category);
 
@@ -121,7 +120,35 @@ const RestaurantMenu = () => {
     </div>
   );
 
+  const restaurantActive = restaurant.isActive !== false;
   const openStatus = isRestaurantOpen(restaurant);
+
+  // Restaurant deactivated by admin — show clear message, no menu items
+  if (!restaurantActive) return (
+    <div className='rm-page'>
+      <div className='rm-hero'>
+        <button className='rm-back' onClick={() => navigate('/restaurants')}>← Back</button>
+      </div>
+      <div style={{
+        background: 'linear-gradient(135deg, #1f2937, #111827)',
+        borderRadius: 20, padding: '48px 32px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        gap: 16, textAlign: 'center',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+      }}>
+        <div style={{ fontSize: 56 }}>🚫</div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: 'white' }}>Menu Not Available</div>
+        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', maxWidth: 340, lineHeight: 1.7 }}>
+          This restaurant's menu is currently unavailable. Please check back later.
+        </div>
+        <button onClick={() => navigate('/restaurants')} style={{
+          marginTop: 12, padding: '12px 28px',
+          background: '#ff4e2a', color: '#fff', border: 'none',
+          borderRadius: 50, fontWeight: 800, fontSize: 14, cursor: 'pointer',
+        }}>← Browse other restaurants</button>
+      </div>
+    </div>
+  );
 
   return (
     <div className='rm-page'>
@@ -230,22 +257,22 @@ const RestaurantMenu = () => {
             transition: 'filter 0.3s, opacity 0.3s',
           }}>
             {filtered.map(item => (
-              <FoodItem
-                key={item._id}
-                id={item._id}
-                name={item.name}
-                description={item.description}
-                price={item.price}
-                image={item.image}
-                restaurantId={item.restaurantId}
-                customizations={item.customizations || []}
-                avgRating={item.avgRating || 0}
-                ratingCount={item.ratingCount || 0}
-                inStock={item.inStock !== false}
-                restaurantOpen={openStatus}
-                restaurantActive={restaurant?.isActive !== false}
-              />
-            ))}
+                <FoodItem
+                  key={item._id}
+                  id={item._id}
+                  name={item.name}
+                  description={item.description}
+                  price={item.price}
+                  image={item.image}
+                  restaurantId={item.restaurantId}
+                  customizations={item.customizations || []}
+                  avgRating={item.avgRating || 0}
+                  ratingCount={item.ratingCount || 0}
+                  inStock={item.inStock !== false}
+                  restaurantOpen={openStatus}
+                  restaurantActive={restaurantActive}
+                />
+              ))}
           </div>
         </div>
       )}

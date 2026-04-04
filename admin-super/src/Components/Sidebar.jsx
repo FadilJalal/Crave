@@ -89,9 +89,6 @@ export default function Sidebar() {
           <NavLink to="/messages" end>
             💬 Messages
           </NavLink>
-          <NavLink to="/ai-hub" end>
-            🤖 AI Hub
-          </NavLink>
         </nav>
       </div>
 

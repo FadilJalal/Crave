@@ -52,8 +52,6 @@ const restaurantSchema = new mongoose.Schema(
         customers:             { type: Boolean, default: false },
         // AI Features
         aiInsights:            { type: Boolean, default: false },
-        aiMenuGenerator:       { type: Boolean, default: false },
-        aIPriceOptimization:   { type: Boolean, default: false },
         aiCustomerSegmentation:{ type: Boolean, default: false },
         // Analytics
         analytics:             { type: Boolean, default: false },

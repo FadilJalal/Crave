@@ -168,16 +168,14 @@ const StoreContextProvider = (props) => {
   const fetchFoodList = async () => {
     try {
       setFoodListError(false);
-      console.log(`[FETCH] Getting food list from /api/food/list/public`);
-      // Add cache-busting parameter to force fresh data
       const response = await axios.get(url + "/api/food/list/public", {
-        params: { _t: Date.now() }
+        params: { t: Date.now() },
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
       });
       if (response.data?.data) {
-        console.log(`[FETCH] Got ${response.data.data.length} items`);
-        response.data.data.forEach(f => {
-          if (!f.inStock) console.log(`  [FETCH] ${f.name} inStock FALSE`);
-        });
         setFoodList(response.data.data);
         try {
           localStorage.setItem("crave_food_cache", JSON.stringify(response.data.data));

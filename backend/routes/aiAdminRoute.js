@@ -41,6 +41,8 @@ router.get("/fraud-alerts", adminAuth, async (req, res) => {
       });
     }
 
+
+        // ── 17. CUSTOMER SEGMENTATION ───────────────────────────────────────────────
     // Rule 3: Many cancellations
     const cancelled = await orderModel.find({ createdAt: { $gte: ago }, status: "Cancelled" }).lean();
     const cancelCnt = {};
@@ -197,6 +199,162 @@ router.get("/restaurant-scores", adminAuth, async (req, res) => {
   } catch (e) {
     console.error("[ai/scores]", e);
     res.json({ success: false, message: "Scoring failed" });
+  }
+});
+
+// ── 16. AI INSIGHTS ─────────────────────────────────────────────────────────
+router.get("/insights", adminAuth, async (req, res) => {
+  try {
+    const [orders, users, restaurants, foods, reviews] = await Promise.all([
+      orderModel.find().lean(),
+      userModel.find().lean(),
+      restaurantModel.find().lean(),
+      foodModel.find().lean(),
+      reviewModel.find().lean(),
+    ]);
+
+    const totalOrders = orders.length;
+    const totalRevenue = orders.reduce((s, o) => s + (o.amount || 0), 0);
+    const totalUsers = users.length;
+    const activeUsers = new Set(orders.map(o => String(o.userId))).size;
+    const avgOrderValue = totalOrders > 0 ? Math.round(2 * totalRevenue / totalOrders) / 2 : 0;
+    const avgRating = reviews.length > 0 ? Math.round(10 * reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) / 10 : 0;
+
+    const cancelledOrders = orders.filter(o => o.status === "Cancelled").length;
+    const cancellationRate = totalOrders > 0 ? Math.round(1000 * cancelledOrders / totalOrders) / 10 : 0;
+
+    const lastMonth = new Date(Date.now() - 30 * 864e5);
+    const monthOrders = orders.filter(o => new Date(o.createdAt) >= lastMonth).length;
+    const monthRevenue = orders.filter(o => new Date(o.createdAt) >= lastMonth).reduce((s, o) => s + (o.amount || 0), 0);
+
+    const topRestaurants = restaurants.slice(0, 3).map(r => ({
+      name: r.name,
+      orders: orders.filter(o => String(o.restaurantId) === String(r._id) && o.status !== "Cancelled").length,
+      revenue: Math.round(orders.filter(o => String(o.restaurantId) === String(r._id) && o.status !== "Cancelled").reduce((s, o) => s + (o.amount || 0), 0)),
+    }));
+
+    const recommendations = [];
+    if (cancellationRate > 10) recommendations.push("High cancellation rate detected. Consider reviewing restaurant quality or delivery speed.");
+    if (activeUsers < totalUsers * 0.3) recommendations.push("Low repeat user rate. Focus on customer retention campaigns.");
+    if (avgOrderValue < 50) recommendations.push("Average order value is low. Consider bundling strategies or promotions.");
+    if (monthOrders < totalOrders / 3) recommendations.push("Monthly orders trending down. Launch targeted promotions.");
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          totalOrders,
+          totalRevenue: Math.round(totalRevenue),
+          avgOrderValue,
+          totalUsers,
+          activeUsers,
+          avgPlatformRating: avgRating,
+          cancellationRate,
+        },
+        monthComparison: { orders: monthOrders, revenue: Math.round(monthRevenue) },
+        topRestaurants,
+        recommendations,
+      },
+    });
+  } catch (e) {
+    console.error("[ai/insights]", e);
+    res.json({ success: false, message: "Insights analysis failed" });
+  }
+});
+
+
+// ── 17. CUSTOMER SEGMENTATION ───────────────────────────────────────────────
+router.get("/customer-segments", adminAuth, async (req, res) => {
+  try {
+    const [users, orders] = await Promise.all([
+      userModel.find().lean(),
+      orderModel.find().lean(),
+    ]);
+
+    const userProfiles = {};
+    users.forEach(u => {
+      userProfiles[String(u._id)] = {
+        _id: u._id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        totalOrders: 0,
+        totalSpent: 0,
+        lastOrderDate: null,
+        daysActive: 0,
+        firstOrderDate: null,
+        avgOrderValue: 0,
+      };
+    });
+
+    orders.forEach(o => {
+      const uid = String(o.userId);
+      if (userProfiles[uid]) {
+        userProfiles[uid].totalOrders++;
+        userProfiles[uid].totalSpent += o.amount || 0;
+        userProfiles[uid].lastOrderDate = new Date(o.createdAt);
+        if (!userProfiles[uid].firstOrderDate) userProfiles[uid].firstOrderDate = new Date(o.createdAt);
+      }
+    });
+
+    Object.values(userProfiles).forEach(u => {
+      if (u.firstOrderDate && u.lastOrderDate) {
+        u.daysActive = Math.ceil((u.lastOrderDate - u.firstOrderDate) / (1000 * 60 * 60 * 24));
+      }
+      u.avgOrderValue = u.totalOrders > 0 ? Math.round(100 * u.totalSpent / u.totalOrders) / 100 : 0;
+    });
+
+    // Segment users
+    const segments = { vip: [], loyal: [], occasional: [], atRisk: [], dormant: [], new: [] };
+
+    const now = Date.now();
+    Object.values(userProfiles).forEach(u => {
+      if (u.totalOrders === 0) {
+        segments.new.push(u);
+      } else if (u.totalOrders >= 20 && u.totalSpent >= 1000) {
+        segments.vip.push(u);
+      } else if (u.totalOrders >= 10 && u.avgOrderValue >= 100) {
+        segments.loyal.push(u);
+      } else if (u.totalOrders >= 3 && u.totalOrders < 10) {
+        const daysSinceOrder = u.lastOrderDate ? (now - u.lastOrderDate) / (1000 * 60 * 60 * 24) : 999;
+        if (daysSinceOrder > 30) segments.atRisk.push(u);
+        else segments.occasional.push(u);
+      } else if (u.totalOrders <= 2) {
+        segments.atRisk.push(u);
+      }
+
+      if (u.lastOrderDate && (now - u.lastOrderDate) / (1000 * 60 * 60 * 24) > 90) {
+        segments.dormant.push(u);
+        const idx = Object.values(segments).flat().findIndex(x => x._id === u._id);
+      }
+    });
+
+    const segmentSummary = Object.entries(segments).map(([name, users]) => ({
+      name,
+      count: users.length,
+      avgSpent: users.length > 0 ? Math.round(users.reduce((s, u) => s + u.totalSpent, 0) / users.length) : 0,
+      avgOrders: users.length > 0 ? Math.round(10 * users.reduce((s, u) => s + u.totalOrders, 0) / users.length) / 10 : 0,
+      recommendation: {
+        vip: "VIP rewards, exclusive offers, priority support",
+        loyal: "Cross-sell, referral bonuses, special discounts",
+        occasional: "Engagement campaigns, feedback collection",
+        atRisk: "Re-engagement offers, surveys to understand churn",
+        dormant: "Win-back campaigns, special incentives",
+        new: "Onboarding, first-order discount, track experience",
+      }[name],
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        segments: segmentSummary,
+        total: users.length,
+        detailedSegments: segments,
+      },
+    });
+  } catch (e) {
+    console.error("[ai/customer-segments]", e);
+    res.json({ success: false, message: "Customer segmentation failed" });
   }
 });
 

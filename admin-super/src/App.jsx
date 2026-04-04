@@ -10,7 +10,6 @@ import FoodAdd from "./pages/FoodAdd";
 import Subscriptions from "./pages/Subscriptions";
 import Broadcast from "./pages/Broadcast";
 import Messages from "./pages/Messages";
-import AIHub from "./pages/AIHub";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 
@@ -30,7 +29,6 @@ export default function App() {
       <Route path="/subscriptions" element={<ProtectedRoute><Layout><Subscriptions /></Layout></ProtectedRoute>} />
       <Route path="/broadcast" element={<ProtectedRoute><Layout><Broadcast /></Layout></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><Layout><Messages /></Layout></ProtectedRoute>} />
-      <Route path="/ai-hub" element={<ProtectedRoute><Layout><AIHub /></Layout></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
