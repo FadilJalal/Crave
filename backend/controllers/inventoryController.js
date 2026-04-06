@@ -1,32 +1,80 @@
 import inventoryModel from "../models/inventoryModel.js";
 
+const normalizeLinkedMenuItems = (linkedMenuItems = []) => {
+    const deduped = new Map();
+
+    linkedMenuItems.forEach((link, index) => {
+        const populatedFood = link?.foodId && typeof link.foodId === "object" && link.foodId.name
+            ? link.foodId
+            : null;
+        const rawFoodId = link?._rawFoodId || (populatedFood?._id ? String(populatedFood._id) : (link?.foodId ? String(link.foodId) : ""));
+        const key = rawFoodId || `missing-${index}`;
+
+        deduped.set(key, {
+            ...link,
+            foodId: populatedFood || rawFoodId || null,
+            quantityPerOrder: Number(link?.quantityPerOrder) || 0,
+            resolvedFoodId: rawFoodId || null,
+            resolvedFoodName: populatedFood?.name || null,
+            isMissingFood: !populatedFood,
+        });
+    });
+
+    return Array.from(deduped.values());
+};
+
+const serializeInventoryItem = (item, rawFoodIds = []) => {
+    const plainItem = item.toObject ? item.toObject() : item;
+    const linkedMenuItems = normalizeLinkedMenuItems(
+        (plainItem.linkedMenuItems || []).map((link, index) => ({
+            ...link,
+            _rawFoodId: rawFoodIds[index] || null,
+        }))
+    );
+
+    return {
+        ...plainItem,
+        linkedMenuItems,
+    };
+};
+
 // ── Get all inventory items for restaurant ────────────────────────────────
 const getInventory = async (req, res) => {
     try {
-        // Get inventory items with limited populate for better performance
         const items = await inventoryModel
             .find({ restaurantId: req.restaurantId, isActive: true })
-            .populate("linkedMenuItems.foodId", "name image price category")
-            .sort({ createdAt: -1 })
-            .lean();
+            .sort({ createdAt: -1 });
+
+        const rawFoodIdsByItem = new Map(
+            items.map(item => [
+                String(item._id),
+                (item.linkedMenuItems || []).map(link => String(link.foodId || ""))
+            ])
+        );
+
+        await inventoryModel.populate(items, {
+            path: "linkedMenuItems.foodId",
+            select: "name image price category"
+        });
 
         // Calculate stock status for each item
         const itemsWithStatus = items.map(item => {
+            const serializedItem = serializeInventoryItem(item, rawFoodIdsByItem.get(String(item._id)) || []);
             let status = "normal";
             let statusMessage = "Stock level normal";
 
-            if (item.currentStock <= item.minimumStock) {
+            if (serializedItem.currentStock <= serializedItem.minimumStock) {
                 status = "low";
-                statusMessage = `Low stock - ${item.currentStock} ${item.unit} remaining`;
-            } else if (item.currentStock >= item.maximumStock) {
+                statusMessage = `Low stock - ${serializedItem.currentStock} ${serializedItem.unit} remaining`;
+            } else if (serializedItem.currentStock >= serializedItem.maximumStock) {
                 status = "high";
-                statusMessage = `Overstock - ${item.currentStock} ${item.unit} in stock`;
+                statusMessage = `Overstock - ${serializedItem.currentStock} ${serializedItem.unit} in stock`;
             }
 
             // Check expiry
             let expiryStatus = "safe";
-            if (item.expiryDate) {
-                const daysUntilExpiry = Math.ceil((new Date(item.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+            if (serializedItem.expiryDate) {
+                const daysUntilExpiry = Math.ceil((new Date(serializedItem.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
                 if (daysUntilExpiry <= 0) {
                     expiryStatus = "expired";
                 } else if (daysUntilExpiry <= 7) {
@@ -35,11 +83,11 @@ const getInventory = async (req, res) => {
             }
 
             return {
-                ...item,
+                ...serializedItem,
                 status,
                 statusMessage,
                 expiryStatus,
-                daysUntilExpiry: item.expiryDate ? Math.ceil((new Date(item.expiryDate) - new Date()) / (1000 * 60 * 60 * 24)) : null
+                daysUntilExpiry: serializedItem.expiryDate ? Math.ceil((new Date(serializedItem.expiryDate) - new Date()) / (1000 * 60 * 60 * 24)) : null
             };
         });
 
@@ -49,7 +97,7 @@ const getInventory = async (req, res) => {
             lowStock: itemsWithStatus.filter(i => i.status === "low").length,
             expired: itemsWithStatus.filter(i => i.expiryStatus === "expired").length,
             expiringSoon: itemsWithStatus.filter(i => i.expiryStatus === "expiring_soon").length,
-            totalValue: items.reduce((sum, item) => sum + (item.currentStock * item.unitCost), 0)
+            totalValue: itemsWithStatus.reduce((sum, item) => sum + (item.currentStock * item.unitCost), 0)
         };
 
         res.json({
@@ -634,7 +682,17 @@ const linkMenuItem = async (req, res) => {
         const item = await inventoryModel.findOne({ _id: id, restaurantId: req.restaurantId });
         if (!item) return res.status(404).json({ success: false, message: "Inventory item not found" });
 
-        // Check if already linked
+        item.linkedMenuItems = normalizeLinkedMenuItems(
+            (item.linkedMenuItems || []).map(link => ({
+                foodId: link.foodId,
+                quantityPerOrder: link.quantityPerOrder,
+                _rawFoodId: String(link.foodId || "")
+            }))
+        ).map(link => ({
+            foodId: link.resolvedFoodId,
+            quantityPerOrder: link.quantityPerOrder,
+        }));
+
         const existing = item.linkedMenuItems.find(l => String(l.foodId) === String(foodId));
         if (existing) {
             existing.quantityPerOrder = Number(quantityPerOrder);
@@ -644,7 +702,8 @@ const linkMenuItem = async (req, res) => {
 
         await item.save();
         const populated = await inventoryModel.findById(id).populate("linkedMenuItems.foodId", "name image price category");
-        res.json({ success: true, message: "Menu item linked", data: populated });
+        const rawFoodIds = (populated.linkedMenuItems || []).map(link => String(link.foodId?._id || link.foodId || ""));
+        res.json({ success: true, message: "Menu item linked", data: serializeInventoryItem(populated, rawFoodIds) });
     } catch (error) {
         console.error("Error linking menu item:", error);
         res.status(500).json({ success: false, message: "Failed to link menu item" });

@@ -1,6 +1,7 @@
 import express from "express";
 import Stripe from "stripe";
 import restaurantModel from "../models/restaurantModel.js";
+import subscriptionPlanModel from "../models/subscriptionPlanModel.js";
 import adminAuth from "../middleware/adminAuth.js";
 import restaurantAuth from "../middleware/restaurantAuth.js";
 
@@ -9,12 +10,22 @@ const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
 
 const subRouter = express.Router();
 
-const PLANS = {
-  starter: {
+const PLAN_ALIASES = {
+  starter: "basic",
+  professional: "enterprise",
+};
+
+const normalizePlan = (plan) => {
+  const key = String(plan || "").toLowerCase();
+  return PLAN_ALIASES[key] || key;
+};
+
+const DEFAULT_PLANS = {
+  basic: {
     tier: 1,
-    name: "Starter",
+    name: "Basic",
     price: 299,
-    description: "Perfect for small restaurants",
+    description: "Essential tools with no AI features",
     billingPeriod: "month",
     features: {
       // Basic Features
@@ -33,44 +44,17 @@ const PLANS = {
       inventory: false,
       inventoryAnalytics: false,
       customers: false,
+      aiPromoGenerator: false,
       aiInsights: false,
       aiCustomerSegmentation: false,
       analytics: false,
-    },
-  },
-  professional: {
-    tier: 2,
-    name: "Professional",
-    price: 399,
-    description: "For growing restaurants",
-    billingPeriod: "month",
-    features: {
-      // Basic Features
-      dashboard: true,
-      orders: true,
-      menu: true,
-      messages: true,
-      reviews: true,
-      menuItems: true,
-      bulkUpload: true,
-      // Marketing
-      promoCodes: true,
-      broadcasts: true,
-      emailCampaigns: true,
-      // Advanced
-      inventory: true,
-      inventoryAnalytics: true,
-      customers: true,
-      aiInsights: true,
-      aiCustomerSegmentation: true,
-      analytics: true,
     },
   },
   enterprise: {
     tier: 3,
     name: "Enterprise",
     price: 599,
-    description: "For large & established restaurants",
+    description: "All features enabled, including all AI features",
     billingPeriod: "month",
     features: {
       // Basic Features
@@ -89,11 +73,90 @@ const PLANS = {
       inventory: true,
       inventoryAnalytics: true,
       customers: true,
+      aiPromoGenerator: true,
       aiInsights: true,
       aiCustomerSegmentation: true,
       analytics: true,
     },
   },
+};
+
+const featureLabelMap = {
+  dashboard: "Dashboard & Reports",
+  orders: "Order Management",
+  menu: "Menu Management",
+  messages: "Customer Messaging",
+  reviews: "Reviews",
+  menuItems: "Unlimited Menu Items",
+  bulkUpload: "Bulk Menu Upload",
+  promoCodes: "Promo Codes",
+  broadcasts: "Broadcast Messages",
+  emailCampaigns: "Email Campaigns",
+  inventory: "Inventory Management",
+  inventoryAnalytics: "Inventory Analytics",
+  customers: "Customer Analytics",
+  aiPromoGenerator: "AI Promo Generator",
+  aiInsights: "AI Insights & Forecasts",
+  aiCustomerSegmentation: "Customer Segmentation",
+  analytics: "Advanced Analytics Dashboard",
+};
+
+const cloneDefaultPlans = () => JSON.parse(JSON.stringify(DEFAULT_PLANS));
+
+const normalizeFeatures = (features) => {
+  if (!features || typeof features !== "object") return {};
+  const normalized = {};
+  for (const [key, value] of Object.entries(features)) {
+    const featureKey = String(key || "").trim();
+    if (!featureKey) continue;
+    normalized[featureKey] = Boolean(value);
+  }
+  return normalized;
+};
+
+const toPlanPayload = (key, plan) => ({
+  key,
+  tier: Number(plan.tier || 0),
+  name: String(plan.name || key),
+  price: Number(plan.price || 0),
+  description: String(plan.description || ""),
+  billingPeriod: String(plan.billingPeriod || "month"),
+  features: normalizeFeatures(plan.features),
+});
+
+async function getPlansMap() {
+  const plans = cloneDefaultPlans();
+  const docs = await subscriptionPlanModel.find({}).lean();
+
+  for (const doc of docs) {
+    const key = normalizePlan(doc.key);
+    if (!plans[key]) continue;
+    plans[key] = {
+      ...plans[key],
+      ...toPlanPayload(key, doc),
+      features: {
+        ...plans[key].features,
+        ...normalizeFeatures(doc.features),
+      },
+    };
+  }
+
+  return plans;
+}
+
+const buildPlanResponse = (plans) => {
+  const featureKeys = Array.from(
+    new Set(Object.values(plans).flatMap((plan) => Object.keys(plan.features || {})))
+  );
+
+  return {
+    basic: toPlanPayload("basic", plans.basic),
+    enterprise: toPlanPayload("enterprise", plans.enterprise),
+    featureLabels: featureKeys.reduce((acc, key) => {
+      acc[key] = featureLabelMap[key] || key;
+      return acc;
+    }, {}),
+  };
 };
 
 // ── SIMPLE TEST: Check if API is working ─────────────────────────────────
@@ -103,6 +166,65 @@ subRouter.get("/health", async (req, res) => {
     message: "✅ Subscription API is working!",
     timestamp: new Date().toISOString()
   });
+});
+
+// ── Shared: view plan cards (restaurant + admin) ──────────────────────────
+subRouter.get("/plans", async (req, res) => {
+  try {
+    const plans = await getPlansMap();
+    res.json({ success: true, data: buildPlanResponse(plans) });
+  } catch (err) {
+    res.json({ success: false, message: "Error fetching plans." });
+  }
+});
+
+// ── Super admin: edit plan cards & features ───────────────────────────────
+subRouter.put("/plans/:planKey", adminAuth, async (req, res) => {
+  try {
+    const planKey = normalizePlan(req.params.planKey);
+    if (!DEFAULT_PLANS[planKey]) {
+      return res.json({ success: false, message: "Only basic and enterprise plans are supported." });
+    }
+
+    const currentPlans = await getPlansMap();
+    const current = currentPlans[planKey];
+    const payload = {
+      key: planKey,
+      tier: current.tier,
+      name: req.body.name != null ? String(req.body.name).trim() || current.name : current.name,
+      price: req.body.price != null ? Math.max(0, Number(req.body.price) || 0) : current.price,
+      description:
+        req.body.description != null
+          ? String(req.body.description).trim()
+          : current.description,
+      billingPeriod: current.billingPeriod || "month",
+      features:
+        req.body.features && typeof req.body.features === "object"
+          ? normalizeFeatures(req.body.features)
+          : current.features,
+    };
+
+    await subscriptionPlanModel.updateOne(
+      { key: planKey },
+      {
+        $set: {
+          key: payload.key,
+          tier: payload.tier,
+          name: payload.name,
+          price: payload.price,
+          description: payload.description,
+          billingPeriod: payload.billingPeriod,
+          features: payload.features,
+        },
+      },
+      { upsert: true }
+    );
+
+    const plans = await getPlansMap();
+    res.json({ success: true, message: `${payload.name} plan updated.`, data: buildPlanResponse(plans) });
+  } catch (err) {
+    res.json({ success: false, message: "Error updating plan." });
+  }
 });
 
 // ── Restaurant: confirm payment and activate subscription ──────────────────
@@ -136,7 +258,9 @@ subRouter.post("/confirm-payment", restaurantAuth, async (req, res) => {
       return res.json({ success: false, message: "Invalid session metadata" });
     }
 
-    const planInfo = PLANS[plan];
+    const normalizedPlan = normalizePlan(plan);
+    const plans = await getPlansMap();
+    const planInfo = plans[normalizedPlan];
     if (!planInfo) {
       return res.json({ success: false, message: "Invalid plan" });
     }
@@ -150,7 +274,7 @@ subRouter.post("/confirm-payment", restaurantAuth, async (req, res) => {
     const result = await restaurantModel.findByIdAndUpdate(
       req.restaurantId,
       {
-        "subscription.plan": plan,
+        "subscription.plan": normalizedPlan,
         "subscription.tier": planInfo.tier,
         "subscription.status": "active",
         "subscription.startDate": startDate,
@@ -186,14 +310,16 @@ subRouter.post("/checkout", restaurantAuth, async (req, res) => {
     if (!stripe) return res.json({ success: false, message: "Stripe is not configured." });
 
     const { plan, months } = req.body;
-    if (!plan || !PLANS[plan]) return res.json({ success: false, message: "Invalid plan." });
+    const normalizedPlan = normalizePlan(plan);
+    const plans = await getPlansMap();
+    if (!normalizedPlan || !plans[normalizedPlan]) return res.json({ success: false, message: "Invalid plan." });
     if (!months || isNaN(months) || Number(months) < 1)
       return res.json({ success: false, message: "Invalid duration." });
 
     const restaurant = await restaurantModel.findById(req.restaurantId).select("name");
     if (!restaurant) return res.json({ success: false, message: "Restaurant not found." });
 
-    const planInfo = PLANS[plan];
+    const planInfo = plans[normalizedPlan];
     const total    = planInfo.price * Number(months);
 
     const session = await stripe.checkout.sessions.create({
@@ -212,11 +338,11 @@ subRouter.post("/checkout", restaurantAuth, async (req, res) => {
       }],
       metadata: {
         restaurantId: String(req.restaurantId),
-        plan,
+        plan: normalizedPlan,
         months: String(months),
         price:  String(planInfo.price),
       },
-      success_url: `${process.env.RESTAURANT_ADMIN_URL || "http://localhost:5175"}/subscription?success=1&sessionId=${session.id}`,
+      success_url: `${process.env.RESTAURANT_ADMIN_URL || "http://localhost:5175"}/subscription?success=1&sessionId={CHECKOUT_SESSION_ID}`,
       cancel_url:  `${process.env.RESTAURANT_ADMIN_URL || "http://localhost:5175"}/subscription?cancelled=1`,
     });
 
@@ -245,7 +371,9 @@ subRouter.post("/webhook", express.raw({ type: "application/json" }), async (req
     console.log("✅ Webhook received:", { restaurantId, plan, months, price });
     
     if (restaurantId && plan && months) {
-      const planInfo = PLANS[plan];
+      const normalizedPlan = normalizePlan(plan);
+      const plans = await getPlansMap();
+      const planInfo = plans[normalizedPlan];
       if (planInfo) {
         const startDate = new Date();
         const expiresAt = new Date();
@@ -259,7 +387,7 @@ subRouter.post("/webhook", express.raw({ type: "application/json" }), async (req
         });
         
         const result = await restaurantModel.findByIdAndUpdate(restaurantId, {
-          "subscription.plan":      plan,
+          "subscription.plan":      normalizedPlan,
           "subscription.tier":      planInfo.tier,
           "subscription.status":    "active",
           "subscription.startDate": startDate,
@@ -293,7 +421,9 @@ subRouter.post("/test-webhook", restaurantAuth, async (req, res) => {
     }
 
     const restaurantId = req.restaurantId;
-    const planInfo = PLANS[plan];
+    const normalizedPlan = normalizePlan(plan);
+    const plans = await getPlansMap();
+    const planInfo = plans[normalizedPlan];
     
     if (!planInfo) {
       return res.json({ success: false, message: "Invalid plan" });
@@ -306,7 +436,7 @@ subRouter.post("/test-webhook", restaurantAuth, async (req, res) => {
     console.log("🧪 TEST WEBHOOK: Simulating payment completion");
     console.log("📝 Updating subscription:", {
       restaurantId,
-      plan,
+      plan: normalizedPlan,
       status: "active",
       expiresAt,
     });
@@ -314,7 +444,7 @@ subRouter.post("/test-webhook", restaurantAuth, async (req, res) => {
     const result = await restaurantModel.findByIdAndUpdate(
       restaurantId,
       {
-        "subscription.plan": plan,
+        "subscription.plan": normalizedPlan,
         "subscription.tier": planInfo.tier,
         "subscription.status": "active",
         "subscription.startDate": startDate,
@@ -386,7 +516,10 @@ subRouter.get("/mine", restaurantAuth, async (req, res) => {
       daysLeft,
     });
 
-    const baseFeatures = { ...PLANS.starter.features };
+    const normalizedPlan = normalizePlan(sub.plan || "none");
+    const plans = await getPlansMap();
+    const planDefaults = plans[normalizedPlan]?.features || plans.basic.features;
+    const baseFeatures = { ...planDefaults };
     const mergedFeatures = {
       ...baseFeatures,
       ...(sub.features && typeof sub.features === "object" ? sub.features : {}),
@@ -395,7 +528,7 @@ subRouter.get("/mine", restaurantAuth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        plan:         sub.plan      || "none",
+        plan:         normalizedPlan || "none",
         status:       sub.status    || "trial",
         price:        sub.price     || 0,
         startDate:    sub.startDate || null,
@@ -432,7 +565,7 @@ subRouter.get("/list", adminAuth, async (req, res) => {
         name:         r.name,
         logo:         r.logo,
         isActive:     r.isActive,
-        plan:         sub.plan   || "none",
+        plan:         normalizePlan(sub.plan || "none") || "none",
         status:       sub.status || "trial",
         price:        sub.price  || 0,
         startDate:    sub.startDate,
@@ -462,7 +595,9 @@ subRouter.post("/assign", adminAuth, async (req, res) => {
     if (!restaurantId || !plan || !months)
       return res.json({ success: false, message: "restaurantId, plan, and months are required." });
 
-    const planInfo = PLANS[plan];
+    const normalizedPlan = normalizePlan(plan);
+    const plans = await getPlansMap();
+    const planInfo = plans[normalizedPlan];
     if (!planInfo) return res.json({ success: false, message: "Invalid plan." });
 
     const startDate = new Date();
@@ -472,7 +607,7 @@ subRouter.post("/assign", adminAuth, async (req, res) => {
     const restaurant = await restaurantModel.findByIdAndUpdate(
       restaurantId,
       {
-        "subscription.plan":      plan,
+        "subscription.plan":      normalizedPlan,
         "subscription.tier":      planInfo.tier,
         "subscription.status":    "active",
         "subscription.startDate": startDate,
@@ -521,4 +656,4 @@ subRouter.post("/check-expired", adminAuth, async (req, res) => {
 });
 
 export default subRouter;
-export { PLANS };
+export { DEFAULT_PLANS as PLANS };

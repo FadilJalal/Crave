@@ -7,6 +7,7 @@ import { useTheme } from "../ThemeContext";
 
 export default function RestaurantLayout({ children }) {
   const sidebarRef = useRef(null);
+  const sidebarScrollRef = useRef(0);
   const location = useLocation();
   const [sub, setSub] = useState(null);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 980);
@@ -61,12 +62,15 @@ export default function RestaurantLayout({ children }) {
   const SIDEBAR_SCROLL_KEY = "sidebarScroll_global";
 
   const saveSidebarScroll = (value) => {
-    const normalized = String(Math.max(0, Number(value) || 0));
+    const numeric = Math.max(0, Number(value) || 0);
+    sidebarScrollRef.current = numeric;
+    const normalized = String(numeric);
     sessionStorage.setItem(SIDEBAR_SCROLL_KEY, normalized);
     localStorage.setItem(SIDEBAR_SCROLL_KEY, normalized);
   };
 
   const readSidebarScroll = () => {
+    if (sidebarScrollRef.current > 0) return sidebarScrollRef.current;
     const sessionValue = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
     const localValue = localStorage.getItem(SIDEBAR_SCROLL_KEY);
     return parseInt(sessionValue || localValue || "0", 10);
@@ -84,6 +88,26 @@ export default function RestaurantLayout({ children }) {
     sidebar.addEventListener("scroll", handleScroll, { passive: true });
     return () => sidebar.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // On mobile, explicitly restore scroll when menu opens and save it when menu closes.
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar || !isMobile) return;
+
+    if (sidebarOpen) {
+      const savedScroll = readSidebarScroll();
+      if (savedScroll > 0) {
+        const raf = requestAnimationFrame(() => {
+          sidebar.scrollTop = savedScroll;
+        });
+        return () => cancelAnimationFrame(raf);
+      }
+      return undefined;
+    }
+
+    saveSidebarScroll(sidebar.scrollTop);
+    return undefined;
+  }, [isMobile, sidebarOpen]);
 
   // Save once on unmount as an extra safety net.
   useEffect(() => {
@@ -153,6 +177,9 @@ export default function RestaurantLayout({ children }) {
 
   const canMenu = !subForFeatures || hasFeatureAccess(subForFeatures, "menu");
   const canBulk = !subForFeatures || hasFeatureAccess(subForFeatures, "bulkUpload");
+  const canAiPromo = !subForFeatures || hasFeatureAccess(subForFeatures, "aiPromoGenerator");
+  const canAiInsights = !subForFeatures || hasFeatureAccess(subForFeatures, "aiInsights");
+  const canAiSegmentation = !subForFeatures || hasFeatureAccess(subForFeatures, "aiCustomerSegmentation");
 
   const link = (to, label) => (
     <NavLink to={to} end className={({ isActive }) => isActive ? "active" : ""}>{label}</NavLink>
@@ -212,8 +239,8 @@ export default function RestaurantLayout({ children }) {
           {link("/email-campaign", "📧 Campaigns")}
 
           <div style={{ fontSize: 10, fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.6px", padding: "8px 12px 2px" }}>AI Tools</div>
-          {link("/promos",         "🏷️ AI Promo Generator")}
-          {link("/ai-insights",    "🧠 AI Insights")}
+          {link("/promos", "🏷️ AI Promo Generator")}
+          {link("/ai-insights", "🧠 AI Insights")}
           {link("/ai-customer-segmentation", "👥 Customer Segmentation")}
 
           <div style={{ fontSize: 10, fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.6px", padding: "8px 12px 2px" }}>Account</div>

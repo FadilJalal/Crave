@@ -39,7 +39,7 @@ export default function App() {
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/revenue" element={<ProtectedRoute><Revenue /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/promos" element={<ProtectedRoute><Promos /></ProtectedRoute>} />
+      <Route path="/promos" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><Promos /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
       <Route path="/email-campaign" element={<ProtectedRoute><EmailCampaign /></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
@@ -47,8 +47,8 @@ export default function App() {
       <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
       <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
       <Route path="/inventory/analytics" element={<ProtectedRoute><InventoryAnalytics /></ProtectedRoute>} />
-      <Route path="/ai-insights" element={<ProtectedRoute><AIInsights /></ProtectedRoute>} />
-      <Route path="/ai-customer-segmentation" element={<ProtectedRoute><AICustomerSegmentation /></ProtectedRoute>} />
+      <Route path="/ai-insights" element={<ProtectedRoute><ProtectedFeature featureName="aiInsights"><AIInsights /></ProtectedFeature></ProtectedRoute>} />
+      <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><AICustomerSegmentation /></ProtectedFeature></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

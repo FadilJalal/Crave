@@ -1,8 +1,30 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
 import { api } from "../utils/api";
 import { hasFeatureAccess, getTierName } from "../utils/featureAccess";
 import UpgradeRequired from "./UpgradeRequired";
+
+const SUBSCRIPTION_CACHE_KEY = "restaurant_subscription_cache";
+
+const readCachedSubscription = () => {
+  try {
+    const raw = sessionStorage.getItem(SUBSCRIPTION_CACHE_KEY) || localStorage.getItem(SUBSCRIPTION_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedSubscription = (sub) => {
+  try {
+    const serialized = JSON.stringify(sub || {});
+    sessionStorage.setItem(SUBSCRIPTION_CACHE_KEY, serialized);
+    localStorage.setItem(SUBSCRIPTION_CACHE_KEY, serialized);
+  } catch {
+    // ignore storage write issues
+  }
+};
 
 /**
  * ProtectedFeature Component
@@ -11,12 +33,27 @@ import UpgradeRequired from "./UpgradeRequired";
  */
 export default function ProtectedFeature({ 
   featureName,
-  children,
-  fallback = "dashboard" // What to redirect to if completely unauthorized
+  children
 }) {
-  const [subscription, setSubscription] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [hasAccess, setHasAccess] = useState(false);
+  const initialSubscription = readCachedSubscription();
+  const [subscription, setSubscription] = useState(initialSubscription);
+  const [loading, setLoading] = useState(!initialSubscription);
+  const [hasAccess, setHasAccess] = useState(() => {
+    if (!initialSubscription) return false;
+    return hasFeatureAccess(
+      { features: initialSubscription.features, status: initialSubscription.status || "trial" },
+      featureName
+    );
+  });
+
+  useEffect(() => {
+    if (!subscription) return;
+    const canAccess = hasFeatureAccess(
+      { features: subscription.features, status: subscription.status || "trial" },
+      featureName
+    );
+    setHasAccess(canAccess);
+  }, [featureName, subscription]);
 
   useEffect(() => {
     const loadSubscription = async () => {
@@ -25,6 +62,7 @@ export default function ProtectedFeature({
         if (res.data.success) {
           const sub = res.data.data;
           setSubscription(sub);
+          writeCachedSubscription(sub);
           
           // Check if feature is accessible
           const canAccess = hasFeatureAccess(
@@ -33,11 +71,11 @@ export default function ProtectedFeature({
           );
           setHasAccess(canAccess);
         } else {
-          setHasAccess(false);
+          if (!initialSubscription) setHasAccess(false);
         }
       } catch (err) {
         console.error("Failed to load subscription", err);
-        setHasAccess(false);
+        if (!initialSubscription) setHasAccess(false);
       } finally {
         setLoading(false);
       }
@@ -62,7 +100,7 @@ export default function ProtectedFeature({
   }
 
   if (!hasAccess) {
-    const tierName = subscription ? getTierName(subscription) : "Starter";
+    const tierName = subscription ? getTierName(subscription) : "Basic";
     return <UpgradeRequired featureName={featureName} tier={tierName} />;
   }
 

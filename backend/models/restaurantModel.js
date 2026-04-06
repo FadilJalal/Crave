@@ -25,7 +25,7 @@ const restaurantSchema = new mongoose.Schema(
     },
 
     subscription: {
-      plan:      { type: String, enum: ["free", "starter", "professional", "enterprise"], default: "free" },
+      plan:      { type: String, enum: ["free", "basic", "starter", "professional", "enterprise"], default: "free" },
       status:    { type: String, enum: ["active", "expired", "trial", "cancelled", "paused"], default: "trial" },
       tier:      { type: Number, enum: [0, 1, 2, 3], default: 0 }, // 0=free, 1=starter, 2=pro, 3=enterprise
       startDate: { type: Date, default: null },

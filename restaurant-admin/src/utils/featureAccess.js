@@ -54,6 +54,7 @@ export const FEATURE_DESCRIPTIONS = {
   reviews: "Manage and respond to customer reviews",
   
   // AI Features
+  aiPromoGenerator: "AI-generated promo campaign suggestions",
   aiInsights: "AI-powered sales forecasts and insights",
   aiCustomerSegmentation: "Behavioral customer segmentation & targeting",
   
@@ -66,8 +67,9 @@ export const FEATURE_DESCRIPTIONS = {
  */
 export const getTierName = (subscription) => {
   const plans = {
-    starter: "Starter",
-    professional: "Professional",
+    basic: "Basic",
+    starter: "Basic",
+    professional: "Enterprise",
     enterprise: "Enterprise",
   };
   return plans[subscription?.plan] || "Free";

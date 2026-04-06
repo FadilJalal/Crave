@@ -36,10 +36,23 @@ export default function AICustomerSegmentation() {
   const [loading, setLoading] = useState(false);
   const [campaignMessage, setCampaignMessage] = useState("");
   const [sendingKey, setSendingKey] = useState("");
+  const [scriptLoadingKey, setScriptLoadingKey] = useState("");
+  const [subscription, setSubscription] = useState(null);
 
   useEffect(() => {
     loadSegmentation();
+    loadSubscription();
   }, []);
+
+  const loadSubscription = async () => {
+    try {
+      const res = await api.get("/api/subscription/mine");
+      if (res.data?.success) setSubscription(res.data.data || null);
+      else setSubscription(null);
+    } catch {
+      setSubscription(null);
+    }
+  };
 
   const loadSegmentation = async () => {
     setLoading(true);
@@ -77,15 +90,80 @@ export default function AICustomerSegmentation() {
     }
   };
 
+  const exportAllCustomersCsv = () => {
+    const header = [
+      "Customer Name",
+      "Email",
+      "Segment",
+      "Total Orders",
+      "Total Spent",
+      "Average Order",
+      "Last Order",
+    ];
+
+    const rows = customers.map((c) => [
+      c.name || "Customer",
+      c.email || "",
+      c.segment || "Regular",
+      toNumber(c.totalOrders),
+      toNumber(c.totalSpent),
+      toNumber(c.avgOrder),
+      c.lastOrder || "",
+    ]);
+
+    const escape = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const csv = [header, ...rows].map((line) => line.map(escape).join(",")).join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "ai_customer_segmentation_customers.csv");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const generateCampaignScript = async (segmentType, supportersOnly = false, applyToInput = true) => {
+    const key = `${segmentType}:${supportersOnly ? "top" : "all"}`;
+    setScriptLoadingKey(key);
+    try {
+      const res = await api.post("/api/ai/restaurant/generate-campaign-script", {
+        segmentType,
+        supportersOnly,
+      });
+
+      if (res.data?.success && res.data?.script) {
+        if (applyToInput) setCampaignMessage(res.data.script);
+        return res.data.script;
+      }
+
+      alert(res.data?.message || "Failed to generate AI script.");
+      return "";
+    } catch (error) {
+      console.error("Failed to generate campaign script:", error);
+      alert("Failed to generate AI script.");
+      return "";
+    } finally {
+      setScriptLoadingKey("");
+    }
+  };
+
   const sendCampaign = async (segmentType, supportersOnly = false) => {
     const key = `${segmentType}:${supportersOnly ? "top" : "all"}`;
     setSendingKey(key);
     try {
+      let messageToSend = campaignMessage.trim();
+      if (!messageToSend) {
+        messageToSend = await generateCampaignScript(segmentType, supportersOnly, true);
+      }
+
       const res = await api.post("/api/ai/restaurant/create-campaign", {
         segmentType,
         supportersOnly,
         supporterLimit: 20,
-        message: campaignMessage.trim() || undefined,
+        message: messageToSend || undefined,
       });
 
       if (res.data?.success) {
@@ -156,6 +234,9 @@ export default function AICustomerSegmentation() {
     ? "radial-gradient(1100px 300px at -10% -35%, rgba(34,211,238,0.22), transparent 62%), radial-gradient(900px 260px at 110% -35%, rgba(249,115,22,0.22), transparent 62%), linear-gradient(135deg, #090f1a, #0f172a)"
     : "radial-gradient(1100px 300px at -10% -35%, rgba(14,165,233,0.13), transparent 62%), radial-gradient(900px 260px at 110% -35%, rgba(249,115,22,0.13), transparent 62%), linear-gradient(135deg, #ffffff, #f8fafc)";
 
+  const isEnterprise = String(subscription?.plan || "").toLowerCase() === "enterprise"
+    && String(subscription?.status || "").toLowerCase() === "active";
+
   return (
     <RestaurantLayout>
       <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gap: 20 }}>
@@ -198,14 +279,24 @@ export default function AICustomerSegmentation() {
               </p>
             </div>
 
-            <button
-              className="btn btn-outline"
-              onClick={loadSegmentation}
-              disabled={loading}
-              style={{ fontSize: 13, fontWeight: 800 }}
-            >
-              {loading ? "Analyzing..." : "Refresh Data"}
-            </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                className="btn btn-outline"
+                onClick={exportAllCustomersCsv}
+                disabled={loading || customers.length === 0}
+                style={{ fontSize: 13, fontWeight: 800 }}
+              >
+                📊 Export CSV
+              </button>
+              <button
+                className="btn btn-outline"
+                onClick={loadSegmentation}
+                disabled={loading}
+                style={{ fontSize: 13, fontWeight: 800 }}
+              >
+                {loading ? "Analyzing..." : "Refresh Data"}
+              </button>
+            </div>
           </div>
         </section>
 
@@ -334,9 +425,6 @@ export default function AICustomerSegmentation() {
                     <button className="btn btn-outline" onClick={() => exportSegment(segment.type)} style={{ fontSize: 12, padding: "7px 12px" }}>
                       📊 Export CSV
                     </button>
-                    <button className="btn" onClick={() => sendCampaign(segment.type)} style={{ fontSize: 12, padding: "7px 12px" }}>
-                      📧 Launch Campaign
-                    </button>
                   </div>
                 </article>
               ))}
@@ -393,6 +481,7 @@ export default function AICustomerSegmentation() {
               </div>
             </section>
 
+            {isEnterprise ? (
             <section className="card" style={{ padding: 24, borderRadius: 20 }}>
               <h3 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 900 }}>🚀 Campaign Playbook</h3>
               <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>
@@ -458,9 +547,27 @@ export default function AICustomerSegmentation() {
 
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button
+                        className="btn btn-outline"
+                        onClick={() => exportSegment(item.type)}
+                        disabled={sendingKey !== "" || scriptLoadingKey !== ""}
+                        style={{ fontSize: 12, padding: "7px 12px" }}
+                      >
+                        📊 Export CSV
+                      </button>
+
+                      <button
+                        className="btn btn-outline"
+                        onClick={() => generateCampaignScript(item.type, false, true)}
+                        disabled={sendingKey !== "" || scriptLoadingKey !== ""}
+                        style={{ fontSize: 12, padding: "7px 12px" }}
+                      >
+                        {scriptLoadingKey === `${item.type}:all` ? "Writing..." : "✨ AI Write Script"}
+                      </button>
+
+                      <button
                         className="btn"
                         onClick={() => sendCampaign(item.type, false)}
-                        disabled={sendingKey !== ""}
+                        disabled={sendingKey !== "" || scriptLoadingKey !== ""}
                         style={{ fontSize: 12, padding: "7px 12px" }}
                       >
                         {sendingKey === `${item.type}:all` ? "Sending..." : `Send to All ${item.type}`}
@@ -469,7 +576,7 @@ export default function AICustomerSegmentation() {
                       <button
                         className="btn btn-outline"
                         onClick={() => sendCampaign(item.type, true)}
-                        disabled={sendingKey !== ""}
+                        disabled={sendingKey !== "" || scriptLoadingKey !== ""}
                         style={{ fontSize: 12, padding: "7px 12px" }}
                       >
                         {sendingKey === `${item.type}:top` ? "Sending..." : "Send to Top Supporters"}
@@ -479,6 +586,30 @@ export default function AICustomerSegmentation() {
                 ))}
               </div>
             </section>
+            ) : (
+            <section className="card" style={{ padding: 24, borderRadius: 20, border: dark ? "1px solid rgba(251,191,36,0.45)" : "1px solid #fcd34d", background: dark ? "linear-gradient(135deg, rgba(251,191,36,0.12), rgba(249,115,22,0.10))" : "linear-gradient(135deg, #fffbeb, #fff7ed)" }}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900, color: dark ? "#fde68a" : "#92400e" }}>🔒 Campaign Playbook (Pro Subscription)</h3>
+              <p style={{ margin: 0, fontSize: 14, color: dark ? "#fef3c7" : "#78350f", fontWeight: 700 }}>
+                This section is available only for active Pro (Enterprise) subscription. Upgrade to unlock AI script generation, top supporter campaigns, and one-click segment messaging.
+              </p>
+              <a
+                href="/subscription"
+                style={{
+                  display: "inline-block",
+                  marginTop: 14,
+                  padding: "9px 14px",
+                  borderRadius: 10,
+                  fontWeight: 800,
+                  fontSize: 13,
+                  textDecoration: "none",
+                  background: dark ? "#f59e0b" : "#d97706",
+                  color: "#ffffff",
+                }}
+              >
+                View Pro Plans
+              </a>
+            </section>
+            )}
           </>
         )}
       </div>

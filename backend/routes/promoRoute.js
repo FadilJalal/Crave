@@ -5,6 +5,7 @@ import restaurantAuth from "../middleware/restaurantAuth.js";
 import authMiddleware from "../middleware/auth.js";
 import restaurantModel from "../models/restaurantModel.js";
 import foodModel from "../models/foodModel.js";
+import { requireFeature } from "../middleware/featureAccess.js";
 
 const promoRouter = express.Router();
 const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -142,7 +143,7 @@ promoRouter.get("/public/:restaurantId", async (req, res) => {
 });
 
 // ── Restaurant admin: list own promos ───────────────────────────────────────
-promoRouter.get("/list", restaurantAuth, async (req, res) => {
+promoRouter.get("/list", restaurantAuth, requireFeature("aiPromoGenerator"), async (req, res) => {
   try {
     const promos = await promoModel
       .find({ restaurantId: req.restaurantId })
@@ -158,7 +159,7 @@ promoRouter.get("/list", restaurantAuth, async (req, res) => {
 });
 
 // ── Restaurant admin: generate promo ideas with Groq ───────────────────────
-promoRouter.post("/ai-suggest", restaurantAuth, async (req, res) => {
+promoRouter.post("/ai-suggest", restaurantAuth, requireFeature("aiPromoGenerator"), async (req, res) => {
   try {
     if (!process.env.GROQ_API_KEY) {
       return res.status(503).json({ success: false, message: "Groq AI is not configured on the server." });
@@ -249,7 +250,7 @@ promoRouter.post("/ai-suggest", restaurantAuth, async (req, res) => {
 });
 
 // ── Restaurant admin: create promo ──────────────────────────────────────────
-promoRouter.post("/create", restaurantAuth, async (req, res) => {
+promoRouter.post("/create", restaurantAuth, requireFeature("aiPromoGenerator"), async (req, res) => {
   try {
     const code = String(req.body?.code || "").toUpperCase().trim();
     const type = req.body?.type === "flat" ? "flat" : req.body?.type === "percent" ? "percent" : "";
@@ -306,7 +307,7 @@ promoRouter.post("/create", restaurantAuth, async (req, res) => {
 });
 
 // ── Restaurant admin: toggle active ─────────────────────────────────────────
-promoRouter.post("/toggle", restaurantAuth, async (req, res) => {
+promoRouter.post("/toggle", restaurantAuth, requireFeature("aiPromoGenerator"), async (req, res) => {
   try {
     const promoId = normalizeId(req.body?.id);
     if (!mongoose.Types.ObjectId.isValid(promoId)) {
@@ -324,7 +325,7 @@ promoRouter.post("/toggle", restaurantAuth, async (req, res) => {
 });
 
 // ── Restaurant admin: delete promo ───────────────────────────────────────────
-promoRouter.delete("/:id", restaurantAuth, async (req, res) => {
+promoRouter.delete("/:id", restaurantAuth, requireFeature("aiPromoGenerator"), async (req, res) => {
   try {
     const promoId = normalizeId(req.params.id);
     if (!mongoose.Types.ObjectId.isValid(promoId)) {
@@ -341,7 +342,7 @@ promoRouter.delete("/:id", restaurantAuth, async (req, res) => {
 });
 
 // Fallback for clients/environments where DELETE requests may be blocked.
-promoRouter.post("/delete", restaurantAuth, async (req, res) => {
+promoRouter.post("/delete", restaurantAuth, requireFeature("aiPromoGenerator"), async (req, res) => {
   try {
     const promoId = normalizeId(req.body?.id);
     if (!mongoose.Types.ObjectId.isValid(promoId)) {

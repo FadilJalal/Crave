@@ -181,7 +181,7 @@ export default function Menu() {
     <RestaurantLayout>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
         flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
-        <h2 style={{ margin: 0 }}>
+        <h2 style={{ margin: 0, minWidth: 0, overflowWrap: "anywhere" }}>
           Menu&nbsp;
           <span style={{ fontWeight: 400, color: softText, fontSize: 18 }}>
             ({filtered.length}{filtered.length !== foods.length ? ` of ${foods.length}` : ""} items)
@@ -193,7 +193,7 @@ export default function Menu() {
         <div style={{ background: panelBg, border: rowBorder, borderRadius: 16,
           padding: "18px 20px", marginBottom: 24 }}>
 
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 14, alignItems: "end" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, alignItems: "end" }}>
 
             <div>
               <div style={labelStyle}>Search</div>
@@ -213,7 +213,7 @@ export default function Menu() {
 
             <div>
               <div style={labelStyle}>Category</div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <select value={catFilter} onChange={e => setCatFilter(e.target.value)} style={selectStyle}>
                   <option value="all">All Categories</option>
                   {allCategories.map(c => (
@@ -259,7 +259,7 @@ export default function Menu() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-            marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+            flexWrap: "wrap", gap: 12, marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Sort by:</span>
               {SORT_OPTIONS.map(opt => (
@@ -303,8 +303,8 @@ export default function Menu() {
         <div className="list">
           {filtered.map(f => {
             return (
-              <div key={f._id} className="list-row" style={{ background: rowBg, border: rowBorder, boxShadow: rowShadow }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div key={f._id} className="list-row" style={{ background: rowBg, border: rowBorder, boxShadow: rowShadow, gap: 12, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: "1 1 260px" }}>
                   <div style={{ position: "relative" }}>
                     <img
                       src={`${BASE_URL}/images/${f.image}`}
@@ -314,15 +314,15 @@ export default function Menu() {
                       onError={e => { e.target.style.display = "none"; }}
                     />
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 700, color: dark ? "#f9fafb" : "#111827" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: dark ? "#f9fafb" : "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {f.name}
                     </div>
-                    <div className="muted" style={{ fontSize: 12, color: dark ? "rgba(255,255,255,0.65)" : undefined }}>{f.category}</div>
+                    <div className="muted" style={{ fontSize: 12, color: dark ? "rgba(255,255,255,0.65)" : undefined, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.category}</div>
                   </div>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end", flex: "1 1 320px" }}>
                   <div style={{ fontWeight: 700, color: dark ? "#f9fafb" : "#111827" }}>AED {f.price}</div>
 
                   <button 

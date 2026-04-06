@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
+import { useTheme } from "../ThemeContext";
 
 const TIMEFRAME_OPTIONS = [
   { value: "7d", label: "Last 7 Days", days: 7 },
@@ -15,6 +16,8 @@ const PAYMENT_STYLES = {
   cod: { label: "Cash", color: "#b45309", bg: "#fef3c7" },
   split: { label: "Split", color: "#7c3aed", bg: "#ede9fe" },
 };
+
+const TARGET_STORAGE_KEY = "revenueTargets.v1";
 
 const money = (value) => `AED ${Number(value || 0).toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -67,14 +70,14 @@ function createBucketLabel(date, granularity) {
   return monthLabel(date);
 }
 
-function RevenueCard({ title, value, sub, accent, icon }) {
+function RevenueCard({ title, value, sub, accent, icon, dark }) {
   return (
     <div
       style={{
-        background: "white",
+        background: dark ? "#0f172a" : "white",
         borderRadius: 18,
-        border: "1px solid rgba(17,24,39,0.06)",
-        boxShadow: "0 10px 30px rgba(15,23,42,0.06)",
+        border: dark ? "1px solid #334155" : "1px solid rgba(17,24,39,0.06)",
+        boxShadow: dark ? "0 12px 28px rgba(0,0,0,0.3)" : "0 10px 30px rgba(15,23,42,0.06)",
         padding: "22px 22px 20px",
         position: "relative",
         overflow: "hidden",
@@ -83,9 +86,9 @@ function RevenueCard({ title, value, sub, accent, icon }) {
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: accent }} />
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14 }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.7px", textTransform: "uppercase", color: "#9ca3af", marginBottom: 10 }}>{title}</div>
-          <div style={{ fontSize: 31, fontWeight: 900, letterSpacing: "-1px", color: "#111827", lineHeight: 1 }}>{value}</div>
-          {sub ? <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280", fontWeight: 600 }}>{sub}</div> : null}
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.7px", textTransform: "uppercase", color: dark ? "#94a3b8" : "#9ca3af", marginBottom: 10 }}>{title}</div>
+          <div style={{ fontSize: 31, fontWeight: 900, letterSpacing: "-1px", color: dark ? "#f8fafc" : "#111827", lineHeight: 1 }}>{value}</div>
+          {sub ? <div style={{ marginTop: 8, fontSize: 12, color: dark ? "#cbd5e1" : "#6b7280", fontWeight: 600 }}>{sub}</div> : null}
         </div>
         <div style={{ width: 46, height: 46, borderRadius: 14, background: `${accent}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
           {icon}
@@ -112,7 +115,7 @@ function InsightChip({ label, value, tone = "default" }) {
   );
 }
 
-function MiniDonut({ value, total, color, label }) {
+function MiniDonut({ value, total, color, label, dark }) {
   const percent = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -121,26 +124,26 @@ function MiniDonut({ value, total, color, label }) {
           width: 60,
           height: 60,
           borderRadius: "50%",
-          background: `conic-gradient(${color} 0 ${percent}%, #eef2f7 ${percent}% 100%)`,
+          background: `conic-gradient(${color} 0 ${percent}%, ${dark ? "#1f2937" : "#eef2f7"} ${percent}% 100%)`,
           display: "grid",
           placeItems: "center",
           position: "relative",
           flexShrink: 0,
         }}
       >
-        <div style={{ width: 38, height: 38, borderRadius: "50%", background: "white", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 900, color: "#111827" }}>
+        <div style={{ width: 38, height: 38, borderRadius: "50%", background: dark ? "#0f172a" : "white", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 900, color: dark ? "#f8fafc" : "#111827" }}>
           {percent}%
         </div>
       </div>
       <div>
-        <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.6px" }}>{label}</div>
-        <div style={{ fontSize: 17, fontWeight: 900, color: "#111827", marginTop: 3 }}>{money(value)}</div>
+        <div style={{ fontSize: 12, fontWeight: 800, color: dark ? "#cbd5e1" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.6px" }}>{label}</div>
+        <div style={{ fontSize: 17, fontWeight: 900, color: dark ? "#f8fafc" : "#111827", marginTop: 3 }}>{money(value)}</div>
       </div>
     </div>
   );
 }
 
-function WeekdayHeat({ data }) {
+function WeekdayHeat({ data, dark }) {
   const max = Math.max(...data.map((entry) => entry.revenue), 1);
   return (
     <div style={{ display: "grid", gap: 10 }}>
@@ -148,11 +151,11 @@ function WeekdayHeat({ data }) {
         const intensity = entry.revenue / max;
         return (
           <div key={entry.day} style={{ display: "grid", gridTemplateColumns: "78px 1fr auto", gap: 12, alignItems: "center" }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#374151" }}>{entry.day}</div>
-            <div style={{ height: 12, borderRadius: 999, overflow: "hidden", background: "#eef2f7" }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: dark ? "#cbd5e1" : "#374151" }}>{entry.day}</div>
+            <div style={{ height: 12, borderRadius: 999, overflow: "hidden", background: dark ? "#1f2937" : "#eef2f7" }}>
               <div style={{ width: `${Math.max(Math.round(intensity * 100), entry.revenue > 0 ? 8 : 0)}%`, height: "100%", borderRadius: 999, background: `linear-gradient(90deg, #22c55e 0%, #14b8a6 45%, #2563eb 100%)` }} />
             </div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#111827" }}>{money(entry.revenue)}</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: dark ? "#f8fafc" : "#111827" }}>{money(entry.revenue)}</div>
           </div>
         );
       })}
@@ -160,27 +163,39 @@ function WeekdayHeat({ data }) {
   );
 }
 
-function SimpleBars({ data, formatValue }) {
+function SimpleBars({ data, formatValue, dark }) {
   const max = Math.max(...data.map((entry) => entry.value), 1);
+  const compact = data.length > 0 && data.length <= 6;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(data.length, 1)}, minmax(0, 1fr))`, gap: 8, alignItems: "end", minHeight: 250 }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: compact
+          ? `repeat(${Math.max(data.length, 1)}, minmax(88px, 120px))`
+          : `repeat(${Math.max(data.length, 1)}, minmax(0, 1fr))`,
+        gap: compact ? 14 : 10,
+        alignItems: "end",
+        justifyContent: compact ? "center" : "stretch",
+        minHeight: 180,
+      }}
+    >
       {data.map((entry) => {
-        const height = Math.max(16, Math.round((entry.value / max) * 180));
+        const height = Math.max(22, Math.round((entry.value / max) * 150));
         return (
-          <div key={entry.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#111827", whiteSpace: "nowrap" }}>{formatValue(entry.value)}</div>
+          <div key={entry.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 9, minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: dark ? "#f8fafc" : "#111827", whiteSpace: "nowrap" }}>{formatValue(entry.value)}</div>
             <div
               title={`${entry.label}: ${formatValue(entry.value)}`}
               style={{
                 width: "100%",
-                maxWidth: 54,
+                maxWidth: compact ? 58 : 62,
                 height,
                 borderRadius: "14px 14px 6px 6px",
                 background: "linear-gradient(180deg, #ff7b5f 0%, #ff4e2a 55%, #f97316 100%)",
                 boxShadow: "0 12px 18px rgba(255,78,42,0.18)",
               }}
             />
-            <div style={{ fontSize: 11, color: "#6b7280", textAlign: "center", lineHeight: 1.3 }}>{entry.label}</div>
+            <div style={{ fontSize: 11, color: dark ? "#cbd5e1" : "#6b7280", textAlign: "center", lineHeight: 1.3 }}>{entry.label}</div>
           </div>
         );
       })}
@@ -189,12 +204,22 @@ function SimpleBars({ data, formatValue }) {
 }
 
 export default function Revenue() {
+  const { dark } = useTheme();
   const [timeframe, setTimeframe] = useState("30d");
   const [orders, setOrders] = useState([]);
   const [forecast, setForecast] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [customTargets, setCustomTargets] = useState(() => {
+    try {
+      const raw = localStorage.getItem(TARGET_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [targetDraft, setTargetDraft] = useState("");
 
   const load = async (silent = false) => {
     try {
@@ -337,7 +362,9 @@ export default function Revenue() {
     const bestHour = [...hourlySeed].sort((a, b) => b.revenue - a.revenue)[0] || { hour: 0, revenue: 0, orders: 0 };
     const bestBucket = [...trend].sort((a, b) => b.value - a.value)[0] || null;
     const splitOrders = inRangeOrders.filter((order) => order.paymentMethod === "split");
-    const splitCashPending = splitOrders.reduce((sum, order) => sum + Number(order.splitCashDue || 0), 0);
+    const splitCashPending = splitOrders
+      .filter((order) => (order.status || "").toLowerCase() !== "delivered")
+      .reduce((sum, order) => sum + Number(order.splitCashDue || 0), 0);
     const splitCardCaptured = splitOrders.reduce((sum, order) => sum + Number(order.splitCardTotal || 0), 0);
     const activeDates = new Set(inRangeOrders.map((order) => startOfDay(new Date(order.createdAt)).toISOString())).size;
 
@@ -392,6 +419,32 @@ export default function Revenue() {
 
   const forecastTotal = useMemo(() => forecast.reduce((sum, day) => sum + (day.predictedRevenue || 0), 0), [forecast]);
 
+  const customTargetForRange = Number(customTargets?.[timeframe] || 0);
+  const hasCustomTarget = customTargetForRange > 0;
+  const effectiveTarget = hasCustomTarget ? customTargetForRange : metrics.targetRevenue;
+  const effectiveProgress = effectiveTarget > 0 ? Math.min(100, Math.round((metrics.totalRevenue / effectiveTarget) * 100)) : 0;
+
+  useEffect(() => {
+    setTargetDraft(hasCustomTarget ? String(customTargetForRange) : "");
+  }, [timeframe, hasCustomTarget, customTargetForRange]);
+
+  const saveTarget = () => {
+    const parsed = Number(targetDraft);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    const next = { ...customTargets, [timeframe]: parsed };
+    setCustomTargets(next);
+    localStorage.setItem(TARGET_STORAGE_KEY, JSON.stringify(next));
+  };
+
+  const resetTarget = () => {
+    if (!hasCustomTarget) return;
+    const next = { ...customTargets };
+    delete next[timeframe];
+    setCustomTargets(next);
+    localStorage.setItem(TARGET_STORAGE_KEY, JSON.stringify(next));
+    setTargetDraft("");
+  };
+
   const pageWrap = { maxWidth: 1240, margin: "0 auto", paddingBottom: 32 };
   const panel = { background: "white", border: "1px solid rgba(17,24,39,0.06)", borderRadius: 20, boxShadow: "0 10px 28px rgba(15,23,42,0.05)", padding: 22 };
 
@@ -417,11 +470,11 @@ export default function Revenue() {
           marginBottom: 24,
           borderRadius: 28,
           padding: "28px 28px 24px",
-          background: "radial-gradient(circle at top left, rgba(251,146,60,0.45), transparent 28%), radial-gradient(circle at top right, rgba(59,130,246,0.24), transparent 30%), linear-gradient(135deg, #111827 0%, #1f2937 45%, #312e81 100%)",
+          background: "radial-gradient(circle at top right, rgba(59,130,246,0.24), transparent 30%), linear-gradient(135deg, #111827 0%, #1f2937 45%, #312e81 100%)",
+          border: "1px solid rgba(15,23,42,0.95)",
           boxShadow: "0 24px 60px rgba(15,23,42,0.18)",
         }}>
           <div style={{ position: "absolute", top: -24, right: -18, width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.04)", filter: "blur(2px)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: -46, left: 40, width: 120, height: 120, borderRadius: "50%", background: "rgba(251,191,36,0.05)", pointerEvents: "none" }} />
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 18, flexWrap: "wrap", position: "relative", zIndex: 1 }}>
             <div style={{ maxWidth: 760 }}>
@@ -477,6 +530,7 @@ export default function Revenue() {
             sub={metrics.revenueChange == null ? `${metrics.totalOrders} orders in range` : `${metrics.revenueChange >= 0 ? "+" : ""}${metrics.revenueChange}% vs previous period`}
             accent="#ff4e2a"
             icon="💰"
+            dark={dark}
           />
           <RevenueCard
             title="Delivered Revenue"
@@ -484,6 +538,7 @@ export default function Revenue() {
             sub={`${metrics.deliveredRate}% of orders delivered`}
             accent="#16a34a"
             icon="✅"
+            dark={dark}
           />
           <RevenueCard
             title="Average Order"
@@ -491,6 +546,7 @@ export default function Revenue() {
             sub="Based on completed and active orders"
             accent="#2563eb"
             icon="🧾"
+            dark={dark}
           />
           <RevenueCard
             title="Open Pipeline"
@@ -498,6 +554,7 @@ export default function Revenue() {
             sub="Revenue still moving through the kitchen or delivery"
             accent="#7c3aed"
             icon="🚚"
+            dark={dark}
           />
         </div>
 
@@ -509,18 +566,47 @@ export default function Revenue() {
                   <div style={{ fontSize: 22, fontWeight: 900, color: "#111827" }}>Target Tracker</div>
                   <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>A simple pace check so the page feels less dead and more directional.</div>
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#9a3412", background: "#ffedd5", border: "1px solid #fdba74", borderRadius: 999, padding: "7px 10px" }}>
-                  Goal {money(metrics.targetRevenue)}
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: hasCustomTarget ? "#065f46" : "#9a3412", background: hasCustomTarget ? "#d1fae5" : "#ffedd5", border: hasCustomTarget ? "1px solid #6ee7b7" : "1px solid #fdba74", borderRadius: 999, padding: "7px 10px" }}>
+                    {hasCustomTarget ? "Custom Goal" : "Goal"} {money(effectiveTarget)}
+                  </div>
                 </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+                <input
+                  type="number"
+                  min="1"
+                  step="50"
+                  value={targetDraft}
+                  onChange={(event) => setTargetDraft(event.target.value)}
+                  placeholder={`Set target for ${TIMEFRAME_OPTIONS.find((option) => option.value === timeframe)?.label || timeframe}`}
+                  style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #d1d5db", fontSize: 12, fontWeight: 700, width: 230, fontFamily: "inherit", outline: "none" }}
+                />
+                <button
+                  type="button"
+                  onClick={saveTarget}
+                  style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #fdba74", background: "#fff7ed", color: "#9a3412", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  Save Target
+                </button>
+                <button
+                  type="button"
+                  onClick={resetTarget}
+                  disabled={!hasCustomTarget}
+                  style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #d1d5db", background: hasCustomTarget ? "#f8fafc" : "#f3f4f6", color: hasCustomTarget ? "#334155" : "#9ca3af", fontSize: 12, fontWeight: 800, cursor: hasCustomTarget ? "pointer" : "not-allowed", fontFamily: "inherit" }}
+                >
+                  Reset Auto
+                </button>
               </div>
 
               <div style={{ marginBottom: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 8, fontSize: 13, fontWeight: 700, color: "#374151" }}>
                   <span>Progress</span>
-                  <span>{metrics.targetProgress}%</span>
+                  <span>{effectiveProgress}%</span>
                 </div>
                 <div style={{ height: 16, borderRadius: 999, background: "rgba(255,255,255,0.7)", overflow: "hidden", border: "1px solid rgba(17,24,39,0.06)" }}>
-                  <div style={{ width: `${metrics.targetProgress}%`, minWidth: metrics.totalRevenue > 0 ? 18 : 0, height: "100%", borderRadius: 999, background: "linear-gradient(90deg, #fb923c 0%, #ff4e2a 45%, #3b82f6 100%)", boxShadow: "0 8px 18px rgba(255,78,42,0.2)" }} />
+                  <div style={{ width: `${effectiveProgress}%`, minWidth: metrics.totalRevenue > 0 ? 18 : 0, height: "100%", borderRadius: 999, background: "linear-gradient(90deg, #fb923c 0%, #ff4e2a 45%, #3b82f6 100%)", boxShadow: "0 8px 18px rgba(255,78,42,0.2)" }} />
                 </div>
               </div>
 
@@ -543,60 +629,31 @@ export default function Revenue() {
             <div style={{ padding: "24px 24px 22px", borderLeft: "1px solid rgba(17,24,39,0.06)", background: "rgba(255,255,255,0.58)" }}>
               <div style={{ fontSize: 22, fontWeight: 900, color: "#111827", marginBottom: 14 }}>Mix Breakdown</div>
               <div style={{ display: "grid", gap: 18 }}>
-                <MiniDonut value={metrics.paymentTotals.card} total={metrics.totalRevenue} color="#2563eb" label="Card capture" />
-                <MiniDonut value={metrics.paymentTotals.cash} total={metrics.totalRevenue} color="#f59e0b" label="Cash intake" />
-                <MiniDonut value={metrics.splitCardCaptured} total={metrics.totalRevenue} color="#7c3aed" label="Split card share" />
+                <MiniDonut value={metrics.paymentTotals.card} total={metrics.totalRevenue} color="#2563eb" label="Card capture" dark={dark} />
+                <MiniDonut value={metrics.paymentTotals.cash} total={metrics.totalRevenue} color="#f59e0b" label="Cash intake" dark={dark} />
+                <MiniDonut value={metrics.splitCardCaptured} total={metrics.totalRevenue} color="#7c3aed" label="Split card share" dark={dark} />
               </div>
             </div>
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.5fr) minmax(320px, 0.9fr)", gap: 18, marginBottom: 20 }}>
-          <div style={panel}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 21, fontWeight: 900, color: "#111827" }}>Revenue Trend</div>
-                <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>Latest {metrics.trend.length} {getGranularity(timeframe)} buckets</div>
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", padding: "8px 10px", borderRadius: 999, background: "#f9fafb", border: "1px solid #eef2f7" }}>
-                Total {money(metrics.totalRevenue)}
-              </div>
-            </div>
-            {metrics.trend.length > 0 ? (
-              <SimpleBars data={metrics.trend} formatValue={money} />
-            ) : (
-              <div style={{ textAlign: "center", padding: "70px 20px", color: "#9ca3af", fontWeight: 700 }}>No revenue data in this range yet.</div>
-            )}
-          </div>
-
-          <div style={{ display: "grid", gap: 18 }}>
-            <div style={panel}>
-              <div style={{ fontSize: 21, fontWeight: 900, color: "#111827", marginBottom: 14 }}>Payment Mix</div>
-              <div style={{ display: "grid", gap: 12 }}>
-                <div style={{ padding: "14px 16px", borderRadius: 16, background: "#eff6ff", border: "1px solid #dbeafe" }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Card Revenue</div>
-                  <div style={{ fontSize: 26, fontWeight: 900, color: "#111827" }}>{money(metrics.paymentTotals.card)}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.5fr) minmax(320px, 0.9fr)", gap: 18, marginBottom: 16, alignItems: "start" }}>
+          <div style={{ display: "grid", gap: 16, alignSelf: "start" }}>
+            <div style={{ ...panel, alignSelf: "start" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontSize: 21, fontWeight: 900, color: "#111827" }}>Revenue Trend</div>
+                  <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>Latest {metrics.trend.length} {getGranularity(timeframe)} buckets</div>
                 </div>
-                <div style={{ padding: "14px 16px", borderRadius: 16, background: "#fff7ed", border: "1px solid #fed7aa" }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#c2410c", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Cash Revenue</div>
-                  <div style={{ fontSize: 26, fontWeight: 900, color: "#111827" }}>{money(metrics.paymentTotals.cash)}</div>
-                </div>
-                <div style={{ display: "grid", gap: 10 }}>
-                  {Object.entries(metrics.paymentTotals.byMethod).map(([method, value]) => {
-                    const style = PAYMENT_STYLES[method] || PAYMENT_STYLES.cod;
-                    const percent = metrics.totalRevenue > 0 ? Math.round((value / metrics.totalRevenue) * 100) : 0;
-                    return (
-                      <div key={method} style={{ display: "grid", gridTemplateColumns: "110px 1fr auto", gap: 10, alignItems: "center" }}>
-                        <span style={{ fontSize: 12, fontWeight: 800, color: style.color, background: style.bg, borderRadius: 999, padding: "6px 10px", textAlign: "center" }}>{style.label}</span>
-                        <div style={{ height: 10, borderRadius: 999, background: "#f3f4f6", overflow: "hidden" }}>
-                          <div style={{ width: `${percent}%`, minWidth: value > 0 ? 10 : 0, height: "100%", borderRadius: 999, background: style.color }} />
-                        </div>
-                        <span style={{ fontSize: 12, fontWeight: 800, color: "#374151" }}>{percent}%</span>
-                      </div>
-                    );
-                  })}
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", padding: "8px 10px", borderRadius: 999, background: "#f9fafb", border: "1px solid #eef2f7" }}>
+                  Total {money(metrics.totalRevenue)}
                 </div>
               </div>
+              {metrics.trend.length > 0 ? (
+                <SimpleBars data={metrics.trend} formatValue={money} dark={dark} />
+              ) : (
+                <div style={{ textAlign: "center", padding: "70px 20px", color: "#9ca3af", fontWeight: 700 }}>No revenue data in this range yet.</div>
+              )}
             </div>
 
             <div style={panel}>
@@ -625,6 +682,37 @@ export default function Revenue() {
                   Need more delivered orders before forecast becomes useful.
                 </div>
               )}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gap: 16 }}>
+            <div style={panel}>
+              <div style={{ fontSize: 21, fontWeight: 900, color: "#111827", marginBottom: 14 }}>Payment Mix</div>
+              <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ padding: "14px 16px", borderRadius: 16, background: "#eff6ff", border: "1px solid #dbeafe" }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Card Revenue</div>
+                  <div style={{ fontSize: 26, fontWeight: 900, color: "#111827" }}>{money(metrics.paymentTotals.card)}</div>
+                </div>
+                <div style={{ padding: "14px 16px", borderRadius: 16, background: "#fff7ed", border: "1px solid #fed7aa" }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#c2410c", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Cash Revenue</div>
+                  <div style={{ fontSize: 26, fontWeight: 900, color: "#111827" }}>{money(metrics.paymentTotals.cash)}</div>
+                </div>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {Object.entries(metrics.paymentTotals.byMethod).map(([method, value]) => {
+                    const style = PAYMENT_STYLES[method] || PAYMENT_STYLES.cod;
+                    const percent = metrics.totalRevenue > 0 ? Math.round((value / metrics.totalRevenue) * 100) : 0;
+                    return (
+                      <div key={method} style={{ display: "grid", gridTemplateColumns: "110px 1fr auto", gap: 10, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: style.color, background: style.bg, borderRadius: 999, padding: "6px 10px", textAlign: "center" }}>{style.label}</span>
+                        <div style={{ height: 10, borderRadius: 999, background: "#f3f4f6", overflow: "hidden" }}>
+                          <div style={{ width: `${percent}%`, minWidth: value > 0 ? 10 : 0, height: "100%", borderRadius: 999, background: style.color }} />
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: "#374151" }}>{percent}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -659,7 +747,7 @@ export default function Revenue() {
           <div style={{ display: "grid", gap: 18 }}>
             <div style={panel}>
               <div style={{ fontSize: 21, fontWeight: 900, color: "#111827", marginBottom: 16 }}>Weekday Heat</div>
-              <WeekdayHeat data={metrics.weekdayStats} />
+              <WeekdayHeat data={metrics.weekdayStats} dark={dark} />
             </div>
 
             <div style={panel}>

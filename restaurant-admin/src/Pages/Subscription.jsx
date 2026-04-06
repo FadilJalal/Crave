@@ -4,14 +4,14 @@ import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { useTheme } from "../ThemeContext";
 
-const PLANS = {
-  starter: {
+const DEFAULT_PLANS = {
+  basic: {
     tier: 1,
-    name: "Starter",
+    name: "Basic",
     price: 299,
     color: "#3b82f6",
     bg: "#eff6ff",
-    description: "Perfect for small restaurants",
+    description: "Core operations with no AI features",
     features: [
       // Basic
       { name: "dashboard", label: "Dashboard & Reports", included: true },
@@ -20,31 +20,17 @@ const PLANS = {
       { name: "messages", label: "Customer Messaging", included: true },
       // Marketing
       { name: "promoCodes", label: "Promo Codes", included: true },
-      { name: "broadcasts", label: "Broadcast Messages", included: false },
-      { name: "emailCampaigns", label: "Email Campaigns", included: false },
-      // Inventory
-      { name: "inventory", label: "Inventory Management", included: false },
-      // Advanced
-      { name: "customers", label: "Customer Analytics", included: false },
-      { name: "aiInsights", label: "AI Insights & Forecasts", included: false },
-    ],
-  },
-  professional: {
-    tier: 2,
-    name: "Professional",
-    price: 399,
-    color: "#8b5cf6",
-    bg: "#f5f3ff",
-    description: "For growing restaurants",
-    badge: "MOST POPULAR",
-    features: [
-      { name: "menuItems", label: "Unlimited Menu Items", included: true },
-      { name: "bulkUpload", label: "Bulk Menu Upload", included: true },
-      { name: "promoCodes", label: "Promo Codes", included: true },
-      { name: "inventory", label: "Inventory Management", included: true },
+      { name: "broadcasts", label: "Broadcast Messages", included: true },
       { name: "emailCampaigns", label: "Email Campaigns", included: true },
-      { name: "advancedAnalytics", label: "Advanced Analytics", included: true },
-      { name: "customerSegmentation", label: "AI Customer Segmentation", included: true },
+      // Inventory
+      { name: "inventory", label: "Inventory Management", included: true },
+      { name: "inventoryAnalytics", label: "Inventory Analytics", included: true },
+      // Advanced
+      { name: "customers", label: "Customer Analytics", included: true },
+      { name: "aiPromoGenerator", label: "AI Promo Generator", included: false },
+      { name: "aiInsights", label: "AI Insights & Forecasts", included: false },
+      { name: "aiCustomerSegmentation", label: "Customer Segmentation", included: false },
+      { name: "analytics", label: "Advanced Analytics Dashboard", included: false },
     ],
   },
   enterprise: {
@@ -63,11 +49,71 @@ const PLANS = {
       { name: "inventoryAnalytics", label: "Inventory Analytics", included: true },
       { name: "emailCampaigns", label: "Email Campaigns", included: true },
       { name: "broadcasts", label: "Broadcast & Notifications", included: true },
-      { name: "customerSegmentation", label: "AI Customer Segmentation", included: true },
+      { name: "aiPromoGenerator", label: "AI Promo Generator", included: true },
+      { name: "aiInsights", label: "AI Insights & Forecasts", included: true },
+      { name: "aiCustomerSegmentation", label: "Customer Segmentation", included: true },
       { name: "analytics", label: "Advanced Analytics Dashboard", included: true },
     ],
   },
 };
+
+const PLAN_THEME = {
+  basic: { color: "#3b82f6", bg: "#eff6ff" },
+  enterprise: { color: "#f59e0b", bg: "#fffbeb", badge: "PREMIUM" },
+};
+
+const FEATURE_LABELS = {
+  dashboard: "Dashboard & Reports",
+  orders: "Order Management",
+  menu: "Menu Management",
+  messages: "Customer Messaging",
+  reviews: "Reviews",
+  menuItems: "Unlimited Menu Items",
+  bulkUpload: "Bulk Menu Upload",
+  promoCodes: "Promo Codes",
+  broadcasts: "Broadcast Messages",
+  emailCampaigns: "Email Campaigns",
+  inventory: "Inventory Management",
+  inventoryAnalytics: "Inventory Analytics",
+  customers: "Customer Analytics",
+  aiInsights: "AI Insights & Forecasts",
+  aiCustomerSegmentation: "Customer Segmentation",
+  analytics: "Advanced Analytics Dashboard",
+};
+
+const formatFeatureLabel = (key) => FEATURE_LABELS[key]
+  || String(key || "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (s) => s.toUpperCase());
+
+const toFeatureList = (features) => {
+  if (Array.isArray(features)) {
+    return features.map((f) => ({
+      name: f.name,
+      label: f.label || formatFeatureLabel(f.name),
+      included: Boolean(f.included),
+    }));
+  }
+  return Object.entries(features || {}).map(([featureKey, enabled]) => ({
+    name: featureKey,
+    label: formatFeatureLabel(featureKey),
+    included: Boolean(enabled),
+  }));
+};
+
+const mapPlanFromApi = (key, plan) => ({
+  tier: plan?.tier,
+  name: plan?.name || DEFAULT_PLANS[key]?.name || key,
+  price: Number(plan?.price ?? DEFAULT_PLANS[key]?.price ?? 0),
+  color: PLAN_THEME[key]?.color || DEFAULT_PLANS[key]?.color,
+  bg: PLAN_THEME[key]?.bg || DEFAULT_PLANS[key]?.bg,
+  description: plan?.description || DEFAULT_PLANS[key]?.description || "",
+  badge: PLAN_THEME[key]?.badge || DEFAULT_PLANS[key]?.badge,
+  features: toFeatureList(plan?.features ?? DEFAULT_PLANS[key]?.features),
+});
 
 const DURATIONS = [1, 3, 6, 12];
 
@@ -86,8 +132,9 @@ export default function Subscription() {
   const { dark } = useTheme();
   const [searchParams]  = useSearchParams();
   const [sub, setSub]   = useState(null);
+  const [plans, setPlans] = useState(DEFAULT_PLANS);
   const [loading, setLoading]   = useState(true);
-  const [selectedPlan, setSelectedPlan]     = useState("starter");
+  const [selectedPlan, setSelectedPlan]     = useState("basic");
   const [selectedMonths, setSelectedMonths] = useState(1);
   const [paying, setPaying] = useState(false);
   const [toast, setToast]   = useState(null);
@@ -116,8 +163,23 @@ export default function Subscription() {
     finally { setLoading(false); }
   };
 
+  const loadPlans = async () => {
+    try {
+      const res = await api.get("/api/subscription/plans");
+      if (res.data?.success && res.data?.data) {
+        setPlans({
+          basic: mapPlanFromApi("basic", res.data.data.basic),
+          enterprise: mapPlanFromApi("enterprise", res.data.data.enterprise),
+        });
+      }
+    } catch {
+      // keep defaults if API fails
+    }
+  };
+
   useEffect(() => {
     loadSub();
+    loadPlans();
     if (searchParams.get("success") === "1")   showToast("🎉 Payment successful! Your subscription is now active.");
     if (searchParams.get("cancelled") === "1") showToast("Payment cancelled. Your plan was not changed.", "error");
   }, []);
@@ -156,7 +218,6 @@ export default function Subscription() {
   }, [searchParams]);
 
   const handleCheckout = async () => {
-    if (selectedPlan === "free") return showToast("Free plan doesn't require payment.", "error");
     setPaying(true);
     try {
       const res = await api.post("/api/subscription/checkout", { plan: selectedPlan, months: selectedMonths });
@@ -169,9 +230,11 @@ export default function Subscription() {
     }
   };
 
-  const plan   = PLANS[selectedPlan];
+  const plan   = plans[selectedPlan] || plans.basic;
   const total  = plan.price * selectedMonths;
-  const currentPlan   = sub?.plan && sub.plan !== "none" ? PLANS[sub.plan] : null;
+  const planAliases = { starter: "basic", professional: "enterprise" };
+  const normalizedCurrentPlan = planAliases[sub?.plan] || sub?.plan;
+  const currentPlan   = normalizedCurrentPlan && normalizedCurrentPlan !== "none" ? plans[normalizedCurrentPlan] : null;
   const currentStatus = STATUS_STYLE[sub?.status] || { color: "#6b7280", bg: "#f3f4f6", label: "No Subscription" };
   const textPrimary = dark ? "#f9fafb" : "#111827";
   const textSecondary = dark ? "rgba(249,250,251,0.68)" : "#6b7280";
@@ -261,7 +324,7 @@ export default function Subscription() {
         {/* Plan comparison grid */}
         <div style={{ marginBottom: 32 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 24 }}>
-            {Object.entries(PLANS).map(([key, p]) => {
+            {Object.entries(plans).map(([key, p]) => {
               const isSelected = selectedPlan === key;
               return (
                 <div
@@ -300,10 +363,10 @@ export default function Subscription() {
                       transition: "all 0.2s", marginBottom: 16,
                     }}
                   >
-                    {isSelected ? "Selected" : "Select"} {key === "professional" ? "" : ""}
+                    {isSelected ? "Selected" : "Select"}
                   </button>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {p.features.slice(0, p.name === "Free" ? 3 : p.name === "Starter" ? 4 : p.name === "Professional" ? 8 : 12).map(f => (
+                    {p.features.map(f => (
                       <div key={f.name} style={{ fontSize: 12, color: f.included ? (dark ? "#e5e7eb" : "#374151") : (dark ? "rgba(229,231,235,0.35)" : "#d1d5db"), display: "flex", gap: 8, alignItems: "flex-start" }}>
                         <span style={{ color: f.included ? p.color : "#d1d5db", flexShrink: 0, marginTop: 1, fontWeight: 700, fontSize: 13 }}>{f.included ? "✓" : "—"}</span>
                         <span>{f.label}</span>
@@ -370,17 +433,17 @@ export default function Subscription() {
             </div>
             <button
               onClick={handleCheckout}
-              disabled={paying || (selectedPlan === "free" && sub?.plan === "free")}
+              disabled={paying}
               style={{
                 padding: "14px 32px", borderRadius: 12, border: "none",
                 background: paying ? "#e5e7eb" : `linear-gradient(135deg, ${plan.color}, ${plan.color}dd)`,
                 color: paying ? "#9ca3af" : "white",
-                fontWeight: 900, fontSize: 15, cursor: (paying || (selectedPlan === "free" && sub?.plan === "free")) ? "not-allowed" : "pointer",
+                fontWeight: 900, fontSize: 15, cursor: paying ? "not-allowed" : "pointer",
                 fontFamily: "inherit", boxShadow: paying ? "none" : `0 6px 20px ${plan.color}44`,
                 transition: "all 0.2s",
               }}
             >
-              {paying ? "Processing…" : selectedPlan === "free" ? "Get Free Plan" : "Continue to Payment →"}
+              {paying ? "Processing…" : "Continue to Payment →"}
             </button>
           </div>
           <div style={{ marginTop: 14, fontSize: 11, color: textMuted, textAlign: "center" }}>

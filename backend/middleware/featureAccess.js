@@ -5,6 +5,23 @@
 
 import restaurantModel from "../models/restaurantModel.js";
 
+const PLAN_ALIASES = {
+  starter: "basic",
+  professional: "enterprise",
+  pro: "enterprise",
+};
+
+const normalizePlan = (plan) => {
+  const key = String(plan || "").toLowerCase();
+  return PLAN_ALIASES[key] || key;
+};
+
+const ENTERPRISE_FEATURES = new Set([
+  "aiPromoGenerator",
+  "aiInsights",
+  "aiCustomerSegmentation",
+]);
+
 /**
  * Check if restaurant has access to a feature
  * Usage: router.post("/route", requireFeature("inventory"), handler)
@@ -37,8 +54,11 @@ export const requireFeature = (featureName) => {
 
       // Check if feature is enabled
       const hasFeature = subscription?.features?.[featureName];
+      const normalizedPlan = normalizePlan(subscription?.plan);
+      const hasEnterpriseFallback =
+        normalizedPlan === "enterprise" && ENTERPRISE_FEATURES.has(featureName);
       
-      if (!hasFeature) {
+      if (!hasFeature && !hasEnterpriseFallback) {
         return res.status(403).json({
           success: false,
           message: `The "${featureName}" feature is not available in your current plan`,

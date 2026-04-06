@@ -2,8 +2,10 @@ import { useEffect, useState, useMemo } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { toast } from "react-toastify";
+import { useTheme } from "../ThemeContext";
 
 const InventoryAnalytics = () => {
+  const { dark } = useTheme();
   const [timeframe, setTimeframe] = useState("30d");
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -63,41 +65,48 @@ const InventoryAnalytics = () => {
   };
 
   const categoryRows = safeAnalyticsData.current.byCategory || [];
+  const cardBg = dark ? "#0f172a" : "#ffffff";
+  const subCardBg = dark ? "#111827" : "#f9fafb";
+  const border = dark ? "#334155" : "var(--border)";
+  const textPrimary = dark ? "#f3f4f6" : "var(--text)";
+  const textSecondary = dark ? "#cbd5e1" : "var(--muted)";
+  const tableHeadBg = dark ? "#1f2937" : "#f9fafb";
+  const rowBorder = dark ? "#334155" : "#f3f4f6";
 
   const s = {
     wrap: { maxWidth: 1200, margin: "0 auto", padding: "0 20px" },
     hdr: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20, marginBottom: 24, flexWrap: "wrap" },
     hdrLeft: { flex: 1 },
-    title: { fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: -0.6 },
-    sub: { fontSize: 13, color: "var(--muted)", margin: "4px 0 0", fontWeight: 500 },
+    title: { fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: -0.6, color: textPrimary },
+    sub: { fontSize: 13, color: textSecondary, margin: "4px 0 0", fontWeight: 500 },
     tabs: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20, borderBottom: "1px solid var(--border)", paddingBottom: 12 },
     tab: (active) => ({
       padding: "8px 16px",
       borderRadius: 8,
       border: active ? "2px solid var(--orange)" : "1px solid transparent",
       background: active ? "var(--orangeSoft)" : "transparent",
-      color: active ? "var(--orange)" : "var(--text)",
+      color: active ? "var(--orange)" : textPrimary,
       fontWeight: 700,
       fontSize: 13,
       cursor: "pointer",
       fontFamily: "inherit"
     }),
-    select: { padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "#f9fafb", fontFamily: "inherit", cursor: "pointer", fontSize: 12 },
+    select: { padding: "8px 12px", borderRadius: 8, border: `1px solid ${border}`, background: subCardBg, color: textPrimary, fontFamily: "inherit", cursor: "pointer", fontSize: 12 },
     grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16, marginBottom: 24 },
     card: {
-      background: "white",
-      border: "1px solid var(--border)",
+      background: cardBg,
+      border: `1px solid ${border}`,
       borderRadius: 12,
       padding: 16,
-      boxShadow: "0 2px 10px rgba(0,0,0,0.04)"
+      boxShadow: dark ? "0 6px 22px rgba(0,0,0,0.3)" : "0 2px 10px rgba(0,0,0,0.04)"
     },
-    cardTitle: { fontSize: 12, color: "var(--muted)", fontWeight: 700, margin: "0 0 8px", textTransform: "uppercase" },
-    cardValue: { fontSize: 28, fontWeight: 900, margin: 0, color: "var(--text)", letterSpacing: -0.6 },
-    cardSub: { fontSize: 11, color: "var(--muted)", fontWeight: 600, margin: "4px 0 0" },
+    cardTitle: { fontSize: 12, color: textSecondary, fontWeight: 700, margin: "0 0 8px", textTransform: "uppercase" },
+    cardValue: { fontSize: 28, fontWeight: 900, margin: 0, color: textPrimary, letterSpacing: -0.6 },
+    cardSub: { fontSize: 11, color: textSecondary, fontWeight: 600, margin: "4px 0 0" },
     largCard: { gridColumn: "1 / -1" },
     table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
-    th: { padding: "12px 14px", textAlign: "left", fontWeight: 800, borderBottom: "2px solid var(--border)", background: "#f9fafb", color: "#374151" },
-    td: { padding: "12px 14px", borderBottom: "1px solid #f3f4f6" },
+    th: { padding: "12px 14px", textAlign: "left", fontWeight: 800, borderBottom: `2px solid ${border}`, background: tableHeadBg, color: textPrimary },
+    td: { padding: "12px 14px", borderBottom: `1px solid ${rowBorder}`, color: textPrimary },
     badge: (color) => ({
       display: "inline-block",
       padding: "4px 8px",
@@ -108,10 +117,10 @@ const InventoryAnalytics = () => {
       color: color === "high" ? "#166534" : color === "medium" ? "#92400e" : "#991b1b"
     }),
     section: { marginBottom: 24 },
-    sectionTitle: { fontSize: 18, fontWeight: 900, margin: "0 0 16px" },
-    bar: { height: 6, borderRadius: 50, background: "#f3f4f6", overflow: "hidden" },
+    sectionTitle: { fontSize: 18, fontWeight: 900, margin: "0 0 16px", color: textPrimary },
+    bar: { height: 6, borderRadius: 50, background: dark ? "#1f2937" : "#f3f4f6", overflow: "hidden" },
     barFill: (color) => ({ height: "100%", background: color, borderRadius: 50 }),
-    chartContainer: { background: "white", border: "1px solid var(--border)", borderRadius: 12, padding: 16, marginBottom: 24 }
+    chartContainer: { background: cardBg, border: `1px solid ${border}`, borderRadius: 12, padding: 16, marginBottom: 24 }
   };
 
   if (loading) {
@@ -141,13 +150,13 @@ const InventoryAnalytics = () => {
           <div style={{ 
             textAlign: "center", 
             padding: "60px 20px", 
-            background: "white", 
+            background: cardBg, 
             borderRadius: 12, 
-            border: "1px solid var(--border)" 
+            border: `1px solid ${border}` 
           }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
-            <p style={{ fontSize: 18, fontWeight: 900, margin: "0 0 8px" }}>Failed to Load Analytics</p>
-            <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 24px" }}>We couldn't load your inventory analytics. Please try again.</p>
+            <p style={{ fontSize: 18, fontWeight: 900, margin: "0 0 8px", color: textPrimary }}>Failed to Load Analytics</p>
+            <p style={{ fontSize: 13, color: textSecondary, margin: "0 0 24px" }}>We couldn't load your inventory analytics. Please try again.</p>
             <button className="btn" onClick={loadAnalytics} style={{ fontSize: 13 }}>↻ Retry</button>
           </div>
         </div>
@@ -347,12 +356,12 @@ const InventoryAnalytics = () => {
                       <p style={{ ...s.cardTitle, marginBottom: 12 }}>Items Supplied ({supplier.itemCount})</p>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
                         {supplier.items.map((item, i) => (
-                          <div key={i} style={{ padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #f3f4f6" }}>
-                            <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 13 }}>{item.name}</p>
-                            <p style={{ margin: "0 0 4px", fontSize: 11, color: "var(--muted)" }}>Value: AED {item.value.toLocaleString()}</p>
-                            <p style={{ margin: "0 0 4px", fontSize: 11, color: "var(--muted)" }}>Stock: {item.stock}</p>
+                              <div key={i} style={{ padding: 12, background: subCardBg, borderRadius: 8, border: `1px solid ${rowBorder}` }}>
+                                <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 13, color: textPrimary }}>{item.name}</p>
+                                <p style={{ margin: "0 0 4px", fontSize: 11, color: textSecondary }}>Value: AED {item.value.toLocaleString()}</p>
+                                <p style={{ margin: "0 0 4px", fontSize: 11, color: textSecondary }}>Stock: {item.stock}</p>
                             {item.expiryDate && (
-                              <p style={{ margin: 0, fontSize: 11, color: new Date(item.expiryDate) < new Date() ? "#dc2626" : "var(--muted)" }}>
+                                  <p style={{ margin: 0, fontSize: 11, color: new Date(item.expiryDate) < new Date() ? "#dc2626" : textSecondary }}>
                                 Expires: {new Date(item.expiryDate).toLocaleDateString()}
                               </p>
                             )}

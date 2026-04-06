@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
+import { useTheme } from "../ThemeContext";
 
 const empty = { code: "", type: "percent", value: "", minOrder: "", maxUses: "", expiresAt: "" };
 
@@ -23,6 +24,7 @@ const getPromoId = (promo) => String(promo?._id || promo?.id || "");
 const normalizePromos = (list = []) => list.map((promo) => ({ ...promo, _id: promo?._id || promo?.id }));
 
 export default function Promos() {
+  const { dark } = useTheme();
   const [isPhone, setIsPhone] = useState(() => window.innerWidth <= 768);
   const [promos, setPromos] = useState([]);
   const [hoveredPromoId, setHoveredPromoId] = useState("");
@@ -42,6 +44,13 @@ export default function Promos() {
   const setPromosSafe = (next) => {
     setPromos((prev) => (typeof next === "function" ? next(prev) : next));
   };
+
+  const textPrimary = dark ? "#f8fafc" : "#111827";
+  const textSecondary = dark ? "rgba(248,250,252,0.76)" : "#6b7280";
+  const surface = dark ? "linear-gradient(165deg, rgba(15,23,42,0.98), rgba(17,24,39,0.95))" : "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)";
+  const surfaceBorder = dark ? "1px solid rgba(255,255,255,0.10)" : "1px solid #ece7f5";
+  const inputBg = dark ? "rgba(15,23,42,0.9)" : "#fff";
+  const inputBorder = dark ? "1.5px solid rgba(148,163,184,0.35)" : "1.5px solid #e6e7ef";
 
   const showStatus = (type, text) => {
     setStatus({ type, text });
@@ -232,7 +241,7 @@ export default function Promos() {
 
   return (
     <RestaurantLayout>
-      <div style={{ width: "100%", maxWidth: 1120, margin: "0 auto", padding: isPhone ? "0" : "0 4px", boxSizing: "border-box" }}>
+      <div style={{ width: "100%", maxWidth: 1120, margin: "0 auto", padding: isPhone ? "0" : "0 4px", boxSizing: "border-box", color: textPrimary }}>
         <div style={{
           position: "relative",
           overflow: "hidden",
@@ -275,39 +284,39 @@ export default function Promos() {
         )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 22 }}>
-          <div style={{ background: "linear-gradient(180deg, #ffffff 0%, #fff7f3 100%)", border: "1px solid #ffd8cc", borderRadius: 22, padding: 18, boxShadow: "0 10px 28px rgba(255,90,54,0.08)" }}>
+          <div style={{ background: dark ? "linear-gradient(180deg, #10213b 0%, #1f2937 100%)" : "linear-gradient(180deg, #ffffff 0%, #fff7f3 100%)", border: dark ? "1px solid rgba(255,216,204,0.32)" : "1px solid #ffd8cc", borderRadius: 22, padding: 18, boxShadow: dark ? "0 10px 28px rgba(0,0,0,0.35)" : "0 10px 28px rgba(255,90,54,0.08)" }}>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: "#9a3412", textTransform: "uppercase", letterSpacing: "0.08em" }}>Active promos</p>
-            <p style={{ margin: "8px 0 0", fontSize: 34, fontWeight: 900, color: "#111827", letterSpacing: "-0.04em" }}>{activePromos}</p>
+            <p style={{ margin: "8px 0 0", fontSize: 34, fontWeight: 900, color: textPrimary, letterSpacing: "-0.04em" }}>{activePromos}</p>
           </div>
-          <div style={{ background: "linear-gradient(180deg, #ffffff 0%, #f5f7ff 100%)", border: "1px solid #dbe4ff", borderRadius: 22, padding: 18, boxShadow: "0 10px 28px rgba(59,130,246,0.08)" }}>
+          <div style={{ background: dark ? "linear-gradient(180deg, #0f233f 0%, #1e293b 100%)" : "linear-gradient(180deg, #ffffff 0%, #f5f7ff 100%)", border: dark ? "1px solid rgba(219,228,255,0.32)" : "1px solid #dbe4ff", borderRadius: 22, padding: 18, boxShadow: dark ? "0 10px 28px rgba(0,0,0,0.35)" : "0 10px 28px rgba(59,130,246,0.08)" }}>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.08em" }}>Total redemptions</p>
-            <p style={{ margin: "8px 0 0", fontSize: 34, fontWeight: 900, color: "#111827", letterSpacing: "-0.04em" }}>{totalRedemptions}</p>
+            <p style={{ margin: "8px 0 0", fontSize: 34, fontWeight: 900, color: textPrimary, letterSpacing: "-0.04em" }}>{totalRedemptions}</p>
           </div>
-          <div style={{ background: "linear-gradient(180deg, #ffffff 0%, #f7fff7 100%)", border: "1px solid #d6f5dc", borderRadius: 22, padding: 18, boxShadow: "0 10px 28px rgba(34,197,94,0.08)" }}>
+          <div style={{ background: dark ? "linear-gradient(180deg, #11271d 0%, #1f2937 100%)" : "linear-gradient(180deg, #ffffff 0%, #f7fff7 100%)", border: dark ? "1px solid rgba(214,245,220,0.28)" : "1px solid #d6f5dc", borderRadius: 22, padding: 18, boxShadow: dark ? "0 10px 28px rgba(0,0,0,0.35)" : "0 10px 28px rgba(34,197,94,0.08)" }}>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: "#15803d", textTransform: "uppercase", letterSpacing: "0.08em" }}>Expiring in 7 days</p>
-            <p style={{ margin: "8px 0 0", fontSize: 34, fontWeight: 900, color: "#111827", letterSpacing: "-0.04em" }}>{expiringSoon}</p>
+            <p style={{ margin: "8px 0 0", fontSize: 34, fontWeight: 900, color: textPrimary, letterSpacing: "-0.04em" }}>{expiringSoon}</p>
           </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: isPhone ? "1fr" : "minmax(320px, 1.1fr) minmax(320px, 1fr)", gap: 18, alignItems: "start", marginBottom: 24 }}>
-          <div style={{ background: "linear-gradient(155deg, #fff4ee 0%, #fff9f6 46%, #fff 100%)", border: "1px solid #ffd5c8", borderRadius: 28, padding: 22, boxShadow: "0 16px 40px rgba(255,78,42,0.12)", position: "relative", overflow: "hidden" }}>
+          <div style={{ background: dark ? "linear-gradient(165deg, rgba(15,23,42,0.98), rgba(17,24,39,0.95))" : "linear-gradient(155deg, #fff4ee 0%, #fff9f6 46%, #fff 100%)", border: dark ? "1px solid rgba(255,255,255,0.10)" : "1px solid #ffd5c8", borderRadius: 28, padding: 22, boxShadow: dark ? "0 16px 40px rgba(0,0,0,0.35)" : "0 16px 40px rgba(255,78,42,0.12)", position: "relative", overflow: "hidden" }}>
             <div style={{ position: "absolute", inset: "auto -40px -50px auto", width: 180, height: 180, borderRadius: "50%", background: "rgba(255,90,54,0.08)", pointerEvents: "none" }} />
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 14 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 30, lineHeight: 0.95, letterSpacing: "-0.04em", fontWeight: 900, color: "#111827" }}>Generate with AI</h3>
-                <p style={{ margin: "10px 0 0", fontSize: 14, color: "#6b7280", maxWidth: 460, lineHeight: 1.55 }}>
+                <h3 style={{ margin: 0, fontSize: 30, lineHeight: 0.95, letterSpacing: "-0.04em", fontWeight: 900, color: textPrimary }}>Generate with AI</h3>
+                <p style={{ margin: "10px 0 0", fontSize: 14, color: textSecondary, maxWidth: 460, lineHeight: 1.55 }}>
                   Tell AI what campaign you want and it will generate ready-to-use promo ideas based on your menu and existing codes.
                 </p>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 900, color: "#ff4e2a", background: "white", border: "1px solid #ffd7ca", borderRadius: 999, padding: "8px 12px", boxShadow: "0 8px 18px rgba(255,78,42,0.08)" }}>
+              <span style={{ fontSize: 11, fontWeight: 900, color: "#ff4e2a", background: dark ? "rgba(255,255,255,0.05)" : "white", border: dark ? "1px solid rgba(255,215,202,0.18)" : "1px solid #ffd7ca", borderRadius: 999, padding: "8px 12px", boxShadow: dark ? "none" : "0 8px 18px rgba(255,78,42,0.08)" }}>
                 AI Assist
               </span>
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 12, fontWeight: 800, color: "#111827", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>What kind of promo do you want?</label>
+              <label style={{ fontSize: 12, fontWeight: 800, color: textPrimary, display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>What kind of promo do you want?</label>
               <textarea
-                style={{ width: "100%", minHeight: 104, resize: "vertical", padding: "14px 15px", borderRadius: 18, border: "1.5px solid #ffd6ca", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: "rgba(255,255,255,0.9)", lineHeight: 1.5, boxShadow: "inset 0 1px 1px rgba(0,0,0,0.02)" }}
+                style={{ width: "100%", minHeight: 104, resize: "vertical", padding: "14px 15px", borderRadius: 18, border: dark ? "1.5px solid rgba(255,214,202,0.18)" : "1.5px solid #ffd6ca", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: dark ? "rgba(2,6,23,0.72)" : "rgba(255,255,255,0.9)", color: textPrimary, lineHeight: 1.5, boxShadow: "inset 0 1px 1px rgba(0,0,0,0.02)" }}
                 placeholder="e.g. I want a strong weekend promo for family orders without hurting margins too much"
                 value={aiGoal}
                 onChange={(e) => setAiGoal(e.target.value)}
@@ -320,7 +329,7 @@ export default function Promos() {
                   key={goal}
                   type="button"
                   onClick={() => setAiGoal(goal)}
-                  style={{ padding: "9px 14px", borderRadius: 999, border: "1px solid #ffd3c6", background: "rgba(255,255,255,0.78)", color: "#9a3412", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 6px 14px rgba(255,78,42,0.05)" }}
+                  style={{ padding: "9px 14px", borderRadius: 999, border: dark ? "1px solid rgba(255,211,198,0.16)" : "1px solid #ffd3c6", background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.78)", color: dark ? "#fdba74" : "#9a3412", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: dark ? "none" : "0 6px 14px rgba(255,78,42,0.05)" }}
                 >
                   {goal}
                 </button>
@@ -338,19 +347,19 @@ export default function Promos() {
 
             {aiIdeas.length > 0 && (
               <div style={{ marginTop: 18 }}>
-                <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 900, color: "#111827", textTransform: "uppercase", letterSpacing: "0.06em" }}>{aiHeadline}</p>
+                <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 900, color: textPrimary, textTransform: "uppercase", letterSpacing: "0.06em" }}>{aiHeadline}</p>
                 <div style={{ display: "grid", gap: 12 }}>
                   {aiIdeas.map((idea, idx) => (
-                    <div key={`${idea.code}-${idx}`} style={{ background: "linear-gradient(180deg, #ffffff 0%, #fff7f4 100%)", border: "1px solid #ffe0d6", borderRadius: 20, padding: 16, display: "grid", gridTemplateColumns: isPhone ? "1fr" : "1fr auto", gap: 12, alignItems: "center", boxShadow: "0 10px 22px rgba(255,78,42,0.07)" }}>
+                    <div key={`${idea.code}-${idx}`} style={{ background: dark ? "linear-gradient(165deg, rgba(2,6,23,0.78), rgba(15,23,42,0.88))" : "linear-gradient(180deg, #ffffff 0%, #fff7f4 100%)", border: dark ? "1px solid rgba(255,224,214,0.14)" : "1px solid #ffe0d6", borderRadius: 20, padding: 16, display: "grid", gridTemplateColumns: isPhone ? "1fr" : "1fr auto", gap: 12, alignItems: "center", boxShadow: dark ? "0 10px 22px rgba(0,0,0,0.28)" : "0 10px 22px rgba(255,78,42,0.07)" }}>
                       <div>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
-                          <span style={{ fontWeight: 900, fontSize: 15, fontFamily: "monospace", letterSpacing: "0.04em" }}>{idea.code}</span>
+                          <span style={{ fontWeight: 900, fontSize: 15, fontFamily: "monospace", letterSpacing: "0.04em", color: textPrimary }}>{idea.code}</span>
                           <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: idea.type === "percent" ? "#eff6ff" : "#f0fdf4", color: idea.type === "percent" ? "#1d4ed8" : "#15803d" }}>
                             {idea.type === "percent" ? `${idea.value}% off` : `AED ${idea.value} off`}
                           </span>
                           <span style={{ fontSize: 12, color: "var(--muted)" }}>Min AED {idea.minOrder || 0}</span>
                         </div>
-                        <p style={{ margin: "0 0 6px", fontSize: 13, color: "#374151", fontWeight: 600 }}>{idea.reason}</p>
+                        <p style={{ margin: "0 0 6px", fontSize: 13, color: dark ? "#e2e8f0" : "#374151", fontWeight: 600 }}>{idea.reason}</p>
                         <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
                           {idea.maxUses ? `${idea.maxUses} uses` : "Unlimited uses"} • {idea.expiresInDays ? `Expires in ${idea.expiresInDays} days` : "No expiry"}
                         </p>
@@ -369,10 +378,10 @@ export default function Promos() {
             )}
           </div>
 
-          <div style={{ background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)", border: "1px solid #ece7f5", borderRadius: 28, padding: 24, boxShadow: "0 16px 34px rgba(17,24,39,0.06)" }}>
+          <div style={{ background: surface, border: surfaceBorder, borderRadius: 28, padding: 24, boxShadow: dark ? "0 16px 34px rgba(0,0,0,0.35)" : "0 16px 34px rgba(17,24,39,0.06)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 16 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 30, lineHeight: 0.95, letterSpacing: "-0.04em", fontWeight: 900 }}>Create new promo code</h3>
+                <h3 style={{ margin: 0, fontSize: 30, lineHeight: 0.95, letterSpacing: "-0.04em", fontWeight: 900, color: textPrimary }}>Create new promo code</h3>
                 <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--muted)" }}>Use AI ideas or build one manually.</p>
               </div>
               <div style={{ fontSize: 11, fontWeight: 800, color: "#4338ca", background: "#eef2ff", border: "1px solid #dbe4ff", borderRadius: 999, padding: "8px 12px" }}>
@@ -383,9 +392,9 @@ export default function Promos() {
             <form onSubmit={handleCreate}>
               <div style={{ display: "grid", gridTemplateColumns: isPhone ? "1fr" : "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 16 }}>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 800, color: "#111827", display: "block", marginBottom: 6 }}>Code</label>
+                  <label style={{ fontSize: 12, fontWeight: 800, color: textPrimary, display: "block", marginBottom: 6 }}>Code</label>
                   <input
-                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: "1.5px solid #e6e7ef", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.05em", background: "#fff" }}
+                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: inputBorder, fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.05em", background: inputBg, color: textPrimary }}
                     placeholder="e.g. SAVE20"
                     value={form.code}
                     onChange={(e) => setForm((p) => ({ ...p, code: e.target.value.toUpperCase() }))}
@@ -393,9 +402,9 @@ export default function Promos() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 800, color: "#111827", display: "block", marginBottom: 6 }}>Discount type</label>
+                  <label style={{ fontSize: 12, fontWeight: 800, color: textPrimary, display: "block", marginBottom: 6 }}>Discount type</label>
                   <select
-                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: "1.5px solid #e6e7ef", fontSize: 14, fontFamily: "inherit", outline: "none", background: "white", boxSizing: "border-box", fontWeight: 700 }}
+                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: inputBorder, fontSize: 14, fontFamily: "inherit", outline: "none", background: inputBg, boxSizing: "border-box", fontWeight: 700, color: textPrimary }}
                     value={form.type}
                     onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
                   >
@@ -404,11 +413,11 @@ export default function Promos() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 800, color: "#111827", display: "block", marginBottom: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 800, color: textPrimary, display: "block", marginBottom: 6 }}>
                     Value ({form.type === "percent" ? "%" : "AED"})
                   </label>
                   <input
-                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: "1.5px solid #e6e7ef", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: "#fff" }}
+                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: inputBorder, fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: inputBg, color: textPrimary }}
                     type="number"
                     min="1"
                     placeholder={form.type === "percent" ? "e.g. 20" : "e.g. 15"}
@@ -418,9 +427,9 @@ export default function Promos() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 800, color: "#111827", display: "block", marginBottom: 6 }}>Min order (AED)</label>
+                  <label style={{ fontSize: 12, fontWeight: 800, color: textPrimary, display: "block", marginBottom: 6 }}>Min order (AED)</label>
                   <input
-                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: "1.5px solid #e6e7ef", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: "#fff" }}
+                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: inputBorder, fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: inputBg, color: textPrimary }}
                     type="number"
                     min="0"
                     placeholder="0 = no minimum"
@@ -429,9 +438,9 @@ export default function Promos() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 800, color: "#111827", display: "block", marginBottom: 6 }}>Max uses</label>
+                  <label style={{ fontSize: 12, fontWeight: 800, color: textPrimary, display: "block", marginBottom: 6 }}>Max uses</label>
                   <input
-                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: "1.5px solid #e6e7ef", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: "#fff" }}
+                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: inputBorder, fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: inputBg, color: textPrimary }}
                     type="number"
                     min="1"
                     placeholder="Leave blank for unlimited"
@@ -440,9 +449,9 @@ export default function Promos() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 800, color: "#111827", display: "block", marginBottom: 6 }}>Expiry date</label>
+                  <label style={{ fontSize: 12, fontWeight: 800, color: textPrimary, display: "block", marginBottom: 6 }}>Expiry date</label>
                   <input
-                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: "1.5px solid #e6e7ef", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: "#fff" }}
+                    style={{ width: "100%", padding: "12px 13px", borderRadius: 16, border: inputBorder, fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: inputBg, color: textPrimary }}
                     type="datetime-local"
                     value={form.expiresAt}
                     onChange={(e) => setForm((p) => ({ ...p, expiresAt: e.target.value }))}
@@ -451,8 +460,8 @@ export default function Promos() {
               </div>
 
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-                <div style={{ fontSize: 12, color: "#6b7280", padding: "10px 12px", borderRadius: 14, background: "#f9fafb", border: "1px solid #eceff5" }}>
-                  Preview: <strong style={{ color: "#111827" }}>{form.code || "CODE"}</strong> • <strong style={{ color: "#111827" }}>{form.type === "flat" ? `AED ${form.value || 0} off` : `${form.value || 0}% off`}</strong>
+                <div style={{ fontSize: 12, color: textSecondary, padding: "10px 12px", borderRadius: 14, background: dark ? "rgba(255,255,255,0.04)" : "#f9fafb", border: dark ? "1px solid rgba(255,255,255,0.1)" : "1px solid #eceff5" }}>
+                  Preview: <strong style={{ color: textPrimary }}>{form.code || "CODE"}</strong> • <strong style={{ color: textPrimary }}>{form.type === "flat" ? `AED ${form.value || 0} off` : `${form.value || 0}% off`}</strong>
                 </div>
                 <button
                   type="submit"
@@ -477,7 +486,7 @@ export default function Promos() {
             type="button"
             onClick={fetchPromos}
             disabled={loading}
-            style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid #e5e7eb", background: "white", color: "#111827", cursor: "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit" }}
+            style={{ padding: "10px 14px", borderRadius: 12, border: dark ? "1px solid rgba(255,255,255,0.2)" : "1px solid #e5e7eb", background: dark ? "rgba(255,255,255,0.04)" : "white", color: textPrimary, cursor: "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit" }}
           >
             {loading ? "Refreshing..." : "Refresh"}
           </button>
@@ -488,7 +497,7 @@ export default function Promos() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search promo code (e.g. SAVE20)"
-            style={{ width: "100%", padding: "11px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "white", outline: "none", fontSize: 13, fontFamily: "inherit" }}
+            style={{ width: "100%", padding: "11px 12px", borderRadius: 12, border: dark ? "1px solid rgba(255,255,255,0.2)" : "1px solid #e5e7eb", background: dark ? "rgba(255,255,255,0.04)" : "white", color: textPrimary, outline: "none", fontSize: 13, fontFamily: "inherit" }}
           />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {[
@@ -504,9 +513,9 @@ export default function Promos() {
                 style={{
                   padding: "9px 12px",
                   borderRadius: 999,
-                  border: filter === item.key ? "1px solid #ffb6a4" : "1px solid #eceff5",
-                  background: filter === item.key ? "#fff1ec" : "white",
-                  color: filter === item.key ? "#c2410c" : "#374151",
+                  border: filter === item.key ? "1px solid #ffb6a4" : (dark ? "1px solid rgba(255,255,255,0.16)" : "1px solid #eceff5"),
+                  background: filter === item.key ? "#fff1ec" : (dark ? "rgba(255,255,255,0.04)" : "white"),
+                  color: filter === item.key ? "#c2410c" : (dark ? "#e2e8f0" : "#374151"),
                   cursor: "pointer",
                   fontSize: 12,
                   fontWeight: 800,
@@ -529,8 +538,8 @@ export default function Promos() {
               onMouseEnter={() => setHoveredPromoId(promoId)}
               onMouseLeave={() => setHoveredPromoId("")}
               style={{
-                background: "linear-gradient(180deg, #ffffff 0%, #fffdfc 100%)",
-                border: hoveredPromoId === promoId ? "1px solid #ffd4c7" : "1px solid #eee6e2",
+                background: dark ? "linear-gradient(165deg, rgba(15,23,42,0.98), rgba(17,24,39,0.95))" : "linear-gradient(180deg, #ffffff 0%, #fffdfc 100%)",
+                border: hoveredPromoId === promoId ? "1px solid #ffd4c7" : (dark ? "1px solid rgba(255,255,255,0.10)" : "1px solid #eee6e2"),
                 borderRadius: 22,
                 padding: "16px 18px",
                 display: "flex",
@@ -544,8 +553,8 @@ export default function Promos() {
               }}
             >
               <div style={{ minWidth: isPhone ? "auto" : 120 }}>
-                <span style={{ display: "inline-block", fontWeight: 900, fontSize: 15, fontFamily: "monospace", letterSpacing: "0.04em", marginBottom: 6 }}>{promo.code}</span>
-                <div style={{ fontSize: 11, color: promo.isActive ? "#15803d" : "#6b7280", fontWeight: 800 }}>
+                <span style={{ display: "inline-block", fontWeight: 900, fontSize: 15, fontFamily: "monospace", letterSpacing: "0.04em", marginBottom: 6, color: textPrimary }}>{promo.code}</span>
+                <div style={{ fontSize: 11, color: promo.isActive ? "#15803d" : textSecondary, fontWeight: 800 }}>
                   {promo.isActive ? "Live" : "Paused"}
                 </div>
               </div>
@@ -591,7 +600,7 @@ export default function Promos() {
                       showStatus("error", "Could not copy promo code.");
                     }
                   }}
-                  style={{ padding: "8px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#f9fafb", color: "#111827", cursor: "pointer", fontSize: 12, fontWeight: 800, fontFamily: "inherit" }}
+                  style={{ padding: "8px 12px", borderRadius: 12, border: dark ? "1px solid rgba(255,255,255,0.18)" : "1px solid #e5e7eb", background: dark ? "rgba(255,255,255,0.04)" : "#f9fafb", color: textPrimary, cursor: "pointer", fontSize: 12, fontWeight: 800, fontFamily: "inherit" }}
                 >
                   Copy
                 </button>
@@ -609,7 +618,7 @@ export default function Promos() {
           ))}
 
           {!loading && filteredPromos.length === 0 && (
-            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted)", background: "white", border: "1px solid var(--border)", borderRadius: 14 }}>
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted)", background: dark ? "rgba(255,255,255,0.04)" : "white", border: dark ? "1px solid rgba(255,255,255,0.1)" : "1px solid var(--border)", borderRadius: 14 }}>
               <div style={{ fontSize: 36, marginBottom: 8 }}>🏷️</div>
               <p style={{ fontWeight: 700, margin: 0 }}>{promos.length === 0 ? "No promo codes yet" : "No promos match this filter"}</p>
               <p style={{ fontSize: 13, margin: "6px 0 0" }}>
@@ -642,17 +651,17 @@ export default function Promos() {
               width: "100%",
               maxWidth: 440,
               borderRadius: 20,
-              background: "white",
-              border: "1px solid #e5e7eb",
+              background: dark ? "linear-gradient(165deg, rgba(15,23,42,0.98), rgba(17,24,39,0.95))" : "white",
+              border: dark ? "1px solid rgba(255,255,255,0.12)" : "1px solid #e5e7eb",
               boxShadow: "0 28px 60px rgba(15,23,42,0.25)",
               padding: 22,
             }}
           >
-            <h4 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "#111827", letterSpacing: "-0.02em" }}>
+            <h4 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: textPrimary, letterSpacing: "-0.02em" }}>
               Delete promo code?
             </h4>
-            <p style={{ margin: "10px 0 0", fontSize: 14, color: "#4b5563", lineHeight: 1.55 }}>
-              You are deleting <strong style={{ color: "#111827" }}>{deleteTarget.code}</strong>. This action cannot be undone.
+            <p style={{ margin: "10px 0 0", fontSize: 14, color: textSecondary, lineHeight: 1.55 }}>
+              You are deleting <strong style={{ color: textPrimary }}>{deleteTarget.code}</strong>. This action cannot be undone.
             </p>
 
             <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>

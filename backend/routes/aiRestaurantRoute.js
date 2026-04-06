@@ -7,6 +7,7 @@ import reviewModel from "../models/reviewModel.js";
 import userModel from "../models/userModel.js";
 import restaurantModel from "../models/restaurantModel.js";
 import campaignModel from "../models/campaignModel.js";
+import { requireFeature } from "../middleware/featureAccess.js";
 
 const router = express.Router();
 const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -29,6 +30,30 @@ const SAFE_FALLBACK_DESCRIPTIONS = {
   Lost: "Inactive customers with long gaps since their last order.",
   New: "Recently acquired customers with limited order history.",
 };
+
+async function ensureEnterpriseSubscription(restaurantId) {
+  const restaurant = await restaurantModel
+    .findById(restaurantId)
+    .select("subscription name")
+    .lean();
+
+  if (!restaurant) {
+    return { ok: false, message: "Restaurant not found." };
+  }
+
+  const plan = String(restaurant.subscription?.plan || "").toLowerCase();
+  const status = String(restaurant.subscription?.status || "").toLowerCase();
+
+  if (plan !== "enterprise" || status !== "active") {
+    return {
+      ok: false,
+      message: "Campaign Playbook is available only on active Enterprise subscription.",
+      restaurant,
+    };
+  }
+
+  return { ok: true, restaurant };
+}
 
 function csvCell(value) {
   const raw = value == null ? "" : String(value);
@@ -212,7 +237,7 @@ async function generateGroqCampaignScript({ restaurantName, segmentType, support
 }
 
 // ── 9. SALES FORECAST ───────────────────────────────────────────────────────
-router.get("/forecast", restaurantAuth, async (req, res) => {
+router.get("/forecast", restaurantAuth, requireFeature("aiInsights"), async (req, res) => {
   try {
     const orders = await orderModel.find({ restaurantId: req.restaurantId, status: { $ne: "Cancelled" } }).select("amount createdAt").lean();
     if (orders.length < 7) return res.json({ success: true, data: { message: "Need at least 7 orders for forecasting", forecast: [] } });
@@ -251,7 +276,7 @@ router.get("/forecast", restaurantAuth, async (req, res) => {
 });
 
 // ── 10. MENU OPTIMIZATION ───────────────────────────────────────────────────
-router.get("/menu-insights", restaurantAuth, async (req, res) => {
+router.get("/menu-insights", restaurantAuth, requireFeature("aiInsights"), async (req, res) => {
   try {
     const [foods, orders] = await Promise.all([
       foodModel.find({ restaurantId: req.restaurantId }).lean(),
@@ -309,7 +334,7 @@ router.get("/menu-insights", restaurantAuth, async (req, res) => {
 });
 
 // ── 11. CHURN PREDICTION ────────────────────────────────────────────────────
-router.get("/churn", restaurantAuth, async (req, res) => {
+router.get("/churn", restaurantAuth, requireFeature("aiInsights"), async (req, res) => {
   try {
     const orders = await orderModel.find({ restaurantId: req.restaurantId, status: { $ne: "Cancelled" } }).select("userId createdAt amount").lean();
     const byUser = {};
@@ -349,7 +374,7 @@ router.get("/churn", restaurantAuth, async (req, res) => {
 });
 
 // ── 12. STOCK ALERTS ────────────────────────────────────────────────────────
-router.get("/stock-alerts", restaurantAuth, async (req, res) => {
+router.get("/stock-alerts", restaurantAuth, requireFeature("aiInsights"), async (req, res) => {
   try {
     const ago = new Date(Date.now() - 7 * 864e5);
     const [foods, recent] = await Promise.all([
@@ -380,7 +405,7 @@ router.get("/stock-alerts", restaurantAuth, async (req, res) => {
 });
 
 // ── 15. CUSTOMER SEGMENTATION ───────────────────────────────────────────────
-router.get("/customer-segmentation", restaurantAuth, async (req, res) => {
+router.get("/customer-segmentation", restaurantAuth, requireFeature("aiCustomerSegmentation"), async (req, res) => {
   try {
     const orders = await orderModel.find({ restaurantId: req.restaurantId, status: { $ne: "Cancelled" } }).select("userId amount createdAt").lean();
     const users = await userModel.find().select("name email phone").lean();
@@ -513,7 +538,7 @@ router.get("/customer-segmentation", restaurantAuth, async (req, res) => {
 });
 
 // ── 16. EXPORT SEGMENT CSV ─────────────────────────────────────────────────
-router.post("/export-segment", restaurantAuth, async (req, res) => {
+router.post("/export-segment", restaurantAuth, requireFeature("aiCustomerSegmentation"), async (req, res) => {
   try {
     const segmentType = String(req.body?.segmentType || "").trim();
     if (!segmentType) {
@@ -627,7 +652,7 @@ router.post("/export-segment", restaurantAuth, async (req, res) => {
 });
 
 // ── 17. AUTO-GENERATE CAMPAIGN SCRIPT (GROQ) ─────────────────────────────
-router.post("/generate-campaign-script", restaurantAuth, async (req, res) => {
+router.post("/generate-campaign-script", restaurantAuth, requireFeature("aiCustomerSegmentation"), async (req, res) => {
   try {
     const segmentType = String(req.body?.segmentType || "").trim();
     const supportersOnly = Boolean(req.body?.supportersOnly);
@@ -635,10 +660,11 @@ router.post("/generate-campaign-script", restaurantAuth, async (req, res) => {
       return res.json({ success: false, message: "segmentType is required" });
     }
 
-    const restaurant = await restaurantModel.findById(req.restaurantId).select("name").lean();
-    if (!restaurant) {
-      return res.json({ success: false, message: "Restaurant not found." });
+    const enterpriseCheck = await ensureEnterpriseSubscription(req.restaurantId);
+    if (!enterpriseCheck.ok) {
+      return res.json({ success: false, message: enterpriseCheck.message });
     }
+    const restaurant = enterpriseCheck.restaurant;
 
     let generated = { aiUsed: false, script: "" };
     try {
@@ -669,7 +695,7 @@ router.post("/generate-campaign-script", restaurantAuth, async (req, res) => {
 });
 
 // ── 18. CREATE SEGMENT CAMPAIGN (DIRECT SEND) ─────────────────────────────
-router.post("/create-campaign", restaurantAuth, async (req, res) => {
+router.post("/create-campaign", restaurantAuth, requireFeature("aiCustomerSegmentation"), async (req, res) => {
   try {
     const segmentType = String(req.body?.segmentType || "").trim();
     const supportersOnly = Boolean(req.body?.supportersOnly);
@@ -687,10 +713,11 @@ router.post("/create-campaign", restaurantAuth, async (req, res) => {
       });
     }
 
-    const restaurant = await restaurantModel.findById(req.restaurantId).select("name").lean();
-    if (!restaurant) {
-      return res.json({ success: false, message: "Restaurant not found." });
+    const enterpriseCheck = await ensureEnterpriseSubscription(req.restaurantId);
+    if (!enterpriseCheck.ok) {
+      return res.json({ success: false, message: enterpriseCheck.message });
     }
+    const restaurant = enterpriseCheck.restaurant;
 
     const orders = await orderModel
       .find({ restaurantId: req.restaurantId, status: { $ne: "Cancelled" } })

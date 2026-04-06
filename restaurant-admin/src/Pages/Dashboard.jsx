@@ -359,43 +359,48 @@ export default function Dashboard() {
 
   const subForFeatures = sub ? { status: sub.status || "trial", features: sub.features } : null;
   const canMenu = !subForFeatures || hasFeatureAccess(subForFeatures, "menu");
+  const canAiInsights = !subForFeatures || hasFeatureAccess(subForFeatures, "aiInsights");
   const goMenuOrBilling = () => { if (canMenu) navigate("/menu"); else navigate("/subscription"); };
   const goAddFoodOrBilling = () => { if (canMenu) navigate("/add-food"); else navigate("/subscription"); };
+  const goAiInsightsOrBilling = () => { if (canAiInsights) navigate("/ai-insights"); else navigate("/subscription"); };
   const statusTone = healthScore > 75 ? "green" : healthScore > 50 ? "amber" : "red";
   const revenueTone = revenueTrend >= 0 ? "green" : "red";
-  const panelBg = dark ? "linear-gradient(135deg, #181f2e 0%, #1f2740 100%)" : "#ffffff";
-  const panelBorder = dark ? "1px solid rgba(255,255,255,0.07)" : "1px solid #e5e7eb";
-  const panelShadow = dark ? "0 4px 24px rgba(0,0,0,0.25)" : "0 4px 18px rgba(17,24,39,0.06)";
+  const pageBg = dark
+    ? "radial-gradient(circle at top right, rgba(56,189,248,0.08), transparent 24%), linear-gradient(180deg, #09090b 0%, #0f172a 45%, #020617 100%)"
+    : "radial-gradient(circle at top right, rgba(14,165,233,0.08), transparent 24%), linear-gradient(180deg, #fff8f2 0%, #f8fbff 42%, #ffffff 100%)";
+  const panelBg = dark ? "linear-gradient(145deg, rgba(15,23,42,0.98) 0%, rgba(10,10,10,0.98) 100%)" : "linear-gradient(145deg, #ffffff 0%, #f8fbff 100%)";
+  const panelBorder = dark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(226,232,240,0.9)";
+  const panelShadow = dark ? "0 12px 34px rgba(0,0,0,0.32)" : "0 10px 28px rgba(15,23,42,0.08)";
   const titleColor = dark ? "white" : "#111827";
   const mutedColor = dark ? "rgba(255,255,255,0.4)" : "#6b7280";
   const rowHover = dark ? "rgba(255,255,255,0.04)" : "#f9fafb";
   const heroBg = dark
-    ? "radial-gradient(circle at top left, rgba(251,146,60,0.45), transparent 28%), radial-gradient(circle at top right, rgba(59,130,246,0.24), transparent 30%), linear-gradient(135deg, #111827 0%, #1f2937 45%, #312e81 100%)"
-    : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)";
-  const heroText = dark ? "white" : "#111827";
-  const heroSubText = dark ? "rgba(255,255,255,0.76)" : "#6b7280";
+    ? "linear-gradient(135deg, #111827 0%, #172033 52%, #1f2937 100%)"
+    : "linear-gradient(135deg, #111827 0%, #1f2937 42%, #ff5a36 100%)";
+  const heroText = "white";
+  const heroSubText = "rgba(255,255,255,0.76)";
 
   return (
     <RestaurantLayout>
-      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", maxWidth: 1240, margin: "0 auto", padding: "0 10px 40px", background: "#ffffff", minHeight: "100vh", borderRadius: 0 }}>
+      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", maxWidth: 1240, margin: "0 auto", padding: "0 10px 40px", background: pageBg, minHeight: "100vh", borderRadius: 28, overflow: "hidden", isolation: "isolate" }}>
 
         {/* Header */}
         <div style={{
           position: "relative",
           overflow: "hidden",
           marginBottom: 24,
-          borderRadius: 28,
+          borderRadius: 32,
           padding: "28px 28px 24px",
           background: heroBg,
-          boxShadow: dark ? "0 24px 60px rgba(15,23,42,0.18)" : "0 12px 32px rgba(17,24,39,0.08)",
-          border: dark ? "none" : "1px solid #e5e7eb",
+          boxShadow: dark ? "0 24px 60px rgba(2,6,23,0.45)" : "0 18px 42px rgba(15,23,42,0.10)",
+          border: dark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(226,232,240,0.8)",
         }}>
-          <div style={{ position: "absolute", top: -24, right: -18, width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.04)", filter: "blur(2px)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: -46, left: 40, width: 120, height: 120, borderRadius: "50%", background: "rgba(251,191,36,0.05)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", top: -24, right: -18, width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.08)", filter: "blur(2px)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: -46, left: 40, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,115,0,0.12)", pointerEvents: "none" }} />
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 18, flexWrap: "wrap", position: "relative", zIndex: 1 }}>
             <div style={{ maxWidth: 760 }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 12px", borderRadius: 999, background: dark ? "rgba(255,255,255,0.1)" : "rgba(17,24,39,0.05)", color: heroText, border: dark ? "1px solid rgba(255,255,255,0.14)" : "1px solid rgba(17,24,39,0.08)", fontSize: 12, fontWeight: 800, letterSpacing: "0.4px", marginBottom: 14 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 12px", borderRadius: 999, background: "rgba(255,255,255,0.1)", color: heroText, border: "1px solid rgba(255,255,255,0.14)", fontSize: 12, fontWeight: 800, letterSpacing: "0.4px", marginBottom: 14, backdropFilter: "blur(12px)" }}>
                 <span>⚡</span>
                 Restaurant Control Center
               </div>
@@ -407,33 +412,67 @@ export default function Dashboard() {
               </p>
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <button onClick={() => navigate("/orders")} style={{ padding: "11px 16px", borderRadius: 14, border: dark ? "1px solid rgba(255,255,255,0.18)" : "1px solid rgba(17,24,39,0.12)", background: dark ? "rgba(255,255,255,0.1)" : "#ffffff", color: dark ? "white" : "#111827", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", backdropFilter: "blur(10px)" }}>
+              <button onClick={() => navigate("/orders")} style={{ padding: "11px 16px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.1)", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", backdropFilter: "blur(10px)", boxShadow: "none" }}>
                 🧾 Orders {pendingOrders.length > 0 && (
                   <span style={{ marginLeft: 5, background: "#ff4e2a", color: "white", borderRadius: 999, padding: "1px 7px", fontSize: 11, fontWeight: 800 }}>
                     {pendingOrders.length}
                   </span>
                 )}
               </button>
-              <button onClick={goAddFoodOrBilling} style={{ padding: "11px 16px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.14)", background: "white", color: "#111827", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 10px 24px rgba(0,0,0,0.12)" }}>
+              <button onClick={goAddFoodOrBilling} style={{ padding: "11px 16px", borderRadius: 14, border: "none", background: "linear-gradient(135deg, #ff7a59 0%, #ff4e2a 100%)", color: "white", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 14px 28px rgba(255,90,54,0.28)" }}>
                 + Add Food
               </button>
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 22, position: "relative", zIndex: 1 }}>
-            {[
-              { label: "Today's Orders", value: loading ? "—" : String(todayOrders.length), tone: "cool" },
-              { label: "Pending", value: loading ? "—" : String(pendingOrders.length), tone: "warm" },
-              { label: "Today's Revenue", value: loading ? "—" : `AED ${todayRevenue}`, tone: "mint" },
-              { label: "Completion Rate", value: loading ? "—" : `${completionRate}%`, tone: "default" },
-            ].map((chip, i) => (
-              <InsightChip key={i} label={chip.label} value={chip.value} tone={chip.tone} dark={dark} />
-            ))}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+            gap: 12,
+            marginTop: 22,
+            position: "relative",
+            zIndex: 1,
+          }}>
+            <HeroChip
+              icon="📦"
+              label="Today's Orders"
+              value={`${todayOrders.length}`}
+              sub="orders placed today"
+              tint={dark ? "rgba(59,130,246,0.16)" : "rgba(37,99,235,0.12)"}
+            />
+            <HeroChip
+              icon="⏳"
+              label="Pending"
+              value={`${pendingOrders.length}`}
+              sub={pendingOrders.length === 0 ? "all clear right now" : "awaiting processing"}
+              tint={dark ? "rgba(239,68,68,0.14)" : "rgba(239,68,68,0.12)"}
+              badge={pendingOrders.length === 0 ? { text: "Clear", positive: true } : pendingOrders.length > 3 ? { text: "High", positive: false } : null}
+            />
+            <HeroChip
+              icon="💰"
+              label="Today's Revenue"
+              value={`AED ${todayRevenue}`}
+              sub={`This week: AED ${analytics?.thisWeekRevenue || 0}`}
+              tint={dark ? "rgba(16,185,129,0.14)" : "rgba(16,185,129,0.12)"}
+            />
+            <HeroChip
+              icon="✅"
+              label="Completion Rate"
+              value={`${completionRate}%`}
+              sub={`${completedOrders} of ${activeOrders.length} delivered`}
+              tint={dark ? "rgba(139,92,246,0.14)" : "rgba(124,58,237,0.11)"}
+            />
           </div>
+
         </div>
 
         {/* Stats Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 24 }}>
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 900, fontSize: 18, color: titleColor }}>Live Snapshot</div>
+            <div style={{ fontSize: 12, color: mutedColor, marginTop: 4 }}>The core numbers you actually need during service, without repeats.</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
           {[
             { icon: "📦", label: "Today's Orders", value: todayOrders.length, sub: "orders placed today", accent: "#3b82f6" },
             { icon: "⏳", label: "Pending", value: pendingOrders.length, sub: "awaiting processing", accent: "#ef4444",
@@ -444,12 +483,10 @@ export default function Dashboard() {
             { icon: "✅", label: "Completion", value: `${completionRate}%`, sub: `${completedOrders} of ${activeOrders.length} delivered`, accent: "#10b981",
               badge: completionRate > 90 ? { text: "Excellent", positive: true } : completionRate > 70 ? { text: "Good", positive: true } : { text: "Needs work", positive: false } },
             { icon: "⭐", label: "Avg Rating", value: avgRating > 0 ? `${avgRating}★` : "—", sub: foods.length > 0 ? `Across ${foods.length} items` : "no ratings yet", accent: "#f59e0b" },
-            { icon: "🍽️", label: "Menu Items", value: foods.length, sub: outOfStockCount > 0 ? `${outOfStockCount} out of stock` : "All in stock", accent: "#6366f1",
-              badge: outOfStockCount > 0 ? { text: `${outOfStockCount} out`, positive: false } : { text: "All ready", positive: true } },
-            { icon: "💡", label: "Health Score", value: `${healthScore}/100`, sub: healthScore > 75 ? "Excellent shape" : healthScore > 50 ? "Mostly solid" : "Needs attention", accent: healthScore > 75 ? "#10b981" : healthScore > 50 ? "#f59e0b" : "#ef4444" },
           ].map((s, i) => (
             <StatCard key={i} icon={s.icon} label={s.label} value={loading || (s.label === "Avg Delivery" && analyticsLoading) ? "—" : s.value} sub={s.sub} accent={s.accent} loading={false} badge={s.badge} dark={dark} />
           ))}
+          </div>
         </div>
 
 
@@ -507,9 +544,9 @@ export default function Dashboard() {
         )}
 
         {/* Quick Access */}
-        <div style={{ background: dark ? "linear-gradient(135deg, #161d2c 0%, #1b2236 100%)" : "#ffffff", borderRadius: 22, border: dark ? "1px solid rgba(255,255,255,0.07)" : "1px solid #e5e7eb", boxShadow: dark ? "0 12px 30px rgba(0,0,0,0.25)" : "0 8px 24px rgba(17,24,39,0.08)", padding: 20, marginBottom: 24, transition: "transform .22s ease, box-shadow .22s ease" }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 22px 40px rgba(0,0,0,0.35)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 12px 30px rgba(0,0,0,0.25)"; }}>
+        <div style={{ background: panelBg, borderRadius: 22, border: panelBorder, boxShadow: panelShadow, padding: 20, marginBottom: 24, transition: "transform .22s ease, box-shadow .22s ease" }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = dark ? "0 22px 40px rgba(0,0,0,0.35)" : "0 20px 40px rgba(15,23,42,0.12)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = panelShadow; }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
             <div>
               <div style={{ fontWeight: 900, fontSize: 18, color: titleColor }}>Quick Access</div>
@@ -519,7 +556,7 @@ export default function Dashboard() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
             <QuickLinkTile icon="📦" label="Inventory" sub="Check stock and ingredient levels" onClick={() => navigate("/inventory")} accent="#f59e0b" dark={dark} />
             <QuickLinkTile icon="🏷️" label="Promos" sub="Launch offers and boost slower days" onClick={() => navigate("/promos")} accent="#ec4899" dark={dark} />
-            <QuickLinkTile icon="🤖" label="AI Insights" sub="See smart suggestions and trends" onClick={() => navigate("/ai-insights")} accent="#6366f1" dark={dark} />
+            <QuickLinkTile icon={canAiInsights ? "🤖" : "🔒"} label={canAiInsights ? "AI Insights" : "AI Insights Locked"} sub={canAiInsights ? "See smart suggestions and trends" : "Enterprise plan required"} onClick={goAiInsightsOrBilling} accent={canAiInsights ? "#6366f1" : "#6b7280"} dark={dark} />
             <QuickLinkTile icon="👥" label="Customers" sub="Track regulars and re-engagement" onClick={() => navigate("/customers")} accent="#06b6d4" dark={dark} />
             <QuickLinkTile icon="💰" label="Revenue" sub="Watch revenue mood and payment mix" onClick={() => navigate("/revenue")} accent="#10b981" dark={dark} />
             <QuickLinkTile icon={canMenu ? "🍽️" : "🔒"} label={canMenu ? "Menu" : "Menu Locked"} sub={canMenu ? "Update items and availability" : "Upgrade to unlock menu tools"} onClick={goMenuOrBilling} accent={canMenu ? "#ff4e2a" : "#6b7280"} dark={dark} />
@@ -622,7 +659,7 @@ export default function Dashboard() {
         )}
 
         
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20, marginBottom: 20 }}>
 
           <div style={{ background: panelBg, borderRadius: 20, border: panelBorder, boxShadow: panelShadow, padding: "22px 24px", transition: "transform .22s ease, box-shadow .22s ease" }}
             onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 18px 38px rgba(255,78,42,0.12)"; }}
@@ -690,7 +727,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent orders + Tools */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20 }}>
 
           <div style={{ background: panelBg, borderRadius: 20, border: panelBorder, boxShadow: panelShadow, overflow: "hidden", transition: "transform .22s ease, box-shadow .22s ease" }}
             onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 18px 38px rgba(15,23,42,0.35)"; }}

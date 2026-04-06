@@ -10,12 +10,25 @@ const router     = express.Router();
 const FROM_EMAIL = () => process.env.FROM_EMAIL || "onboarding@resend.dev";
 const getResend  = () => new Resend(process.env.RESEND_API_KEY);
 
-// ── Pro plan gate ──────────────────────────────────────────────────────────
-async function proOnly(req, res, next) {
+// ── Subscription feature gate ──────────────────────────────────────────────
+async function emailCampaignAccessOnly(req, res, next) {
   const restaurant = await restaurantModel.findById(req.restaurantId).select("subscription name");
   if (!restaurant) return res.json({ success: false, message: "Restaurant not found." });
-  if (restaurant.subscription?.plan !== "pro" || restaurant.subscription?.status !== "active")
-    return res.json({ success: false, message: "Email campaigns are a Pro feature. Please upgrade your plan." });
+
+  const plan = String(restaurant.subscription?.plan || "").toLowerCase();
+  const status = String(restaurant.subscription?.status || "").toLowerCase();
+  const features = restaurant.subscription?.features || {};
+
+  const hasEmailCampaignFeature = Boolean(features.emailCampaigns);
+  const enterpriseLikePlan = ["enterprise", "professional", "pro"].includes(plan);
+
+  if (status !== "active" || (!hasEmailCampaignFeature && !enterpriseLikePlan)) {
+    return res.json({
+      success: false,
+      message: "Email campaigns are available on active plans with Email Campaigns access.",
+    });
+  }
+
   req.restaurant = restaurant;
   next();
 }
@@ -82,7 +95,7 @@ async function sendToCustomers({ restaurant, subject, heading, body, ctaText, ct
 }
 
 // ── GET /customers ─────────────────────────────────────────────────────────
-router.get("/customers", restaurantAuth, proOnly, async (req, res) => {
+router.get("/customers", restaurantAuth, emailCampaignAccessOnly, async (req, res) => {
   try {
     const orders = await orderModel.find({ restaurantId: req.restaurantId }).select("userId").lean();
     const uniqueUserIds = [...new Set(orders.map(o => String(o.userId)))];
@@ -95,7 +108,7 @@ router.get("/customers", restaurantAuth, proOnly, async (req, res) => {
 });
 
 // ── POST /send ─────────────────────────────────────────────────────────────
-router.post("/send", restaurantAuth, proOnly, async (req, res) => {
+router.post("/send", restaurantAuth, emailCampaignAccessOnly, async (req, res) => {
   try {
     const { subject, heading, body, ctaText, ctaUrl, type, personalize, scheduledAt } = req.body;
     if (!subject || !heading || !body)
@@ -154,7 +167,7 @@ router.post("/send", restaurantAuth, proOnly, async (req, res) => {
 });
 
 // ── GET /history ───────────────────────────────────────────────────────────
-router.get("/history", restaurantAuth, proOnly, async (req, res) => {
+router.get("/history", restaurantAuth, emailCampaignAccessOnly, async (req, res) => {
   try {
     const campaigns = await campaignModel
       .find({ restaurantId: req.restaurantId })
@@ -168,7 +181,7 @@ router.get("/history", restaurantAuth, proOnly, async (req, res) => {
 });
 
 // ── DELETE /history/:id ────────────────────────────────────────────────────
-router.delete("/history/:id", restaurantAuth, proOnly, async (req, res) => {
+router.delete("/history/:id", restaurantAuth, emailCampaignAccessOnly, async (req, res) => {
   try {
     await campaignModel.findOneAndDelete({ _id: req.params.id, restaurantId: req.restaurantId });
     res.json({ success: true });

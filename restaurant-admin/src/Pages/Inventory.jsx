@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo, useRef, memo } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { toast } from "react-toastify";
+import { useTheme } from "../ThemeContext";
 
 const CATEGORIES = [
   { value: "all", label: "All", emoji: "📋" },
@@ -47,6 +48,41 @@ function timeAgo(date) {
   return `${Math.floor(d / 30)}mo ago`;
 }
 
+function resolveLinkedMenuItem(link) {
+  const food = link?.foodId && typeof link.foodId === "object" ? link.foodId : null;
+  const resolvedFoodId = link?.resolvedFoodId || (food?._id ? String(food._id) : (link?.foodId ? String(link.foodId) : ""));
+  const resolvedFoodName = link?.resolvedFoodName || food?.name || (link?.isMissingFood ? "Deleted menu item" : "Unknown menu item");
+
+  return {
+    ...link,
+    resolvedFoodId,
+    resolvedFoodName,
+    isMissingFood: Boolean(link?.isMissingFood || !food),
+  };
+}
+
+const getInventoryThemeVars = (dark) => ({
+  "--inv-panel": dark ? "#0f172a" : "#ffffff",
+  "--inv-soft": dark ? "#111827" : "#f9fafb",
+  "--inv-soft-2": dark ? "#1f2937" : "#f3f4f6",
+  "--inv-border": dark ? "#334155" : "var(--border)",
+  "--inv-muted": dark ? "#cbd5e1" : "var(--muted)",
+  "--inv-text": dark ? "#f3f4f6" : "var(--text)",
+  "--inv-link-bg": dark ? "rgba(16,185,129,0.16)" : "#f0fdf4",
+  "--inv-link-border": dark ? "rgba(110,231,183,0.35)" : "#bbf7d0",
+  "--inv-link-text": dark ? "#a7f3d0" : "#166534",
+  "--inv-warn-bg": dark ? "rgba(245,158,11,0.18)" : "#fffbeb",
+  "--inv-warn-border": dark ? "rgba(245,158,11,0.35)" : "#fde68a",
+  "--inv-warn-text": dark ? "#fcd34d" : "#92400e",
+  "--inv-danger-bg": dark ? "rgba(239,68,68,0.18)" : "#fef2f2",
+  "--inv-danger-border": dark ? "rgba(239,68,68,0.35)" : "#fecaca",
+  "--inv-danger-text": dark ? "#fca5a5" : "#dc2626",
+  "--inv-info-bg": dark ? "rgba(59,130,246,0.18)" : "#eff6ff",
+  "--inv-info-border": dark ? "rgba(96,165,250,0.35)" : "#bfdbfe",
+  "--inv-info-text": dark ? "#93c5fd" : "#1e40af",
+  "--inv-modal-shadow": dark ? "0 24px 60px rgba(0,0,0,0.45)" : "0 24px 60px rgba(0,0,0,0.2)",
+});
+
 const InventoryCard = memo(({ item, ai, isSelected, catEmoji, onToggleSelect, onQuickAdjust, onStockUpdate, onEdit, onDelete, onLink }) => {
   const urgency = ai?.urgency || 0;
   const pct = stockPct(item.currentStock, item.maximumStock);
@@ -83,18 +119,18 @@ const InventoryCard = memo(({ item, ai, isSelected, catEmoji, onToggleSelect, on
           <button style={s.adjBtn} onClick={() => onQuickAdjust(item._id, 5)} title="+5">+5</button>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>AED {(item.currentStock * item.unitCost).toFixed(2)}</div>
-          <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 600 }}>@ AED {item.unitCost.toFixed(2)}/{item.unit}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--inv-text)" }}>AED {(item.currentStock * item.unitCost).toFixed(2)}</div>
+          <div style={{ fontSize: 10, color: "var(--inv-muted)", fontWeight: 600 }}>@ AED {item.unitCost.toFixed(2)}/{item.unit}</div>
         </div>
       </div>
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {item.status === "low" && <span className="badge badge-warning" style={{ fontSize: 10 }}>📉 Low Stock</span>}
-        {item.status === "high" && <span className="badge badge-info" style={{ fontSize: 10 }}>📈 Overstock</span>}
-        {item.expiryStatus === "expired" && <span className="badge badge-danger" style={{ fontSize: 10 }}>⏰ Expired</span>}
-        {item.expiryStatus === "expiring_soon" && <span className="badge badge-warning" style={{ fontSize: 10 }}>⏰ Expires Soon</span>}
+        {item.status === "low" && <span style={s.statusChip("warn")}>📉 Low Stock</span>}
+        {item.status === "high" && <span style={s.statusChip("info")}>📈 Overstock</span>}
+        {item.expiryStatus === "expired" && <span style={s.statusChip("danger")}>⏰ Expired</span>}
+        {item.expiryStatus === "expiring_soon" && <span style={s.statusChip("warn")}>⏰ Expires Soon</span>}
         {item.expiryDate && item.expiryStatus !== "expired" && item.expiryStatus !== "expiring_soon" && (
-          <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 600 }}>Exp: {new Date(item.expiryDate).toLocaleDateString()}</span>
+          <span style={{ fontSize: 10, color: "var(--inv-muted)", fontWeight: 600 }}>Exp: {new Date(item.expiryDate).toLocaleDateString()}</span>
         )}
       </div>
 
@@ -102,16 +138,6 @@ const InventoryCard = memo(({ item, ai, isSelected, catEmoji, onToggleSelect, on
         {item.linkedMenuItems?.length > 0 && (
           <div style={{ fontSize: 10, color: "#16a34a", fontWeight: 700, marginBottom: 8, width: "100%" }}>
             <div>🔗 {item.linkedMenuItems.length} menu item{item.linkedMenuItems.length !== 1 ? "s" : ""} linked</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
-              {item.linkedMenuItems.map((link, idx) => {
-                const foodName = typeof link.foodId === "object" ? link.foodId?.name : "Unknown";
-                return (
-                  <span key={idx} style={{ fontSize: 9, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 6px", color: "#166534" }}>
-                    {foodName}
-                  </span>
-                );
-              })}
-            </div>
           </div>
         )}
         <button style={s.actBtn(false)} onClick={() => onEdit(item)}>✏️ Edit</button>
@@ -128,7 +154,7 @@ const s = {
   hdr: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14, marginBottom: 20 },
   hdrLeft: { flex: 1 },
   title: { fontSize: 28, fontWeight: 900, letterSpacing: -0.6, margin: 0, display: "flex", alignItems: "center", gap: 10 },
-  sub: { fontSize: 13, color: "var(--muted)", margin: "4px 0 0", fontWeight: 500 },
+  sub: { fontSize: 13, color: "var(--inv-muted)", margin: "4px 0 0", fontWeight: 500 },
   hdrBtns: { display: "flex", gap: 8, flexWrap: "wrap" },
 
   // Health score ring
@@ -137,16 +163,16 @@ const s = {
     background: `conic-gradient(${score >= 70 ? "#16a34a" : score >= 40 ? "#f59e0b" : "#dc2626"} ${score * 3.6}deg, #f3f4f6 0deg)`,
     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
   }),
-  ringInner: { width: 40, height: 40, borderRadius: "50%", background: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900 },
+  ringInner: { width: 40, height: 40, borderRadius: "50%", background: "var(--inv-panel)", color: "var(--inv-text)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900 },
 
   // Stats row
   statsRow: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 18 },
   stat: (accent) => ({
-    padding: "14px 16px", borderRadius: 14, background: "white", border: "1px solid var(--border)",
+    padding: "14px 16px", borderRadius: 14, background: "var(--inv-panel)", border: "1px solid var(--inv-border)",
     boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
   }),
-  statVal: (color) => ({ fontSize: 24, fontWeight: 900, color: color || "var(--text)", letterSpacing: -0.5, margin: 0 }),
-  statLbl: { fontSize: 11, fontWeight: 700, color: "var(--muted)", margin: "2px 0 0", textTransform: "uppercase", letterSpacing: 0.4 },
+  statVal: (color) => ({ fontSize: 24, fontWeight: 900, color: color || "var(--inv-text)", letterSpacing: -0.5, margin: 0 }),
+  statLbl: { fontSize: 11, fontWeight: 700, color: "var(--inv-muted)", margin: "2px 0 0", textTransform: "uppercase", letterSpacing: 0.4 },
 
   // Tips
   tipWrap: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 },
@@ -158,17 +184,17 @@ const s = {
 
   // Toolbar
   toolbar: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 14 },
-  search: { flex: "1 1 220px", padding: "9px 14px 9px 36px", borderRadius: 10, border: "1px solid var(--border)", background: "#f9fafb", fontSize: 13, fontFamily: "inherit", outline: "none", minWidth: 180 },
+  search: { flex: "1 1 220px", padding: "9px 14px 9px 36px", borderRadius: 10, border: "1px solid var(--inv-border)", background: "var(--inv-soft)", color: "var(--inv-text)", fontSize: 13, fontFamily: "inherit", outline: "none", minWidth: 180 },
   searchWrap: { position: "relative", flex: "1 1 220px" },
-  searchIcon: { position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", pointerEvents: "none" },
-  select: { padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border)", background: "#f9fafb", fontSize: 13, fontFamily: "inherit", cursor: "pointer" },
+  searchIcon: { position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--inv-muted)", pointerEvents: "none" },
+  select: { padding: "9px 12px", borderRadius: 10, border: "1px solid var(--inv-border)", background: "var(--inv-soft)", color: "var(--inv-text)", fontSize: 13, fontFamily: "inherit", cursor: "pointer" },
 
   // Category pills
   pills: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 },
   pill: (active) => ({
     padding: "7px 14px", borderRadius: 50, border: active ? "2px solid var(--orange)" : "1.5px solid var(--border)",
-    background: active ? "var(--orangeSoft)" : "white", fontWeight: 700, fontSize: 12,
-    color: active ? "var(--orange)" : "var(--muted)", cursor: "pointer", fontFamily: "inherit",
+    background: active ? "var(--orangeSoft)" : "var(--inv-panel)", fontWeight: 700, fontSize: 12,
+    color: active ? "var(--orange)" : "var(--inv-muted)", cursor: "pointer", fontFamily: "inherit",
     display: "inline-flex", alignItems: "center", gap: 5, transition: "all .15s",
   }),
 
@@ -177,50 +203,60 @@ const s = {
 
   // Individual card
   card: (urgency) => ({
-    background: "white", borderRadius: 16, border: `1px solid ${urgency >= 70 ? "#fecaca" : urgency >= 50 ? "#fde68a" : "var(--border)"}`,
+    background: "var(--inv-panel)", borderRadius: 16, border: `1px solid ${urgency >= 70 ? "#fecaca" : urgency >= 50 ? "#fde68a" : "var(--inv-border)"}`,
     boxShadow: urgency >= 70 ? "0 4px 18px rgba(220,38,38,0.08)" : "0 2px 10px rgba(0,0,0,0.04)",
     padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10, transition: "all .15s",
   }),
   cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 },
-  cardName: { fontSize: 15, fontWeight: 800, margin: 0, color: "var(--text)", lineHeight: 1.3 },
-  cardMeta: { fontSize: 11, color: "var(--muted)", fontWeight: 600, margin: "2px 0 0" },
-  catBadge: { fontSize: 11, padding: "3px 8px", borderRadius: 50, background: "#f3f4f6", fontWeight: 700, color: "#6b7280", whiteSpace: "nowrap" },
+  cardName: { fontSize: 15, fontWeight: 800, margin: 0, color: "var(--inv-text)", lineHeight: 1.3 },
+  cardMeta: { fontSize: 11, color: "var(--inv-muted)", fontWeight: 600, margin: "2px 0 0" },
+  catBadge: { fontSize: 11, padding: "3px 8px", borderRadius: 50, background: "var(--inv-soft-2)", fontWeight: 700, color: "var(--inv-muted)", whiteSpace: "nowrap" },
 
   // Stock bar
-  barWrap: { height: 8, borderRadius: 50, background: "#f3f4f6", overflow: "hidden", position: "relative" },
+  barWrap: { height: 8, borderRadius: 50, background: "var(--inv-soft-2)", overflow: "hidden", position: "relative" },
   bar: (pct, color) => ({ height: "100%", width: `${Math.min(100, pct)}%`, borderRadius: 50, background: color, transition: "width .4s ease" }),
-  barLabel: { display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "var(--muted)", margin: "4px 0 0" },
+  barLabel: { display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "var(--inv-muted)", margin: "4px 0 0" },
 
   // Quick adjust
   adjRow: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 },
-  adjBtn: { width: 28, height: 28, borderRadius: 8, border: "1px solid var(--border)", background: "#f9fafb", cursor: "pointer", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit", transition: "all .12s" },
-  adjInput: { width: 56, textAlign: "center", padding: "4px 6px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13, fontWeight: 700, fontFamily: "inherit" },
+  adjBtn: { width: 28, height: 28, borderRadius: 8, border: "1px solid var(--inv-border)", background: "var(--inv-soft)", color: "var(--inv-text)", cursor: "pointer", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit", transition: "all .12s" },
+  adjInput: { width: 56, textAlign: "center", padding: "4px 6px", borderRadius: 8, border: "1px solid var(--inv-border)", background: "var(--inv-panel)", color: "var(--inv-text)", fontSize: 13, fontWeight: 700, fontFamily: "inherit" },
 
   // AI insight row
   aiRow: { padding: "8px 10px", borderRadius: 10, background: "#faf5ff", border: "1px solid #e9d5ff", fontSize: 11, fontWeight: 600, color: "#6b21a8", display: "flex", alignItems: "flex-start", gap: 6 },
 
   // Card actions
   cardActions: { display: "flex", gap: 6, marginTop: "auto", paddingTop: 4 },
+  statusChip: (tone) => {
+    const map = {
+      warn: { bg: "var(--inv-warn-bg)", border: "var(--inv-warn-border)", color: "var(--inv-warn-text)" },
+      danger: { bg: "var(--inv-danger-bg)", border: "var(--inv-danger-border)", color: "var(--inv-danger-text)" },
+      info: { bg: "var(--inv-info-bg)", border: "var(--inv-info-border)", color: "var(--inv-info-text)" },
+    };
+    const t = map[tone] || map.info;
+    return { fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: t.bg, border: `1px solid ${t.border}`, color: t.color, display: "inline-flex", alignItems: "center", gap: 4 };
+  },
   actBtn: (danger) => ({
-    flex: 1, padding: "7px 10px", borderRadius: 8, border: `1px solid ${danger ? "#fecaca" : "var(--border)"}`,
-    background: danger ? "#fef2f2" : "white", cursor: "pointer", fontWeight: 700, fontSize: 11,
-    color: danger ? "#dc2626" : "var(--text)", fontFamily: "inherit", textAlign: "center", transition: "all .12s",
+    flex: 1, minHeight: 34, padding: "7px 10px", borderRadius: 8, border: `1px solid ${danger ? "var(--inv-danger-border)" : "var(--inv-border)"}`,
+    background: danger ? "var(--inv-danger-bg)" : "var(--inv-panel)", cursor: "pointer", fontWeight: 700, fontSize: 11,
+    color: danger ? "var(--inv-danger-text)" : "var(--inv-text)", fontFamily: "inherit", textAlign: "center", transition: "all .12s",
+    display: "inline-flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap",
   }),
 
   // Modal overlay
   overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 },
-  modal: { background: "white", borderRadius: 20, padding: "24px 28px", maxWidth: 560, width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.2)" },
-  modalTitle: { fontSize: 20, fontWeight: 900, margin: "0 0 16px" },
+  modal: { background: "var(--inv-panel)", borderRadius: 20, padding: "24px 28px", maxWidth: 560, width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--inv-modal-shadow)", color: "var(--inv-text)" },
+  modalTitle: { fontSize: 20, fontWeight: 900, margin: "0 0 16px", color: "var(--inv-text)" },
   formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
   field: { display: "flex", flexDirection: "column", gap: 4 },
-  label: { fontSize: 12, fontWeight: 700, color: "#374151" },
-  input: { padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border)", background: "#f9fafb", fontSize: 13, fontFamily: "inherit", outline: "none", transition: "border .15s" },
+  label: { fontSize: 12, fontWeight: 700, color: "var(--inv-muted)" },
+  input: { padding: "9px 12px", borderRadius: 10, border: "1px solid var(--inv-border)", background: "var(--inv-soft)", color: "var(--inv-text)", fontSize: 13, fontFamily: "inherit", outline: "none", transition: "border .15s" },
   formBtns: { display: "flex", gap: 10, marginTop: 16 },
 
   // Empty state
-  empty: { textAlign: "center", padding: "60px 20px", color: "var(--muted)" },
+  empty: { textAlign: "center", padding: "60px 20px", color: "var(--inv-muted)" },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: 800, color: "var(--text)", margin: "0 0 6px" },
+  emptyTitle: { fontSize: 18, fontWeight: 800, color: "var(--inv-text)", margin: "0 0 6px" },
   emptyDesc: { fontSize: 13, maxWidth: 360, margin: "0 auto" },
 
   // AI panel
@@ -232,6 +268,7 @@ const s = {
 };
 
 export default function Inventory() {
+  const { dark } = useTheme();
   const [inventory, setInventory] = useState([]);
   const [alerts, setAlerts] = useState({});
   const [summary, setSummary] = useState({});
@@ -828,7 +865,7 @@ export default function Inventory() {
   if (loading) {
     return (
       <RestaurantLayout>
-        <div style={s.wrap}>
+        <div style={{ ...s.wrap, ...getInventoryThemeVars(dark) }}>
           <div style={s.hdr}><h1 style={s.title}>📦 Inventory</h1></div>
           <div style={s.statsRow}>
             {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 76, borderRadius: 14 }} />)}
@@ -843,7 +880,8 @@ export default function Inventory() {
 
   return (
     <RestaurantLayout>
-      <div style={s.wrap}>
+      <div style={getInventoryThemeVars(dark)}>
+      <div style={{ ...s.wrap }}>
         {/* ── Header ── */}
         <div style={s.hdr}>
           <div style={s.hdrLeft}>
@@ -951,12 +989,12 @@ export default function Inventory() {
           <select style={s.select} value={sortBy} onChange={e => setSortBy(e.target.value)}>
             {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>
+          <span style={{ fontSize: 12, color: "var(--inv-muted)", fontWeight: 600 }}>
             {filtered.length} item{filtered.length !== 1 ? "s" : ""}
           </span>
           {filtered.length > 0 && (
             <button onClick={selectAllFiltered}
-              style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--border)", background: selectedIds.size === filtered.length ? "#111" : "#f9fafb", color: selectedIds.size === filtered.length ? "#fff" : "var(--text)", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--inv-border)", background: selectedIds.size === filtered.length ? "#111" : "var(--inv-soft)", color: selectedIds.size === filtered.length ? "#fff" : "var(--inv-text)", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
               {selectedIds.size === filtered.length ? "Deselect All" : "Select All"}
             </button>
           )}
@@ -1068,22 +1106,46 @@ export default function Inventory() {
         <div style={s.overlay} onClick={() => setLinkingItem(null)}>
           <div style={s.modal} onClick={e => e.stopPropagation()}>
             <h2 style={s.modalTitle}>🔗 Link Menu Items to "{linkingItem.itemName}"</h2>
-            <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 14px", fontWeight: 500 }}>
+            <p style={{ fontSize: 12, color: "var(--inv-muted)", margin: "0 0 14px", fontWeight: 500 }}>
               When a customer orders a linked menu item, <strong>{linkingItem.itemName}</strong> stock will automatically decrease by the quantity you set.
             </p>
 
             {/* Already linked */}
             {linkingItem.linkedMenuItems?.length > 0 && (
               <div style={{ marginBottom: 14 }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: "#374151", margin: "0 0 6px" }}>Currently Linked:</p>
-                {linkingItem.linkedMenuItems.map((link, li) => {
-                  const food = link.foodId;
-                  const foodName = typeof food === "object" ? food?.name : "Unknown";
-                  const foodId = typeof food === "object" ? food?._id : food;
+                <p style={{ fontSize: 12, fontWeight: 700, color: "var(--inv-text)", margin: "0 0 8px" }}>Currently Linked Menu Items</p>
+                {linkingItem.linkedMenuItems.map((rawLink, li) => {
+                  const link = resolveLinkedMenuItem(rawLink);
+                  const foodId = link.resolvedFoodId;
                   return (
-                    <div key={li} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", background: "#f0fdf4", borderRadius: 8, marginBottom: 4, border: "1px solid #bbf7d0" }}>
-                      <span style={{ fontSize: 12, fontWeight: 600 }}>{foodName} — {link.quantityPerOrder} {linkingItem.unit}/order</span>
-                      <button onClick={() => { handleUnlink(linkingItem._id, foodId); setLinkingItem(prev => ({ ...prev, linkedMenuItems: prev.linkedMenuItems.filter(l => (typeof l.foodId === "object" ? l.foodId?._id : l.foodId) !== foodId) })); }} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>Remove</button>
+                    <div key={`${foodId || "missing"}-${li}`} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "10px 12px", background: link.isMissingFood ? "var(--inv-warn-bg)" : "var(--inv-link-bg)", borderRadius: 10, marginBottom: 6, border: `1px solid ${link.isMissingFood ? "var(--inv-warn-border)" : "var(--inv-link-border)"}` }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: link.isMissingFood ? "var(--inv-warn-text)" : "var(--inv-text)", overflowWrap: "anywhere" }}>
+                          {link.resolvedFoodName}
+                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: link.isMissingFood ? "var(--inv-warn-text)" : "var(--inv-muted)", marginTop: 3 }}>
+                          Deducts {link.quantityPerOrder} {linkingItem.unit} each time this menu item is ordered.
+                        </div>
+                        {link.isMissingFood && (
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--inv-warn-text)", marginTop: 5 }}>
+                            This menu item no longer exists. Remove this broken link.
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (!foodId) return;
+                          handleUnlink(linkingItem._id, foodId);
+                          setLinkingItem(prev => ({
+                            ...prev,
+                            linkedMenuItems: prev.linkedMenuItems.filter(l => resolveLinkedMenuItem(l).resolvedFoodId !== foodId)
+                          }));
+                        }}
+                        disabled={!foodId}
+                        style={{ background: "none", border: "none", color: "#dc2626", cursor: foodId ? "pointer" : "not-allowed", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", opacity: foodId ? 1 : 0.5 }}
+                      >
+                        Remove
+                      </button>
                     </div>
                   );
                 })}
@@ -1097,7 +1159,7 @@ export default function Inventory() {
                 <select style={s.input} value={linkFoodId} onChange={e => setLinkFoodId(e.target.value)}>
                   <option value="">Select a menu item...</option>
                   {menuFoods
-                    .filter(f => !linkingItem.linkedMenuItems?.some(l => (typeof l.foodId === "object" ? l.foodId?._id : l.foodId) === f._id))
+                    .filter(f => !linkingItem.linkedMenuItems?.some(l => resolveLinkedMenuItem(l).resolvedFoodId === f._id))
                     .map(f => <option key={f._id} value={f._id}>{f.name} ({f.category}) — AED {f.price}</option>)}
                 </select>
               </div>
@@ -1126,7 +1188,7 @@ export default function Inventory() {
         <div style={s.overlay} onClick={() => setLogItem(null)}>
           <div style={s.modal} onClick={e => e.stopPropagation()}>
             <h2 style={s.modalTitle}>📋 Deduction Log — {logItem.itemName}</h2>
-            <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 14px", fontWeight: 500 }}>
+            <p style={{ fontSize: 12, color: "var(--inv-muted)", margin: "0 0 14px", fontWeight: 500 }}>
               Shows automatic stock deductions from customer orders (most recent first).
             </p>
 
@@ -1141,17 +1203,17 @@ export default function Inventory() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr style={{ borderBottom: "2px solid var(--border)", textAlign: "left" }}>
-                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "#374151" }}>Date</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "#374151" }}>Menu Item</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "#374151", textAlign: "right" }}>Ordered</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "#374151", textAlign: "right" }}>Deducted</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "#374151", textAlign: "right" }}>Stock After</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "var(--inv-text)" }}>Date</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "var(--inv-text)" }}>Menu Item</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "var(--inv-text)", textAlign: "right" }}>Ordered</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "var(--inv-text)", textAlign: "right" }}>Deducted</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "var(--inv-text)", textAlign: "right" }}>Stock After</th>
                     </tr>
                   </thead>
                   <tbody>
                     {logData.map((entry, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                        <td style={{ padding: "6px 8px", color: "var(--muted)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                      <tr key={i} style={{ borderBottom: "1px solid var(--inv-border)" }}>
+                        <td style={{ padding: "6px 8px", color: "var(--inv-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>
                           {new Date(entry.date).toLocaleDateString()} {new Date(entry.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </td>
                         <td style={{ padding: "6px 8px", fontWeight: 600 }}>{entry.foodName || "—"}</td>
@@ -1177,7 +1239,7 @@ export default function Inventory() {
         <div style={s.overlay} onClick={() => setShowBulkUpdateModal(false)}>
           <div style={s.modal} onClick={e => e.stopPropagation()}>
             <h2 style={s.modalTitle}>✏️ Bulk Update {selectedIds.size} Items</h2>
-            <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 14px", fontWeight: 500 }}>
+            <p style={{ fontSize: 12, color: "var(--inv-muted)", margin: "0 0 14px", fontWeight: 500 }}>
               Apply the same change to all selected inventory items.
             </p>
 
@@ -1231,7 +1293,7 @@ export default function Inventory() {
         <div style={s.overlay} onClick={() => setShowImportPreview(false)}>
           <div style={{ ...s.modal, maxWidth: 800, maxHeight: "85vh" }} onClick={e => e.stopPropagation()}>
             <h2 style={s.modalTitle}>📋 Import Preview - {previewData.length} Items</h2>
-            <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 14px", fontWeight: 500 }}>
+            <p style={{ fontSize: 12, color: "var(--inv-muted)", margin: "0 0 14px", fontWeight: 500 }}>
               Review the changes before confirming. Items will be updated or created as shown below.
             </p>
 
@@ -1239,7 +1301,7 @@ export default function Inventory() {
               {previewData.map((item, idx) => (
                 <div key={idx} style={{ 
                   padding: "12px 14px", 
-                  borderBottom: idx < previewData.length - 1 ? "1px solid #f3f4f6" : "none",
+                  borderBottom: idx < previewData.length - 1 ? "1px solid var(--inv-border)" : "none",
                   background: item.type === "create" ? "#f0fdf4" : "#eff6ff"
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -1253,17 +1315,17 @@ export default function Inventory() {
                     }}>
                       {item.type === "create" ? "CREATE" : "UPDATE"}
                     </span>
-                    <strong style={{ fontSize: 14, color: "var(--text)" }}>{item.itemName}</strong>
+                    <strong style={{ fontSize: 14, color: "var(--inv-text)" }}>{item.itemName}</strong>
                   </div>
 
                   {item.type === "update" ? (
-                    <div style={{ fontSize: 12, color: "#374151" }}>
+                    <div style={{ fontSize: 12, color: "var(--inv-text)" }}>
                       <div style={{ marginBottom: 4 }}>
-                        <span style={{ color: "#6b7280", fontWeight: 600 }}>Current:</span> {item.existingItem.currentStock} {item.existingItem.unit} @ AED {item.existingItem.unitCost}
+                        <span style={{ color: "var(--inv-muted)", fontWeight: 600 }}>Current:</span> {item.existingItem.currentStock} {item.existingItem.unit} @ AED {item.existingItem.unitCost}
                       </div>
                       {Object.keys(item.changes).length > 0 && (
                         <div>
-                          <span style={{ color: "#6b7280", fontWeight: 600 }}>Changes:</span>
+                          <span style={{ color: "var(--inv-muted)", fontWeight: 600 }}>Changes:</span>
                           <ul style={{ margin: "4px 0 0 16px", padding: 0, listStyle: "none" }}>
                             {item.changes.currentStock !== undefined && (
                               <li>Stock: {item.existingItem.currentStock} → {item.changes.currentStock}</li>
@@ -1297,9 +1359,9 @@ export default function Inventory() {
                       )}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12, color: "#374151" }}>
+                    <div style={{ fontSize: 12, color: "var(--inv-text)" }}>
                       <div style={{ marginBottom: 4 }}>
-                        <span style={{ color: "#6b7280", fontWeight: 600 }}>New Item:</span>
+                        <span style={{ color: "var(--inv-muted)", fontWeight: 600 }}>New Item:</span>
                       </div>
                       <ul style={{ margin: "4px 0 0 16px", padding: 0, listStyle: "none" }}>
                         <li>Category: {item.newItem.category}</li>
@@ -1322,10 +1384,10 @@ export default function Inventory() {
               <div style={{ 
                 padding: "8px 12px", 
                 borderRadius: 8, 
-                background: "#f3f4f6", 
+                background: "var(--inv-soft-2)", 
                 fontSize: 12, 
                 fontWeight: 600, 
-                color: "var(--text)",
+                color: "var(--inv-text)",
                 marginBottom: 16 
               }}>
                 {importStatus}
@@ -1355,6 +1417,7 @@ export default function Inventory() {
           </div>
         </div>
       )}
+      </div>
     </RestaurantLayout>
   );
 }
