@@ -1,10 +1,12 @@
 import { NavLink } from "react-router-dom";
 import { useEffect, useRef, useLayoutEffect } from "react";
+import { useTheme } from "../ThemeContext";
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || "Crave.";
 
 export default function Sidebar() {
   const sidebarRef = useRef(null);
+  const { dark, toggle } = useTheme();
 
   // Restore scroll position immediately on mount
   useLayoutEffect(() => {
@@ -92,9 +94,29 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      <button className="btn-outline logout-btn" onClick={logout}>
-        Logout
-      </button>
+      <div style={{ display: "grid", gap: 8, width: "100%" }}>
+        <button
+          onClick={toggle}
+          style={{
+            width: "100%",
+            padding: "10px 14px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.05)",
+            color: "rgba(255,255,255,0.75)",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          {dark ? "☀️ Light Mode" : "🌙 Dark Mode"}
+        </button>
+
+        <button className="btn-outline logout-btn" onClick={logout}>
+          Logout
+        </button>
+      </div>
     </aside>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api, BASE_URL } from "../utils/api";
+import { useTheme } from "../ThemeContext";
 
 const SORT_OPTIONS = [
   { label: "A → Z",         value: "az"      },
@@ -20,6 +21,7 @@ export default function Menu() {
   const [catFilter, setCatFilter] = useState("all");
   const [sortBy, setSortBy] = useState("az");
   const [deletingCat, setDeletingCat] = useState(false);
+  const { dark } = useTheme();
 
   const loadFoods = async () => {
     try {
@@ -163,12 +165,17 @@ export default function Menu() {
   const selectStyle = {
     width: "100%", padding: "9px 12px", borderRadius: 10,
     border: "1px solid var(--border)", fontSize: 13, outline: "none",
-    fontFamily: "inherit", background: "white", cursor: "pointer",
+    fontFamily: "inherit", background: dark ? "#111827" : "white", color: "var(--text)", cursor: "pointer",
   };
   const labelStyle = {
     fontSize: 11, fontWeight: 800, color: "var(--muted)",
     marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px",
   };
+  const panelBg = dark ? "#1f2937" : "#fff";
+  const rowBg = dark ? "#1f2937" : "#ffffff";
+  const rowBorder = dark ? "1px solid rgba(255,255,255,0.1)" : "1px solid var(--border)";
+  const rowShadow = dark ? "0 2px 14px rgba(0,0,0,0.28)" : "0 2px 10px rgba(17,24,39,0.04)";
+  const softText = dark ? "rgba(255,255,255,0.65)" : "#9ca3af";
 
   return (
     <RestaurantLayout>
@@ -176,14 +183,14 @@ export default function Menu() {
         flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <h2 style={{ margin: 0 }}>
           Menu&nbsp;
-          <span style={{ fontWeight: 400, color: "#9ca3af", fontSize: 18 }}>
+          <span style={{ fontWeight: 400, color: softText, fontSize: 18 }}>
             ({filtered.length}{filtered.length !== foods.length ? ` of ${foods.length}` : ""} items)
           </span>
         </h2>
       </div>
 
       {!loading && (
-        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 16,
+        <div style={{ background: panelBg, border: rowBorder, borderRadius: 16,
           padding: "18px 20px", marginBottom: 24 }}>
 
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 14, alignItems: "end" }}>
@@ -199,7 +206,7 @@ export default function Menu() {
                   placeholder="Name or category..."
                   style={{ width: "100%", padding: "9px 12px 9px 32px", borderRadius: 10,
                     border: "1px solid var(--border)", fontSize: 13, outline: "none",
-                    fontFamily: "inherit", boxSizing: "border-box" }}
+                    fontFamily: "inherit", boxSizing: "border-box", background: dark ? "#111827" : "white", color: "var(--text)" }}
                 />
               </div>
             </div>
@@ -224,7 +231,7 @@ export default function Menu() {
                       padding: "9px 13px", borderRadius: 10, fontSize: 12, fontWeight: 800,
                       cursor: deletingCat ? "wait" : "pointer",
                       border: "1px solid #fca5a5",
-                      background: deletingCat ? "#fee2e2" : "#fff1f1",
+                      background: deletingCat ? (dark ? "rgba(220,38,38,0.25)" : "#fee2e2") : (dark ? "rgba(220,38,38,0.18)" : "#fff1f1"),
                       color: "#dc2626",
                       whiteSpace: "nowrap",
                       opacity: deletingCat ? 0.7 : 1,
@@ -258,8 +265,8 @@ export default function Menu() {
               {SORT_OPTIONS.map(opt => (
                 <button key={opt.value} onClick={() => setSortBy(opt.value)} style={{
                   padding: "6px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer",
-                  border: `1px solid ${sortBy === opt.value ? "#111827" : "var(--border)"}`,
-                  background: sortBy === opt.value ? "#111827" : "white",
+                  border: `1px solid ${sortBy === opt.value ? (dark ? "#ff4e2a" : "#111827") : "var(--border)"}`,
+                  background: sortBy === opt.value ? (dark ? "#ff4e2a" : "#111827") : (dark ? "rgba(255,255,255,0.04)" : "white"),
                   color: sortBy === opt.value ? "white" : "var(--muted)",
                 }}>
                   {opt.label}
@@ -268,7 +275,7 @@ export default function Menu() {
             </div>
             {activeFilterCount > 0 && (
               <button onClick={clearFilters}
-                style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", background: "#fef2f2",
+                style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", background: dark ? "rgba(239,68,68,0.15)" : "#fef2f2",
                   border: "1px solid #fecaca", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>
                 ✕ Clear filters
               </button>
@@ -280,7 +287,7 @@ export default function Menu() {
       {loading ? (
         <p className="muted">Loading...</p>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "48px 0", color: "#9ca3af" }}>
+        <div style={{ textAlign: "center", padding: "48px 0", color: softText }}>
           <div style={{ fontSize: 40, marginBottom: 10 }}>🍽️</div>
           <p style={{ fontWeight: 700, margin: "0 0 6px", fontSize: 16 }}>
             {foods.length === 0 ? "No menu items yet." : "No items match your filters."}
@@ -296,27 +303,27 @@ export default function Menu() {
         <div className="list">
           {filtered.map(f => {
             return (
-              <div key={f._id} className="list-row">
+              <div key={f._id} className="list-row" style={{ background: rowBg, border: rowBorder, boxShadow: rowShadow }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ position: "relative" }}>
                     <img
                       src={`${BASE_URL}/images/${f.image}`}
                       alt={f.name}
                       style={{ width: 52, height: 52, borderRadius: 10, objectFit: "cover",
-                        border: "1px solid #e2e8f0" }}
+                        border: dark ? "1px solid rgba(255,255,255,0.12)" : "1px solid #e2e8f0" }}
                       onError={e => { e.target.style.display = "none"; }}
                     />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, color: dark ? "#f9fafb" : "#111827" }}>
                       {f.name}
                     </div>
-                    <div className="muted" style={{ fontSize: 12 }}>{f.category}</div>
+                    <div className="muted" style={{ fontSize: 12, color: dark ? "rgba(255,255,255,0.65)" : undefined }}>{f.category}</div>
                   </div>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ fontWeight: 700 }}>AED {f.price}</div>
+                  <div style={{ fontWeight: 700, color: dark ? "#f9fafb" : "#111827" }}>AED {f.price}</div>
 
                   <button 
                     onClick={() => toggleItemAvailability(f._id, f.inStock ?? true)}
@@ -337,13 +344,13 @@ export default function Menu() {
 
                   <button onClick={() => navigate(`/edit-food/${f._id}`)}
                     style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #bfdbfe",
-                      background: "#eff6ff", color: "#1d4ed8", fontWeight: 700,
+                      background: dark ? "rgba(29,78,216,0.2)" : "#eff6ff", color: dark ? "#93c5fd" : "#1d4ed8", fontWeight: 700,
                       cursor: "pointer", fontSize: 13 }}>
                     Edit
                   </button>
                   <button onClick={() => removeFood(f._id)}
                     style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #fca5a5",
-                      background: "#fff1f1", color: "#dc2626", fontWeight: 700,
+                      background: dark ? "rgba(220,38,38,0.18)" : "#fff1f1", color: "#dc2626", fontWeight: 700,
                       cursor: "pointer", fontSize: 13 }}>
                     Remove
                   </button>

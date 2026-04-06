@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useRef } from 'react';
+import React, { useContext, useEffect, useState, useRef, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import './MyOrders.css';
 import axios from 'axios';
@@ -8,6 +8,19 @@ import OrderInsights from '../../components/OrderInsights/OrderInsights';
 import ReviewForm from '../../components/ReviewForm/ReviewForm';
 
 const STATUS_STEPS = ['Order Placed', 'Food Processing', 'Out for Delivery', 'Delivered'];
+
+const getOrderItemsSubtotal = (order) =>
+  (order?.items || []).reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.quantity) || 0)), 0);
+
+const getOrderDisplayTotal = (order) => {
+  const subtotal = getOrderItemsSubtotal(order);
+  const deliveryFee = Number(order?.deliveryFee || 0);
+  const discount = Number(order?.discount || 0);
+  const computedTotal = Math.max(0, subtotal + deliveryFee - discount);
+
+  if (order?.paymentMethod === 'split') return computedTotal;
+  return Number.isFinite(Number(order?.amount)) ? Number(order.amount) : computedTotal;
+};
 
 const statusIndex = (status) => {
   const s = (status || '').toLowerCase().trim();
@@ -19,6 +32,33 @@ const statusIndex = (status) => {
 
 const POLL_INTERVAL = 10000;
 
+const DATE_FILTERS = [
+  { label: 'All time', value: 'all' },
+  { label: 'Last 7 days', value: '7days' },
+  { label: 'Last 30 days', value: '30days' },
+];
+
+const isInDateRange = (dateStr, preset) => {
+  if (preset === 'all') return true;
+  const d = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (preset === '7days') {
+    const t = new Date(today);
+    t.setDate(t.getDate() - 7);
+    return d >= t;
+  }
+
+  if (preset === '30days') {
+    const t = new Date(today);
+    t.setDate(t.getDate() - 30);
+    return d >= t;
+  }
+
+  return true;
+};
+
 const MyOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +68,10 @@ const MyOrders = () => {
   const [cancelling, setCancelling] = useState({});
   const [cancelModal, setCancelModal] = useState(null);
   const [tick, setTick] = useState(0);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
 
   useEffect(() => {
     const timer = setInterval(() => setTick(t => t + 1), 1000);
@@ -88,6 +132,46 @@ const MyOrders = () => {
     return () => clearInterval(pollRef.current);
   }, [token]);
 
+  const filteredOrders = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const list = [...orders].filter((order) => {
+      if (statusFilter !== 'all' && (order.status || '').toLowerCase().trim() !== statusFilter) return false;
+      if (dateFilter !== 'all' && !isInDateRange(order.createdAt, dateFilter)) return false;
+
+      if (!q) return true;
+
+      const id = String(order._id || '').toLowerCase();
+      const itemText = (order.items || []).map((it) => `${it.name || ''} ${it.quantity || ''}`).join(' ').toLowerCase();
+      const statusText = String(order.status || '').toLowerCase();
+      const restaurantText = String(order.restaurantId?.name || '').toLowerCase();
+
+      return id.includes(q) || itemText.includes(q) || statusText.includes(q) || restaurantText.includes(q);
+    });
+
+    list.sort((a, b) => {
+      const aDelivered = (a.status || '').toLowerCase().trim() === 'delivered';
+      const bDelivered = (b.status || '').toLowerCase().trim() === 'delivered';
+      if (aDelivered !== bDelivered) return aDelivered ? 1 : -1;
+
+      if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortBy === 'highest') return getOrderDisplayTotal(b) - getOrderDisplayTotal(a);
+      if (sortBy === 'lowest') return getOrderDisplayTotal(a) - getOrderDisplayTotal(b);
+      return 0;
+    });
+
+    return list;
+  }, [orders, search, statusFilter, dateFilter, sortBy]);
+
+  const activeFilterCount = [search.trim(), statusFilter !== 'all', dateFilter !== 'all', sortBy !== 'newest'].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setDateFilter('all');
+    setSortBy('newest');
+  };
+
   if (loading) return (
     <div className='mo-page'>
       <h1 className='mo-title'>My Orders</h1>
@@ -113,13 +197,52 @@ const MyOrders = () => {
     <div className='mo-page'>
       <div className='mo-header'>
         <h1 className='mo-title'>My Orders</h1>
-        <button className='mo-refresh' onClick={fetchOrders}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
-          </svg>
-          Refresh
-        </button>
+        <div className='mo-header-actions'>
+          {orders.length > 0 && (
+            <span className='mo-count'>
+              {filteredOrders.length} of {orders.length}
+            </span>
+          )}
+          <button className='mo-refresh' onClick={fetchOrders}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {orders.length > 0 && (
+        <div className='mo-filters'>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder='Search order id, item, restaurant, status...'
+            className='mo-filter-input'
+          />
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className='mo-filter-select'>
+            <option value='all'>All statuses</option>
+            <option value='food processing'>Food Processing</option>
+            <option value='out for delivery'>Out for Delivery</option>
+            <option value='delivered'>Delivered</option>
+            <option value='cancelled'>Cancelled</option>
+          </select>
+          <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className='mo-filter-select'>
+            {DATE_FILTERS.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className='mo-filter-select'>
+            <option value='newest'>Newest first</option>
+            <option value='oldest'>Oldest first</option>
+            <option value='highest'>Highest amount</option>
+            <option value='lowest'>Lowest amount</option>
+          </select>
+          {activeFilterCount > 0 && (
+            <button type='button' className='mo-clear-filters' onClick={clearFilters}>Clear</button>
+          )}
+        </div>
+      )}
 
       {orders.length === 0 ? (
         <div className='mo-empty'>
@@ -128,17 +251,25 @@ const MyOrders = () => {
           <p className='mo-empty-sub'>Your order history will appear here.</p>
           <button className='mo-order-btn' onClick={() => navigate('/')}>Start Ordering</button>
         </div>
+      ) : filteredOrders.length === 0 ? (
+        <div className='mo-empty'>
+          <div className='mo-empty-icon'>🔎</div>
+          <p className='mo-empty-title'>No orders match your filters</p>
+          <p className='mo-empty-sub'>Try changing search or filter options.</p>
+          <button className='mo-order-btn' onClick={clearFilters}>Clear Filters</button>
+        </div>
       ) : (
         <>
-          <OrderInsights orders={orders} currency={currency} />
+          <OrderInsights orders={filteredOrders} currency={currency} />
           <div className='mo-list'>
-            {[...orders].reverse().map((order, i) => {
+            {filteredOrders.map((order, i) => {
               const step           = statusIndex(order.status);
               const isDelivered    = (order.status || '').toLowerCase().trim() === 'delivered';
               const isCancelled    = (order.status || '').toLowerCase().trim() === 'cancelled';
               const minutesElapsed = (Date.now() - new Date(order.createdAt).getTime()) / 60000;
               const secondsLeft    = Math.max(0, Math.round((5 * 60) - (minutesElapsed * 60)));
               const isCancellable  = order.status === 'Food Processing' && minutesElapsed <= 5;
+              const displayTotal   = getOrderDisplayTotal(order);
               return (
                 <div key={i} className='mo-card'>
                   <div className='mo-card-top'>
@@ -152,7 +283,7 @@ const MyOrders = () => {
                       </p>
                     </div>
                     <div className='mo-order-right'>
-                      <p className='mo-order-amount'>{currency}{order.amount}.00</p>
+                      <p className='mo-order-amount'>{currency}{displayTotal.toFixed(2)}</p>
                       <span className={`mo-status-badge ${isDelivered ? 'mo-delivered' : isCancelled ? 'mo-cancelled' : 'mo-active'}`}>
                         {isDelivered ? '✓ Delivered' : isCancelled ? '🚫 Cancelled' : '⏱ ' + (order.status || 'Processing')}
                       </span>

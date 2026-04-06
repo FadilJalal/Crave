@@ -27,7 +27,7 @@ const timeAgo = (dateStr) => {
   return `${Math.floor(days / 365)} year${Math.floor(days / 365) > 1 ? 's' : ''} ago`;
 };
 
-const RestaurantReviews = ({ restaurantId, restaurantName }) => {
+const RestaurantReviews = ({ restaurantId, restaurantName, refreshKey = 0 }) => {
   const { url } = useContext(StoreContext);
   const [reviews, setReviews] = useState([]);
   const [avgRating, setAvgRating] = useState(0);
@@ -50,7 +50,7 @@ const RestaurantReviews = ({ restaurantId, restaurantName }) => {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [restaurantId, url]);
+  }, [restaurantId, url, refreshKey]);
 
   return (
     <div className="rr-section">

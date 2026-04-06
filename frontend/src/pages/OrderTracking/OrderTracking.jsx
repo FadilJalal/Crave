@@ -22,6 +22,19 @@ const stepIndex = (status) => {
 
 const POLL_INTERVAL = 5000; // 5 seconds
 
+const getOrderItemsSubtotal = (order) =>
+  (order?.items || []).reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.quantity) || 0)), 0);
+
+const getOrderDisplayTotal = (order) => {
+  const subtotal = getOrderItemsSubtotal(order);
+  const deliveryFee = Number(order?.deliveryFee || 0);
+  const discount = Number(order?.discount || 0);
+  const computedTotal = Math.max(0, subtotal + deliveryFee - discount);
+
+  if (order?.paymentMethod === 'split') return computedTotal;
+  return Number.isFinite(Number(order?.amount)) ? Number(order.amount) : computedTotal;
+};
+
 const OrderTracking = () => {
   const { orderId } = useParams();
   const { url, token, currency } = useContext(StoreContext);
@@ -66,6 +79,8 @@ const OrderTracking = () => {
   const step        = order ? stepIndex(order.status) : 0;
   const currentStep = STEPS[step];
   const isDelivered = step === 3;
+  const displayTotal = order ? getOrderDisplayTotal(order) : 0;
+  const splitCashDue = order?.paymentMethod === 'split' ? Math.max(0, Number(order?.amount || 0)) : 0;
 
   const formatDate = (d) =>
     new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -168,7 +183,10 @@ const OrderTracking = () => {
             </ul>
             <div className="ot-divider" />
             <div className="ot-total-row"><span>Delivery fee</span><span>{currency}{(order.deliveryFee || 0).toFixed(2)}</span></div>
-            <div className="ot-total-row ot-total-bold"><span>Total</span><span>{currency}{order.amount?.toFixed(2)}</span></div>
+            {order.paymentMethod === 'split' && (
+              <div className="ot-total-row"><span>Cash due</span><span>{currency}{splitCashDue.toFixed(2)}</span></div>
+            )}
+            <div className="ot-total-row ot-total-bold"><span>Total</span><span>{currency}{displayTotal.toFixed(2)}</span></div>
             <div className="ot-total-row">
               <span>Payment</span>
               <span className={`ot-pay-badge ${order.payment ? 'ot-paid' : 'ot-unpaid'}`}>

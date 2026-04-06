@@ -19,6 +19,13 @@ const PlaceOrder = () => {
   const [loading, setLoading] = useState(false);
   const [distanceWarning, setDistanceWarning] = useState('');
   const [eta, setEta] = useState(null);
+  const [splitStatus, setSplitStatus] = useState({
+    paidCardAmount: 0,
+    plannedCardAmount: 0,
+    plannedCashAmount: 0,
+    cashAmount: 0,
+    paidAmounts: {},
+  });
   const baseData = { firstName: '', lastName: '', email: '', street: '', apartment: '', area: '', building: '', city: '', state: '', zipcode: '', country: 'UAE', phone: '', deliveryNotes: '' };
 
   const parseLocation = (base) => {
@@ -166,7 +173,39 @@ const PlaceOrder = () => {
       setLoading(false); return;
     }
 
-    const orderData = { address: data, items: orderItems, amount: finalTotal, deliveryFee: deliveryCharge, restaurantId, promoCode: promo?.code || null, discount: discount || 0 };
+    if (payment === 'split' && splitStatus.plannedCardAmount <= 0) {
+      toast.error('Please set a valid split plan before placing the order.');
+      setLoading(false);
+      return;
+    }
+
+    if (payment === 'split' && splitStatus.paidCardAmount + 0.01 < splitStatus.plannedCardAmount) {
+      toast.error('Please complete all planned card payments before placing the split order.');
+      setLoading(false);
+      return;
+    }
+
+    const splitCashDue = payment === 'split'
+      ? Math.max(0, splitStatus.plannedCashAmount || (finalTotal - (splitStatus.plannedCardAmount || 0)))
+      : 0;
+
+    const splitCardCount = Object.values(splitStatus.paidAmounts || {}).filter(v => v > 0).length;
+
+    const orderData = {
+      address: data,
+      items: orderItems,
+      amount: finalTotal,
+      deliveryFee: deliveryCharge,
+      restaurantId,
+      promoCode: promo?.code || null,
+      discount: discount || 0,
+      paymentMethod: payment,
+      ...(payment === 'split' && {
+        splitCardTotal: splitStatus.paidCardAmount || 0,
+        splitCashDue: splitCashDue,
+        splitCardCount: splitCardCount || 1,
+      }),
+    };
 
     try {
       if (payment === 'stripe') {
@@ -271,11 +310,24 @@ const PlaceOrder = () => {
 
           {payment === 'split' && (
             <SplitPayment
-              total={subtotal + deliveryCharge}
+              total={finalTotal}
               apiBaseUrl={url}
               currency={currency}
-              onComplete={() => {
-                toast.success('All split payments completed (test mode).');
+              onComplete={(status) => {
+                setSplitStatus(s => ({
+                  ...s,
+                  paidCardAmount: status?.paidCardAmount || 0,
+                  cashAmount: status?.cashAmount || 0,
+                  paidAmounts: status?.paidAmounts || {},
+                }));
+                toast.success('Card payment confirmed.');
+              }}
+              onPlanUpdate={(plan) => {
+                setSplitStatus(s => ({
+                  ...s,
+                  plannedCardAmount: plan?.plannedCardAmount || 0,
+                  plannedCashAmount: plan?.plannedCashAmount || 0,
+                }));
               }}
             />
           )}
@@ -325,7 +377,7 @@ const PlaceOrder = () => {
             )}
             <button className='po-submit' type='submit' disabled={loading || !!distanceWarning}
               style={distanceWarning ? { opacity: 0.5, cursor: 'not-allowed' } : {}}>
-              {loading ? 'Placing Order...' : payment === 'cod' ? 'Place Order' : 'Proceed to Payment'}
+              {loading ? 'Placing Order...' : payment === 'cod' ? 'Place Order' : payment === 'split' ? 'Place Split Order' : 'Proceed to Payment'}
             </button>
           </div>
         </div>

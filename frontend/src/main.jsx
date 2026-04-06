@@ -4,6 +4,7 @@ import App from './App.jsx';
 import './index.css';
 import { BrowserRouter } from 'react-router-dom';
 import StoreContextProvider from './Context/StoreContext';
+import { ThemeProvider } from './Context/ThemeContext';
 
 // NEW
 import { Elements } from '@stripe/react-stripe-js';
@@ -14,9 +15,11 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <StoreContextProvider>
-      <Elements stripe={stripePromise}>
-        <App />
-      </Elements>
+      <ThemeProvider>
+        <Elements stripe={stripePromise}>
+          <App />
+        </Elements>
+      </ThemeProvider>
     </StoreContextProvider>
   </BrowserRouter>,
 );

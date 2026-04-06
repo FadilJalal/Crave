@@ -41,7 +41,7 @@ if (missingEnvVars.length > 0) {
 if (!process.env.GROQ_API_KEY) {
   console.warn("⚠️  [OPTIONAL] GROQ_API_KEY not set — Real AI features disabled.");
   console.warn("   Get free key at: https://console.groq.com/keys");
-  console.warn("   Then add GROQ_API_KEY to .env and restart server");
+  console.warn("   Mood endpoint can still use a per-request key via x-groq-api-key header");
 } else {
   console.log("✅ [AI] Groq API enabled — Real AI features active");
 }
@@ -109,10 +109,16 @@ app.use((req, res, next) => {
 // ── Cache Control Headers ────────────────────────────────────────────────────
 // Enables browser caching for read-only endpoints (restaurant list, food items, etc.)
 app.use((req, res, next) => {
+  // Never cache authenticated requests.
+  if (req.headers.token || req.headers.authorization) {
+    res.set("Cache-Control", "no-store");
+    return next();
+  }
+
   // Cache GET requests for 5 minutes
   if (req.method === "GET") {
     // Don't cache endpoints where freshness matters for customer-visible state.
-    if (!req.path.includes("/user") && !req.path.includes("/cart") && !req.path.includes("/order") && !req.path.includes("/restaurant") && !req.path.includes("/food")) {
+    if (!req.path.includes("/user") && !req.path.includes("/cart") && !req.path.includes("/order") && !req.path.includes("/restaurant") && !req.path.includes("/food") && !req.path.includes("/promo") && !req.path.includes("/messages") && !req.path.includes("/review")) {
       res.set("Cache-Control", "public, max-age=300, must-revalidate");
     }
   }

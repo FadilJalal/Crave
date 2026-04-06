@@ -6,6 +6,7 @@ import Menu from "./Pages/Menu";
 import AddFood from "./Pages/AddFood";
 import EditFood from "./Pages/EditFood";
 import Orders from "./Pages/Orders";
+import Revenue from "./Pages/Revenue";
 import Settings from "./Pages/Settings";
 import Bridge from "./Pages/Bridge";
 import BulkUpload from "./Pages/BulkUpload";
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/bulk-upload" element={<ProtectedRoute><ProtectedFeature featureName="bulkUpload"><BulkUpload /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/edit-food/:id" element={<ProtectedRoute><ProtectedFeature featureName="menu"><EditFood /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+      <Route path="/revenue" element={<ProtectedRoute><Revenue /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/promos" element={<ProtectedRoute><Promos /></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />

@@ -3,6 +3,7 @@ import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { BASE_URL } from "../utils/api";
 import { toast } from "react-toastify";
+import { useTheme } from "../ThemeContext";
 
 const DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAY_SHORT = { monday:"Mon", tuesday:"Tue", wednesday:"Wed", thursday:"Thu", friday:"Fri", saturday:"Sat", sunday:"Sun" };
@@ -72,7 +73,7 @@ function fmt12(t) {
 }
 
 // ── Inline Leaflet map (uses window.L from CDN) ──────────────────────────────
-function LocationMap({ location, onChange }) {
+function LocationMap({ location, onChange, dark = false }) {
   const mapRef      = useRef(null);
   const leafletRef  = useRef(null);
   const markerRef   = useRef(null);
@@ -204,15 +205,16 @@ function LocationMap({ location, onChange }) {
       <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--border)", position:"relative", zIndex: 5000 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10,
           border:"1.5px solid var(--border)", borderRadius:10,
-          padding:"8px 14px", background:"#f9fafb" }}>
+          padding:"8px 14px", background: dark ? "#0f172a" : "#f9fafb" }}>
           <span style={{ fontSize:16 }}>🔍</span>
           <input
+            className="settings-map-search-input"
             value={search}
             onChange={e => setSearch(e.target.value)}
             onKeyDown={onSearchKeyDown}
             placeholder="Search UAE — then click a result or press Enter"
             style={{ flex:1, border:"none", background:"transparent",
-              outline:"none", fontSize:14, fontFamily:"inherit", color:"#111827" }}
+              outline:"none", fontSize:14, fontFamily:"inherit", color: dark ? "#f9fafb" : "#111827" }}
           />
           {searching && <span style={{ fontSize:12, color:"var(--muted)" }}>searching…</span>}
           {search && (
@@ -227,7 +229,7 @@ function LocationMap({ location, onChange }) {
         {results.length > 0 && (
           <div style={{
             position:"absolute", top:"calc(100% - 4px)", left:16, right:16,
-            background:"white", border:"1px solid var(--border)", borderRadius:10,
+            background: dark ? "#0f172a" : "white", border:"1px solid var(--border)", borderRadius:10,
             boxShadow:"0 12px 32px rgba(0,0,0,0.15)", zIndex:6000, overflow:"hidden", maxHeight:220, overflowY:"auto",
           }}>
             {results.map((r, i) => (
@@ -236,10 +238,10 @@ function LocationMap({ location, onChange }) {
                 onClick={() => pickResult(r)}
                 style={{ padding:"10px 14px", cursor:"pointer", fontSize:13,
                   borderBottom:"1px solid #f3f4f6" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#f9fafb"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "white"; }}
+                onMouseEnter={e => { e.currentTarget.style.background = dark ? "rgba(255,255,255,0.05)" : "#f9fafb"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = dark ? "#0f172a" : "white"; }}
               >
-                <div style={{ fontWeight:700, color:"#111827" }}>{(r.display_name || "").split(",")[0]}</div>
+                <div style={{ fontWeight:700, color: dark ? "#f9fafb" : "#111827" }}>{(r.display_name || "").split(",")[0]}</div>
                 <div style={{ color:"var(--muted)", fontSize:11, marginTop:2,
                   overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                   {r.display_name}
@@ -260,6 +262,7 @@ function LocationMap({ location, onChange }) {
 }
 
 export default function Settings() {
+  const { dark } = useTheme();
   const [loading,    setLoading]    = useState(true);
   const [saving,     setSaving]     = useState(false);
   const [savingLoc,  setSavingLoc]  = useState(false);
@@ -479,6 +482,16 @@ export default function Settings() {
   return (
     <RestaurantLayout>
       <div className="settings-page">
+        {(() => {
+          const textPrimary = dark ? "#f9fafb" : "#111827";
+          const textMuted = dark ? "rgba(249,250,251,0.68)" : "var(--muted)";
+          const cardBg = dark ? "#111827" : "white";
+          const softBg = dark ? "#0f172a" : "#f9fafb";
+          const inputBg = dark ? "#0b1324" : "white";
+          const borderClr = dark ? "rgba(255,255,255,0.12)" : "var(--border)";
+
+          return (
+            <>
         {/* Page header */}
         <div className="settings-header">
           <div>
@@ -506,14 +519,28 @@ export default function Settings() {
         </div>
 
         <div className="settings-card">
-          <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🏷️ Restaurant Logo</div>
-          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
+          <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827", marginBottom:2 }}>🏷️ Restaurant Logo</div>
+          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14 }}>
             Upload a square logo for your sidebar and restaurant card.
           </div>
 
-          <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
-            <div style={{ width:56, height:56, borderRadius:14, border:"1px solid var(--border)", background:"#f9fafb",
-              display:"grid", placeItems:"center", overflow:"hidden" }}>
+          <div style={{
+            display:"grid",
+            gridTemplateColumns:"120px 1fr",
+            gap:16,
+            alignItems:"start",
+          }}>
+            <div style={{
+              width:120,
+              height:120,
+              borderRadius:18,
+              border:"1px solid var(--border)",
+              background: dark ? "#0f172a" : "#f8fafc",
+              display:"grid",
+              placeItems:"center",
+              overflow:"hidden",
+              boxShadow: dark ? "0 8px 18px rgba(0,0,0,0.22)" : "0 6px 16px rgba(15,23,42,0.08)",
+            }}>
               {(logoPreview || logoFilename) ? (
                 <img
                   src={logoPreview || `${BASE_URL}/images/${logoFilename}`}
@@ -526,28 +553,60 @@ export default function Settings() {
               )}
             </div>
 
-            <div style={{ display:"flex", flexDirection:"column", gap:8, flex:1, minWidth:240 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:10, minWidth:260 }}>
               <input
+                id="logo-upload-input"
                 type="file"
                 accept="image/*"
                 onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-                style={{ width:"100%" }}
+                style={{ display:"none" }}
               />
+
+              <div style={{
+                display:"flex",
+                alignItems:"center",
+                gap:8,
+                flexWrap:"wrap",
+                padding:"10px",
+                borderRadius:12,
+                border:"1px dashed var(--border)",
+                background: dark ? "rgba(255,255,255,0.02)" : "#f8fafc",
+              }}>
+                <label
+                  htmlFor="logo-upload-input"
+                  style={{
+                    padding:"8px 14px",
+                    borderRadius:10,
+                    border:"1px solid var(--border)",
+                    background: dark ? "#0f172a" : "white",
+                    fontWeight:700,
+                    fontSize:13,
+                    cursor:"pointer",
+                    color: dark ? "#f9fafb" : "#1f2937",
+                  }}
+                >
+                  Choose File
+                </label>
+                <span style={{ fontSize:13, color:"var(--muted)", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%" }}>
+                  {logoFile?.name || (logoFilename ? `Current: ${logoFilename}` : "No file selected")}
+                </span>
+              </div>
+
               <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
                 <button
                   onClick={uploadLogo}
                   disabled={uploadingLogo || !logoFile}
                   style={{
-                    padding:"8px 18px",
-                    borderRadius:10,
+                    padding:"9px 20px",
+                    borderRadius:12,
                     border:"none",
                     background:"linear-gradient(135deg, #ff4e2a, #ff6a3d)",
                     color:"white",
-                    fontWeight:800,
-                    fontSize:13,
+                    fontWeight:900,
+                    fontSize:14,
                     cursor: (uploadingLogo || !logoFile) ? "not-allowed" : "pointer",
-                    opacity: (uploadingLogo || !logoFile) ? 0.7 : 1,
-                    boxShadow:"0 4px 14px rgba(255,78,42,0.3)",
+                    opacity: (uploadingLogo || !logoFile) ? 0.65 : 1,
+                    boxShadow:"0 10px 24px rgba(255,78,42,0.26)",
                   }}
                 >
                   {uploadingLogo ? "Uploading…" : "Upload Logo"}
@@ -555,8 +614,16 @@ export default function Settings() {
                 {logoFile && (
                   <button
                     onClick={() => setLogoFile(null)}
-                    style={{ padding:"8px 14px", borderRadius:10, border:"1px solid var(--border)", background:"#f9fafb",
-                      color:"#374151", fontWeight:700, fontSize:13, cursor:"pointer" }}
+                    style={{
+                      padding:"9px 14px",
+                      borderRadius:12,
+                      border:"1px solid var(--border)",
+                      background: dark ? "#0f172a" : "#f9fafb",
+                      color: dark ? "#e5e7eb" : "#374151",
+                      fontWeight:700,
+                      fontSize:13,
+                      cursor:"pointer"
+                    }}
                   >
                     Cancel
                   </button>
@@ -568,7 +635,7 @@ export default function Settings() {
 
         {/* Display Address */}
         <div className="settings-card">
-          <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>📍 Display Address</div>
+          <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827", marginBottom:2 }}>📍 Display Address</div>
           <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
             This is the address shown on your restaurant card on the homepage.
           </div>
@@ -594,7 +661,7 @@ export default function Settings() {
             boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: isActive ? 0 : 12 }}>
               <div>
-                <div style={{ fontWeight:900, fontSize:14, color:"#111827" }}>Restaurant Active</div>
+                <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827" }}>Restaurant Active</div>
                 <div style={{ fontSize:12, color:"var(--muted)", marginTop:2 }}>
                   {isActive ? "Customers can see & order" : "Hidden from customers"}
                 </div>
@@ -621,15 +688,15 @@ export default function Settings() {
 
           {/* Prep time */}
           <div className="settings-card" style={{ marginBottom:0 }}>
-            <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>Prep Time</div>
+            <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827", marginBottom:2 }}>Prep Time</div>
             <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>Shown to customers as wait time</div>
             <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
               {[15, 20, 30, 45, 60].map(t => (
                 <button key={t} onClick={() => setPrepTime(t)} style={{
                   padding:"7px 13px", borderRadius:10,
                   border:`1.5px solid ${prepTime === t ? "#ff4e2a" : "var(--border)"}`,
-                  background: prepTime === t ? "#fff1ee" : "#f9fafb",
-                  color: prepTime === t ? "#ff4e2a" : "#6b7280",
+                  background: dark ? "#000000" : (prepTime === t ? "#fff1ee" : "#f9fafb"),
+                  color: dark ? "#ffffff" : (prepTime === t ? "#ff4e2a" : "#6b7280"),
                   fontWeight:800, fontSize:13, cursor:"pointer", transition:"all 0.15s",
                 }}>{t}m</button>
               ))}
@@ -638,8 +705,10 @@ export default function Settings() {
                   onChange={e => setPrepTime(Number(e.target.value))}
                   style={{ width:54, padding:"7px 8px", borderRadius:10,
                     border:"1.5px solid var(--border)", fontSize:13, fontWeight:800,
+                    background: dark ? "#000000" : undefined,
+                    color: dark ? "#ffffff" : undefined,
                     textAlign:"center", outline:"none", fontFamily:"inherit" }} />
-                <span style={{ fontSize:12, color:"var(--muted)" }}>min</span>
+                <span style={{ fontSize:12, color: dark ? "#ffffff" : "var(--muted)" }}>min</span>
               </div>
             </div>
           </div>
@@ -649,7 +718,7 @@ export default function Settings() {
         <div className="settings-card">
           <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
             <div>
-              <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🚴 Delivery Radius</div>
+              <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827", marginBottom:2 }}>🚴 Delivery Radius</div>
               <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
                 Orders outside this range will be rejected. Set to <b>0</b> for unlimited delivery.
               </div>
@@ -666,16 +735,16 @@ export default function Settings() {
               <button key={r} onClick={() => setDeliveryRadius(r)} style={{
                 padding:"7px 13px", borderRadius:10,
                 border:`1.5px solid ${deliveryRadius === r ? "#ff4e2a" : "var(--border)"}`,
-                background: deliveryRadius === r ? "#fff1ee" : "#f9fafb",
-                color: deliveryRadius === r ? "#ff4e2a" : "#6b7280",
+                background: dark ? "#000000" : (deliveryRadius === r ? "#fff1ee" : "#f9fafb"),
+                color: dark ? "#ffffff" : (deliveryRadius === r ? "#ff4e2a" : "#6b7280"),
                 fontWeight:800, fontSize:13, cursor:"pointer", transition:"all 0.15s",
               }}>{r} km</button>
             ))}
             <button onClick={() => setDeliveryRadius(0)} style={{
               padding:"7px 13px", borderRadius:10,
               border:`1.5px solid ${deliveryRadius === 0 ? "#16a34a" : "var(--border)"}`,
-              background: deliveryRadius === 0 ? "#f0fdf4" : "#f9fafb",
-              color: deliveryRadius === 0 ? "#16a34a" : "#6b7280",
+              background: dark ? "#000000" : (deliveryRadius === 0 ? "#f0fdf4" : "#f9fafb"),
+              color: dark ? "#ffffff" : (deliveryRadius === 0 ? "#16a34a" : "#6b7280"),
               fontWeight:800, fontSize:13, cursor:"pointer", transition:"all 0.15s",
             }}>∞ Unlimited</button>
             <div style={{ display:"flex", alignItems:"center", gap:4 }}>
@@ -689,7 +758,7 @@ export default function Settings() {
           </div>
           {deliveryRadius > 0 && (
             <div style={{ marginTop:14, padding:"10px 14px", borderRadius:10,
-              background:"#fff7ed", border:"1px solid #fed7aa", fontSize:12, color:"#92400e", fontWeight:600 }}>
+              background: dark ? "#000000" : "#fff7ed", border: dark ? "1px solid rgba(255,255,255,0.14)" : "1px solid #fed7aa", fontSize:12, color: dark ? "#ffffff" : "#92400e", fontWeight:600 }}>
               🗺️ Customers more than <strong>{deliveryRadius} km</strong> from your restaurant will not be able to place an order.
             </div>
           )}
@@ -699,7 +768,7 @@ export default function Settings() {
         <div className="settings-card">
           <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
             <div>
-              <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🛒 Minimum Order Amount</div>
+              <div style={{ fontWeight:900, fontSize:14, color:"white", marginBottom:2 }}>🛒 Minimum Order Amount</div>
               <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
                 Orders below this amount will be rejected. Set to <b>0</b> for no minimum.
               </div>
@@ -716,8 +785,8 @@ export default function Settings() {
               <button key={v} onClick={() => setMinimumOrder(v)} style={{
                 padding:"7px 13px", borderRadius:10,
                 border:`1.5px solid ${minimumOrder === v ? "#ff4e2a" : "var(--border)"}`,
-                background: minimumOrder === v ? "#fff1ee" : "#f9fafb",
-                color: minimumOrder === v ? "#ff4e2a" : "#6b7280",
+                background: dark ? "#000000" : (minimumOrder === v ? "#fff1ee" : "#f9fafb"),
+                color: dark ? "#ffffff" : (minimumOrder === v ? "#ff4e2a" : "#6b7280"),
                 fontWeight:800, fontSize:13, cursor:"pointer", transition:"all 0.15s",
               }}>{v === 0 ? "None" : `AED ${v}`}</button>
             ))}
@@ -732,7 +801,7 @@ export default function Settings() {
           </div>
           {minimumOrder > 0 && (
             <div style={{ marginTop:14, padding:"10px 14px", borderRadius:10,
-              background:"#fff7ed", border:"1px solid #fed7aa", fontSize:12, color:"#92400e", fontWeight:600 }}>
+              background: dark ? "#000000" : "#fff7ed", border: dark ? "1px solid rgba(255,255,255,0.14)" : "1px solid #fed7aa", fontSize:12, color: dark ? "#ffffff" : "#92400e", fontWeight:600 }}>
               🛒 Customers must order at least <strong>AED {minimumOrder}</strong> to place an order.
             </div>
           )}
@@ -740,44 +809,59 @@ export default function Settings() {
 
         {/* Delivery Tiers card */}
         <div className="settings-card">
-          <div style={{ fontWeight:900, fontSize:14, color:"#111827", marginBottom:2 }}>🚚 Delivery Fee Tiers</div>
+          <div style={{ fontWeight:900, fontSize:14, color:textPrimary, marginBottom:2 }}>🚚 Delivery Fee Tiers</div>
           <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14 }}>
             Set fee per distance bracket. Use AED 0 for free delivery on any tier.
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {deliveryTiers.map((tier, i) => (
-              <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"#f9fafb", borderRadius:12, border:"1px solid var(--border)" }}>
-                <div style={{ fontSize:13, color:"var(--muted)", fontWeight:700, minWidth:20 }}>#{i+1}</div>
+              <div className="settings-tier-row" key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background: dark ? "#0f172a" : "#f9fafb", borderRadius:12, border:"1px solid var(--border)", transition:"box-shadow 0.2s ease" }}>
+                <div style={{ fontSize:13, color:textMuted, fontWeight:700, minWidth:20 }}>#{i+1}</div>
                 <div style={{ display:"flex", alignItems:"center", gap:6, flex:1 }}>
-                  <span style={{ fontSize:12, color:"var(--muted)" }}>Up to</span>
+                  <span style={{ fontSize:12, color:textMuted }}>Up to</span>
                   {tier.upToKm === null ? (
-                    <span style={{ fontSize:13, fontWeight:800, color:"#111827", padding:"5px 10px", background:"white", borderRadius:8, border:"1px solid var(--border)" }}>Beyond</span>
+                    <span style={{ fontSize:13, fontWeight:800, color:textPrimary, padding:"5px 10px", background: dark ? "#111827" : "white", borderRadius:8, border:"1px solid var(--border)" }}>Beyond</span>
                   ) : (
-                    <input type="number" min={1} max={100} value={tier.upToKm}
+                    <input type="number" min={1} max={100} value={tier.upToKm ?? ""}
                       onChange={e => {
                         const next = [...deliveryTiers];
-                        next[i] = { ...next[i], upToKm: Number(e.target.value) };
+                        const raw = e.target.value;
+
+                        // Allow temporary empty state while typing; enforce min on blur.
+                        if (raw === "") {
+                          next[i] = { ...next[i], upToKm: "" };
+                        } else {
+                          const parsed = Number(raw);
+                          next[i] = { ...next[i], upToKm: Number.isFinite(parsed) ? parsed : 1 };
+                        }
+
                         setDeliveryTiers(next);
                       }}
-                      style={{ width:60, padding:"5px 8px", borderRadius:8, border:"1px solid var(--border)", fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }} />
+                      onBlur={() => {
+                        const next = [...deliveryTiers];
+                        const parsed = Number(next[i].upToKm);
+                        next[i] = { ...next[i], upToKm: Number.isFinite(parsed) && parsed >= 1 ? parsed : 1 };
+                        setDeliveryTiers(next);
+                      }}
+                      style={{ width:60, padding:"5px 8px", borderRadius:8, border:"1px solid var(--border)", background: dark ? "#111827" : "white", color: textPrimary, fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }} />
                   )}
-                  <span style={{ fontSize:12, color:"var(--muted)" }}>km</span>
+                  <span style={{ fontSize:12, color:textMuted }}>km</span>
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ fontSize:12, color:"var(--muted)" }}>Fee</span>
-                  <span style={{ fontSize:12, color:"var(--muted)" }}>AED</span>
+                  <span style={{ fontSize:12, color:textMuted }}>Fee</span>
+                  <span style={{ fontSize:12, color:textMuted }}>AED</span>
                   <input type="number" min={0} max={200} value={tier.fee}
                     onChange={e => {
                       const next = [...deliveryTiers];
                       next[i] = { ...next[i], fee: Number(e.target.value) };
                       setDeliveryTiers(next);
                     }}
-                    style={{ width:60, padding:"5px 8px", borderRadius:8, border:"1px solid var(--border)", fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }} />
-                  {tier.fee === 0 && <span style={{ fontSize:11, fontWeight:800, color:"#16a34a", background:"#f0fdf4", padding:"2px 8px", borderRadius:999 }}>FREE</span>}
+                    style={{ width:60, padding:"5px 8px", borderRadius:8, border:"1px solid var(--border)", background: dark ? "#111827" : "white", color: textPrimary, fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }} />
+                  {tier.fee === 0 && <span style={{ fontSize:11, fontWeight:800, color:"#16a34a", background: dark ? "rgba(34,197,94,0.18)" : "#f0fdf4", padding:"2px 8px", borderRadius:999 }}>FREE</span>}
                 </div>
                 {deliveryTiers.length > 1 && tier.upToKm !== null && (
                   <button onClick={() => setDeliveryTiers(prev => prev.filter((_, j) => j !== i))}
-                    style={{ background:"#fef2f2", border:"none", borderRadius:8, padding:"5px 8px", cursor:"pointer", fontSize:13, color:"#dc2626", fontWeight:700 }}>✕</button>
+                    style={{ background: dark ? "rgba(220,38,38,0.18)" : "#fef2f2", border:"none", borderRadius:8, padding:"5px 8px", cursor:"pointer", fontSize:13, color:"#dc2626", fontWeight:700 }}>✕</button>
                 )}
               </div>
             ))}
@@ -791,11 +875,11 @@ export default function Settings() {
                 );
                 setDeliveryTiers([...updated, { upToKm: null, fee: 20 }]);
               }}
-              style={{ padding:"8px 14px", borderRadius:10, border:"1.5px dashed var(--border)", background:"white", cursor:"pointer", fontSize:13, fontWeight:700, color:"var(--muted)", fontFamily:"inherit", textAlign:"left" }}>
+              style={{ padding:"8px 14px", borderRadius:10, border:"1.5px dashed var(--border)", background: dark ? "#0f172a" : "white", cursor:"pointer", fontSize:13, fontWeight:700, color:textMuted, fontFamily:"inherit", textAlign:"left" }}>
               + Add tier
             </button>
           </div>
-          <div style={{ marginTop:12, padding:"10px 14px", borderRadius:10, background:"#eff6ff", border:"1px solid #bfdbfe", fontSize:12, color:"#1d4ed8", fontWeight:600 }}>
+          <div style={{ marginTop:12, padding:"10px 14px", borderRadius:10, background: dark ? "rgba(29,78,216,0.16)" : "#eff6ff", border: dark ? "1px solid rgba(96,165,250,0.35)" : "1px solid #bfdbfe", fontSize:12, color: dark ? "#93c5fd" : "#1d4ed8", fontWeight:600 }}>
             💡 The last tier (Beyond) catches all distances beyond the previous bracket.
           </div>
         </div>
@@ -838,7 +922,7 @@ export default function Settings() {
             </div>
           </div>
           <div style={{ padding:"0 0 0 0" }}>
-            <LocationMap location={location} onChange={updateLocation} />
+            <LocationMap location={location} onChange={updateLocation} dark={dark} />
           </div>
           <div style={{ padding:"10px 20px", background:"#f9fafb", borderTop:"1px solid var(--border)",
             fontSize:12, color:"var(--muted)", display:"flex", gap:16 }}>
@@ -848,14 +932,14 @@ export default function Settings() {
         </div>
 
         {/* Opening Hours card */}
-        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
+        <div style={{ background:cardBg, borderRadius:16, border:`1px solid ${borderClr}`,
           boxShadow:"0 2px 12px rgba(0,0,0,0.04)", overflow:"hidden" }}>
 
           {/* Card header */}
           <div style={{ padding:"18px 22px 16px", borderBottom: is24_7 ? "none" : "1px solid var(--border)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
               <div>
-                <div style={{ fontWeight:900, fontSize:15, color:"#111827" }}>Opening Hours</div>
+                <div style={{ fontWeight:900, fontSize:15, color:textPrimary }}>Opening Hours</div>
                 <div style={{ fontSize:12, color:"var(--muted)", marginTop:2 }}>
                   Click Open/Closed to toggle a day · Copy icon applies that day's hours to all
                 </div>
@@ -868,7 +952,7 @@ export default function Settings() {
                   padding:"8px 16px", borderRadius:10, cursor:"pointer",
                   fontWeight:800, fontSize:13, border:"1.5px solid",
                   borderColor: is24_7 ? "#ff4e2a" : "var(--border)",
-                  background:  is24_7 ? "#fff5f3" : "#f9fafb",
+                  background:  is24_7 ? (dark ? "rgba(255,78,42,0.16)" : "#fff5f3") : (dark ? "#0f172a" : "#f9fafb"),
                   color:       is24_7 ? "#ff4e2a" : "#374151",
                   transition:"all 0.15s",
                 }}>
@@ -881,7 +965,7 @@ export default function Settings() {
                 <button onClick={() => applyToAll(todayKey)} disabled={is24_7} style={{
                   display:"flex", alignItems:"center", gap:6,
                   padding:"8px 14px", borderRadius:10, border:"1px solid var(--border)",
-                  background:"#f9fafb", color: is24_7 ? "#d1d5db" : "#374151",
+                  background: dark ? "#0f172a" : "#f9fafb", color: is24_7 ? "#d1d5db" : (dark ? "#e5e7eb" : "#374151"),
                   cursor: is24_7 ? "not-allowed" : "pointer",
                   fontSize:12, fontWeight:700, opacity: is24_7 ? 0.5 : 1,
                 }}>
@@ -898,7 +982,7 @@ export default function Settings() {
                 }} style={{
                   display:"flex", alignItems:"center", gap:6,
                   padding:"8px 14px", borderRadius:10, border:"1px solid #fecaca",
-                  background:"#fef2f2", color: is24_7 ? "#fca5a5" : "#dc2626",
+                  background: dark ? "rgba(220,38,38,0.16)" : "#fef2f2", color: is24_7 ? "#fca5a5" : "#dc2626",
                   cursor: is24_7 ? "not-allowed" : "pointer",
                   fontSize:12, fontWeight:700, opacity: is24_7 ? 0.5 : 1,
                 }}>
@@ -913,7 +997,7 @@ export default function Settings() {
             {/* 24/7 active banner */}
             {is24_7 && (
               <div style={{ marginTop:14, padding:"12px 16px", borderRadius:12,
-                background:"linear-gradient(135deg, #fff5f3, #fff1ee)",
+                background: dark ? "linear-gradient(135deg, rgba(255,78,42,0.18), rgba(255,106,61,0.12))" : "linear-gradient(135deg, #fff5f3, #fff1ee)",
                 border:"1.5px solid #fca89a",
                 display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -922,14 +1006,14 @@ export default function Settings() {
                     <div style={{ fontWeight:900, fontSize:13, color:"#ff4e2a" }}>
                       Open 24 hours, 7 days a week
                     </div>
-                    <div style={{ fontSize:12, color:"#9ca3af", marginTop:2 }}>
+                    <div style={{ fontSize:12, color: dark ? "rgba(255,255,255,0.72)" : "#9ca3af", marginTop:2 }}>
                       All days set to 12:00 AM – 11:59 PM. Click "24/7 ON" to restore previous hours.
                     </div>
                   </div>
                 </div>
                 <button onClick={toggle24_7} style={{
                   padding:"7px 14px", borderRadius:9, border:"1.5px solid #fca89a",
-                  background:"white", color:"#ff4e2a", fontWeight:800,
+                  background: dark ? "#0f172a" : "white", color:"#ff4e2a", fontWeight:800,
                   fontSize:12, cursor:"pointer", whiteSpace:"nowrap",
                 }}>
                   Turn off
@@ -963,7 +1047,7 @@ export default function Settings() {
               <div key={day} style={{
                 display:"flex", alignItems:"center",
                 borderBottom: isLast ? "none" : "1px solid var(--border)",
-                background: isToday ? "#f0fdf4" : "white",
+                background: isToday ? (dark ? "rgba(34,197,94,0.14)" : "#f0fdf4") : cardBg,
               }}>
 
                 {/* Day name col */}
@@ -974,7 +1058,7 @@ export default function Settings() {
                         flexShrink:0, boxShadow:"0 0 0 2px #bbf7d0" }} />
                     )}
                     <span style={{ fontWeight:800, fontSize:14,
-                      color: d.closed ? "#9ca3af" : "#111827" }}>
+                      color: d.closed ? (dark ? "rgba(255,255,255,0.45)" : "#9ca3af") : textPrimary }}>
                       {DAY_FULL[day]}
                     </span>
                   </div>
@@ -1001,8 +1085,8 @@ export default function Settings() {
                           onChange={e => updateDay(day, "open", e.target.value)}
                           style={{ flex:1, minWidth:0, padding:"8px 10px", borderRadius:10,
                             border:"1.5px solid var(--border)", fontSize:14, fontWeight:700,
-                            outline:"none", fontFamily:"inherit", color:"#111827",
-                            background:"white", cursor:"pointer" }} />
+                            outline:"none", fontFamily:"inherit", color:textPrimary,
+                            background:inputBg, cursor:"pointer" }} />
                       </div>
                       <span style={{ color:"#d1d5db", fontSize:18 }}>→</span>
                       <div style={{ display:"flex", alignItems:"center", gap:7, flex:1 }}>
@@ -1014,12 +1098,12 @@ export default function Settings() {
                           onChange={e => updateDay(day, "close", e.target.value)}
                           style={{ flex:1, minWidth:0, padding:"8px 10px", borderRadius:10,
                             border:"1.5px solid var(--border)", fontSize:14, fontWeight:700,
-                            outline:"none", fontFamily:"inherit", color:"#111827",
-                            background:"white", cursor:"pointer" }} />
+                            outline:"none", fontFamily:"inherit", color:textPrimary,
+                            background:inputBg, cursor:"pointer" }} />
                       </div>
                       {durLabel && (
                         <span style={{ fontSize:11, color:"var(--muted)", fontWeight:600,
-                          flexShrink:0, background:"#f3f4f6", borderRadius:7,
+                          flexShrink:0, background: dark ? "rgba(255,255,255,0.1)" : "#f3f4f6", borderRadius:7,
                           padding:"3px 9px", whiteSpace:"nowrap" }}>
                           {durLabel}
                         </span>
@@ -1042,7 +1126,7 @@ export default function Settings() {
                   <button onClick={() => applyToAll(day)}
                     title={`Copy ${DAY_FULL[day]} to all days`}
                     style={{ width:32, height:32, borderRadius:9,
-                      border:"1px solid var(--border)", background:"white",
+                      border:"1px solid var(--border)", background:inputBg,
                       color:"var(--muted)", cursor:"pointer",
                       display:"flex", alignItems:"center", justifyContent:"center",
                       flexShrink:0 }}>
@@ -1058,7 +1142,7 @@ export default function Settings() {
           </div>
 
           {/* Week summary footer */}
-          <div style={{ padding:"14px 20px", background:"#f9fafb",
+          <div style={{ padding:"14px 20px", background:softBg,
             borderTop:"1px solid var(--border)", display:"flex", gap:6, flexWrap:"wrap" }}>
             {DAYS.map(day => {
               const d = hours[day] || {};
@@ -1066,7 +1150,7 @@ export default function Settings() {
               return (
                 <div key={day} style={{ flex:"1 0 70px", display:"flex", flexDirection:"column",
                   alignItems:"center", padding:"7px 6px", borderRadius:10,
-                  background: isToday ? "#dcfce7" : d.closed ? "#fafafa" : "white",
+                  background: isToday ? (dark ? "rgba(34,197,94,0.2)" : "#dcfce7") : d.closed ? (dark ? "#0b1324" : "#fafafa") : inputBg,
                   border:`1px solid ${isToday ? "#86efac" : "var(--border)"}` }}>
                   <span style={{ fontSize:10, fontWeight:800, color:"var(--muted)",
                     textTransform:"uppercase", letterSpacing:"0.4px" }}>
@@ -1075,7 +1159,7 @@ export default function Settings() {
                   {d.closed ? (
                     <span style={{ fontSize:11, fontWeight:700, color:"#ef4444", marginTop:3 }}>—</span>
                   ) : (
-                    <span style={{ fontSize:10, fontWeight:700, color:"#374151", marginTop:3,
+                    <span style={{ fontSize:10, fontWeight:700, color: dark ? "rgba(249,250,251,0.78)" : "#374151", marginTop:3,
                       whiteSpace:"nowrap", textAlign:"center" }}>
                       {fmt12(d.open)}<br />{fmt12(d.close)}
                     </span>
@@ -1085,6 +1169,10 @@ export default function Settings() {
             })}
           </div>
         </div>
+
+            </>
+          );
+        })()}
 
       </div>
     </RestaurantLayout>

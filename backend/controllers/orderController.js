@@ -326,9 +326,12 @@ const placeOrderCod = async (req, res) => {
       deliveryFee: actualDeliveryFee,
       address: req.body.address,
       payment: true,
-      paymentMethod: "cod",
+      paymentMethod: req.body.paymentMethod || "cod",
       promoCode: req.body.promoCode || null,
       discount: req.body.discount || 0,
+      splitCardTotal: req.body.splitCardTotal || 0,
+      splitCashDue:   req.body.splitCashDue   || 0,
+      splitCardCount: req.body.splitCardCount  || 0,
     });
 
     await newOrder.save();

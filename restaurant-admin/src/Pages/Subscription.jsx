@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
+import { useTheme } from "../ThemeContext";
 
 const PLANS = {
   starter: {
@@ -82,6 +83,7 @@ function formatDate(d) {
 }
 
 export default function Subscription() {
+  const { dark } = useTheme();
   const [searchParams]  = useSearchParams();
   const [sub, setSub]   = useState(null);
   const [loading, setLoading]   = useState(true);
@@ -171,6 +173,14 @@ export default function Subscription() {
   const total  = plan.price * selectedMonths;
   const currentPlan   = sub?.plan && sub.plan !== "none" ? PLANS[sub.plan] : null;
   const currentStatus = STATUS_STYLE[sub?.status] || { color: "#6b7280", bg: "#f3f4f6", label: "No Subscription" };
+  const textPrimary = dark ? "#f9fafb" : "#111827";
+  const textSecondary = dark ? "rgba(249,250,251,0.68)" : "#6b7280";
+  const textMuted = dark ? "rgba(249,250,251,0.48)" : "#9ca3af";
+  const surface = dark ? "var(--card)" : "white";
+  const border = dark ? "1px solid var(--border)" : "1px solid #e5e7eb";
+  const planSelectedBg = (color, bg) => (dark ? `${color}22` : bg);
+  const currentPlanBg = currentPlan ? (dark ? `${currentPlan.color}1f` : currentPlan.bg) : (dark ? "rgba(255,255,255,0.04)" : "#f3f4f6");
+  const currentPlanBorder = currentPlan ? (dark ? `1px solid ${currentPlan.color}55` : `2px solid ${currentPlan.color}44`) : (dark ? "1px solid rgba(255,255,255,0.12)" : "#d1d5db");
 
   return (
     <RestaurantLayout>
@@ -192,15 +202,15 @@ export default function Subscription() {
 
         {/* Header */}
         <div style={{ marginBottom: 36 }}>
-          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: "#111827", letterSpacing: "-0.6px" }}>Subscription Plans</h2>
-          <p style={{ margin: "6px 0 0", fontSize: 15, color: "#6b7280" }}>Choose a plan that works for your restaurant</p>
+          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: textPrimary, letterSpacing: "-0.6px" }}>Subscription Plans</h2>
+          <p style={{ margin: "6px 0 0", fontSize: 15, color: textSecondary }}>Choose a plan that works for your restaurant</p>
         </div>
 
         {/* Current plan banner */}
         {!loading && (
           <div style={{
-            background: currentPlan ? `${currentPlan.bg}` : "#f3f4f6",
-            border: `2px solid ${currentPlan ? currentPlan.color + "44" : "#d1d5db"}`,
+            background: currentPlanBg,
+            border: currentPlanBorder,
             borderRadius: 16, padding: "22px 24px", marginBottom: 36,
             display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16,
           }}>
@@ -208,11 +218,11 @@ export default function Subscription() {
               <div style={{ fontSize: 11, fontWeight: 800, color: currentPlan?.color || "#9ca3af", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 4 }}>
                 Your Current Plan
               </div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: "#111827" }}>
-                {currentPlan ? currentPlan.name : "No Active Plan"} {currentPlan && <span style={{ fontSize: 16, color: "#9ca3af" }}>— AED {currentPlan.price}/mo</span>}
+              <div style={{ fontSize: 24, fontWeight: 900, color: textPrimary }}>
+                {currentPlan ? currentPlan.name : "No Active Plan"} {currentPlan && <span style={{ fontSize: 16, color: textMuted }}>— AED {currentPlan.price}/mo</span>}
               </div>
               {currentPlan && sub?.expiresAt && (
-                <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                <div style={{ fontSize: 13, color: textSecondary, marginTop: 4 }}>
                   {sub.isExpired ? "Expired on" : "Renews"} <strong>{formatDate(sub.expiresAt)}</strong>
                   {sub.daysLeft > 0 && !sub.isExpired && (
                     <span style={{ color: sub.daysLeft <= 7 ? "#dc2626" : "#15803d", fontWeight: 700, marginLeft: 8 }}>
@@ -230,9 +240,9 @@ export default function Subscription() {
 
         {/* No plan helper message */}
         {!loading && !currentPlan && (
-          <div style={{ background: "#f0f9ff", border: "1px solid #bfdbfe", borderRadius: 14, padding: "12px 18px", marginBottom: 24, display: "flex", gap: 12, alignItems: "center" }}>
+          <div style={{ background: dark ? "rgba(14,165,233,0.14)" : "#f0f9ff", border: dark ? "1px solid rgba(56,189,248,0.35)" : "1px solid #bfdbfe", borderRadius: 14, padding: "12px 18px", marginBottom: 24, display: "flex", gap: 12, alignItems: "center" }}>
             <span style={{ fontSize: 18 }}>📋</span>
-            <div style={{ fontSize: 13, color: "#0c4a6e", fontWeight: 600 }}>
+            <div style={{ fontSize: 13, color: dark ? "#bae6fd" : "#0c4a6e", fontWeight: 600 }}>
               Get started by choosing a plan below. Unlock powerful features like inventory management, email campaigns, and AI-powered insights.
             </div>
           </div>
@@ -240,9 +250,9 @@ export default function Subscription() {
 
         {/* Expiry warning */}
         {!loading && sub?.expiringSoon && !sub?.isExpired && (
-          <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 14, padding: "12px 18px", marginBottom: 24, display: "flex", gap: 12, alignItems: "center" }}>
+          <div style={{ background: dark ? "rgba(245,158,11,0.14)" : "#fffbeb", border: dark ? "1px solid rgba(251,191,36,0.35)" : "1px solid #fde68a", borderRadius: 14, padding: "12px 18px", marginBottom: 24, display: "flex", gap: 12, alignItems: "center" }}>
             <span style={{ fontSize: 18 }}>⚠️</span>
-            <div style={{ fontSize: 13, color: "#92400e", fontWeight: 600 }}>
+            <div style={{ fontSize: 13, color: dark ? "#fde68a" : "#92400e", fontWeight: 600 }}>
               Your plan expires in <strong>{sub.daysLeft} days</strong>. Upgrade or renew below to avoid interruption.
             </div>
           </div>
@@ -259,7 +269,7 @@ export default function Subscription() {
                   onClick={() => setSelectedPlan(key)}
                   style={{
                     border: `2px solid ${isSelected ? p.color : "#e5e7eb"}`,
-                    background: isSelected ? p.bg : "white",
+                    background: isSelected ? planSelectedBg(p.color, p.bg) : surface,
                     borderRadius: 16, padding: "24px 20px", cursor: "pointer",
                     boxShadow: isSelected ? `0 8px 24px ${p.color}22` : "0 1px 3px rgba(0,0,0,0.1)",
                     position: "relative", transition: "all 0.2s",
@@ -271,12 +281,12 @@ export default function Subscription() {
                       {p.badge}
                     </div>
                   )}
-                  <div style={{ fontWeight: 900, fontSize: 18, color: "#111827", marginBottom: 4 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 16, fontweight: 500 }}>{p.description}</div>
+                  <div style={{ fontWeight: 900, fontSize: 18, color: textPrimary, marginBottom: 4 }}>{p.name}</div>
+                  <div style={{ fontSize: 12, color: textSecondary, marginBottom: 16, fontweight: 500 }}>{p.description}</div>
                   <div style={{ fontWeight: 900, fontSize: 28, color: p.color, marginBottom: 2 }}>
                     {p.price === 0 ? "Free" : `AED ${p.price}`}
                   </div>
-                  <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 18 }}>{p.price > 0 && "/month"}</div>
+                  <div style={{ fontSize: 12, color: textMuted, marginBottom: 18 }}>{p.price > 0 && "/month"}</div>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -284,8 +294,8 @@ export default function Subscription() {
                     }}
                     style={{
                       width: "100%", padding: "10px 0", borderRadius: 10, border: "none",
-                      background: isSelected ? p.color : "#f3f4f6",
-                      color: isSelected ? "white" : "#374151",
+                      background: isSelected ? p.color : (dark ? "rgba(255,255,255,0.08)" : "#f3f4f6"),
+                      color: isSelected ? "white" : (dark ? "#e5e7eb" : "#374151"),
                       fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
                       transition: "all 0.2s", marginBottom: 16,
                     }}
@@ -294,7 +304,7 @@ export default function Subscription() {
                   </button>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {p.features.slice(0, p.name === "Free" ? 3 : p.name === "Starter" ? 4 : p.name === "Professional" ? 8 : 12).map(f => (
-                      <div key={f.name} style={{ fontSize: 12, color: f.included ? "#374151" : "#d1d5db", display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <div key={f.name} style={{ fontSize: 12, color: f.included ? (dark ? "#e5e7eb" : "#374151") : (dark ? "rgba(229,231,235,0.35)" : "#d1d5db"), display: "flex", gap: 8, alignItems: "flex-start" }}>
                         <span style={{ color: f.included ? p.color : "#d1d5db", flexShrink: 0, marginTop: 1, fontWeight: 700, fontSize: 13 }}>{f.included ? "✓" : "—"}</span>
                         <span>{f.label}</span>
                       </div>
@@ -307,8 +317,8 @@ export default function Subscription() {
         </div>
 
         {/* Duration & Summary */}
-        <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 16, padding: "28px", boxShadow: "0 4px 16px rgba(0,0,0,0.05)" }}>
-          <div style={{ fontWeight: 900, fontSize: 16, color: "#111827", marginBottom: 18 }}>Choose Billing Duration</div>
+        <div style={{ background: surface, border: border, borderRadius: 16, padding: "28px", boxShadow: dark ? "0 6px 20px rgba(0,0,0,0.25)" : "0 4px 16px rgba(0,0,0,0.05)" }}>
+          <div style={{ fontWeight: 900, fontSize: 16, color: textPrimary, marginBottom: 18 }}>Choose Billing Duration</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 28 }}>
             {DURATIONS.map(m => {
               const disc   = m === 12 ? "Save 20%" : m === 6 ? "Save 10%" : m === 3 ? "Save 5%" : null;
@@ -320,9 +330,9 @@ export default function Subscription() {
                   style={{
                     padding: "11px 18px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
                     border: `2px solid ${active ? plan.color : "#e5e7eb"}`,
-                    background: active ? plan.bg : "white",
+                    background: active ? planSelectedBg(plan.color, plan.bg) : surface,
                     fontWeight: 700, fontSize: 13,
-                    color: active ? plan.color : "#374151",
+                    color: active ? plan.color : (dark ? "#e5e7eb" : "#374151"),
                     position: "relative", transition: "all 0.2s",
                   }}
                 >
@@ -338,17 +348,17 @@ export default function Subscription() {
           </div>
 
           {/* Final checkout summary */}
-          <div style={{ borderTop: "1px solid #f3f4f6", paddingTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ borderTop: dark ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f3f4f6", paddingTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               {plan.price > 0 ? (
                 <>
-                  <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, color: textSecondary, marginBottom: 4 }}>
                     {plan.name} Plan × {selectedMonths} month{selectedMonths > 1 ? "s" : ""}
                   </div>
-                  <div style={{ fontWeight: 900, fontSize: 26, color: "#111827" }}>
+                  <div style={{ fontWeight: 900, fontSize: 26, color: textPrimary }}>
                     AED {total}
                   </div>
-                  <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: textMuted, marginTop: 2 }}>
                     {total > 0 ? `${(total / selectedMonths).toFixed(0)}/month` : "—"}
                   </div>
                 </>
@@ -373,7 +383,7 @@ export default function Subscription() {
               {paying ? "Processing…" : selectedPlan === "free" ? "Get Free Plan" : "Continue to Payment →"}
             </button>
           </div>
-          <div style={{ marginTop: 14, fontSize: 11, color: "#9ca3af", textAlign: "center" }}>
+          <div style={{ marginTop: 14, fontSize: 11, color: textMuted, textAlign: "center" }}>
             🔒 Secure payment powered by Stripe
           </div>
         </div>

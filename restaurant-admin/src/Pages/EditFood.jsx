@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api, BASE_URL } from "../utils/api";
+import { useTheme } from "../ThemeContext";
 
 export default function EditFood() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { dark } = useTheme();
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
@@ -330,11 +332,11 @@ export default function EditFood() {
                 <div
                   key={gi}
                   style={{
-                    border: "1.5px solid #e5e7eb",
+                    border: dark ? "1.5px solid rgba(255,255,255,0.12)" : "1.5px solid #e5e7eb",
                     borderRadius: 14,
                     padding: 16,
                     marginBottom: 14,
-                    background: "#f9fafb",
+                    background: dark ? "#000000" : "#f9fafb",
                   }}
                 >
                   {/* Group header */}
@@ -346,7 +348,7 @@ export default function EditFood() {
                       onChange={(e) => updateGroup(gi, "title", e.target.value)}
                       style={{ flex: 1, minWidth: 140 }}
                     />
-                    <label style={{ fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
+                    <label style={{ fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, cursor: "pointer", color: dark ? "#ffffff" : "#111827" }}>
                       <input
                         type="checkbox"
                         checked={group.required}
@@ -355,7 +357,7 @@ export default function EditFood() {
                       />
                       Required
                     </label>
-                    <label style={{ fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
+                    <label style={{ fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, cursor: "pointer", color: dark ? "#ffffff" : "#111827" }}>
                       <input
                         type="checkbox"
                         checked={group.multiSelect}
@@ -432,9 +434,9 @@ export default function EditFood() {
 
             {/* ── INVENTORY INGREDIENTS SECTION ── */}
             <div className="field" style={{ gridColumn: "1 / -1" }}>
-              <div className="label" style={{ marginBottom: 12 }}>
+              <div className="label" style={{ marginBottom: 12, color: dark ? "#ffffff" : undefined }}>
                 📦 Inventory Ingredients{" "}
-                <span style={{ fontWeight: 400, color: "#9ca3af", fontSize: 12 }}>
+                <span style={{ fontWeight: 400, color: dark ? "rgba(249,250,251,0.72)" : "#9ca3af", fontSize: 12 }}>
                   (auto-deducts stock when this item is ordered)
                 </span>
               </div>
@@ -447,12 +449,12 @@ export default function EditFood() {
                       key={ing.inventoryId}
                       style={{
                         display: "flex", alignItems: "center", gap: 10,
-                        padding: "10px 14px", background: "#f0fdf4",
-                        border: "1px solid #bbf7d0", borderRadius: 12,
+                        padding: "10px 14px", background: dark ? "#000000" : "#f0fdf4",
+                        border: dark ? "1px solid rgba(255,255,255,0.12)" : "1px solid #bbf7d0", borderRadius: 12,
                       }}
                     >
                       <span style={{ fontSize: 16 }}>📦</span>
-                      <span style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{ing.itemName}</span>
+                      <span style={{ flex: 1, fontWeight: 700, fontSize: 14, color: dark ? "#ffffff" : "#111827" }}>{ing.itemName}</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <input
                           className="input"
@@ -463,13 +465,13 @@ export default function EditFood() {
                           onChange={(e) => updateIngredientQty(ing.inventoryId, e.target.value)}
                           style={{ width: 70, textAlign: "center", padding: "5px 8px" }}
                         />
-                        <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 600 }}>{ing.unit}/order</span>
+                        <span style={{ fontSize: 12, color: dark ? "rgba(249,250,251,0.72)" : "#6b7280", fontWeight: 600 }}>{ing.unit}/order</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => removeIngredient(ing.inventoryId)}
                         style={{
-                          background: "#fff1f1", border: "1px solid #fca5a5",
+                          background: dark ? "rgba(239,68,68,0.12)" : "#fff1f1", border: "1px solid #fca5a5",
                           color: "#dc2626", borderRadius: 8, padding: "5px 10px",
                           cursor: "pointer", fontWeight: 700, fontSize: 13,
                         }}
@@ -485,7 +487,7 @@ export default function EditFood() {
               {inventoryItems.length > 0 ? (
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
                   <div style={{ flex: "2 1 200px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>Inventory Item</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: dark ? "#ffffff" : "#374151", marginBottom: 4 }}>Inventory Item</div>
                     <select
                       className="input"
                       value={addIngId}
@@ -502,7 +504,7 @@ export default function EditFood() {
                     </select>
                   </div>
                   <div style={{ flex: "0 0 120px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>Qty per order</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: dark ? "#ffffff" : "#374151", marginBottom: 4 }}>Qty per order</div>
                     <input
                       className="input"
                       type="number"
@@ -524,13 +526,13 @@ export default function EditFood() {
                   </button>
                 </div>
               ) : (
-                <p style={{ fontSize: 13, color: "#9ca3af" }}>
+                <p style={{ fontSize: 13, color: dark ? "rgba(249,250,251,0.72)" : "#9ca3af" }}>
                   No inventory items found. Add items in the Inventory page first.
                 </p>
               )}
 
               {ingredients.length > 0 && (
-                <div style={{ marginTop: 10, padding: "8px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, fontSize: 12, color: "#1e40af", fontWeight: 600 }}>
+                <div style={{ marginTop: 10, padding: "8px 12px", background: dark ? "#0b1220" : "#eff6ff", border: dark ? "1px solid rgba(147,197,253,0.35)" : "1px solid #bfdbfe", borderRadius: 10, fontSize: 12, color: dark ? "#bfdbfe" : "#1e40af", fontWeight: 600 }}>
                   💡 When a customer orders this item, the system will automatically deduct:{" "}
                   {ingredients.map((i, idx) => (
                     <span key={i.inventoryId}>

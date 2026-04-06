@@ -60,6 +60,7 @@ const ReviewForm = ({ orderId, restaurantName }) => {
         setSubmitted(true);
         setEditing(false);
         setExistingReview({ rating, comment });
+        window.dispatchEvent(new CustomEvent('review:updated'));
       } else {
         toast.error(res.data.message || 'Could not submit review.');
       }

@@ -4,6 +4,7 @@ import { assets } from '../../assets/assets';
 import { Link, useNavigate } from 'react-router-dom';
 import { StoreContext } from '../../Context/StoreContext';
 import { NotificationContext } from '../../Context/NotificationContext';
+import ThemeContext from '../../Context/ThemeContext';
 
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371;
@@ -16,6 +17,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 const Navbar = ({ setShowLogin }) => {
   const { token, setToken, setCartItems, food_list, cartItems, url } = useContext(StoreContext);
   const { notifications, unreadCount, markAllRead, clearAll } = useContext(NotificationContext);
+  const { dark, toggle } = useContext(ThemeContext);
   const navigate = useNavigate();
   
   const [openProfile, setOpenProfile] = useState(false);
@@ -350,6 +352,15 @@ const Navbar = ({ setShowLogin }) => {
         </div>
 
         <div className='nb-actions'>
+          <button
+            onClick={toggle}
+            className='nb-avatar'
+            title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            style={{ fontSize: 12, fontWeight: 800, minWidth: 54 }}
+          >
+            {dark ? '☀️' : '🌙'}
+          </button>
+
           {/* Notification Bell */}
           {token && (
             <div ref={bellRef} style={{ position: 'relative' }}>

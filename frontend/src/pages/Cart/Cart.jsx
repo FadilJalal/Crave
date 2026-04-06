@@ -5,6 +5,7 @@ import './Cart.css';
 import { StoreContext } from '../../Context/StoreContext';
 import { useNavigate } from 'react-router-dom';
 import CartUpsell from '../../components/CartUpsell/CartUpsell';
+import PromoSection from '../../components/PromoSection/PromoSection';
 
 const Cart = () => {
   const { cartItems, food_list, foodListLoading, removeFromCart, addToCart, getTotalCartAmount, url, token, currency, deliveryCharge } = useContext(StoreContext);
@@ -45,6 +46,7 @@ const Cart = () => {
   const [promoLoading, setPromoLoading] = useState(false);
 
   const discount = appliedPromo ? appliedPromo.discount : 0;
+  const grandTotal = subtotal === 0 ? 0 : Math.max(0, subtotal - discount + deliveryCharge);
 
   // Fetch available promos for this restaurant
   React.useEffect(() => {
@@ -73,6 +75,7 @@ const Cart = () => {
   };
 
   const handleRemovePromo = () => { setAppliedPromo(null); setPromoInput(''); setPromoError(''); };
+  const handlePickPromoCode = (code) => { setPromoInput(code); setPromoError(''); };
 
   // Parse selections into pills
   const parseSelections = (selections = {}) => {
@@ -168,53 +171,17 @@ const Cart = () => {
               );
             })}
             <CartUpsell />
-            {availablePromos.length > 0 && (
-              <div style={{ padding: '12px 24px 0', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)' }}>Available codes:</span>
-                {availablePromos.map(p => (
-                  <button
-                    key={p.code}
-                    onClick={() => { setPromoInput(p.code); setPromoError(''); }}
-                    disabled={!!appliedPromo}
-                    style={{
-                      padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 800,
-                      border: '1.5px dashed var(--brand)', background: 'var(--brand-soft)',
-                      color: 'var(--brand)', cursor: appliedPromo ? 'default' : 'pointer',
-                      fontFamily: 'inherit', letterSpacing: '0.03em',
-                      opacity: appliedPromo ? 0.5 : 1,
-                    }}
-                    title={p.type === 'percent' ? `${p.value}% off${p.minOrder > 0 ? ` · Min AED ${p.minOrder}` : ''}` : `AED ${p.value} off${p.minOrder > 0 ? ` · Min AED ${p.minOrder}` : ''}`}
-                  >
-                    <span>{p.code} — {p.type === 'percent' ? `${p.value}% off` : `AED ${p.value} off`}</span>
-                    {p.minOrder > 0 && <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.75 }}>· Min AED {p.minOrder}</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className='cart-promo'>
-              <div className='cart-promo-input'>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
-                  <line x1="7" y1="7" x2="7.01" y2="7" />
-                </svg>
-                <input
-                  type='text'
-                  placeholder='Enter promo code...'
-                  value={promoInput}
-                  onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(''); }}
-                  disabled={!!appliedPromo}
-                  onKeyDown={e => e.key === 'Enter' && !appliedPromo && handleApplyPromo()}
-                />
-                {appliedPromo && (
-                  <button onClick={handleRemovePromo} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand)', fontWeight: 700, fontSize: 13 }}>✕</button>
-                )}
-              </div>
-              <button className='cart-promo-btn' onClick={handleApplyPromo} disabled={!!appliedPromo || promoLoading}>
-                {promoLoading ? '...' : appliedPromo ? '✓' : 'Apply'}
-              </button>
-            </div>
-            {promoError && <p style={{ padding: '0 24px 12px', fontSize: 13, color: '#dc2626', fontWeight: 600, margin: 0 }}>{promoError}</p>}
-            {appliedPromo && <p style={{ padding: '0 24px 12px', fontSize: 13, color: '#16a34a', fontWeight: 700, margin: 0 }}>🎉 {appliedPromo.message}</p>}
+            <PromoSection
+              availablePromos={availablePromos}
+              promoInput={promoInput}
+              setPromoInput={(value) => { setPromoInput(value); setPromoError(''); }}
+              appliedPromo={appliedPromo}
+              promoLoading={promoLoading}
+              promoError={promoError}
+              onApply={handleApplyPromo}
+              onRemove={handleRemovePromo}
+              onPickCode={handlePickPromoCode}
+            />
           </div>
 
           <div className='cart-summary'>
@@ -223,8 +190,9 @@ const Cart = () => {
               <div className='cart-sum-row'><span>Subtotal</span><span>{currency}{subtotal.toFixed(2)}</span></div>
               {discount > 0 && <div className='cart-sum-row' style={{ color: '#16a34a', fontWeight: 700 }}><span>Discount ({appliedPromo.code})</span><span>- {currency}{discount.toFixed(2)}</span></div>}
               <div className='cart-sum-row'><span>Delivery fee</span><span>{subtotal === 0 ? `${currency}0.00` : `${currency}${deliveryCharge}.00`}</span></div>
-              <div className='cart-sum-row cart-sum-row-total'><span>Total</span><span>{currency}{subtotal === 0 ? '0.00' : Math.max(0, subtotal - discount + deliveryCharge).toFixed(2)}</span></div>
+              <div className='cart-sum-row cart-sum-row-total'><span>Total</span><span>{currency}{grandTotal.toFixed(2)}</span></div>
             </div>
+
             <button className='cart-checkout-btn'
               disabled={cartMinimumOrder > 0 && subtotal < cartMinimumOrder}
               style={cartMinimumOrder > 0 && subtotal < cartMinimumOrder ? { opacity: 0.5, cursor: 'not-allowed' } : {}}

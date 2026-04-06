@@ -22,6 +22,29 @@
   --font-body:   'DM Sans', sans-serif;
 }
 
+[data-theme="dark"] {
+  --text:       #f0f0f6;
+  --text-2:     #c0c0d8;
+  --text-3:     #8888a8;
+  --bg:         #0f1117;
+  --card:       #1a1b2e;
+  --border:     rgba(255,255,255,0.08);
+  --shadow-sm:  0 2px 8px rgba(0,0,0,0.35);
+  --shadow-md:  0 8px 30px rgba(0,0,0,0.45);
+  --shadow-lg:  0 20px 60px rgba(0,0,0,0.55);
+}
+
+[data-theme="dark"] .nb-wrap {
+  background: rgba(15,17,23,0.97);
+}
+
+[data-theme="dark"] .nb-location,
+[data-theme="dark"] .nb-search {
+  background: #1a1b2e;
+  border-color: rgba(255,255,255,0.08);
+  color: var(--text-2);
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; scroll-behavior: smooth; }
 
 html {

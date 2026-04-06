@@ -52,7 +52,7 @@ export default function Orders() {
   const [datePreset,   setDatePreset]   = useState("all");
   const [payFilter,    setPayFilter]    = useState("all");
   const [sortBy,       setSortBy]       = useState("newest");
-  const [showFilters,  setShowFilters]  = useState(false);
+  const [showFilters,  setShowFilters]  = useState(true);
 
   const toggleExpand = (id) =>
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -173,6 +173,10 @@ export default function Orders() {
     if (datePreset   !== "all") result = result.filter(o => isInDateRange(o.createdAt, datePreset));
 
     result.sort((a, b) => {
+      const aDelivered = a.status === "Delivered";
+      const bDelivered = b.status === "Delivered";
+      if (aDelivered !== bDelivered) return aDelivered ? 1 : -1;
+
       if (sortBy === "newest")  return new Date(b.createdAt) - new Date(a.createdAt);
       if (sortBy === "oldest")  return new Date(a.createdAt) - new Date(b.createdAt);
       if (sortBy === "highest") return (b.amount || 0) - (a.amount || 0);
@@ -390,9 +394,16 @@ export default function Orders() {
                         };
                         const m = map[method] || map.cod;
                         return (
-                          <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: m.bg, color: m.color, border: `1px solid ${m.border}` }}>
-                            {m.label}
-                          </span>
+                          <>
+                            <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: m.bg, color: m.color, border: `1px solid ${m.border}` }}>
+                              {m.label}
+                            </span>
+                            {method === "split" && order.splitCashDue > 0 && (
+                              <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
+                                💵 Collect AED {order.splitCashDue.toFixed(2)}
+                              </span>
+                            )}
+                          </>
                         );
                       })()}
                       {!order.payment && order.paymentMethod !== "cod" && (
@@ -474,6 +485,25 @@ export default function Orders() {
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginBottom: 6 }}><span>Delivery Fee</span><span>AED {order.deliveryFee.toFixed(2)}</span></div>
                           </>}
                           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, fontSize: 15, borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 4 }}><span>Total</span><span>AED {order.amount}</span></div>
+                          {order.paymentMethod === "split" && (
+                            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+                              <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.5px", color: "#5b21b6", textTransform: "uppercase", marginBottom: 6 }}>🧮 Split Payment Breakdown</div>
+                              {order.splitCardTotal > 0 && (
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#065f46", fontWeight: 700, marginBottom: 4 }}>
+                                  <span>💳 Card{order.splitCardCount > 1 ? `s (×${order.splitCardCount})` : ""} pre-paid</span>
+                                  <span>AED {order.splitCardTotal.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {order.splitCashDue > 0 ? (
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#92400e", fontWeight: 800, marginBottom: 4 }}>
+                                  <span>💵 Cash to collect</span>
+                                  <span>AED {order.splitCashDue.toFixed(2)}</span>
+                                </div>
+                              ) : order.splitCardTotal > 0 && (
+                                <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 700 }}>✓ Fully paid by card — no cash needed</div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 

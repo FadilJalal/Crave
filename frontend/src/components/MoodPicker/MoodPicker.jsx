@@ -21,15 +21,27 @@ const MoodPicker = () => {
   const [activeMood, setActiveMood] = useState(null);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [usedAi, setUsedAi] = useState(false);
 
   const pickMood = async (mood) => {
-    if (activeMood === mood) { setActiveMood(null); setResults([]); return; }
+    if (activeMood === mood) {
+      setActiveMood(null);
+      setResults([]);
+      setUsedAi(false);
+      return;
+    }
     setActiveMood(mood);
     setLoading(true);
     try {
       const res = await axios.post(url + "/api/ai/mood", { mood });
-      if (res.data.success) setResults(res.data.data || []);
-    } catch { /* silent */ }
+      if (res.data.success) {
+        setResults(res.data.data || []);
+        setUsedAi(Boolean(res.data?.meta?.aiUsed));
+      }
+    } catch {
+      setResults([]);
+      setUsedAi(false);
+    }
     setLoading(false);
   };
 
@@ -46,6 +58,7 @@ const MoodPicker = () => {
             key={m.key}
             className={`mp-mood ${activeMood === m.key ? "mp-mood-active" : ""}`}
             onClick={() => pickMood(m.key)}
+            disabled={loading}
           >
             <span className="mp-emoji">{m.emoji}</span>
             <span className="mp-label">{m.label}</span>
@@ -61,7 +74,10 @@ const MoodPicker = () => {
 
       {results.length > 0 && (
         <div className="mp-results">
-          <p className="mp-count">{results.length} items match your {MOODS.find(m => m.key === activeMood)?.label} mood</p>
+          <p className="mp-count">
+            {results.length} items match your {MOODS.find(m => m.key === activeMood)?.label} mood
+            {usedAi ? " (AI-ranked)" : ""}
+          </p>
           <div className="mp-grid">
             {results.map((item) => (
               <div key={item._id} className="mp-item-wrap">
@@ -80,6 +96,7 @@ const MoodPicker = () => {
                   restaurantActive={mergeRestaurantFromDirectory(item, restaurantsById)?.isActive !== false}
                 />
                 <div className="mp-tags">
+                  {item.aiReason && <span className="mp-ai-reason">{item.aiReason}</span>}
                   {item.dietaryTags?.map((t) => (
                     <span key={t} className={`mp-dtag mp-dtag-${t}`}>{t}</span>
                   ))}

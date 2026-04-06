@@ -71,6 +71,11 @@ const orderSchema = new mongoose.Schema(
       default: "cod",
     },
 
+    // Split payment breakdown
+    splitCardTotal: { type: Number, default: 0 },   // total already charged to card(s)
+    splitCashDue:   { type: Number, default: 0 },   // cash to collect on delivery
+    splitCardCount: { type: Number, default: 0 },   // number of cards used
+
     stripeSessionId: { type: String, default: null },
   },
   { timestamps: true }
