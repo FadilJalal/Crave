@@ -5,7 +5,8 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "server": "nodemon server.js",
+    "server": "nodemon --quiet server.js",
+    "start": "node server.js",
     "cleanup:removed-ai-features": "node scripts/removeDeprecatedAIFeatures.js"
   },
   "author": "",

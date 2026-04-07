@@ -29,6 +29,12 @@ function calcDeliveryFee(tiers, distKm) {
   return sorted[sorted.length - 1]?.fee ?? FLAT_DELIVERY;
 }
 const frontend_URL = process.env.FRONTEND_URL || "http://localhost:5174";
+const SHARED_MAX_DROP_DISTANCE_KM = Number(process.env.SHARED_MAX_DROP_DISTANCE_KM ?? 2);
+const SHARED_MAX_PICKUP_DISTANCE_KM = Number(process.env.SHARED_MAX_PICKUP_DISTANCE_KM ?? 2);
+const SHARED_MATCH_WINDOW_MIN = Number(process.env.SHARED_MATCH_WINDOW_MIN ?? 12);
+const SHARED_MIN_FEE = Number(process.env.SHARED_MIN_FEE ?? 2);
+const DEBUG_RADIUS_LOGS = process.env.DEBUG_RADIUS_LOGS === "true";
+const DEBUG_ORDER_LOGS = process.env.DEBUG_ORDER_LOGS === "true";
 
 // ── Haversine distance (km) ──────────────────────────────────────────────────
 function haversine(lat1, lon1, lat2, lon2) {
@@ -41,6 +47,49 @@ function haversine(lat1, lon1, lat2, lon2) {
     Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+const toNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const round2 = (v) => Math.round(v * 100) / 100;
+
+const extractAddressCoords = (address) => {
+  if (!address || typeof address !== "object") return null;
+  const lat = toNum(address.lat ?? address.latitude ?? address?.location?.lat ?? address?.coords?.lat);
+  const lon = toNum(address.lng ?? address.lon ?? address.longitude ?? address?.location?.lng ?? address?.coords?.lng);
+  if (lat === null || lon === null) return null;
+  return { lat, lon };
+};
+
+const getRestaurantIdFromItems = (items) => {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const raw = items[0]?.restaurantId;
+  if (!raw) return null;
+  return raw?._id ? String(raw._id) : String(raw);
+};
+
+const applySharedFeeIfValid = (standardFee, sharedDelivery) => {
+  if (!sharedDelivery?.enabled) {
+    return { finalFee: round2(standardFee), isShared: false, savings: 0, matchedOrderId: null };
+  }
+
+  const requestedSharedFee = Number(sharedDelivery.sharedFee);
+  if (!Number.isFinite(requestedSharedFee)) {
+    return { finalFee: round2(standardFee), isShared: false, savings: 0, matchedOrderId: null };
+  }
+
+  const boundedFee = Math.max(SHARED_MIN_FEE, Math.min(round2(standardFee), round2(requestedSharedFee)));
+  const savings = round2(Math.max(0, round2(standardFee) - boundedFee));
+
+  return {
+    finalFee: boundedFee,
+    isShared: savings > 0,
+    savings,
+    matchedOrderId: sharedDelivery.matchedOrderId || null,
+  };
+};
 
 // ── Geocode an address object (smart multi-fallback, matches frontend logic) ─
 const NOMINATIM = "https://nominatim.openstreetmap.org/search";
@@ -140,21 +189,29 @@ async function checkDeliveryRadius(restaurantId, address) {
 
   // 0 = unlimited radius
   const radius = restaurant.deliveryRadius ?? 10;
-  console.log(`[radius] restaurant="${restaurant.name}" radius=${radius} location=`, restaurant.location);
+  if (DEBUG_RADIUS_LOGS) {
+    console.log(`[radius] restaurant="${restaurant.name}" radius=${radius} location=`, restaurant.location);
+  }
 
   if (radius === 0) return { ok: true };
 
   if (!restaurant.location?.lat || !restaurant.location?.lng) {
-    console.log(`[radius] no location set — blocking order to enforce safety`);
+    if (DEBUG_RADIUS_LOGS) {
+      console.log(`[radius] no location set — blocking order to enforce safety`);
+    }
     // Restaurant has no location set — block orders if radius is set
     return { ok: false, message: "This restaurant hasn't set up delivery yet. Please try again later." };
   }
 
-  const coords = await geocodeAddress(address);
-  console.log(`[radius] customer geocode result:`, coords);
+  const coords = extractAddressCoords(address) || await geocodeAddress(address);
+  if (DEBUG_RADIUS_LOGS) {
+    console.log(`[radius] customer geocode result:`, coords);
+  }
 
   if (!coords) {
-    console.warn(`[radius] geocode failed for address — blocking order`);
+    if (DEBUG_RADIUS_LOGS) {
+      console.warn(`[radius] geocode failed for address — blocking order`);
+    }
     return {
       ok: false,
       message: "We couldn't verify your delivery address. Please double-check your area and city, then try again.",
@@ -166,7 +223,9 @@ async function checkDeliveryRadius(restaurantId, address) {
     coords.lat, coords.lon
   );
 
-  console.log(`[radius] distance=${distKm.toFixed(2)}km radius=${radius}km — ${distKm > radius ? 'BLOCKED' : 'allowed'}`);
+  if (DEBUG_RADIUS_LOGS) {
+    console.log(`[radius] distance=${distKm.toFixed(2)}km radius=${radius}km — ${distKm > radius ? 'BLOCKED' : 'allowed'}`);
+  }
 
   if (distKm > radius) {
     return {
@@ -191,7 +250,9 @@ const placeOrder = async (req, res) => {
 
     const raw = req.body.items[0].restaurantId;
     const restaurantId = raw?._id ? String(raw._id) : String(raw);
-    console.log(`[placeOrder] restaurantId="${restaurantId}" address city="${req.body.address?.city}"`);
+    if (DEBUG_ORDER_LOGS) {
+      console.log(`[placeOrder] restaurantId="${restaurantId}" address city="${req.body.address?.city}"`);
+    }
     if (!restaurantId) {
       return res.json({ success: false, message: "restaurantId missing in items" });
     }
@@ -212,12 +273,16 @@ const placeOrder = async (req, res) => {
 
     // ── Delivery radius check ──────────────────────────────────────────────
     const radiusCheck = await checkDeliveryRadius(restaurantId, req.body.address);
-    console.log(`[placeOrder] radiusCheck:`, radiusCheck);
+    if (DEBUG_ORDER_LOGS) {
+      console.log(`[placeOrder] radiusCheck:`, radiusCheck);
+    }
     if (!radiusCheck.ok) {
       return res.json({ success: false, message: radiusCheck.message, outOfRange: true });
     }
 
-    const actualDeliveryFee = calcDeliveryFee(restaurantDoc?.deliveryTiers, radiusCheck.distKm ?? 0);
+    const standardDeliveryFee = calcDeliveryFee(restaurantDoc?.deliveryTiers, radiusCheck.distKm ?? 0);
+    const sharedDeliveryApplied = applySharedFeeIfValid(standardDeliveryFee, req.body.sharedDelivery);
+    const actualDeliveryFee = sharedDeliveryApplied.finalFee;
 
     const newOrder = new orderModel({
       userId: req.body.userId,
@@ -225,6 +290,9 @@ const placeOrder = async (req, res) => {
       items: req.body.items,
       amount: req.body.amount,
       deliveryFee: actualDeliveryFee,
+      isSharedDelivery: sharedDeliveryApplied.isShared,
+      sharedMatchedOrderId: sharedDeliveryApplied.matchedOrderId,
+      sharedSavings: sharedDeliveryApplied.savings,
       address: req.body.address,
       paymentMethod: "stripe",
       promoCode: req.body.promoCode || null,
@@ -267,7 +335,9 @@ const placeOrder = async (req, res) => {
 
     // ── Automatically deduct inventory for ordered items ──────────────────
     const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
-    console.log("[placeOrder] Inventory deduction result:", inventoryDeduction);
+    if (DEBUG_ORDER_LOGS) {
+      console.log("[placeOrder] Inventory deduction result:", inventoryDeduction);
+    }
     if (!inventoryDeduction.success) {
       console.warn("[placeOrder] Inventory deduction failed but order already placed. Manual review needed.", inventoryDeduction);
     }
@@ -290,7 +360,9 @@ const placeOrderCod = async (req, res) => {
 
     const raw = req.body.items[0].restaurantId;
     const restaurantId = raw?._id ? String(raw._id) : String(raw);
-    console.log(`[placeOrderCod] restaurantId="${restaurantId}" address city="${req.body.address?.city}"`);
+    if (DEBUG_ORDER_LOGS) {
+      console.log(`[placeOrderCod] restaurantId="${restaurantId}" address city="${req.body.address?.city}"`);
+    }
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "restaurantId missing in items" });
     }
@@ -311,12 +383,16 @@ const placeOrderCod = async (req, res) => {
 
     // ── Delivery radius check ──────────────────────────────────────────────
     const radiusCheck = await checkDeliveryRadius(restaurantId, req.body.address);
-    console.log(`[placeOrderCod] radiusCheck:`, radiusCheck);
+    if (DEBUG_ORDER_LOGS) {
+      console.log(`[placeOrderCod] radiusCheck:`, radiusCheck);
+    }
     if (!radiusCheck.ok) {
       return res.status(400).json({ success: false, message: radiusCheck.message, outOfRange: true });
     }
 
-    const actualDeliveryFee = calcDeliveryFee(restaurantDocCod?.deliveryTiers, radiusCheck.distKm ?? 0);
+    const standardDeliveryFee = calcDeliveryFee(restaurantDocCod?.deliveryTiers, radiusCheck.distKm ?? 0);
+    const sharedDeliveryApplied = applySharedFeeIfValid(standardDeliveryFee, req.body.sharedDelivery);
+    const actualDeliveryFee = sharedDeliveryApplied.finalFee;
 
     const newOrder = new orderModel({
       userId: req.body.userId,
@@ -324,6 +400,9 @@ const placeOrderCod = async (req, res) => {
       items: req.body.items,
       amount: req.body.amount,
       deliveryFee: actualDeliveryFee,
+      isSharedDelivery: sharedDeliveryApplied.isShared,
+      sharedMatchedOrderId: sharedDeliveryApplied.matchedOrderId,
+      sharedSavings: sharedDeliveryApplied.savings,
       address: req.body.address,
       payment: true,
       paymentMethod: req.body.paymentMethod || "cod",
@@ -339,7 +418,9 @@ const placeOrderCod = async (req, res) => {
 
     // ── Automatically deduct inventory for ordered items ──────────────────
     const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
-    console.log("[placeOrderCod] Inventory deduction result:", inventoryDeduction);
+    if (DEBUG_ORDER_LOGS) {
+      console.log("[placeOrderCod] Inventory deduction result:", inventoryDeduction);
+    }
     if (!inventoryDeduction.success) {
       console.warn("[placeOrderCod] Inventory deduction failed but order already placed. Manual review needed.", inventoryDeduction);
     }
@@ -348,6 +429,215 @@ const placeOrderCod = async (req, res) => {
   } catch (error) {
     console.error("[placeOrderCod] Error:", error.message);
     res.status(500).json({ success: false, message: error.message || "Error placing order" });
+  }
+};
+
+// =====================================
+// SHARED DELIVERY QUOTE (MVP)
+// =====================================
+const quoteSharedDelivery = async (req, res) => {
+  try {
+    if (!Array.isArray(req.body.items) || req.body.items.length === 0) {
+      return res.status(400).json({ success: false, message: "Cart is empty" });
+    }
+    if (!req.body.address) {
+      return res.status(400).json({ success: false, message: "Address is required" });
+    }
+
+    const userId = req.body.userId;
+    const restaurantId = getRestaurantIdFromItems(req.body.items);
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: "restaurantId missing in items" });
+    }
+
+    const restaurantDoc = await restaurantModel
+      .findById(restaurantId)
+      .select("name location deliveryTiers deliveryRadius sharedDelivery")
+      .lean();
+
+    if (!restaurantDoc) {
+      return res.status(404).json({ success: false, message: "Restaurant not found" });
+    }
+
+    const radiusCheck = await checkDeliveryRadius(restaurantId, req.body.address);
+    if (!radiusCheck.ok) {
+      return res.json({
+        success: true,
+        data: {
+          eligible: false,
+          reason: radiusCheck.message,
+          standardFee: null,
+          sharedFee: null,
+          savings: 0,
+        },
+      });
+    }
+
+    const standardFee = round2(calcDeliveryFee(restaurantDoc.deliveryTiers, radiusCheck.distKm ?? 0));
+    if (standardFee <= 0) {
+      return res.json({
+        success: true,
+        data: {
+          eligible: false,
+          reason: "Delivery is already free for this order, so shared delivery discount is not applicable.",
+          standardFee,
+          sharedFee: null,
+          savings: 0,
+        },
+      });
+    }
+
+    const sharedConfig = {
+      maxDropDistanceKm: Number(restaurantDoc?.sharedDelivery?.maxDropDistanceKm ?? SHARED_MAX_DROP_DISTANCE_KM),
+      maxPickupDistanceKm: Number(restaurantDoc?.sharedDelivery?.maxPickupDistanceKm ?? SHARED_MAX_PICKUP_DISTANCE_KM),
+      matchWindowMin: Number(restaurantDoc?.sharedDelivery?.matchWindowMin ?? SHARED_MATCH_WINDOW_MIN),
+    };
+
+    // Try coordinates from payload first, fallback to geocoding.
+    let customerCoords = extractAddressCoords(req.body.address);
+    if (!customerCoords) customerCoords = await geocodeAddress(req.body.address);
+    if (!customerCoords) {
+      return res.json({
+        success: true,
+        data: {
+          eligible: false,
+          reason: "Could not verify delivery location for shared delivery.",
+          standardFee,
+          sharedFee: null,
+          savings: 0,
+        },
+      });
+    }
+
+    const matchSince = new Date(Date.now() - sharedConfig.matchWindowMin * 60 * 1000);
+    const candidates = await orderModel
+      .find({
+        _id: { $ne: req.body.orderId || null },
+        userId: { $ne: userId },
+        status: "Food Processing",
+        payment: true,
+        isBatched: false,
+        createdAt: { $gte: matchSince },
+      })
+      .select("_id restaurantId address deliveryFee createdAt")
+      .lean();
+
+    if (!candidates.length) {
+      return res.json({
+        success: true,
+        data: {
+          eligible: false,
+          reason: "No nearby active order found for shared delivery right now.",
+          standardFee,
+          sharedFee: null,
+          savings: 0,
+        },
+      });
+    }
+
+    const restaurantIds = [...new Set(candidates.map((c) => String(c.restaurantId)).concat([String(restaurantId)]))];
+    const restaurants = await restaurantModel
+      .find({ _id: { $in: restaurantIds } })
+      .select("_id location")
+      .lean();
+    const restaurantMap = new Map(restaurants.map((r) => [String(r._id), r]));
+
+    const currentRestaurantCoords = restaurantMap.get(String(restaurantId))?.location;
+    if (!currentRestaurantCoords?.lat || !currentRestaurantCoords?.lng) {
+      return res.json({
+        success: true,
+        data: {
+          eligible: false,
+          reason: "Restaurant pickup location missing for shared delivery.",
+          standardFee,
+          sharedFee: null,
+          savings: 0,
+        },
+      });
+    }
+
+    let best = null;
+
+    for (const c of candidates) {
+      const candidateRestaurant = restaurantMap.get(String(c.restaurantId));
+      if (!candidateRestaurant?.location?.lat || !candidateRestaurant?.location?.lng) continue;
+
+      let candidateCoords = extractAddressCoords(c.address);
+      if (!candidateCoords) candidateCoords = await geocodeAddress(c.address || {});
+      if (!candidateCoords) continue;
+
+      const dropDistanceKm = haversine(
+        customerCoords.lat,
+        customerCoords.lon,
+        candidateCoords.lat,
+        candidateCoords.lon
+      );
+      if (dropDistanceKm > sharedConfig.maxDropDistanceKm) continue;
+
+      const pickupDistanceKm = haversine(
+        currentRestaurantCoords.lat,
+        currentRestaurantCoords.lng,
+        candidateRestaurant.location.lat,
+        candidateRestaurant.location.lng
+      );
+      if (pickupDistanceKm > sharedConfig.maxPickupDistanceKm) continue;
+
+      const candidateFee = Number(c.deliveryFee) > 0 ? Number(c.deliveryFee) : standardFee;
+      const combinedRouteCost = Math.max(standardFee, candidateFee) + 1.5;
+      const sharedFee = Math.max(SHARED_MIN_FEE, round2(combinedRouteCost / 2));
+      const savings = round2(Math.max(0, standardFee - sharedFee));
+      if (savings <= 0) continue;
+
+      const score = savings - (dropDistanceKm * 0.5) - (pickupDistanceKm * 0.35);
+      if (!best || score > best.score) {
+        best = {
+          score,
+          matchedOrderId: c._id,
+          sharedFee,
+          savings,
+          dropDistanceKm: round2(dropDistanceKm),
+          pickupDistanceKm: round2(pickupDistanceKm),
+          etaExtraMin: Math.max(4, Math.round(dropDistanceKm * 3 + pickupDistanceKm * 2)),
+        };
+      }
+    }
+
+    if (!best) {
+      return res.json({
+        success: true,
+        data: {
+          eligible: false,
+          reason: `No compatible nearby route within ${sharedConfig.maxDropDistanceKm} km drop distance found.`,
+          standardFee,
+          sharedFee: null,
+          savings: 0,
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        eligible: true,
+        standardFee,
+        sharedFee: best.sharedFee,
+        savings: best.savings,
+        matchedOrderId: best.matchedOrderId,
+        constraints: {
+          maxDropDistanceKm: sharedConfig.maxDropDistanceKm,
+          maxPickupDistanceKm: sharedConfig.maxPickupDistanceKm,
+          matchWindowMin: sharedConfig.matchWindowMin,
+        },
+        diagnostics: {
+          dropDistanceKm: best.dropDistanceKm,
+          pickupDistanceKm: best.pickupDistanceKm,
+          etaExtraMin: best.etaExtraMin,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("[quoteSharedDelivery]", error);
+    res.status(500).json({ success: false, message: "Failed to generate shared delivery quote" });
   }
 };
 
@@ -524,6 +814,7 @@ const getOrderById = async (req, res) => {
 export {
   placeOrder,
   placeOrderCod,
+  quoteSharedDelivery,
   listOrders,
   userOrders,
   updateStatus,

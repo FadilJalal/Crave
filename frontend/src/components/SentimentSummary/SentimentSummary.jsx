@@ -8,10 +8,23 @@ const SentimentSummary = ({ restaurantId }) => {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    if (!restaurantId) return;
-    axios.get(url + "/api/ai/sentiment/" + restaurantId)
-      .then((res) => { if (res.data.success && res.data.data?.total > 0) setData(res.data.data); })
-      .catch(() => {});
+    if (!restaurantId) {
+      setData(null);
+      return;
+    }
+
+    axios
+      .get(`${url}/api/ai/sentiment/${restaurantId}?_=${Date.now()}`)
+      .then((res) => {
+        if (res.data.success && (res.data.data?.total || 0) > 0) {
+          setData(res.data.data);
+        } else {
+          setData(null);
+        }
+      })
+      .catch(() => {
+        setData(null);
+      });
   }, [restaurantId, url]);
 
   if (!data) return null;

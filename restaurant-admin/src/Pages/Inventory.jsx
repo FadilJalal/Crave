@@ -1297,82 +1297,127 @@ export default function Inventory() {
               Review the changes before confirming. Items will be updated or created as shown below.
             </p>
 
-            <div style={{ maxHeight: 400, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 8, marginBottom: 16 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+              <span style={{
+                fontSize: 11,
+                fontWeight: 800,
+                padding: "4px 10px",
+                borderRadius: 999,
+                background: "var(--inv-soft-2)",
+                border: "1px solid var(--inv-border)",
+                color: "var(--inv-text)"
+              }}>
+                {previewData.filter(x => x.type === "create").length} create
+              </span>
+              <span style={{
+                fontSize: 11,
+                fontWeight: 800,
+                padding: "4px 10px",
+                borderRadius: 999,
+                background: "var(--inv-soft-2)",
+                border: "1px solid var(--inv-border)",
+                color: "var(--inv-text)"
+              }}>
+                {previewData.filter(x => x.type === "update").length} update
+              </span>
+            </div>
+
+            <div style={{ maxHeight: 400, overflowY: "auto", border: "1px solid var(--inv-border)", borderRadius: 12, marginBottom: 16, background: "var(--inv-soft)" }}>
               {previewData.map((item, idx) => (
                 <div key={idx} style={{ 
-                  padding: "12px 14px", 
-                  borderBottom: idx < previewData.length - 1 ? "1px solid var(--inv-border)" : "none",
-                  background: item.type === "create" ? "#f0fdf4" : "#eff6ff"
+                  margin: "10px",
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border: `1px solid ${item.type === "create" ? "var(--inv-link-border)" : "var(--inv-info-border)"}`,
+                  background: item.type === "create" ? "var(--inv-link-bg)" : "var(--inv-info-bg)",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.06)"
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+                    <strong style={{ fontSize: 15, color: "var(--inv-text)", lineHeight: 1.2 }}>{item.itemName}</strong>
                     <span style={{ 
-                      fontSize: 11, 
-                      padding: "2px 6px", 
-                      borderRadius: 4, 
-                      background: item.type === "create" ? "#16a34a" : "#2563eb", 
-                      color: "white", 
+                      fontSize: 11,
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      background: item.type === "create" ? "#16a34a" : "#2563eb",
+                      color: "white",
                       fontWeight: 700 
                     }}>
-                      {item.type === "create" ? "CREATE" : "UPDATE"}
+                      {item.type === "create" ? "CREATE NEW" : "UPDATE"}
                     </span>
-                    <strong style={{ fontSize: 14, color: "var(--inv-text)" }}>{item.itemName}</strong>
                   </div>
 
                   {item.type === "update" ? (
-                    <div style={{ fontSize: 12, color: "var(--inv-text)" }}>
-                      <div style={{ marginBottom: 4 }}>
-                        <span style={{ color: "var(--inv-muted)", fontWeight: 600 }}>Current:</span> {item.existingItem.currentStock} {item.existingItem.unit} @ AED {item.existingItem.unitCost}
+                    <div style={{ fontSize: 12, color: "var(--inv-text)", display: "grid", gap: 8 }}>
+                      <div style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "var(--inv-text)",
+                        background: "var(--inv-panel)",
+                        border: "1px solid var(--inv-border)",
+                        borderRadius: 8,
+                        padding: "7px 10px"
+                      }}>
+                        Current: {item.existingItem.currentStock} {item.existingItem.unit} @ AED {item.existingItem.unitCost}
                       </div>
                       {Object.keys(item.changes).length > 0 && (
-                        <div>
-                          <span style={{ color: "var(--inv-muted)", fontWeight: 600 }}>Changes:</span>
-                          <ul style={{ margin: "4px 0 0 16px", padding: 0, listStyle: "none" }}>
+                        <div style={{
+                          background: "var(--inv-panel)",
+                          border: "1px solid var(--inv-border)",
+                          borderRadius: 8,
+                          padding: "8px 10px"
+                        }}>
+                          <div style={{ color: "var(--inv-muted)", fontWeight: 700, marginBottom: 6 }}>Changes</div>
+                          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 4 }}>
                             {item.changes.currentStock !== undefined && (
-                              <li>Stock: {item.existingItem.currentStock} → {item.changes.currentStock}</li>
+                              <li><strong>Stock:</strong> {item.existingItem.currentStock} → {item.changes.currentStock}</li>
                             )}
                             {item.changes.unitCost !== undefined && (
-                              <li>Cost: AED {item.existingItem.unitCost} → AED {item.changes.unitCost}</li>
+                              <li><strong>Cost:</strong> AED {item.existingItem.unitCost} → AED {item.changes.unitCost}</li>
                             )}
                             {item.changes.unit && (
-                              <li>Unit: {item.existingItem.unit} → {item.changes.unit}</li>
+                              <li><strong>Unit:</strong> {item.existingItem.unit} → {item.changes.unit}</li>
                             )}
                             {item.changes.category && (
-                              <li>Category: {item.existingItem.category} → {item.changes.category}</li>
+                              <li><strong>Category:</strong> {item.existingItem.category} → {item.changes.category}</li>
                             )}
                             {item.changes.minimumStock !== undefined && (
-                              <li>Min Stock: {item.existingItem.minimumStock} → {item.changes.minimumStock}</li>
+                              <li><strong>Min Stock:</strong> {item.existingItem.minimumStock} → {item.changes.minimumStock}</li>
                             )}
                             {item.changes.maximumStock !== undefined && (
-                              <li>Max Stock: {item.existingItem.maximumStock} → {item.changes.maximumStock}</li>
+                              <li><strong>Max Stock:</strong> {item.existingItem.maximumStock} → {item.changes.maximumStock}</li>
                             )}
                             {item.changes.expiryDate && (
-                              <li>Expiry: {item.existingItem.expiryDate || "none"} → {item.changes.expiryDate}</li>
+                              <li><strong>Expiry:</strong> {item.existingItem.expiryDate || "none"} → {item.changes.expiryDate}</li>
                             )}
                             {item.changes.supplier && (
-                              <li>Supplier: {item.changes.supplier.name || "none"} ({item.changes.supplier.contact || "no contact"})</li>
+                              <li><strong>Supplier:</strong> {item.changes.supplier.name || "none"} ({item.changes.supplier.contact || "no contact"})</li>
                             )}
                             {item.changes.notes && (
-                              <li>Notes: {item.changes.notes}</li>
+                              <li><strong>Notes:</strong> {item.changes.notes}</li>
                             )}
                           </ul>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12, color: "var(--inv-text)" }}>
-                      <div style={{ marginBottom: 4 }}>
-                        <span style={{ color: "var(--inv-muted)", fontWeight: 600 }}>New Item:</span>
+                    <div style={{ fontSize: 12, color: "var(--inv-text)", display: "grid", gap: 8 }}>
+                      <div style={{
+                        color: "var(--inv-muted)",
+                        fontWeight: 700,
+                        fontSize: 12
+                      }}>
+                        New item details
                       </div>
-                      <ul style={{ margin: "4px 0 0 16px", padding: 0, listStyle: "none" }}>
-                        <li>Category: {item.newItem.category}</li>
-                        <li>Stock: {item.newItem.currentStock} {item.newItem.unit}</li>
-                        <li>Cost: AED {item.newItem.unitCost}</li>
-                        <li>Min/Max: {item.newItem.minimumStock}/{item.newItem.maximumStock}</li>
-                        {item.newItem.expiryDate && <li>Expiry: {item.newItem.expiryDate}</li>}
+                      <ul style={{ margin: 0, padding: "8px 10px", listStyle: "none", background: "var(--inv-panel)", border: "1px solid var(--inv-border)", borderRadius: 8, display: "grid", gap: 4 }}>
+                        <li><strong>Category:</strong> {item.newItem.category}</li>
+                        <li><strong>Stock:</strong> {item.newItem.currentStock} {item.newItem.unit}</li>
+                        <li><strong>Cost:</strong> AED {item.newItem.unitCost}</li>
+                        <li><strong>Min/Max:</strong> {item.newItem.minimumStock}/{item.newItem.maximumStock}</li>
+                        {item.newItem.expiryDate && <li><strong>Expiry:</strong> {item.newItem.expiryDate}</li>}
                         {item.newItem.supplier.name && (
-                          <li>Supplier: {item.newItem.supplier.name} ({item.newItem.supplier.contact})</li>
+                          <li><strong>Supplier:</strong> {item.newItem.supplier.name} ({item.newItem.supplier.contact})</li>
                         )}
-                        {item.newItem.notes && <li>Notes: {item.newItem.notes}</li>}
+                        {item.newItem.notes && <li><strong>Notes:</strong> {item.newItem.notes}</li>}
                       </ul>
                     </div>
                   )}
@@ -1394,13 +1439,13 @@ export default function Inventory() {
               </div>
             )}
 
-            <div style={s.formBtns}>
+            <div style={{ ...s.formBtns, position: "sticky", bottom: 0, background: "var(--inv-panel)", paddingTop: 10 }}>
               <button 
                 type="button" 
                 className="btn" 
                 onClick={confirmImport} 
                 disabled={importing}
-                style={{ flex: 1 }}
+                style={{ flex: 1, minHeight: 42, borderRadius: 12, fontWeight: 800 }}
               >
                 {importing ? "Processing..." : `Confirm Import (${previewData.length} items)`}
               </button>
@@ -1409,7 +1454,7 @@ export default function Inventory() {
                 className="btn btn-outline" 
                 onClick={() => setShowImportPreview(false)} 
                 disabled={importing}
-                style={{ flex: 1 }}
+                style={{ flex: 1, minHeight: 42, borderRadius: 12, fontWeight: 800 }}
               >
                 Cancel
               </button>

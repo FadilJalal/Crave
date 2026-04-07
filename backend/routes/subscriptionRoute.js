@@ -509,12 +509,14 @@ subRouter.get("/mine", restaurantAuth, async (req, res) => {
       ? Math.ceil((new Date(sub.expiresAt) - now) / (1000 * 60 * 60 * 24))
       : null;
 
-    console.log("📊 Subscription data retrieved:", {
-      plan: sub.plan || "none",
-      status: sub.status || "trial",
-      expiresAt: sub.expiresAt,
-      daysLeft,
-    });
+    if (process.env.DEBUG_SUBSCRIPTION_LOGS === "true") {
+      console.log("📊 Subscription data retrieved:", {
+        plan: sub.plan || "none",
+        status: sub.status || "trial",
+        expiresAt: sub.expiresAt,
+        daysLeft,
+      });
+    }
 
     const normalizedPlan = normalizePlan(sub.plan || "none");
     const plans = await getPlansMap();

@@ -354,11 +354,10 @@ const Navbar = ({ setShowLogin }) => {
         <div className='nb-actions'>
           <button
             onClick={toggle}
-            className='nb-avatar'
+            className='nb-theme-btn'
             title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-            style={{ fontSize: 12, fontWeight: 800, minWidth: 54 }}
           >
-            {dark ? '☀️' : '🌙'}
+            {dark ? '☀️ Light Mode' : '🌙 Dark Mode'}
           </button>
 
           {/* Notification Bell */}

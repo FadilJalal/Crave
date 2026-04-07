@@ -1,6 +1,7 @@
 import { useState, useContext, useMemo } from 'react';
 import './FoodItem.css';
 import { StoreContext } from '../../Context/StoreContext';
+import { useTheme } from '../../Context/ThemeContext';
 
 const DIET_RULES = {
   vegan:      { m: /vegan|plant.?based|tofu|falafel|hummus|lentil|chickpea/i, x: /chicken|beef|lamb|meat|fish|shrimp|egg|cheese|cream|butter|milk|honey/i },
@@ -24,6 +25,7 @@ function getDietTags(name, desc, cat) {
 
 const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, restaurantActive = true, avgRating = 0, ratingCount = 0, inStock = true }) => {
   const { cartItems, addToCart, removeFromCart, getItemCount, url, currency } = useContext(StoreContext);
+  const { dark } = useTheme();
 
   const count = getItemCount(id);
   const restName = restaurantId?.name || '';
@@ -94,6 +96,13 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
 
   const extraPrice = getExtraPrice();
   const totalPrice = price + extraPrice;
+  const modalSurface = dark ? '#111827' : '#fff';
+  const modalBorder = dark ? 'rgba(255,255,255,0.10)' : '#f3f4f6';
+  const modalText = dark ? '#f8fafc' : '#111827';
+  const modalMuted = dark ? '#94a3b8' : '#9ca3af';
+  const optionBg = dark ? '#1f2937' : '#fff';
+  const optionBorder = dark ? 'rgba(255,255,255,0.14)' : '#e5e7eb';
+  const optionSelectedBg = dark ? 'rgba(255,78,42,0.18)' : '#fff5f3';
 
   return (
     <>
@@ -243,17 +252,17 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
       {showCustomize && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(4px)' }}
           onClick={() => setShowCustomize(false)}>
-          <div style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 460, maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}
+          <div style={{ background: modalSurface, borderRadius: 24, width: '100%', maxWidth: 460, maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.35)', border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : 'transparent'}` }}
             onClick={e => e.stopPropagation()}>
 
-            <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', borderRadius: '24px 24px 0 0', zIndex: 1 }}>
+            <div style={{ padding: '22px 24px 16px', borderBottom: `1px solid ${modalBorder}`, position: 'sticky', top: 0, background: modalSurface, borderRadius: '24px 24px 0 0', zIndex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, color: '#111827' }}>{name}</h3>
-                  <p style={{ margin: 0, fontSize: 13, color: '#9ca3af' }}>Customize your order</p>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, color: modalText }}>{name}</h3>
+                  <p style={{ margin: 0, fontSize: 13, color: modalMuted }}>Customize your order</p>
                 </div>
                 <button onClick={() => setShowCustomize(false)}
-                  style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                  style={{ background: dark ? '#1f2937' : '#f3f4f6', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: dark ? '#cbd5e1' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
               </div>
             </div>
 
@@ -261,7 +270,7 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
               {customizations.map((group, gi) => (
                 <div key={gi} style={{ marginBottom: 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                    <span style={{ fontWeight: 800, fontSize: 15, color: '#111827' }}>{group.title}</span>
+                    <span style={{ fontWeight: 800, fontSize: 15, color: modalText }}>{group.title}</span>
                     {group.required && <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: '#fff1f1', border: '1px solid #fca5a5', padding: '2px 8px', borderRadius: 20 }}>Required</span>}
                     {group.multiSelect && <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: 20 }}>Choose multiple</span>}
                   </div>
@@ -270,14 +279,14 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
                     const isSelected = group.multiSelect ? (sel || []).includes(opt.label) : sel === opt.label;
                     return (
                       <div key={oi} onClick={() => handleSelect(gi, opt.label, group.multiSelect)}
-                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 12, marginBottom: 8, border: `2px solid ${isSelected ? '#ff4e2a' : '#e5e7eb'}`, background: isSelected ? '#fff5f3' : '#fff', cursor: 'pointer', transition: 'all 0.15s' }}>
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 12, marginBottom: 8, border: `2px solid ${isSelected ? '#ff4e2a' : optionBorder}`, background: isSelected ? optionSelectedBg : optionBg, cursor: 'pointer', transition: 'all 0.15s' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 18, height: 18, borderRadius: group.multiSelect ? 4 : '50%', border: `2px solid ${isSelected ? '#ff4e2a' : '#d1d5db'}`, background: isSelected ? '#ff4e2a' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+                          <div style={{ width: 18, height: 18, borderRadius: group.multiSelect ? 4 : '50%', border: `2px solid ${isSelected ? '#ff4e2a' : (dark ? '#64748b' : '#d1d5db')}`, background: isSelected ? '#ff4e2a' : optionBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
                             {isSelected && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>}
                           </div>
-                          <span style={{ fontWeight: 600, fontSize: 14, color: '#111827' }}>{opt.label}</span>
+                          <span style={{ fontWeight: 600, fontSize: 14, color: modalText }}>{opt.label}</span>
                         </div>
-                        {opt.extraPrice > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: '#6b7280' }}>+{currency}{opt.extraPrice}</span>}
+                        {opt.extraPrice > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: modalMuted }}>+{currency}{opt.extraPrice}</span>}
                       </div>
                     );
                   })}
@@ -285,9 +294,9 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
               ))}
             </div>
 
-            <div style={{ padding: '0 24px 24px', position: 'sticky', bottom: 0, background: '#fff' }}>
+            <div style={{ padding: '0 24px 24px', position: 'sticky', bottom: 0, background: modalSurface }}>
               {extraPrice > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid #f3f4f6', marginBottom: 12, fontSize: 14, fontWeight: 700, color: '#374151' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: `1px solid ${modalBorder}`, marginBottom: 12, fontSize: 14, fontWeight: 700, color: modalText }}>
                   <span>Total</span>
                   <span>{currency}{totalPrice.toFixed(2)}</span>
                 </div>

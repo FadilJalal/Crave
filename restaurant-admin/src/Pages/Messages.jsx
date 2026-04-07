@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
+import { useTheme } from "../ThemeContext";
 
 function timeAgo(date) {
   const s = Math.floor((Date.now() - new Date(date)) / 1000);
@@ -17,6 +18,7 @@ export default function Messages() {
   const [sending, setSending] = useState(false);
   const [filter, setFilter]   = useState("all"); // all | pinned | favourited
   const threadRef = useRef(null);
+  const { dark } = useTheme();
 
   useEffect(() => { loadThread(); }, []);
 
@@ -77,7 +79,26 @@ export default function Messages() {
       return new Date(a.createdAt) - new Date(b.createdAt);
     });
 
-  const inp = { padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e5e7eb", fontSize: 14, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", background: "white" };
+  const textPrimary = dark ? "#f8fafc" : "#111827";
+  const textMuted = dark ? "#94a3b8" : "#9ca3af";
+  const textSubtle = dark ? "#cbd5e1" : "#6b7280";
+  const surface = dark ? "#111827" : "#ffffff";
+  const softSurface = dark ? "#0f172a" : "#f9fafb";
+  const border = dark ? "rgba(255,255,255,0.14)" : "#e5e7eb";
+  const borderSoft = dark ? "rgba(255,255,255,0.08)" : "#f3f4f6";
+
+  const inp = {
+    padding: "10px 12px",
+    borderRadius: 10,
+    border: `1.5px solid ${border}`,
+    fontSize: 14,
+    fontFamily: "inherit",
+    outline: "none",
+    width: "100%",
+    boxSizing: "border-box",
+    background: softSurface,
+    color: textPrimary,
+  };
 
   return (
     <RestaurantLayout>
@@ -85,8 +106,8 @@ export default function Messages() {
 
         {/* Header */}
         <div style={{ marginBottom: 20 }}>
-          <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#111827", letterSpacing: "-0.6px" }}>Messages</h2>
-          <p style={{ margin: "4px 0 0", fontSize: 14, color: "#9ca3af" }}>Your conversation with Crave support</p>
+          <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: textPrimary, letterSpacing: "-0.6px" }}>Messages</h2>
+          <p style={{ margin: "4px 0 0", fontSize: 14, color: textMuted }}>Your conversation with Crave support</p>
         </div>
 
         {/* Filter tabs */}
@@ -99,31 +120,31 @@ export default function Messages() {
             <button key={t.key} onClick={() => setFilter(t.key)} style={{
               padding: "7px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700,
               cursor: "pointer", fontFamily: "inherit",
-              border: `1.5px solid ${filter === t.key ? "#ff4e2a" : "#e5e7eb"}`,
-              background: filter === t.key ? "#fff5f3" : "white",
-              color: filter === t.key ? "#ff4e2a" : "#6b7280",
+              border: `1.5px solid ${filter === t.key ? "#ff4e2a" : border}`,
+              background: filter === t.key ? (dark ? "rgba(255,78,42,0.18)" : "#fff5f3") : surface,
+              color: filter === t.key ? "#ff4e2a" : textSubtle,
             }}>{t.label}</button>
           ))}
         </div>
 
         {/* Thread */}
-        <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 20, overflow: "hidden", marginBottom: 16 }}>
+        <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 20, overflow: "hidden", marginBottom: 16, boxShadow: dark ? "0 10px 30px rgba(0,0,0,0.35)" : "none" }}>
 
           {/* Header */}
-          <div style={{ padding: "12px 18px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ padding: "12px 18px", borderBottom: `1px solid ${borderSoft}`, display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#ff4e2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, color: "white" }}>C</div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: 14, color: "#111827" }}>Crave Support</div>
-              <div style={{ fontSize: 11, color: "#9ca3af" }}>Platform administrator</div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: textPrimary }}>Crave Support</div>
+              <div style={{ fontSize: 11, color: textMuted }}>Platform administrator</div>
             </div>
           </div>
 
           {/* Messages */}
           <div ref={threadRef} style={{ padding: 16, minHeight: 300, maxHeight: 440, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
             {loading ? (
-              <div style={{ color: "#9ca3af", fontSize: 14 }}>Loading...</div>
+              <div style={{ color: textMuted, fontSize: 14 }}>Loading...</div>
             ) : displayed.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: "#9ca3af" }}>
+              <div style={{ textAlign: "center", padding: "40px 0", color: textMuted }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>{filter === "pinned" ? "📌" : filter === "favourited" ? "⭐" : "💬"}</div>
                 <div style={{ fontWeight: 700 }}>
                   {filter === "pinned" ? "No pinned messages" : filter === "favourited" ? "No favourites yet" : "No messages yet"}
@@ -137,7 +158,7 @@ export default function Messages() {
 
                 {/* Pin banner for pinned messages */}
                 {m.pinned && filter === "all" && (
-                  <div style={{ fontSize: 10, color: "#9ca3af", fontWeight: 700, paddingLeft: m.from === "admin" ? 0 : "auto", textAlign: m.from === "admin" ? "left" : "right" }}>
+                  <div style={{ fontSize: 10, color: textMuted, fontWeight: 700, paddingLeft: m.from === "admin" ? 0 : "auto", textAlign: m.from === "admin" ? "left" : "right" }}>
                     📌 Pinned
                   </div>
                 )}
@@ -146,9 +167,11 @@ export default function Messages() {
                   <div style={{
                     maxWidth: "75%", padding: "10px 14px",
                     borderRadius: m.from === "admin" ? "16px 16px 16px 4px" : "16px 16px 4px 16px",
-                    background: m.from === "admin" ? (m.pinned ? "#fff5f3" : "#f3f4f6") : "#ff4e2a",
-                    color: m.from === "admin" ? "#111827" : "white",
-                    border: m.pinned ? "1.5px solid #ff4e2a33" : "none",
+                    background: m.from === "admin"
+                      ? (m.pinned ? (dark ? "rgba(255,78,42,0.2)" : "#fff5f3") : (dark ? "#1f2937" : "#f3f4f6"))
+                      : "#ff4e2a",
+                    color: m.from === "admin" ? (dark ? "#f8fafc" : "#111827") : "#ffffff",
+                    border: m.pinned ? `1.5px solid ${dark ? "rgba(255,120,97,0.5)" : "#ff4e2a33"}` : "none",
                     fontSize: 14, lineHeight: 1.5, position: "relative",
                   }}>
                     {m.subject && <div style={{ fontWeight: 800, marginBottom: 4, fontSize: 13 }}>{m.subject}</div>}
@@ -161,12 +184,12 @@ export default function Messages() {
                     <button
                       onClick={() => togglePin(m._id)}
                       title={m.pinned ? "Unpin" : "Pin message"}
-                      style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #e5e7eb", background: m.pinned ? "#fff5f3" : "white", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", color: m.pinned ? "#ff4e2a" : "#9ca3af" }}
+                      style={{ width: 28, height: 28, borderRadius: "50%", border: `1px solid ${border}`, background: m.pinned ? (dark ? "rgba(255,78,42,0.18)" : "#fff5f3") : surface, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", color: m.pinned ? "#ff4e2a" : textMuted }}
                     >📌</button>
                     <button
                       onClick={() => toggleFavourite(m._id)}
                       title={m.favourited ? "Unfavourite" : "Favourite"}
-                      style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #e5e7eb", background: m.favourited ? "#fffbeb" : "white", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", color: m.favourited ? "#f59e0b" : "#9ca3af" }}
+                      style={{ width: 28, height: 28, borderRadius: "50%", border: `1px solid ${border}`, background: m.favourited ? (dark ? "rgba(245,158,11,0.2)" : "#fffbeb") : surface, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", color: m.favourited ? "#f59e0b" : textMuted }}
                     >⭐</button>
                   </div>
                 </div>
@@ -176,7 +199,7 @@ export default function Messages() {
 
           {/* Input — only show in all view */}
           {filter === "all" && (
-            <div style={{ padding: "12px 16px", borderTop: "1px solid #f3f4f6", display: "flex", gap: 10, alignItems: "flex-end" }}>
+            <div style={{ padding: "12px 16px", borderTop: `1px solid ${borderSoft}`, display: "flex", gap: 10, alignItems: "flex-end" }}>
               <textarea
                 value={body}
                 onChange={e => setBody(e.target.value)}
@@ -184,7 +207,7 @@ export default function Messages() {
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 style={{ ...inp, minHeight: 60, flex: 1, resize: "none" }}
               />
-              <button onClick={handleSend} disabled={sending || !body.trim()} style={{ padding: "12px 18px", borderRadius: 12, border: "none", background: sending || !body.trim() ? "#e5e7eb" : "#ff4e2a", color: sending || !body.trim() ? "#9ca3af" : "white", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+              <button onClick={handleSend} disabled={sending || !body.trim()} style={{ padding: "12px 18px", borderRadius: 12, border: "none", background: sending || !body.trim() ? (dark ? "#334155" : "#e5e7eb") : "#ff4e2a", color: sending || !body.trim() ? (dark ? "#94a3b8" : "#9ca3af") : "white", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
                 {sending ? "..." : "Send"}
               </button>
             </div>

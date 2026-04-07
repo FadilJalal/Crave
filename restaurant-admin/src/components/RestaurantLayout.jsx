@@ -218,19 +218,19 @@ export default function RestaurantLayout({ children }) {
           )}
           <div>
             <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>{restaurantName}</h1>
-            <p style={{ margin: 0, fontSize: 12, color: "#ffffff", marginTop: 2 }}>Restaurant Control Panel</p>
+            <p style={{ margin: 0, fontSize: 12, marginTop: 2 }}>Restaurant Control Panel</p>
           </div>
         </div>
 
         <nav className="nav">
           {link("/dashboard",      "📊 Dashboard")}
 
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.6px", padding: "8px 12px 2px" }}>Food</div>
+          <div className="ra-nav-section">Food</div>
           {linkOrDisabled("/menu", "🍽️ Menu", canMenu, "Menu management is turned off for your subscription. Upgrade or contact support.")}
           {linkOrDisabled("/add-food", "➕ Add Food", canMenu, "Menu management is turned off for your subscription.")}
           {linkOrDisabled("/bulk-upload", "📦 Bulk Upload", canBulk, "Bulk upload is not included in your plan, or menu management is off.")}
 
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.6px", padding: "8px 12px 2px" }}>Business</div>
+          <div className="ra-nav-section">Business</div>
           {link("/orders",         "🧾 Orders")}
           {link("/revenue",        "💰 Revenue")}
           {link("/inventory",      "📦 Inventory")}
@@ -238,12 +238,12 @@ export default function RestaurantLayout({ children }) {
           {link("/customers",      "👥 Customers")}
           {link("/email-campaign", "📧 Campaigns")}
 
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.6px", padding: "8px 12px 2px" }}>AI Tools</div>
+          <div className="ra-nav-section">AI Tools</div>
           {link("/promos", "🏷️ AI Promo Generator")}
           {link("/ai-insights", "🧠 AI Insights")}
           {link("/ai-customer-segmentation", "👥 Customer Segmentation")}
 
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.6px", padding: "8px 12px 2px" }}>Account</div>
+          <div className="ra-nav-section">Account</div>
           {link("/messages",       "💬 Messages")}
           {link("/reviews",        "⭐ Reviews")}
           {link("/settings",       "⚙️ Settings")}
@@ -251,29 +251,6 @@ export default function RestaurantLayout({ children }) {
         </nav>
 
         <div style={{ padding: "12px 0 16px", flexShrink: 0, borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: 4 }}>
-          <button
-            onClick={toggle}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              padding: "9px 14px",
-              marginBottom: 8,
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.05)",
-              color: "#ffffff",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 700,
-              fontFamily: "inherit",
-              transition: "background .15s",
-            }}
-          >
-            {dark ? "☀️ Light Mode" : "🌙 Dark Mode"}
-          </button>
           <button className="btn btn-outline logout" onClick={logout}>Logout</button>
         </div>
       </aside>

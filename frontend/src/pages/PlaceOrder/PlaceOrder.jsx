@@ -19,6 +19,9 @@ const PlaceOrder = () => {
   const [loading, setLoading] = useState(false);
   const [distanceWarning, setDistanceWarning] = useState('');
   const [eta, setEta] = useState(null);
+  const [deliveryMode, setDeliveryMode] = useState('standard');
+  const [sharedQuote, setSharedQuote] = useState(null);
+  const [sharedQuoteLoading, setSharedQuoteLoading] = useState(false);
   const [splitStatus, setSplitStatus] = useState({
     paidCardAmount: 0,
     plannedCardAmount: 0,
@@ -40,6 +43,18 @@ const PlaceOrder = () => {
   };
 
   const [data, setData] = useState(() => parseLocation(baseData));
+
+  const withSavedCoords = (address) => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('crave_location') || '{}');
+      const lat = Number(saved?.lat);
+      const lng = Number(saved?.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { ...address, lat, lng };
+      }
+    } catch {}
+    return address;
+  };
 
   // Re-sync area/city whenever the navbar location changes (same-tab custom event)
   useEffect(() => {
@@ -92,7 +107,12 @@ const PlaceOrder = () => {
   const promo = location.state?.promo || null;
   const discount = promo ? promo.discount : 0;
   const subtotal = getTotalCartAmount();
-  const finalTotal = Math.max(0, subtotal - discount + deliveryCharge);
+  const standardDeliveryFee = Number(sharedQuote?.standardFee ?? deliveryCharge ?? 0);
+  const selectedDeliveryFee =
+    deliveryMode === 'shared' && sharedQuote?.eligible
+      ? Number(sharedQuote.sharedFee || standardDeliveryFee)
+      : standardDeliveryFee;
+  const finalTotal = Math.max(0, subtotal - discount + selectedDeliveryFee);
 
   const onChange = (e) => setData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -143,6 +163,67 @@ const PlaceOrder = () => {
     return () => clearTimeout(timer);
   }, [data.city, data.area, data.street, data.state]);
 
+  const buildOrderItems = () => {
+    const orderItems = [];
+    for (const key in cartItems) {
+      const entry = cartItems[key];
+      if (entry.quantity > 0) {
+        const food = food_list.find(f => f._id === entry.itemId);
+        if (food) {
+          orderItems.push({
+            ...food,
+            quantity: entry.quantity,
+            selections: entry.selections || {},
+            extraPrice: entry.extraPrice || 0,
+          });
+        }
+      }
+    }
+    return orderItems;
+  };
+
+  useEffect(() => {
+    if (!token || !food_list.length) return;
+
+    const orderItems = buildOrderItems();
+    if (!orderItems.length) {
+      setSharedQuote(null);
+      setDeliveryMode('standard');
+      return;
+    }
+
+    if (!data.street || !(data.city || data.state) || !data.area) {
+      setSharedQuote(null);
+      setDeliveryMode('standard');
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setSharedQuoteLoading(true);
+        const res = await axios.post(
+          url + '/api/order/shared-delivery/quote',
+          { items: orderItems, address: withSavedCoords(data) },
+          { headers: { token } }
+        );
+
+        const quote = res?.data?.data || null;
+        setSharedQuote(quote);
+
+        if (!quote?.eligible && deliveryMode === 'shared') {
+          setDeliveryMode('standard');
+        }
+      } catch {
+        setSharedQuote(null);
+        setDeliveryMode('standard');
+      } finally {
+        setSharedQuoteLoading(false);
+      }
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [token, url, food_list, cartItems, data.street, data.area, data.city, data.state]);
+
   const placeOrder = async (e) => {
     e.preventDefault();
     if (distanceWarning) {
@@ -150,14 +231,7 @@ const PlaceOrder = () => {
       return;
     }
     setLoading(true);
-    let orderItems = [];
-    for (const key in cartItems) {
-      const entry = cartItems[key];
-      if (entry.quantity > 0) {
-        const food = food_list.find(f => f._id === entry.itemId);
-        if (food) orderItems.push({ ...food, quantity: entry.quantity, selections: entry.selections || {}, extraPrice: entry.extraPrice || 0 });
-      }
-    }
+    const orderItems = buildOrderItems();
     if (!orderItems.length) { toast.error('Cart is empty'); setLoading(false); return; }
 
     const getResId = (it) => it.restaurantId?._id || it.restaurantId || null;
@@ -192,14 +266,19 @@ const PlaceOrder = () => {
     const splitCardCount = Object.values(splitStatus.paidAmounts || {}).filter(v => v > 0).length;
 
     const orderData = {
-      address: data,
+      address: withSavedCoords(data),
       items: orderItems,
       amount: finalTotal,
-      deliveryFee: deliveryCharge,
+      deliveryFee: selectedDeliveryFee,
       restaurantId,
       promoCode: promo?.code || null,
       discount: discount || 0,
       paymentMethod: payment,
+      sharedDelivery: {
+        enabled: deliveryMode === 'shared' && !!sharedQuote?.eligible,
+        sharedFee: selectedDeliveryFee,
+        matchedOrderId: sharedQuote?.matchedOrderId || null,
+      },
       ...(payment === 'split' && {
         splitCardTotal: splitStatus.paidCardAmount || 0,
         splitCashDue: splitCashDue,
@@ -339,8 +418,49 @@ const PlaceOrder = () => {
             <div className='po-sum-rows'>
               <div className='po-sum-row'><span>Subtotal</span><span>{currency}{subtotal.toFixed(2)}</span></div>
               {discount > 0 && <div className='po-sum-row' style={{ color: '#16a34a', fontWeight: 700 }}><span>Discount ({promo.code})</span><span>- {currency}{discount.toFixed(2)}</span></div>}
-              <div className='po-sum-row'><span>Delivery</span><span>{currency}{deliveryCharge}.00</span></div>
+              <div className='po-sum-row'><span>Delivery</span><span>{currency}{selectedDeliveryFee.toFixed(2)}</span></div>
               <div className='po-sum-row po-sum-total'><span>Total</span><span>{currency}{finalTotal.toFixed(2)}</span></div>
+            </div>
+            <div className='po-delivery-mode-box'>
+              <p className='po-delivery-mode-title'>Delivery Type</p>
+              <div className='po-delivery-mode-opts'>
+                <button
+                  type='button'
+                  className={`po-delivery-mode-opt ${deliveryMode === 'standard' ? 'active' : ''}`}
+                  onClick={() => setDeliveryMode('standard')}
+                >
+                  <span>Standard</span>
+                  <strong>{currency}{standardDeliveryFee.toFixed(2)}</strong>
+                </button>
+
+                <button
+                  type='button'
+                  className={`po-delivery-mode-opt ${deliveryMode === 'shared' ? 'active' : ''}`}
+                  onClick={() => sharedQuote?.eligible && setDeliveryMode('shared')}
+                  disabled={!sharedQuote?.eligible || sharedQuoteLoading}
+                >
+                  <span>Shared</span>
+                  <strong>
+                    {sharedQuoteLoading
+                      ? 'Checking...'
+                      : sharedQuote?.eligible
+                        ? `${currency}${Number(sharedQuote.sharedFee || 0).toFixed(2)}`
+                        : 'Unavailable'}
+                  </strong>
+                </button>
+              </div>
+
+              {sharedQuote?.eligible && (
+                <p className='po-shared-note'>
+                  Save {currency}{Number(sharedQuote.savings || 0).toFixed(2)} by sharing a nearby delivery route.
+                </p>
+              )}
+
+              {!sharedQuoteLoading && sharedQuote && !sharedQuote.eligible && (
+                <p className='po-shared-note po-shared-note-muted'>
+                  {sharedQuote.reason || 'No nearby shared route available right now.'}
+                </p>
+              )}
             </div>
             {eta && (
               <div style={{

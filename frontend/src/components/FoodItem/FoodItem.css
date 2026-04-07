@@ -126,3 +126,16 @@
   background: var(--brand-soft); border: 1px solid var(--brand-mid);
   padding: 2px 8px; border-radius: 50px; white-space: nowrap;
 }
+
+[data-theme="dark"] .fi-rest-badge {
+  background: rgba(17,24,39,0.9);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+[data-theme="dark"] .fi-add-btn,
+[data-theme="dark"] .fi-customize-btn,
+[data-theme="dark"] .fi-counter {
+  background: rgba(17,24,39,0.9);
+  border-color: rgba(255,78,42,0.6);
+}

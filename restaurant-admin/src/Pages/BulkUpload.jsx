@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
+import { useTheme } from "../ThemeContext";
 
 // ─── Load SheetJS from CDN (no npm install required) ─────────────────────────
 let _XLSX = null;
@@ -283,6 +284,7 @@ const EditCell = ({ value, onChange, type = "text", width = "100%" }) => (
 );
 
 const DropZone = ({ label, sub, icon, onDrop, onBrowse, browseLabel }) => {
+  const { dark } = useTheme();
   const [hover, setHover] = useState(false);
   return (
     <div onDrop={onDrop}
@@ -291,12 +293,13 @@ const DropZone = ({ label, sub, icon, onDrop, onBrowse, browseLabel }) => {
       onClick={onBrowse}
       style={{ border: `2px dashed ${hover ? "#ff4e2a" : "#d1d5db"}`, borderRadius: 16,
         padding: "28px 24px", textAlign: "center", cursor: "pointer",
-        background: hover ? "#fff5f3" : "#fafafa", transition: "all 0.2s" }}>
+        background: hover ? (dark ? "rgba(255,78,42,0.12)" : "#fff5f3") : (dark ? "#0f172a" : "#fafafa"),
+        transition: "all 0.2s" }}>
       <div style={{ fontSize: 36, marginBottom: 10 }}>{icon}</div>
       <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>{label}</p>
-      <p style={{ color: "#9ca3af", fontSize: 13, marginBottom: 14 }}>{sub}</p>
+      <p style={{ color: dark ? "rgba(249,250,251,0.72)" : "#9ca3af", fontSize: 13, marginBottom: 14 }}>{sub}</p>
       <button type="button" onClick={(e) => { e.stopPropagation(); onBrowse(); }}
-        style={{ padding: "9px 22px", borderRadius: 50, background: "#111", color: "#fff",
+        style={{ padding: "9px 22px", borderRadius: 50, background: dark ? "#111827" : "#111", color: "#fff",
           border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
         {browseLabel}
       </button>
@@ -305,6 +308,7 @@ const DropZone = ({ label, sub, icon, onDrop, onBrowse, browseLabel }) => {
 };
 
 const StepBar = ({ current }) => {
+  const { dark } = useTheme();
   const STEPS = ["Upload Files", "Review & Fix", "Done"];
   return (
     <div style={{ display: "flex", alignItems: "center", marginBottom: 32 }}>
@@ -313,16 +317,16 @@ const StepBar = ({ current }) => {
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             <div style={{ width: 30, height: 30, borderRadius: "50%", display: "flex",
               alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 13,
-              background: i < current ? "#111" : i === current ? "linear-gradient(135deg,#ff4e2a,#ff6a3d)" : "#f3f4f6",
-              color: i <= current ? "#fff" : "#9ca3af",
+              background: i < current ? (dark ? "#1f2937" : "#111") : i === current ? "linear-gradient(135deg,#ff4e2a,#ff6a3d)" : (dark ? "#1e293b" : "#f3f4f6"),
+              color: i <= current ? "#fff" : (dark ? "rgba(249,250,251,0.6)" : "#9ca3af"),
               boxShadow: i === current ? "0 4px 14px rgba(255,78,42,.35)" : "none" }}>
               {i < current ? "✓" : i + 1}
             </div>
             <span style={{ fontSize: 13, fontWeight: 700,
-              color: i === current ? "#111" : i < current ? "#374151" : "#9ca3af" }}>{s}</span>
+              color: i === current ? "var(--text)" : i < current ? (dark ? "rgba(249,250,251,0.85)" : "#374151") : (dark ? "rgba(249,250,251,0.55)" : "#9ca3af") }}>{s}</span>
           </div>
           {i < STEPS.length - 1 && (
-            <div style={{ flex: 1, height: 2, background: i < current ? "#111" : "#e5e7eb",
+            <div style={{ flex: 1, height: 2, background: i < current ? (dark ? "rgba(249,250,251,0.8)" : "#111") : (dark ? "rgba(255,255,255,0.2)" : "#e5e7eb"),
               margin: "0 12px", borderRadius: 999 }} />
           )}
         </div>
@@ -337,6 +341,7 @@ const emptyGroup  = () => ({ id: uid(), title: "", required: false, multiSelect:
 const emptyOption= () => ({ id: uid(), label: "", extraPrice: 0 });
 
 function CustomizationModal({ rowName, initial, onSave, onClose }) {
+  const { dark } = useTheme();
   const [groups, setGroups] = useState(() =>
     initial.length > 0
       ? initial.map(g => ({ ...g, id: g.id || uid(), options: (g.options || []).map(o => ({ ...o, id: o.id || uid() })) }))
@@ -363,32 +368,41 @@ function CustomizationModal({ rowName, initial, onSave, onClose }) {
     onClose();
   };
 
-  const inp = { border: "1px solid #e5e7eb", borderRadius: 8, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#fff" };
-  const lbl = { fontSize: 11, fontWeight: 700, color: "#6b7280", marginBottom: 4, display: "block" };
+  const inp = {
+    border: "1px solid #e5e7eb",
+    borderRadius: 8,
+    padding: "7px 10px",
+    fontSize: 13,
+    fontFamily: "inherit",
+    outline: "none",
+    background: dark ? "#0f172a" : "#fff",
+    color: "var(--text)",
+  };
+  const lbl = { fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4, display: "block" };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 10000,
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ background: "#fff", borderRadius: 24, width: "100%", maxWidth: 620,
+      <div style={{ background: dark ? "#111827" : "#fff", borderRadius: 24, width: "100%", maxWidth: 620,
         maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden",
         boxShadow: "0 24px 64px rgba(0,0,0,0.2)" }}>
 
         {/* Header */}
-        <div style={{ padding: "20px 24px", borderBottom: "1px solid #f3f4f6",
+        <div style={{ padding: "20px 24px", borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.12)" : "#f3f4f6"}`,
           display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 17, fontWeight: 900 }}>⚙️ Customizations</h3>
-            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#9ca3af" }}>{rowName}</p>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-secondary)" }}>{rowName}</p>
           </div>
           <button onClick={onClose}
-            style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#9ca3af", lineHeight: 1 }}>✕</button>
+            style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-secondary)", lineHeight: 1 }}>✕</button>
         </div>
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
 
           {groups.length === 0 && (
-            <div style={{ textAlign: "center", padding: "32px 0", color: "#9ca3af" }}>
+            <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-secondary)" }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>🍽️</div>
               <p style={{ fontSize: 14, margin: 0 }}>No customization groups yet.</p>
               <p style={{ fontSize: 13, margin: "4px 0 0" }}>Add a group like "Size" or "Toppings" below.</p>
@@ -397,7 +411,7 @@ function CustomizationModal({ rowName, initial, onSave, onClose }) {
 
           {groups.map((group) => (
             <div key={group.id} style={{ border: "1px solid #e5e7eb", borderRadius: 16,
-              padding: "16px 18px", marginBottom: 14, background: "#fafafa" }}>
+              padding: "16px 18px", marginBottom: 14, background: dark ? "#0f172a" : "#fafafa" }}>
 
               {/* Group header */}
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: 14 }}>
@@ -416,8 +430,8 @@ function CustomizationModal({ rowName, initial, onSave, onClose }) {
                       <button key={lbl2} type="button"
                         onClick={() => updateGroup(group.id, "multiSelect", val)}
                         style={{ padding: "7px 14px", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer",
-                          background: group.multiSelect === val ? "#111" : "#fff",
-                          color: group.multiSelect === val ? "#fff" : "#374151" }}>
+                          background: group.multiSelect === val ? (dark ? "#1f2937" : "#111") : (dark ? "#0b1220" : "#fff"),
+                          color: group.multiSelect === val ? "#fff" : "var(--text-secondary)" }}>
                         {lbl2}
                       </button>
                     ))}
@@ -430,8 +444,8 @@ function CustomizationModal({ rowName, initial, onSave, onClose }) {
                   <button type="button" onClick={() => updateGroup(group.id, "required", !group.required)}
                     style={{ padding: "7px 14px", fontSize: 12, fontWeight: 700, borderRadius: 8,
                       border: "1px solid #e5e7eb", cursor: "pointer",
-                      background: group.required ? "#ff4e2a" : "#fff",
-                      color: group.required ? "#fff" : "#374151" }}>
+                      background: group.required ? "#ff4e2a" : (dark ? "#0b1220" : "#fff"),
+                      color: group.required ? "#fff" : "var(--text-secondary)" }}>
                     {group.required ? "Yes" : "No"}
                   </button>
                 </div>
@@ -451,28 +465,28 @@ function CustomizationModal({ rowName, initial, onSave, onClose }) {
                 </label>
 
                 {group.options.length === 0 && (
-                  <p style={{ fontSize: 12, color: "#9ca3af", margin: "0 0 8px" }}>No options yet — add at least one.</p>
+                  <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "0 0 8px" }}>No options yet — add at least one.</p>
                 )}
 
                 {group.options.map((opt, oi) => (
                   <div key={opt.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
                     {/* Visual checkbox / radio preview */}
                     <div style={{ width: 18, height: 18, borderRadius: group.multiSelect ? 4 : "50%",
-                      border: "2px solid #d1d5db", flexShrink: 0, background: "#fff" }} />
+                      border: "2px solid #d1d5db", flexShrink: 0, background: dark ? "#0f172a" : "#fff" }} />
 
                     <input value={opt.label} placeholder={`Option ${oi + 1} label`}
                       onChange={e => updateOption(group.id, opt.id, "label", e.target.value)}
                       style={{ ...inp, flex: 1 }} />
 
                     <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                      <span style={{ fontSize: 12, color: "#9ca3af", whiteSpace: "nowrap" }}>+ AED</span>
+                      <span style={{ fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>+ AED</span>
                       <input type="number" min="0" step="0.5" value={opt.extraPrice}
                         onChange={e => updateOption(group.id, opt.id, "extraPrice", parseFloat(e.target.value) || 0)}
                         style={{ ...inp, width: 70 }} />
                     </div>
 
                     <button type="button" onClick={() => removeOption(group.id, opt.id)}
-                      style={{ background: "none", border: "none", color: "#d1d5db",
+                      style={{ background: "none", border: "none", color: "#ef4444",
                         cursor: "pointer", fontSize: 16, padding: "2px 4px" }}>✕</button>
                   </div>
                 ))}
@@ -488,21 +502,21 @@ function CustomizationModal({ rowName, initial, onSave, onClose }) {
 
           <button type="button" onClick={addGroup}
             style={{ width: "100%", padding: "12px", border: "2px dashed #d1d5db", borderRadius: 14,
-              background: "#fafafa", fontWeight: 800, fontSize: 14, cursor: "pointer", color: "#374151" }}>
+              background: dark ? "#0f172a" : "#fafafa", fontWeight: 800, fontSize: 14, cursor: "pointer", color: "var(--text)" }}>
             + Add Customization Group
           </button>
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "16px 24px", borderTop: "1px solid #f3f4f6",
+        <div style={{ padding: "16px 24px", borderTop: `1px solid ${dark ? "rgba(255,255,255,0.12)" : "#f3f4f6"}`,
           display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 12, color: "#9ca3af" }}>
+          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
             {groups.length} group{groups.length !== 1 ? "s" : ""} · {groups.reduce((a, g) => a + g.options.length, 0)} total options
           </span>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={onClose}
               style={{ padding: "10px 20px", borderRadius: 10, border: "1px solid #e5e7eb",
-                background: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+                background: dark ? "#0f172a" : "#fff", color: "var(--text)", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
               Cancel
             </button>
             <button onClick={handleSave}
@@ -522,6 +536,7 @@ function CustomizationModal({ rowName, initial, onSave, onClose }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function BulkUpload() {
+  const { dark } = useTheme();
   const [step, setStep]         = useState(0);
   const [rows, dispatch]        = useReducer(rowsReducer, []);
   const [editId, setEditId]     = useState(null);
@@ -667,7 +682,7 @@ export default function BulkUpload() {
         </div>
         <button onClick={downloadTemplate}
           style={{ padding: "9px 20px", borderRadius: 50, border: "1.5px solid #e5e7eb",
-            background: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer",
+            background: dark ? "#0f172a" : "#fff", color: dark ? "var(--text)" : "#111827", fontWeight: 700, fontSize: 13, cursor: "pointer",
             display: "flex", alignItems: "center", gap: 7 }}>
           ⬇️ Download Template
         </button>
@@ -678,8 +693,8 @@ export default function BulkUpload() {
 
         {/* ── STEP 0: Upload files ── */}
         {step === 0 && (
-          <div style={{ background: "#fff", borderRadius: 20, border: "1px solid var(--border)", padding: 28 }}>
-            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12,
+          <div style={{ background: "var(--card)", borderRadius: 20, border: "1px solid var(--border)", padding: 28 }}>
+            <div style={{ background: dark ? "rgba(22,163,74,0.14)" : "#f0fdf4", border: `1px solid ${dark ? "rgba(134,239,172,0.35)" : "#bbf7d0"}`, borderRadius: 12,
               padding: "12px 16px", marginBottom: 24, fontSize: 13 }}>
               💡 <strong>Tip:</strong> Drop your spreadsheet and images below then click <strong>Continue</strong> — images are matched by filename automatically. You can also add or edit customizations per item in the next step.
             </div>
@@ -708,13 +723,13 @@ export default function BulkUpload() {
               </div>
             </div>
 
-            <div style={{ background: "#f8f9fa", borderRadius: 14, padding: "18px 22px", marginBottom: 24 }}>
+            <div style={{ background: dark ? "#0f172a" : "#f8f9fa", borderRadius: 14, padding: "18px 22px", marginBottom: 24 }}>
               <p style={{ fontWeight: 800, fontSize: 14, marginBottom: 10 }}>📋 Expected columns:</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 8 }}>
                 {TEMPLATE_COLS.map(c => (
-                  <div key={c.key} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 14px" }}>
-                    <code style={{ fontSize: 12, fontWeight: 800, color: c.required ? "#dc2626" : "#374151" }}>{c.label}</code>
-                    <p style={{ fontSize: 11.5, color: "#6b7280", margin: "3px 0 0" }}>{c.hint}</p>
+                  <div key={c.key} style={{ background: dark ? "#111827" : "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 14px" }}>
+                    <code style={{ fontSize: 12, fontWeight: 800, color: c.required ? "#dc2626" : "var(--text)" }}>{c.label}</code>
+                    <p style={{ fontSize: 11.5, color: "var(--text-secondary)", margin: "3px 0 0" }}>{c.hint}</p>
                   </div>
                 ))}
               </div>
@@ -900,7 +915,7 @@ export default function BulkUpload() {
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20, flexWrap: "wrap", gap: 12 }}>
               <button onClick={() => setStep(0)}
                 style={{ padding: "11px 20px", borderRadius: 12, border: "1px solid #e5e7eb",
-                  background: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+                  background: dark ? "#0f172a" : "#fff", color: "var(--text)", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
                 ← Back
               </button>
               <button onClick={submitAll} disabled={validCount === 0 || submitting}
@@ -961,7 +976,7 @@ export default function BulkUpload() {
               )}
               <button onClick={() => { setStep(0); setParsedRows([]); setImageMap({}); setCreatedInvItems([]); }}
                 style={{ padding: "11px 24px", borderRadius: 50, border: "1.5px solid #e5e7eb",
-                  background: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+                  background: dark ? "#0f172a" : "#fff", color: "var(--text)", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
                 Upload another batch
               </button>
               <a href="/inventory" style={{ padding: "11px 24px", borderRadius: 50,

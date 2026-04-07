@@ -274,6 +274,9 @@ export default function Settings() {
   const [prepTime,   setPrepTime]   = useState(15);
   const [deliveryRadius, setDeliveryRadius] = useState(10);
   const [minimumOrder,   setMinimumOrder]   = useState(0);
+  const [sharedDropKm, setSharedDropKm] = useState(2);
+  const [sharedPickupKm, setSharedPickupKm] = useState(2);
+  const [sharedWindowMin, setSharedWindowMin] = useState(12);
 
   const [deliveryTiers,  setDeliveryTiers]  = useState([
     { upToKm: 3,    fee: 5  },
@@ -321,6 +324,9 @@ export default function Settings() {
         setPrepTime(r.avgPrepTime ?? 15);
         setDeliveryRadius(r.deliveryRadius ?? 10);
         setMinimumOrder(r.minimumOrder ?? 0);
+        setSharedDropKm(r.sharedDelivery?.maxDropDistanceKm ?? 2);
+        setSharedPickupKm(r.sharedDelivery?.maxPickupDistanceKm ?? 2);
+        setSharedWindowMin(r.sharedDelivery?.matchWindowMin ?? 12);
 
         if (r.deliveryTiers?.length) setDeliveryTiers(r.deliveryTiers);
 
@@ -402,6 +408,11 @@ export default function Settings() {
         deliveryTiers,
         address,
         location: { lat: nLat, lng: nLng },
+        sharedDelivery: {
+          maxDropDistanceKm: sharedDropKm,
+          maxPickupDistanceKm: sharedPickupKm,
+          matchWindowMin: sharedWindowMin,
+        },
       };
       console.log("[Settings] Saving payload:", payload);
       const res = await api.post("/api/restaurantadmin/settings", payload);
@@ -422,6 +433,11 @@ export default function Settings() {
               deliveryRadius,
               minimumOrder,
               deliveryTiers,
+              sharedDelivery: {
+                maxDropDistanceKm: sharedDropKm,
+                maxPickupDistanceKm: sharedPickupKm,
+                matchWindowMin: sharedWindowMin,
+              },
               address,
               ...(loc?.lat != null && loc?.lng != null ? { location: loc } : {}),
             })
@@ -768,7 +784,7 @@ export default function Settings() {
         <div className="settings-card">
           <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
             <div>
-              <div style={{ fontWeight:900, fontSize:14, color:"white", marginBottom:2 }}>🛒 Minimum Order Amount</div>
+              <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827", marginBottom:2 }}>🛒 Minimum Order Amount</div>
               <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
                 Orders below this amount will be rejected. Set to <b>0</b> for no minimum.
               </div>
@@ -881,6 +897,68 @@ export default function Settings() {
           </div>
           <div style={{ marginTop:12, padding:"10px 14px", borderRadius:10, background: dark ? "rgba(29,78,216,0.16)" : "#eff6ff", border: dark ? "1px solid rgba(96,165,250,0.35)" : "1px solid #bfdbfe", fontSize:12, color: dark ? "#93c5fd" : "#1d4ed8", fontWeight:600 }}>
             💡 The last tier (Beyond) catches all distances beyond the previous bracket.
+          </div>
+        </div>
+
+        {/* Shared Delivery Matching card */}
+        <div className="settings-card">
+          <div style={{ fontWeight:900, fontSize:14, color:textPrimary, marginBottom:2 }}>🤝 Shared Delivery Matching</div>
+          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14 }}>
+            Control how far apart nearby orders can be to qualify for shared delivery.
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+            <div style={{ padding:"10px 12px", border:"1px solid var(--border)", borderRadius:12, background: dark ? "#0f172a" : "#f9fafb" }}>
+              <div style={{ fontSize:12, color:textMuted, fontWeight:700, marginBottom:8 }}>Customer drop distance</div>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <input
+                  type="number"
+                  min={0.5}
+                  max={20}
+                  step={0.5}
+                  value={sharedDropKm}
+                  onChange={e => setSharedDropKm(Number(e.target.value))}
+                  style={{ width:70, padding:"6px 8px", borderRadius:8, border:"1px solid var(--border)", background: dark ? "#111827" : "white", color:textPrimary, fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }}
+                />
+                <span style={{ fontSize:12, color:textMuted }}>km</span>
+              </div>
+            </div>
+
+            <div style={{ padding:"10px 12px", border:"1px solid var(--border)", borderRadius:12, background: dark ? "#0f172a" : "#f9fafb" }}>
+              <div style={{ fontSize:12, color:textMuted, fontWeight:700, marginBottom:8 }}>Restaurant pickup distance</div>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <input
+                  type="number"
+                  min={0.5}
+                  max={20}
+                  step={0.5}
+                  value={sharedPickupKm}
+                  onChange={e => setSharedPickupKm(Number(e.target.value))}
+                  style={{ width:70, padding:"6px 8px", borderRadius:8, border:"1px solid var(--border)", background: dark ? "#111827" : "white", color:textPrimary, fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }}
+                />
+                <span style={{ fontSize:12, color:textMuted }}>km</span>
+              </div>
+            </div>
+
+            <div style={{ padding:"10px 12px", border:"1px solid var(--border)", borderRadius:12, background: dark ? "#0f172a" : "#f9fafb" }}>
+              <div style={{ fontSize:12, color:textMuted, fontWeight:700, marginBottom:8 }}>Match time window</div>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  step={1}
+                  value={sharedWindowMin}
+                  onChange={e => setSharedWindowMin(Number(e.target.value))}
+                  style={{ width:70, padding:"6px 8px", borderRadius:8, border:"1px solid var(--border)", background: dark ? "#111827" : "white", color:textPrimary, fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }}
+                />
+                <span style={{ fontSize:12, color:textMuted }}>min</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop:12, padding:"10px 14px", borderRadius:10, background: dark ? "rgba(29,78,216,0.16)" : "#eff6ff", border: dark ? "1px solid rgba(96,165,250,0.35)" : "1px solid #bfdbfe", fontSize:12, color: dark ? "#93c5fd" : "#1d4ed8", fontWeight:600 }}>
+            Shared delivery offers are shown to customers only when a nearby active route matches these limits.
           </div>
         </div>
 

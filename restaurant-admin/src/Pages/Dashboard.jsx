@@ -244,7 +244,7 @@ function MoodPanel({ title, value, sub, emoji, tone, dark = false }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { dark } = useTheme();
+  const { dark, toggle } = useTheme();
   const [foods, setFoods] = useState([]);
   const [orders, setOrders] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -412,6 +412,23 @@ export default function Dashboard() {
               </p>
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <button
+                onClick={toggle}
+                style={{
+                  padding: "11px 16px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(255,255,255,0.1)",
+                  color: "white",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  backdropFilter: "blur(10px)",
+                }}
+              >
+                {dark ? "☀️ Light Mode" : "🌙 Dark Mode"}
+              </button>
               <button onClick={() => navigate("/orders")} style={{ padding: "11px 16px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.1)", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", backdropFilter: "blur(10px)", boxShadow: "none" }}>
                 🧾 Orders {pendingOrders.length > 0 && (
                   <span style={{ marginLeft: 5, background: "#ff4e2a", color: "white", borderRadius: 999, padding: "1px 7px", fontSize: 11, fontWeight: 800 }}>

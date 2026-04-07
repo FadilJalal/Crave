@@ -140,7 +140,7 @@ router.post("/food/add", restaurantAuth, upload.single("image"), async (req, res
 // ── Update restaurant settings ────────────────────────────────────────────
 router.post("/settings", restaurantAuth, async (req, res) => {
   try {
-    const { openingHours, isActive, avgPrepTime, deliveryRadius, address, minimumOrder, deliveryTiers, location } = req.body;
+    const { openingHours, isActive, avgPrepTime, deliveryRadius, address, minimumOrder, deliveryTiers, location, sharedDelivery } = req.body;
     const update = {};
     if (openingHours   !== undefined) update.openingHours   = openingHours;
     if (isActive       !== undefined) update.isActive       = isActive;
@@ -148,6 +148,17 @@ router.post("/settings", restaurantAuth, async (req, res) => {
     if (deliveryRadius !== undefined) update.deliveryRadius = Number(deliveryRadius);
     if (minimumOrder   !== undefined) update.minimumOrder   = Number(minimumOrder);
     if (deliveryTiers  !== undefined) update.deliveryTiers  = deliveryTiers;
+    if (sharedDelivery !== undefined && sharedDelivery !== null) {
+      const maxDropDistanceKm = Number(sharedDelivery.maxDropDistanceKm);
+      const maxPickupDistanceKm = Number(sharedDelivery.maxPickupDistanceKm);
+      const matchWindowMin = Number(sharedDelivery.matchWindowMin);
+
+      update.sharedDelivery = {
+        maxDropDistanceKm: Number.isFinite(maxDropDistanceKm) ? Math.max(0.5, maxDropDistanceKm) : 2,
+        maxPickupDistanceKm: Number.isFinite(maxPickupDistanceKm) ? Math.max(0.5, maxPickupDistanceKm) : 2,
+        matchWindowMin: Number.isFinite(matchWindowMin) ? Math.max(1, matchWindowMin) : 12,
+      };
+    }
     if (address        !== undefined && address.trim()) update.address = address.trim();
 
     if (location !== undefined && location !== null) {

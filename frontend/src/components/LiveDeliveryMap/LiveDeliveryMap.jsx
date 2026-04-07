@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { StoreContext } from '../../Context/StoreContext';
+import { toast } from 'react-toastify';
 import './LiveDeliveryMap.css';
 
 const statusConfig = {
@@ -41,6 +42,24 @@ async function fetchRoadRoute(from, to) {
   if (data.code !== 'Ok' || !data.routes?.length) throw new Error('No route found');
   // GeoJSON coords are [lng, lat] — flip to [lat, lng] for Leaflet
   return data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+}
+
+function pathDistance(points) {
+  if (!Array.isArray(points) || points.length < 2) return 0;
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    total += haversine(points[i - 1][0], points[i - 1][1], points[i][0], points[i][1]);
+  }
+  return total;
+}
+
+async function fetchSharedRoadRoute(restaurantPoint, firstOrderPoint, customerPoint) {
+  const leg1 = await fetchRoadRoute(restaurantPoint, firstOrderPoint);
+  const leg2 = await fetchRoadRoute(firstOrderPoint, customerPoint);
+  const d1 = pathDistance(leg1);
+  const d2 = pathDistance(leg2);
+  const splitT = d1 + d2 > 0 ? d1 / (d1 + d2) : 0.5;
+  return { points: [...leg1, ...leg2.slice(1)], splitT };
 }
 
 /**
@@ -133,6 +152,7 @@ function makePulseIcon(L, emoji, borderColor) {
 export default function LiveDeliveryMap({ order }) {
   const { url } = useContext(StoreContext);
   const [customerCoords, setCustomerCoords] = useState(null);
+  const [firstOrderCoords, setFirstOrderCoords] = useState(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(false);
   const mapRef      = useRef(null); // Leaflet map instance
@@ -141,30 +161,61 @@ export default function LiveDeliveryMap({ order }) {
   const lineRef     = useRef(null);
   const doneLineRef = useRef(null);
   const routeRef    = useRef(null); // full road route points
+  const firstStopProgressRef = useRef(null);
+  const firstStopNotifiedRef = useRef(false);
 
   const statusInfo       = getStatusConfig(order?.status);
   const displayAddress   = buildDisplayAddress(order?.address);
+  const firstOrderAddress = order?.isSharedDelivery ? order?.sharedMatchedOrderId?.address : null;
   const restaurantCoords = order?.restaurantId?.location
     ? [order.restaurantId.location.lat, order.restaurantId.location.lng]
     : null;
 
+  const extractCoordsFromAddress = (address) => {
+    const lat = Number(address?.lat ?? address?.latitude ?? address?.location?.lat ?? address?.coords?.lat);
+    const lon = Number(address?.lng ?? address?.lon ?? address?.longitude ?? address?.location?.lng ?? address?.coords?.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) return [lat, lon];
+    return null;
+  };
+
   // Geocode
   useEffect(() => {
     if (!order?.address) { setError(true); setLoading(false); return; }
-    setLoading(true); setError(false); setCustomerCoords(null);
-    fetch(`${url}/api/geocode`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address: order.address }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) setCustomerCoords([data.lat, data.lon]);
-        else setError(true);
-      })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, [order?.address, url]);
+    setLoading(true); setError(false); setCustomerCoords(null); setFirstOrderCoords(null);
+
+    const geocodeAddress = async (address) => {
+      const fromPayload = extractCoordsFromAddress(address);
+      if (fromPayload) return fromPayload;
+
+      const resp = await fetch(`${url}/api/geocode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address }),
+      });
+      const data = await resp.json();
+      return data?.success ? [data.lat, data.lon] : null;
+    };
+
+    (async () => {
+      try {
+        const [customer, firstOrder] = await Promise.all([
+          geocodeAddress(order.address),
+          firstOrderAddress ? geocodeAddress(firstOrderAddress) : Promise.resolve(null),
+        ]);
+
+        if (!customer) {
+          setError(true);
+        } else {
+          setCustomerCoords(customer);
+          setFirstOrderCoords(firstOrder);
+        }
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [order?.address, order?.isSharedDelivery, order?.sharedMatchedOrderId?._id, url]);
 
   // Init Leaflet map once coords are ready and panel is expanded
   useEffect(() => {
@@ -184,7 +235,11 @@ export default function LiveDeliveryMap({ order }) {
       });
 
       // Compute center and zoom to fit all markers
-      const allPoints = [customerCoords, ...(restaurantCoords ? [restaurantCoords] : [])];
+      const allPoints = [
+        customerCoords,
+        ...(restaurantCoords ? [restaurantCoords] : []),
+        ...(firstOrderCoords ? [firstOrderCoords] : []),
+      ];
       const lats = allPoints.map(p => p[0]);
       const lons = allPoints.map(p => p[1]);
       const center = [(Math.min(...lats)+Math.max(...lats))/2, (Math.min(...lons)+Math.max(...lons))/2];
@@ -209,7 +264,14 @@ export default function LiveDeliveryMap({ order }) {
       let routePoints = null;
       if (restaurantCoords) {
         try {
-          routePoints = await fetchRoadRoute(restaurantCoords, customerCoords);
+          if (firstOrderCoords) {
+            const sharedRoute = await fetchSharedRoadRoute(restaurantCoords, firstOrderCoords, customerCoords);
+            routePoints = sharedRoute.points;
+            firstStopProgressRef.current = sharedRoute.splitT;
+          } else {
+            routePoints = await fetchRoadRoute(restaurantCoords, customerCoords);
+            firstStopProgressRef.current = null;
+          }
         } catch (e) {
           console.warn('OSRM routing failed, falling back to straight line:', e);
         }
@@ -235,7 +297,26 @@ export default function LiveDeliveryMap({ order }) {
 
         } else {
           // Fallback: straight line if OSRM failed
-          lineRef.current = L.polyline([restaurantCoords, customerCoords], {
+          // Fallback: straight line if OSRM failed
+          const fallbackPoints = firstOrderCoords
+            ? [restaurantCoords, firstOrderCoords, customerCoords]
+            : [restaurantCoords, customerCoords];
+
+          if (firstOrderCoords) {
+            const d1 = haversine(
+              restaurantCoords[0], restaurantCoords[1],
+              firstOrderCoords[0], firstOrderCoords[1]
+            );
+            const d2 = haversine(
+              firstOrderCoords[0], firstOrderCoords[1],
+              customerCoords[0], customerCoords[1]
+            );
+            firstStopProgressRef.current = d1 + d2 > 0 ? d1 / (d1 + d2) : 0.5;
+          } else {
+            firstStopProgressRef.current = null;
+          }
+
+          lineRef.current = L.polyline(fallbackPoints, {
             color: '#e53935', weight: 5, opacity: 0.85,
           }).addTo(map);
 
@@ -275,6 +356,14 @@ export default function LiveDeliveryMap({ order }) {
         icon: makeEmojiIcon(L, '🏠', '#22c55e'),
         zIndexOffset: 100,
       }).addTo(map).bindPopup('<b>Your delivery address</b>');
+
+      // Shared first-order drop marker
+      if (firstOrderCoords) {
+        markersRef.current.firstOrder = L.marker(firstOrderCoords, {
+          icon: makeEmojiIcon(L, '📦', '#8b5cf6'),
+          zIndexOffset: 110,
+        }).addTo(map).bindPopup('<b>First order drop location</b>');
+      }
     });
 
     return () => {
@@ -285,9 +374,24 @@ export default function LiveDeliveryMap({ order }) {
         lineRef.current = null;
         doneLineRef.current = null;
         routeRef.current = null;
+        firstStopProgressRef.current = null;
+        firstStopNotifiedRef.current = false;
       }
     };
-  }, [customerCoords]);
+  }, [customerCoords, firstOrderCoords]);
+
+  useEffect(() => {
+    if (!order?.isSharedDelivery || !firstOrderCoords) return;
+    if (firstStopNotifiedRef.current) return;
+
+    const splitT = firstStopProgressRef.current;
+    if (splitT == null) return;
+
+    if (statusInfo.progress >= splitT) {
+      firstStopNotifiedRef.current = true;
+      toast.info('First order delivered. Rider is now heading to your location.');
+    }
+  }, [order?.isSharedDelivery, order?.status, firstOrderCoords, statusInfo.progress]);
 
   // Update rider position when status changes
   useEffect(() => {
@@ -337,6 +441,7 @@ export default function LiveDeliveryMap({ order }) {
       <div className="ldm-info-bar">
         {restaurantCoords && <><div className="ldm-legend-item"><span className="ldm-dot-restaurant"/>Restaurant</div><div className="ldm-legend-sep"/></>}
         <div className="ldm-legend-item"><span className="ldm-dot-rider"/>{isDelivered?'Delivered':'Rider'}</div>
+        {firstOrderCoords && <><div className="ldm-legend-sep"/><div className="ldm-legend-item"><span className="ldm-dot-first-order"/>First order</div></>}
         <div className="ldm-legend-sep"/>
         <div className="ldm-legend-item"><span className="ldm-dot-customer"/>Your location</div>
         {distanceKm && <>

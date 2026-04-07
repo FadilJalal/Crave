@@ -23,6 +23,11 @@ const restaurantSchema = new mongoose.Schema(
         { upToKm: null, fee: 15 },
       ]
     },
+    sharedDelivery: {
+      maxDropDistanceKm: { type: Number, default: 2 },
+      maxPickupDistanceKm: { type: Number, default: 2 },
+      matchWindowMin: { type: Number, default: 12 },
+    },
 
     subscription: {
       plan:      { type: String, enum: ["free", "basic", "starter", "professional", "enterprise"], default: "free" },

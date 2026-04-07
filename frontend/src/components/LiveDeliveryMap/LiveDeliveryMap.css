@@ -40,6 +40,7 @@
 .ldm-distance-text strong { color:var(--text); }
 .ldm-dot-restaurant { width:10px; height:10px; border-radius:50%; background:#f59e0b; border:2px solid #fff; box-shadow:0 0 0 1.5px #f59e0b; display:inline-block; flex-shrink:0; }
 .ldm-dot-rider { width:10px; height:10px; border-radius:50%; background:#3b82f6; border:2px solid #fff; box-shadow:0 0 0 1.5px #3b82f6; display:inline-block; flex-shrink:0; }
+.ldm-dot-first-order { width:10px; height:10px; border-radius:50%; background:#8b5cf6; border:2px solid #fff; box-shadow:0 0 0 1.5px #8b5cf6; display:inline-block; flex-shrink:0; }
 .ldm-dot-customer { width:10px; height:10px; border-radius:50%; background:#22c55e; border:2px solid #fff; box-shadow:0 0 0 1.5px #22c55e; display:inline-block; flex-shrink:0; }
 
 /* ── Map ── */

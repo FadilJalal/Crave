@@ -13,6 +13,7 @@ import {
   listRestaurantOrders,
   restaurantUpdateStatus,
   cancelOrder,
+  quoteSharedDelivery,
 } from "../controllers/orderController.js";
 
 import orderModel from "../models/orderModel.js";
@@ -25,6 +26,7 @@ orderRouter.post("/place", authMiddleware, placeOrder);
 orderRouter.post("/placecod", authMiddleware, placeOrderCod);
 orderRouter.post("/verify", verifyOrder);
 orderRouter.post("/cancel", authMiddleware, cancelOrder);
+orderRouter.post("/shared-delivery/quote", authMiddleware, quoteSharedDelivery);
 
 // Order tracking by ID (customer must own the order)
 orderRouter.get("/track/:orderId", authMiddleware, async (req, res) => {
@@ -32,6 +34,7 @@ orderRouter.get("/track/:orderId", authMiddleware, async (req, res) => {
     const order = await orderModel
       .findById(req.params.orderId)
       .populate("restaurantId", "name logo location")
+      .populate("sharedMatchedOrderId", "address status")
       .lean();
 
     if (!order) {

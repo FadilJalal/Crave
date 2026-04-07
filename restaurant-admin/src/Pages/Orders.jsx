@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { toast } from "react-toastify";
+import { useTheme } from "../ThemeContext";
 
 const STATUS_OPTIONS = ["Food Processing", "Out for delivery", "Delivered", "Cancelled"];
 
@@ -33,6 +34,7 @@ function isInDateRange(dateStr, preset) {
 }
 
 export default function Orders() {
+  const { dark } = useTheme();
   const [orders, setOrders]     = useState([]);
   const [loading, setLoading]   = useState(true);
   const [expanded, setExpanded] = useState({});
@@ -197,6 +199,9 @@ export default function Orders() {
     setCityFilter("all"); setDatePreset("all"); setSortBy("newest");
   };
 
+  const surface = dark ? "#0f172a" : "white";
+  const softSurface = dark ? "#111827" : "#fafafa";
+
   return (
     <RestaurantLayout>
 
@@ -236,7 +241,7 @@ export default function Orders() {
             style={{
               padding: "9px 16px", borderRadius: 12, cursor: "pointer", fontWeight: 800, fontSize: 13,
               border: "1px solid var(--border)",
-              background: showFilters ? "#111827" : "white",
+              background: showFilters ? (dark ? "#1f2937" : "#111827") : surface,
               color: showFilters ? "white" : "var(--text)",
               display: "flex", alignItems: "center", gap: 8,
             }}
@@ -251,7 +256,7 @@ export default function Orders() {
               </span>
             )}
           </button>
-          <button onClick={() => loadOrders(false)} style={{ padding: "9px 16px", borderRadius: 12, border: "1px solid var(--border)", background: "white", fontWeight: 800, cursor: "pointer", fontSize: 13 }}>
+          <button onClick={() => loadOrders(false)} style={{ padding: "9px 16px", borderRadius: 12, border: "1px solid var(--border)", background: surface, color: "var(--text)", fontWeight: 800, cursor: "pointer", fontSize: 13 }}>
             🔄 Refresh
           </button>
         </div>
@@ -260,7 +265,7 @@ export default function Orders() {
       {/* ── Filter Panel ── */}
       {showFilters && (
         <div style={{
-          background: "white", borderRadius: 16, border: "1px solid var(--border)",
+          background: surface, borderRadius: 16, border: "1px solid var(--border)",
           boxShadow: "0 4px 24px rgba(0,0,0,0.08)", padding: "20px 22px", marginBottom: 20,
         }}>
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: 14, alignItems: "end" }}>
@@ -284,7 +289,7 @@ export default function Orders() {
             <div>
               <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Date Range</div>
               <select value={datePreset} onChange={e => setDatePreset(e.target.value)}
-                style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border)", fontSize: 13, outline: "none", fontFamily: "inherit", background: "white", cursor: "pointer" }}>
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border)", fontSize: 13, outline: "none", fontFamily: "inherit", background: surface, color: "var(--text)", cursor: "pointer" }}>
                 {DATE_PRESETS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </div>
@@ -293,7 +298,7 @@ export default function Orders() {
             <div>
               <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Status</div>
               <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-                style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border)", fontSize: 13, outline: "none", fontFamily: "inherit", background: "white", cursor: "pointer" }}>
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border)", fontSize: 13, outline: "none", fontFamily: "inherit", background: surface, color: "var(--text)", cursor: "pointer" }}>
                 <option value="all">All Statuses</option>
                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
@@ -303,7 +308,7 @@ export default function Orders() {
             <div>
               <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>City</div>
               <select value={cityFilter} onChange={e => setCityFilter(e.target.value)}
-                style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border)", fontSize: 13, outline: "none", fontFamily: "inherit", background: "white", cursor: "pointer" }}>
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border)", fontSize: 13, outline: "none", fontFamily: "inherit", background: surface, color: "var(--text)", cursor: "pointer" }}>
                 <option value="all">All Cities</option>
                 {allCities.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -313,7 +318,7 @@ export default function Orders() {
             <div>
               <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Payment</div>
               <select value={payFilter} onChange={e => setPayFilter(e.target.value)}
-                style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border)", fontSize: 13, outline: "none", fontFamily: "inherit", background: "white", cursor: "pointer" }}>
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border)", fontSize: 13, outline: "none", fontFamily: "inherit", background: surface, color: "var(--text)", cursor: "pointer" }}>
                 <option value="all">All</option>
                 <option value="paid">Paid</option>
                 <option value="unpaid">Unpaid</option>
@@ -333,8 +338,8 @@ export default function Orders() {
               ].map(opt => (
                 <button key={opt.value} onClick={() => setSortBy(opt.value)} style={{
                   padding: "6px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer",
-                  border: `1px solid ${sortBy === opt.value ? "#111827" : "var(--border)"}`,
-                  background: sortBy === opt.value ? "#111827" : "white",
+                  border: `1px solid ${sortBy === opt.value ? (dark ? "#334155" : "#111827") : "var(--border)"}`,
+                  background: sortBy === opt.value ? (dark ? "#1f2937" : "#111827") : surface,
                   color: sortBy === opt.value ? "white" : "var(--muted)",
                 }}>
                   {opt.label}
@@ -353,7 +358,7 @@ export default function Orders() {
       {/* ── Orders list ── */}
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[1,2,3].map(i => <div key={i} style={{ height: 72, background: "white", borderRadius: 16, border: "1px solid var(--border)" }} />)}
+          {[1,2,3].map(i => <div key={i} style={{ height: 72, background: surface, borderRadius: 16, border: "1px solid var(--border)" }} />)}
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--muted)" }}>
@@ -372,9 +377,14 @@ export default function Orders() {
             const addr   = order.address || {};
             const statusStyle = STATUS_COLORS[order.status] || STATUS_COLORS["Food Processing"];
             const subtotal = (order.amount || 0) - (order.deliveryFee || 0);
+            const isShared = !!order.isSharedDelivery;
+            const sharedBorder = dark ? "rgba(139,92,246,0.45)" : "#ddd6fe";
+            const sharedGlow = dark ? "0 0 0 1px rgba(139,92,246,0.28), 0 10px 22px rgba(76,29,149,0.25)" : "0 8px 18px rgba(76,29,149,0.10)";
+            const sharedAccent = dark ? "#a78bfa" : "#7c3aed";
+            const sharedAccentSoft = dark ? "rgba(124,58,237,0.16)" : "#f5f3ff";
 
             return (
-              <div key={order._id} style={{ background: "white", border: "1px solid var(--border)", borderRadius: 18, boxShadow: "0 8px 18px rgba(17,24,39,0.06)", overflow: "hidden" }}>
+              <div key={order._id} style={{ background: isShared && dark ? "linear-gradient(180deg, rgba(91,33,182,0.18) 0%, rgba(15,23,42,1) 18%)" : surface, border: `1px solid ${isShared ? sharedBorder : "var(--border)"}`, borderRadius: 18, boxShadow: isShared ? sharedGlow : "0 8px 18px rgba(17,24,39,0.06)", overflow: "hidden", position: "relative" }}>
 
                 {/* Header */}
                 <div style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
@@ -406,6 +416,18 @@ export default function Orders() {
                           </>
                         );
                       })()}
+                      {isShared && (
+                        <>
+                          <span style={{ fontSize: 11, fontWeight: 900, padding: "3px 9px", borderRadius: 999, background: sharedAccentSoft, color: sharedAccent, border: `1px solid ${sharedBorder}` }}>
+                            🤝 Shared Route
+                          </span>
+                          {Number(order.sharedSavings || 0) > 0 && (
+                            <span style={{ fontSize: 11, fontWeight: 900, padding: "3px 9px", borderRadius: 999, background: dark ? "rgba(22,163,74,0.16)" : "#f0fdf4", color: "#16a34a", border: "1px solid rgba(34,197,94,0.35)" }}>
+                              Saved AED {Number(order.sharedSavings).toFixed(2)}
+                            </span>
+                          )}
+                        </>
+                      )}
                       {!order.payment && order.paymentMethod !== "cod" && (
                         <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }}>
                           ❌ Unpaid
@@ -421,7 +443,19 @@ export default function Orders() {
                       👤 {addr.firstName} {addr.lastName}{addr.area ? ` — ${addr.area}` : addr.city ? ` — ${addr.city}` : ""}
                       {addr.phone ? <span style={{ marginLeft: 10 }}>📞 {addr.phone}</span> : null}
                     </div>
-                    <div style={{ marginTop: 5, fontSize: 13, color: "#374151" }}>
+                    {isShared && (
+                      <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: sharedAccent, background: sharedAccentSoft, border: `1px solid ${sharedBorder}`, borderRadius: 999, padding: "2px 9px" }}>
+                          2-stop shared route
+                        </span>
+                        {order.sharedMatchedOrderId && (
+                          <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>
+                            Matched #{String(order.sharedMatchedOrderId).slice(-6).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div style={{ marginTop: 5, fontSize: 13, color: "var(--text-secondary)" }}>
                       {order.items?.map((it) => {
                         const selEntries = it.selections
                           ? Object.entries(it.selections).filter(([, v]) => v && (Array.isArray(v) ? v.length > 0 : true))
@@ -441,13 +475,13 @@ export default function Orders() {
 
                 {/* Expanded detail */}
                 {isOpen && (
-                  <div style={{ borderTop: "1px solid var(--border)", padding: "18px 18px 20px", background: "#fafafa" }}>
+                  <div style={{ borderTop: "1px solid var(--border)", padding: "18px 18px 20px", background: softSurface }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.6px", color: "var(--muted)", marginBottom: 10, textTransform: "uppercase" }}>Items Ordered</div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {order.items?.map((it, i) => (
-                            <div key={i} style={{ padding: "12px 14px", background: "white", borderRadius: 12, border: "1px solid var(--border)" }}>
+                            <div key={i} style={{ padding: "12px 14px", background: surface, borderRadius: 12, border: "1px solid var(--border)" }}>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                                 <div>
                                   <div style={{ fontWeight: 900, fontSize: 14 }}>{it.name}</div>
@@ -468,7 +502,7 @@ export default function Orders() {
                                       return (
                                         <div key={k} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                                           <span style={{ fontSize: 12, fontWeight: 800, color: "#92400e", minWidth: 0, flexShrink: 0, background: "#fed7aa", padding: "2px 8px", borderRadius: 6 }}>{k}</span>
-                                          <span style={{ fontSize: 13, fontWeight: 900, color: "#c2410c", padding: "2px 10px", borderRadius: 6, background: "white", border: "1px solid #fed7aa", flex: 1 }}>{val}</span>
+                                          <span style={{ fontSize: 13, fontWeight: 900, color: "#c2410c", padding: "2px 10px", borderRadius: 6, background: surface, border: "1px solid #fed7aa", flex: 1 }}>{val}</span>
                                         </div>
                                       );
                                     })}
@@ -478,12 +512,26 @@ export default function Orders() {
                             </div>
                           ))}
                         </div>
-                        <div style={{ marginTop: 12, padding: "10px 12px", background: "white", borderRadius: 12, border: "1px solid var(--border)" }}>
+                        <div style={{ marginTop: 12, padding: "10px 12px", background: surface, borderRadius: 12, border: "1px solid var(--border)" }}>
                           {order.deliveryFee > 0 && <>
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginBottom: 6 }}><span>Subtotal</span><span>AED {(subtotal + (order.discount || 0)).toFixed(2)}</span></div>
                             {order.discount > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#16a34a", fontWeight: 700, marginBottom: 6 }}><span>Discount {order.promoCode ? `(${order.promoCode})` : ""}</span><span>- AED {order.discount.toFixed(2)}</span></div>}
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginBottom: 6 }}><span>Delivery Fee</span><span>AED {order.deliveryFee.toFixed(2)}</span></div>
                           </>}
+                          {isShared && (
+                            <>
+                              {Number(order.sharedSavings || 0) > 0 && (
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#16a34a", fontWeight: 800, marginBottom: 6 }}>
+                                  <span>Shared savings</span><span>- AED {Number(order.sharedSavings).toFixed(2)}</span>
+                                </div>
+                              )}
+                              {order.sharedMatchedOrderId && (
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                                  <span>Matched order</span><span style={{ fontFamily: "monospace", fontWeight: 700 }}>#{String(order.sharedMatchedOrderId).slice(-6).toUpperCase()}</span>
+                                </div>
+                              )}
+                            </>
+                          )}
                           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, fontSize: 15, borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 4 }}><span>Total</span><span>AED {order.amount}</span></div>
                           {order.paymentMethod === "split" && (
                             <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
@@ -509,26 +557,26 @@ export default function Orders() {
 
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.6px", color: "var(--muted)", marginBottom: 10, textTransform: "uppercase" }}>Delivery Address</div>
-                        <div style={{ padding: "14px 16px", background: "white", borderRadius: 12, border: "1px solid var(--border)", fontSize: 14, lineHeight: 1.9 }}>
+                        <div style={{ padding: "14px 16px", background: surface, borderRadius: 12, border: "1px solid var(--border)", fontSize: 14, lineHeight: 1.9 }}>
                           <div style={{ fontWeight: 900, fontSize: 15, marginBottom: 6 }}>{addr.firstName} {addr.lastName}</div>
-                          {addr.building    && <div style={{ color: "#374151" }}>🏢 {addr.building}</div>}
-                          {addr.apartment   && <div style={{ color: "#374151" }}>🚪 {addr.apartment}</div>}
-                          {addr.street      && <div style={{ color: "#374151" }}>📍 {addr.street}</div>}
-                          {addr.area        && <div style={{ color: "#374151" }}>🗺️ {addr.area}</div>}
-                          {(addr.city || addr.state) && <div style={{ color: "#374151" }}>🏙️ {[addr.city, addr.state].filter(Boolean).join(", ")}</div>}
-                          {(addr.zipcode || addr.country) && <div style={{ color: "#374151" }}>{[addr.zipcode, addr.country].filter(Boolean).join(", ")}</div>}
-                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #f3f4f6", display: "flex", flexDirection: "column", gap: 3 }}>
+                          {addr.building    && <div style={{ color: "var(--text-secondary)" }}>🏢 {addr.building}</div>}
+                          {addr.apartment   && <div style={{ color: "var(--text-secondary)" }}>🚪 {addr.apartment}</div>}
+                          {addr.street      && <div style={{ color: "var(--text-secondary)" }}>📍 {addr.street}</div>}
+                          {addr.area        && <div style={{ color: "var(--text-secondary)" }}>🗺️ {addr.area}</div>}
+                          {(addr.city || addr.state) && <div style={{ color: "var(--text-secondary)" }}>🏙️ {[addr.city, addr.state].filter(Boolean).join(", ")}</div>}
+                          {(addr.zipcode || addr.country) && <div style={{ color: "var(--text-secondary)" }}>{[addr.zipcode, addr.country].filter(Boolean).join(", ")}</div>}
+                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 3 }}>
                             {addr.phone && <div style={{ color: "var(--muted)", fontSize: 13 }}>📞 {addr.phone}</div>}
                             {addr.email && <div style={{ color: "var(--muted)", fontSize: 13 }}>✉️ {addr.email}</div>}
                           </div>
                           {addr.deliveryNotes && (
-                            <div style={{ marginTop: 10, padding: "8px 12px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, fontSize: 13 }}>
+                            <div style={{ marginTop: 10, padding: "8px 12px", background: dark ? "rgba(245,158,11,0.14)" : "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, fontSize: 13 }}>
                               <span style={{ fontWeight: 800, color: "#92400e" }}>📝 Note: </span>
                               <span style={{ color: "#78350f" }}>{addr.deliveryNotes}</span>
                             </div>
                           )}
                         </div>
-                        <div style={{ marginTop: 10, padding: "10px 12px", background: "white", borderRadius: 12, border: "1px solid var(--border)", fontSize: 13 }}>
+                        <div style={{ marginTop: 10, padding: "10px 12px", background: surface, borderRadius: 12, border: "1px solid var(--border)", fontSize: 13 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}><span style={{ color: "var(--muted)" }}>Order ID</span><span style={{ fontWeight: 800, fontFamily: "monospace" }}>#{order._id.slice(-6).toUpperCase()}</span></div>
                           {order.createdAt && (
                             <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -550,7 +598,7 @@ export default function Orders() {
                                   <button key={s} onClick={(e) => { e.stopPropagation(); updateStatus(order._id, s); }} style={{
                                     padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: "pointer",
                                     border: `1px solid ${active ? st.border : "var(--border)"}`,
-                                    background: active ? st.bg : "white",
+                                    background: active ? st.bg : surface,
                                     color: active ? st.color : "var(--muted)",
                                   }}>
                                     {s}

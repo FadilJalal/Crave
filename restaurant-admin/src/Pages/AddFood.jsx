@@ -1,487 +1,751 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
+import { useTheme } from "../ThemeContext";
 
-// ─── helpers ────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2);
 
-const EMPTY_ITEM = (category = "", customizations = []) => ({
-  id: uid(), name: "", category, price: "", description: "",
-  image: null, customizations: JSON.parse(JSON.stringify(customizations)),
-  ingredients: [], // [{inventoryId, itemName, unit, quantityPerOrder}]
-  status: "idle", error: "", uploadedFoodId: null,
+const makeOption = () => ({ id: uid(), label: "", extraPrice: "" });
+
+const makeGroup = () => ({
+  id: uid(),
+  title: "",
+  required: false,
+  multiSelect: false,
+  options: [makeOption()],
 });
 
-const EMPTY_GROUP = () => ({ id: uid(), title: "", required: false, multiSelect: false, options: [{ id: uid(), label: "", extraPrice: 0 }] });
+const makeItem = () => ({
+  id: uid(),
+  name: "",
+  category: "",
+  categoryMode: "existing",
+  price: "",
+  description: "",
+  image: null,
+  customizations: [],
+  ingredients: [],
+  status: "idle",
+  error: "",
+});
 
-// ─── Step indicator ─────────────────────────────────────────────
-function Steps({ current }) {
-  const steps = ["Setup", "Add Items", "Review & Submit"];
+function Stepper({ step, dark }) {
+  const steps = ["Add Items", "Review & Submit"];
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 28 }}>
-      {steps.map((s, i) => (
-        <div key={s} style={{ display: "flex", alignItems: "center", flex: i < steps.length - 1 ? 1 : "none" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            <div style={{
-              width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 900, fontSize: 13,
-              background: i < current ? "#111827" : i === current ? "linear-gradient(135deg,#ff4e2a,#ff6a3d)" : "#f3f4f6",
-              color: i <= current ? "white" : "#9ca3af",
-              boxShadow: i === current ? "0 4px 14px rgba(255,78,42,0.35)" : "none",
-            }}>
-              {i < current ? "✓" : i + 1}
+    <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 20 }}>
+      {steps.map((label, i) => {
+        const active = step === i;
+        const done = i < step;
+        return (
+          <div key={label} style={{ display: "flex", alignItems: "center", flex: i < steps.length - 1 ? 1 : "none" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: 900,
+                  fontSize: 13,
+                  background: done ? "#111827" : active ? "linear-gradient(135deg,#ff4e2a,#ff6a3d)" : (dark ? "#334155" : "#e5e7eb"),
+                  color: done || active ? "#fff" : (dark ? "#cbd5e1" : "#6b7280"),
+                }}
+              >
+                {done ? "✓" : i + 1}
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 800, color: active ? (dark ? "#f8fafc" : "#111827") : (dark ? "#94a3b8" : "#6b7280") }}>
+                {label}
+              </span>
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: i === current ? "#111827" : i < current ? "#374151" : "#9ca3af" }}>{s}</span>
+            {i < steps.length - 1 && (
+              <div
+                style={{
+                  flex: 1,
+                  height: 2,
+                  margin: "0 12px",
+                  borderRadius: 999,
+                  background: done ? "#111827" : (dark ? "#334155" : "#e5e7eb"),
+                }}
+              />
+            )}
           </div>
-          {i < steps.length - 1 && (
-            <div style={{ flex: 1, height: 2, background: i < current ? "#111827" : "#e5e7eb", margin: "0 12px", borderRadius: 999 }} />
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-// ─── Step 1: Setup categories + customization templates ─────────
-function StepSetup({ categories, setCategories, templates, setTemplates, onNext }) {
-  const addCat = () => setCategories(p => [...p, { id: uid(), name: "" }]);
-  const updCat = (id, v) => setCategories(p => p.map(c => c.id === id ? { ...c, name: v } : c));
-  const remCat = (id) => setCategories(p => p.filter(c => c.id !== id));
+function ItemEditor({
+  item,
+  dark,
+  categoryOptions,
+  inventoryItems,
+  onUpdate,
+  onRemove,
+  onAddGroup,
+  onRemoveGroup,
+  onUpdateGroup,
+  onAddOption,
+  onRemoveOption,
+  onUpdateOption,
+  onAddIngredient,
+  onRemoveIngredient,
+}) {
+  const NEW_CATEGORY_VALUE = "__new_category__";
+  const textMain = dark ? "#f8fafc" : "#111827";
+  const textMuted = dark ? "#94a3b8" : "#6b7280";
+  const border = dark ? "rgba(255,255,255,0.12)" : "#e5e7eb";
+  const surface = dark ? "#111827" : "#ffffff";
+  const soft = dark ? "#1f2937" : "#f9fafb";
+  const isCustomCategory = item.categoryMode === "new" || (item.category && !categoryOptions.includes(item.category));
 
-  const addTemplate = () => setTemplates(p => [...p, { id: uid(), name: "", groups: [EMPTY_GROUP()] }]);
-  const updTpl = (id, k, v) => setTemplates(p => p.map(t => t.id === id ? { ...t, [k]: v } : t));
-  const remTpl = (id) => setTemplates(p => p.filter(t => t.id !== id));
-
-  const addGroup = (tid) => setTemplates(p => p.map(t => t.id === tid ? { ...t, groups: [...t.groups, EMPTY_GROUP()] } : t));
-  const updGroup = (tid, gid, k, v) => setTemplates(p => p.map(t => t.id === tid ? { ...t, groups: t.groups.map(g => g.id === gid ? { ...g, [k]: v } : g) } : t));
-  const remGroup = (tid, gid) => setTemplates(p => p.map(t => t.id === tid ? { ...t, groups: t.groups.filter(g => g.id !== gid) } : t));
-  const addOpt = (tid, gid) => setTemplates(p => p.map(t => t.id === tid ? { ...t, groups: t.groups.map(g => g.id === gid ? { ...g, options: [...g.options, { id: uid(), label: "", extraPrice: 0 }] } : g) } : t));
-  const updOpt = (tid, gid, oid, k, v) => setTemplates(p => p.map(t => t.id === tid ? { ...t, groups: t.groups.map(g => g.id === gid ? { ...g, options: g.options.map(o => o.id === oid ? { ...o, [k]: v } : o) } : g) } : t));
-  const remOpt = (tid, gid, oid) => setTemplates(p => p.map(t => t.id === tid ? { ...t, groups: t.groups.map(g => g.id === gid ? { ...g, options: g.options.filter(o => o.id !== oid) } : g) } : t));
-
-  const canNext = categories.some(c => c.name.trim());
+  const availableIngredients = inventoryItems.filter(
+    (inv) => !item.ingredients.some((it) => it.inventoryId === inv._id)
+  );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-      {/* Categories */}
-      <div style={{ background: "white", borderRadius: 20, border: "1px solid var(--border)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
-        <div style={{ padding: "18px 22px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontWeight: 900, fontSize: 16 }}>📂 Menu Categories</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Define the categories your menu items belong to</div>
-          </div>
-          <button type="button" onClick={addCat} style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid var(--border)", background: "white", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>+ Add Category</button>
-        </div>
-        <div style={{ padding: "16px 22px", display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {categories.map(c => (
-            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 6, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 10, padding: "6px 10px" }}>
-              <input value={c.name} onChange={e => updCat(c.id, e.target.value)} placeholder="e.g. Burgers" style={{ border: "none", background: "transparent", outline: "none", fontWeight: 700, fontSize: 14, width: 120, fontFamily: "inherit" }} />
-              <button type="button" onClick={() => remCat(c.id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0 }}>✕</button>
-            </div>
-          ))}
-          {categories.length === 0 && <p style={{ color: "var(--muted)", fontSize: 13 }}>No categories yet — click "+ Add Category"</p>}
-        </div>
-      </div>
-
-      {/* Customization templates */}
-      <div style={{ background: "white", borderRadius: 20, border: "1px solid var(--border)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
-        <div style={{ padding: "18px 22px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontWeight: 900, fontSize: 16 }}>🎛️ Customization Templates</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Build reusable option sets — assign them to any item in the next step</div>
-          </div>
-          <button type="button" onClick={addTemplate} style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid var(--border)", background: "white", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>+ New Template</button>
-        </div>
-        <div style={{ padding: "16px 22px", display: "flex", flexDirection: "column", gap: 16 }}>
-          {templates.length === 0 && (
-            <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <div style={{ fontSize: 36, marginBottom: 8 }}>🎛️</div>
-              <p style={{ color: "var(--muted)", fontSize: 13 }}>No templates yet. Create one to reuse customizations across items.</p>
-              <p style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>Examples: "Drink Choice", "Spice Level", "Size", "Add-ons"</p>
-            </div>
-          )}
-          {templates.map(tpl => (
-            <div key={tpl.id} style={{ border: "1.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
-              <div style={{ padding: "12px 16px", background: "#f9fafb", display: "flex", alignItems: "center", gap: 10 }}>
-                <input value={tpl.name} onChange={e => updTpl(tpl.id, "name", e.target.value)} placeholder='Template name e.g. "Drink Choice"'
-                  style={{ flex: 1, border: "none", background: "transparent", fontWeight: 800, fontSize: 15, outline: "none", fontFamily: "inherit" }} />
-                <button type="button" onClick={() => remTpl(tpl.id)} style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>Remove</button>
-              </div>
-              <div style={{ padding: "12px 16px" }}>
-                {tpl.groups.map(g => (
-                  <div key={g.id} style={{ background: "#fafafa", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginBottom: 10 }}>
-                    <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center", flexWrap: "wrap" }}>
-                      <input value={g.title} onChange={e => updGroup(tpl.id, g.id, "title", e.target.value)} placeholder='Group title e.g. "Size"'
-                        className="input" style={{ flex: 1, minWidth: 130 }} />
-                      <label style={{ fontSize: 12, fontWeight: 600, display: "flex", gap: 5, alignItems: "center", cursor: "pointer", whiteSpace: "nowrap" }}>
-                        <input type="checkbox" checked={g.required} onChange={e => updGroup(tpl.id, g.id, "required", e.target.checked)} /> Required
-                      </label>
-                      <label style={{ fontSize: 12, fontWeight: 600, display: "flex", gap: 5, alignItems: "center", cursor: "pointer", whiteSpace: "nowrap" }}>
-                        <input type="checkbox" checked={g.multiSelect} onChange={e => updGroup(tpl.id, g.id, "multiSelect", e.target.checked)} /> Multi-select
-                      </label>
-                      <button type="button" onClick={() => remGroup(tpl.id, g.id)} style={{ background: "#fff1f1", border: "1px solid #fca5a5", color: "#dc2626", borderRadius: 7, padding: "4px 8px", cursor: "pointer", fontSize: 12 }}>✕</button>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {g.options.map(opt => (
-                        <div key={opt.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input className="input" placeholder='Option e.g. "Large"' value={opt.label} onChange={e => updOpt(tpl.id, g.id, opt.id, "label", e.target.value)} style={{ flex: 1 }} />
-                          <div style={{ position: "relative", width: 100, flexShrink: 0 }}>
-                            <span style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#9ca3af" }}>+AED</span>
-                            <input className="input" type="number" min="0" placeholder="0" value={opt.extraPrice || ""} onChange={e => updOpt(tpl.id, g.id, opt.id, "extraPrice", Number(e.target.value) || 0)} style={{ paddingLeft: 38, width: "100%" }} />
-                          </div>
-                          <button type="button" onClick={() => remOpt(tpl.id, g.id, opt.id)} disabled={g.options.length === 1} style={{ background: "none", border: "1px solid #e5e7eb", borderRadius: 7, color: "#ef4444", cursor: "pointer", padding: "5px 9px", fontSize: 14, opacity: g.options.length === 1 ? 0.3 : 1 }}>✕</button>
-                        </div>
-                      ))}
-                    </div>
-                    <button type="button" onClick={() => addOpt(tpl.id, g.id)} style={{ fontSize: 12, fontWeight: 700, color: "#6366f1", background: "#eef2ff", border: "none", borderRadius: 7, padding: "5px 10px", cursor: "pointer", marginTop: 8 }}>+ Add Option</button>
-                  </div>
-                ))}
-                <button type="button" onClick={() => addGroup(tpl.id)} style={{ fontSize: 12, fontWeight: 700, color: "#374151", background: "white", border: "1px solid #e5e7eb", borderRadius: 8, padding: "6px 14px", cursor: "pointer" }}>+ Add Group</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button type="button" onClick={onNext} disabled={!canNext} style={{ padding: "12px 28px", borderRadius: 12, border: "none", background: canNext ? "linear-gradient(135deg,#ff4e2a,#ff6a3d)" : "#e5e7eb", color: canNext ? "white" : "#9ca3af", fontWeight: 900, fontSize: 15, cursor: canNext ? "pointer" : "not-allowed", boxShadow: canNext ? "0 4px 14px rgba(255,78,42,0.35)" : "none" }}>
-          Next: Add Items →
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Step 2: Add items using the setup ──────────────────────────
-function StepItems({ items, setItems, categories, templates, inventoryItems, onBack, onNext }) {
-  const addItem = (cat = "") => setItems(p => [...p, EMPTY_ITEM(cat)]);
-
-  const updateItem = (id, k, v) => setItems(p => p.map(it => it.id === id ? { ...it, [k]: v } : it));
-  const removeItem = (id) => setItems(p => p.filter(it => it.id !== id));
-
-  const applyTemplate = (itemId, tpl) => {
-    const groups = tpl.groups.map(g => ({
-      title: g.title, required: g.required, multiSelect: g.multiSelect,
-      options: g.options.map(o => ({ label: o.label, extraPrice: o.extraPrice })),
-    }));
-    setItems(p => p.map(it => it.id === itemId ? { ...it, customizations: [...it.customizations, ...groups] } : it));
-  };
-
-  const clearCustomizations = (id) => setItems(p => p.map(it => it.id === id ? { ...it, customizations: [] } : it));
-
-  // ── Ingredient helpers ──
-  const [ingSelectId, setIngSelectId] = useState({});  // {itemId: inventoryId}
-  const [ingSelectQty, setIngSelectQty] = useState({}); // {itemId: qty}
-
-  const addIngredient = (itemId) => {
-    const invId = ingSelectId[itemId];
-    const qty = Number(ingSelectQty[itemId]) || 1;
-    if (!invId || qty <= 0) return;
-    const inv = inventoryItems.find(i => i._id === invId);
-    if (!inv) return;
-    setItems(p => p.map(it => {
-      if (it.id !== itemId) return it;
-      if (it.ingredients.some(i => i.inventoryId === invId)) return it;
-      return { ...it, ingredients: [...it.ingredients, { inventoryId: inv._id, itemName: inv.itemName, unit: inv.unit, quantityPerOrder: qty }] };
-    }));
-    setIngSelectId(p => ({ ...p, [itemId]: "" }));
-    setIngSelectQty(p => ({ ...p, [itemId]: 1 }));
-  };
-
-  const removeIngredient = (itemId, inventoryId) => {
-    setItems(p => p.map(it => it.id === itemId ? { ...it, ingredients: it.ingredients.filter(i => i.inventoryId !== inventoryId) } : it));
-  };
-
-  const grouped = categories.reduce((acc, c) => {
-    acc[c.name] = items.filter(it => it.category === c.name);
-    return acc;
-  }, {});
-  const uncategorized = items.filter(it => !categories.find(c => c.name === it.category));
-
-  const renderItem = (item) => {
-    const preview = item.image ? URL.createObjectURL(item.image) : null;
-    return (
-      <div key={item.id} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 14, padding: "14px 16px", display: "grid", gridTemplateColumns: "80px 1fr auto", gap: 14, alignItems: "start" }}>
-        {/* Image */}
+    <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "80px 1fr auto", gap: 12, alignItems: "start" }}>
         <label style={{ cursor: "pointer" }}>
-          <div style={{ width: 80, height: 72, borderRadius: 10, border: "1.5px dashed #d1d5db", background: "#f9fafb", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {preview ? <img src={preview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 22 }}>📷</span>}
+          <div
+            style={{
+              width: 80,
+              height: 72,
+              borderRadius: 10,
+              border: `1.5px dashed ${dark ? "#475569" : "#d1d5db"}`,
+              background: soft,
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {item.image ? (
+              <img src={URL.createObjectURL(item.image)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <span style={{ fontSize: 22 }}>📷</span>
+            )}
           </div>
-          <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => updateItem(item.id, "image", e.target.files?.[0] || null)} />
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(e) => onUpdate(item.id, "image", e.target.files?.[0] || null)}
+          />
         </label>
 
-        {/* Fields */}
         <div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 100px", gap: 8, marginBottom: 8 }}>
-            <input className="input" value={item.name} onChange={e => updateItem(item.id, "name", e.target.value)} placeholder="Item name *" style={{ fontSize: 13 }} />
-            <input className="input" value={item.category} onChange={e => updateItem(item.id, "category", e.target.value)} placeholder="Category" list="cats-list" style={{ fontSize: 13 }} />
-            <input className="input" type="number" value={item.price} onChange={e => updateItem(item.id, "price", e.target.value)} placeholder="AED" style={{ fontSize: 13 }} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 120px", gap: 8, marginBottom: 8 }}>
+            <input className="input" value={item.name} onChange={(e) => onUpdate(item.id, "name", e.target.value)} placeholder="Food name *" />
+            {categoryOptions.length > 0 ? (
+              <select
+                className="select"
+                value={isCustomCategory ? NEW_CATEGORY_VALUE : item.category}
+                onChange={(e) => {
+                  if (e.target.value === NEW_CATEGORY_VALUE) {
+                    onUpdate(item.id, "categoryMode", "new");
+                    onUpdate(item.id, "category", "");
+                    return;
+                  }
+                  onUpdate(item.id, "categoryMode", "existing");
+                  onUpdate(item.id, "category", e.target.value);
+                }}
+              >
+                <option value="">Select category *</option>
+                {categoryOptions.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+                <option value={NEW_CATEGORY_VALUE}>+ Add new category</option>
+              </select>
+            ) : (
+              <input className="input" value={item.category} onChange={(e) => onUpdate(item.id, "category", e.target.value)} placeholder="Category *" />
+            )}
+            <input className="input" type="number" min="0" step="0.01" value={item.price} onChange={(e) => onUpdate(item.id, "price", e.target.value)} placeholder="Price (AED) *" />
           </div>
-          <textarea className="textarea" value={item.description} onChange={e => updateItem(item.id, "description", e.target.value)} placeholder="Description *" style={{ fontSize: 13, minHeight: 54, resize: "none" }} />
 
-          {/* Template apply */}
-          {templates.length > 0 && (
-            <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>Apply template:</span>
-              {templates.map(t => (
-                <button key={t.id} type="button" onClick={() => applyTemplate(item.id, t)} style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", cursor: "pointer" }}>
-                  + {t.name || "Template"}
-                </button>
-              ))}
-              {item.customizations.length > 0 && (
-                <span style={{ fontSize: 11, color: "#15803d", fontWeight: 700, background: "#dcfce7", padding: "3px 8px", borderRadius: 999 }}>
-                  {item.customizations.length} group{item.customizations.length !== 1 ? "s" : ""} applied
-                </span>
-              )}
-              {item.customizations.length > 0 && (
-                <button type="button" onClick={() => clearCustomizations(item.id)} style={{ fontSize: 11, fontWeight: 700, color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 999, padding: "3px 8px", cursor: "pointer" }}>✕ Clear</button>
-              )}
+          {categoryOptions.length > 0 && isCustomCategory && (
+            <div style={{ marginBottom: 8 }}>
+              <input
+                className="input"
+                value={item.category}
+                onChange={(e) => onUpdate(item.id, "category", e.target.value)}
+                placeholder="Type new category name"
+              />
             </div>
           )}
 
-          {/* Inventory ingredients */}
+          <textarea
+            className="textarea"
+            value={item.description}
+            onChange={(e) => onUpdate(item.id, "description", e.target.value)}
+            placeholder="Description *"
+            style={{ minHeight: 70, resize: "vertical" }}
+          />
+
+          <div style={{ marginTop: 10, padding: 10, borderRadius: 10, background: dark ? "#0f172a" : "#f8fafc", border: `1px solid ${border}` }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: textMain, marginBottom: 8 }}>Customizations</div>
+            {item.customizations.length === 0 && <div style={{ fontSize: 12, color: textMuted }}>No customization groups yet.</div>}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {item.customizations.map((group) => (
+                <div key={group.id} style={{ background: soft, border: `1px solid ${border}`, borderRadius: 10, padding: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                    <input
+                      className="input"
+                      value={group.title}
+                      onChange={(e) => onUpdateGroup(item.id, group.id, "title", e.target.value)}
+                      placeholder="Group title (e.g. Size)"
+                    />
+                    <label style={{ fontSize: 12, fontWeight: 700, color: textMuted, display: "flex", gap: 4, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={group.required}
+                        onChange={(e) => onUpdateGroup(item.id, group.id, "required", e.target.checked)}
+                      />
+                      Required
+                    </label>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: textMuted, display: "flex", gap: 4, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={group.multiSelect}
+                        onChange={(e) => onUpdateGroup(item.id, group.id, "multiSelect", e.target.checked)}
+                      />
+                      Multi
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveGroup(item.id, group.id)}
+                      style={{ border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`, background: dark ? "rgba(127,29,29,0.18)" : "#fef2f2", color: "#dc2626", borderRadius: 8, padding: "6px 8px", fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {group.options.map((opt) => (
+                      <div key={opt.id} style={{ display: "grid", gridTemplateColumns: "1fr 130px auto", gap: 8 }}>
+                        <input
+                          className="input"
+                          value={opt.label}
+                          onChange={(e) => onUpdateOption(item.id, group.id, opt.id, "label", e.target.value)}
+                          placeholder="Option label"
+                        />
+                        <input
+                          className="input"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={opt.extraPrice}
+                          onChange={(e) => onUpdateOption(item.id, group.id, opt.id, "extraPrice", e.target.value)}
+                          placeholder="Extra AED"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onRemoveOption(item.id, group.id, opt.id)}
+                          disabled={group.options.length === 1}
+                          style={{ border: `1px solid ${border}`, background: surface, color: "#ef4444", borderRadius: 8, padding: "6px 8px", fontWeight: 700, cursor: group.options.length === 1 ? "not-allowed" : "pointer", opacity: group.options.length === 1 ? 0.5 : 1 }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => onAddOption(item.id, group.id)}
+                    style={{ marginTop: 8, border: `1px solid ${border}`, background: surface, color: textMain, borderRadius: 8, padding: "6px 10px", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    + Add Option
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onAddGroup(item.id)}
+              style={{ marginTop: 8, border: `1px solid ${border}`, background: surface, color: textMain, borderRadius: 8, padding: "7px 12px", fontWeight: 800, cursor: "pointer" }}
+            >
+              + Add Customization Group
+            </button>
+          </div>
+
           {inventoryItems.length > 0 && (
-            <div style={{ marginTop: 8, padding: "8px 10px", background: "#f0fdf4", border: "1px solid #dcfce7", borderRadius: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#166534", marginBottom: 6 }}>📦 Inventory Ingredients</div>
+            <div style={{ marginTop: 10, padding: 10, borderRadius: 10, background: dark ? "rgba(22,163,74,0.16)" : "#f0fdf4", border: `1px solid ${dark ? "rgba(134,239,172,0.4)" : "#bbf7d0"}` }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: dark ? "#86efac" : "#166534", marginBottom: 6 }}>
+                Inventory Ingredients (Optional)
+              </div>
+
               {item.ingredients.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
-                  {item.ingredients.map(ing => (
-                    <span key={ing.inventoryId} style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 999, background: "#dcfce7", color: "#15803d", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      {ing.itemName} × {ing.quantityPerOrder} {ing.unit}
-                      <button type="button" onClick={() => removeIngredient(item.id, ing.inventoryId)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 11, fontWeight: 900, padding: 0, lineHeight: 1 }}>✕</button>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+                  {item.ingredients.map((ing) => (
+                    <span key={ing.inventoryId} style={{ fontSize: 11, background: dark ? "rgba(21,128,61,0.2)" : "#dcfce7", color: dark ? "#bbf7d0" : "#166534", borderRadius: 999, padding: "4px 8px", display: "inline-flex", gap: 6, alignItems: "center" }}>
+                      {ing.itemName} x {ing.quantityPerOrder} {ing.unit}
+                      <button type="button" onClick={() => onRemoveIngredient(item.id, ing.inventoryId)} style={{ border: "none", background: "none", color: "#ef4444", fontWeight: 900, cursor: "pointer", padding: 0 }}>
+                        ✕
+                      </button>
                     </span>
                   ))}
                 </div>
               )}
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <select className="input" value={ingSelectId[item.id] || ""} onChange={e => setIngSelectId(p => ({ ...p, [item.id]: e.target.value }))} style={{ fontSize: 11, padding: "4px 8px", flex: "1 1 140px" }}>
-                  <option value="">+ Add ingredient...</option>
-                  {inventoryItems.filter(inv => !item.ingredients.some(i => i.inventoryId === inv._id)).map(inv => (
-                    <option key={inv._id} value={inv._id}>{inv.itemName} ({inv.currentStock} {inv.unit})</option>
-                  ))}
-                </select>
-                <input className="input" type="number" min="0.01" step="0.01" value={ingSelectQty[item.id] || 1} onChange={e => setIngSelectQty(p => ({ ...p, [item.id]: e.target.value }))} style={{ width: 60, fontSize: 11, padding: "4px 6px", textAlign: "center" }} />
-                <button type="button" onClick={() => addIngredient(item.id)} disabled={!ingSelectId[item.id]} style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "1px solid #bbf7d0", background: ingSelectId[item.id] ? "#16a34a" : "#e5e7eb", color: ingSelectId[item.id] ? "white" : "#9ca3af", cursor: ingSelectId[item.id] ? "pointer" : "default" }}>+</button>
-              </div>
+
+              <IngredientAdder item={item} available={availableIngredients} onAdd={onAddIngredient} dark={dark} />
             </div>
           )}
         </div>
 
-        {/* Remove */}
-        <button type="button" onClick={() => removeItem(item.id)} style={{ background: "none", border: "none", color: "#d1d5db", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: "4px 6px", marginTop: 2 }}>✕</button>
-      </div>
-    );
-  };
-
-  return (
-    <div>
-      <datalist id="cats-list">{categories.map(c => <option key={c.id} value={c.name} />)}</datalist>
-
-      {/* Category sections */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {categories.filter(c => c.name.trim()).map(cat => (
-          <div key={cat.id} style={{ background: "white", borderRadius: 20, border: "1px solid var(--border)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
-            <div style={{ padding: "14px 18px", background: "#f9fafb", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff4e2a" }} />
-                <span style={{ fontWeight: 900, fontSize: 15 }}>{cat.name}</span>
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>{grouped[cat.name]?.length || 0} items</span>
-              </div>
-              <button type="button" onClick={() => addItem(cat.name)} style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid var(--border)", background: "white", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>
-                + Add Item
-              </button>
-            </div>
-            <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-              {(grouped[cat.name] || []).length === 0
-                ? <p style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "14px 0" }}>No items yet — click "+ Add Item"</p>
-                : (grouped[cat.name] || []).map(renderItem)}
-            </div>
-          </div>
-        ))}
-
-        {/* Uncategorized */}
-        {uncategorized.length > 0 && (
-          <div style={{ background: "white", borderRadius: 20, border: "1px solid var(--border)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
-            <div style={{ padding: "14px 18px", background: "#fffbeb", borderBottom: "1px solid #fef3c7" }}>
-              <span style={{ fontWeight: 900, fontSize: 15, color: "#92400e" }}>⚠️ Uncategorized</span>
-            </div>
-            <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-              {uncategorized.map(renderItem)}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Add item + nav */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20, flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button type="button" onClick={() => onBack()} style={{ padding: "11px 20px", borderRadius: 12, border: "1px solid var(--border)", background: "white", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>← Back</button>
-          <button type="button" onClick={() => addItem()} style={{ padding: "11px 20px", borderRadius: 12, border: "1.5px dashed #d1d5db", background: "white", fontWeight: 800, cursor: "pointer", fontSize: 14 }}>+ Add Item</button>
-        </div>
-        <button type="button" onClick={onNext} disabled={items.length === 0} style={{ padding: "11px 28px", borderRadius: 12, border: "none", background: items.length ? "linear-gradient(135deg,#ff4e2a,#ff6a3d)" : "#e5e7eb", color: items.length ? "white" : "#9ca3af", fontWeight: 900, fontSize: 15, cursor: items.length ? "pointer" : "not-allowed", boxShadow: items.length ? "0 4px 14px rgba(255,78,42,0.35)" : "none" }}>
-          Review {items.length} item{items.length !== 1 ? "s" : ""} →
+        <button
+          type="button"
+          onClick={() => onRemove(item.id)}
+          style={{ border: "none", background: "none", color: dark ? "#64748b" : "#9ca3af", fontSize: 20, cursor: "pointer", padding: "2px 6px" }}
+        >
+          ✕
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Step 3: Review & submit ─────────────────────────────────────
-function StepReview({ items, setItems, onBack }) {
+function IngredientAdder({ item, available, onAdd, dark }) {
+  const [inventoryId, setInventoryId] = useState("");
+  const [qty, setQty] = useState("1");
+
+  const add = () => {
+    if (!inventoryId) return;
+    const quantity = Number(qty);
+    if (!quantity || quantity <= 0) return;
+    onAdd(item.id, inventoryId, quantity);
+    setInventoryId("");
+    setQty("1");
+  };
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 100px auto", gap: 8 }}>
+      <select className="select" value={inventoryId} onChange={(e) => setInventoryId(e.target.value)}>
+        <option value="">Select ingredient</option>
+        {available.map((inv) => (
+          <option key={inv._id} value={inv._id}>
+            {inv.itemName} ({inv.currentStock} {inv.unit})
+          </option>
+        ))}
+      </select>
+      <input className="input" type="number" min="0.01" step="0.01" value={qty} onChange={(e) => setQty(e.target.value)} />
+      <button
+        type="button"
+        onClick={add}
+        disabled={!inventoryId}
+        style={{ border: "none", borderRadius: 10, background: inventoryId ? "#16a34a" : (dark ? "#334155" : "#e5e7eb"), color: inventoryId ? "#fff" : (dark ? "#94a3b8" : "#6b7280"), fontWeight: 800, padding: "0 12px", cursor: inventoryId ? "pointer" : "not-allowed" }}
+      >
+        Add
+      </button>
+    </div>
+  );
+}
+
+export default function AddFood() {
+  const { dark } = useTheme();
+  const [step, setStep] = useState(0);
+  const [items, setItems] = useState([makeItem()]);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [existingCategories, setExistingCategories] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
-  const updateStatus = (id, status, error = "") =>
-    setItems(p => p.map(it => it.id === id ? { ...it, status, error } : it));
+  useEffect(() => {
+    const loadBootstrapData = async () => {
+      try {
+        const [inventoryRes, foodsRes] = await Promise.all([
+          api.get("/api/inventory"),
+          api.get("/api/restaurantadmin/foods"),
+        ]);
 
-  const submitAll = async () => {
-    const pending = items.filter(it => it.status !== "success");
-    const invalid = pending.filter(it => !it.name || !it.price || !it.description || !it.image);
-    if (invalid.length) { alert(`${invalid.length} item(s) missing required fields or image.`); return; }
+        if (inventoryRes.data?.success && Array.isArray(inventoryRes.data.data)) {
+          setInventoryItems(inventoryRes.data.data);
+        }
+
+        if (foodsRes.data?.success && Array.isArray(foodsRes.data.data)) {
+          const cats = [...new Set(
+            foodsRes.data.data
+              .map((food) => (food?.category || "").trim())
+              .filter(Boolean)
+          )].sort((a, b) => a.localeCompare(b));
+          setExistingCategories(cats);
+        }
+      } catch {
+        setInventoryItems([]);
+        setExistingCategories([]);
+      }
+    };
+    loadBootstrapData();
+  }, []);
+
+  const updateItem = (id, key, value) => {
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [key]: value } : it)));
+  };
+
+  const addItem = () => setItems((prev) => [...prev, makeItem()]);
+  const removeItem = (id) => setItems((prev) => prev.filter((it) => it.id !== id));
+
+  const addGroup = (itemId) => {
+    setItems((prev) => prev.map((it) => (it.id === itemId ? { ...it, customizations: [...it.customizations, makeGroup()] } : it)));
+  };
+
+  const removeGroup = (itemId, groupId) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === itemId
+          ? { ...it, customizations: it.customizations.filter((g) => g.id !== groupId) }
+          : it
+      )
+    );
+  };
+
+  const updateGroup = (itemId, groupId, key, value) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === itemId
+          ? {
+              ...it,
+              customizations: it.customizations.map((g) => (g.id === groupId ? { ...g, [key]: value } : g)),
+            }
+          : it
+      )
+    );
+  };
+
+  const addOption = (itemId, groupId) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === itemId
+          ? {
+              ...it,
+              customizations: it.customizations.map((g) =>
+                g.id === groupId ? { ...g, options: [...g.options, makeOption()] } : g
+              ),
+            }
+          : it
+      )
+    );
+  };
+
+  const removeOption = (itemId, groupId, optionId) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === itemId
+          ? {
+              ...it,
+              customizations: it.customizations.map((g) => {
+                if (g.id !== groupId) return g;
+                if (g.options.length === 1) return g;
+                return { ...g, options: g.options.filter((o) => o.id !== optionId) };
+              }),
+            }
+          : it
+      )
+    );
+  };
+
+  const updateOption = (itemId, groupId, optionId, key, value) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === itemId
+          ? {
+              ...it,
+              customizations: it.customizations.map((g) =>
+                g.id === groupId
+                  ? {
+                      ...g,
+                      options: g.options.map((o) => (o.id === optionId ? { ...o, [key]: value } : o)),
+                    }
+                  : g
+              ),
+            }
+          : it
+      )
+    );
+  };
+
+  const addIngredient = (itemId, inventoryId, quantityPerOrder) => {
+    const inv = inventoryItems.find((x) => x._id === inventoryId);
+    if (!inv) return;
+
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.id !== itemId) return it;
+        if (it.ingredients.some((ing) => ing.inventoryId === inventoryId)) return it;
+
+        return {
+          ...it,
+          ingredients: [
+            ...it.ingredients,
+            {
+              inventoryId: inv._id,
+              itemName: inv.itemName,
+              unit: inv.unit,
+              quantityPerOrder,
+            },
+          ],
+        };
+      })
+    );
+  };
+
+  const removeIngredient = (itemId, inventoryId) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === itemId
+          ? { ...it, ingredients: it.ingredients.filter((ing) => ing.inventoryId !== inventoryId) }
+          : it
+      )
+    );
+  };
+
+  const normalizedItems = useMemo(
+    () =>
+      items.map((it) => {
+        const customizations = it.customizations
+          .filter((g) => g.title.trim() && g.options.some((o) => o.label.trim()))
+          .map((g) => ({
+            title: g.title.trim(),
+            required: !!g.required,
+            multiSelect: !!g.multiSelect,
+            options: g.options
+              .filter((o) => o.label.trim())
+              .map((o) => ({ label: o.label.trim(), extraPrice: Number(o.extraPrice) || 0 })),
+          }))
+          .filter((g) => g.options.length > 0);
+
+        return {
+          ...it,
+          name: it.name.trim(),
+          category: it.category.trim(),
+          description: it.description.trim() || it.name.trim(),
+          priceNum: Number(it.price),
+          customizations,
+        };
+      }),
+    [items]
+  );
+
+  const categories = useMemo(
+    () => [...new Set(normalizedItems.map((it) => it.category).filter(Boolean))],
+    [normalizedItems]
+  );
+
+  const categoryOptions = useMemo(
+    () => [...new Set([...existingCategories, ...categories])],
+    [existingCategories, categories]
+  );
+
+  const validCount = normalizedItems.filter(
+    (it) => it.name && it.category && it.image && Number.isFinite(it.priceNum) && it.priceNum > 0
+  ).length;
+
+  const moveToReview = () => {
+    if (validCount === 0) {
+      alert("Add at least 1 complete food item first (name, category, price, description, image).");
+      return;
+    }
+    setStep(1);
+  };
+
+  const uploadAll = async () => {
+    const pending = normalizedItems.filter((it) => it.status !== "success");
+    const invalid = pending.filter(
+      (it) => !it.name || !it.category || !it.image || !Number.isFinite(it.priceNum) || it.priceNum <= 0
+    );
+
+    if (invalid.length) {
+      alert(`${invalid.length} item(s) are incomplete. Please go back and fill required fields.`);
+      return;
+    }
+
     setSubmitting(true);
+
     for (const item of pending) {
-      updateStatus(item.id, "uploading");
+      setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: "uploading", error: "" } : it)));
+
       try {
         const form = new FormData();
         form.append("name", item.name);
         form.append("category", item.category);
-        form.append("price", item.price);
+        form.append("price", String(item.priceNum));
         form.append("description", item.description);
         form.append("image", item.image);
         form.append("customizations", JSON.stringify(item.customizations));
-        const res = await api.post("/api/restaurantadmin/food/add", form, { headers: { "Content-Type": "multipart/form-data" } });
-        if (res.data?.success) {
-          const foodId = res.data.data?._id || res.data.foodId;
-          // Link inventory ingredients if any
-          if (foodId && item.ingredients?.length > 0) {
-            for (const ing of item.ingredients) {
-              try { await api.post(`/api/inventory/${ing.inventoryId}/link`, { foodId, quantityPerOrder: ing.quantityPerOrder }); } catch { }
+
+        const res = await api.post("/api/restaurantadmin/food/add", form, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        if (!res.data?.success) {
+          throw new Error(res.data?.message || "Upload failed");
+        }
+
+        const foodId = res.data?.data?._id;
+        if (foodId && item.ingredients.length > 0) {
+          for (const ing of item.ingredients) {
+            try {
+              await api.post(`/api/inventory/${ing.inventoryId}/link`, {
+                foodId,
+                quantityPerOrder: ing.quantityPerOrder,
+              });
+            } catch {
+              // Keep food upload success even if one ingredient link fails.
             }
           }
-          updateStatus(item.id, "success", "");
-        } else {
-          updateStatus(item.id, "error", res.data?.message || "");
         }
-      } catch (err) {
-        updateStatus(item.id, "error", err?.response?.data?.message || "Network error");
+
+        setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: "success", error: "" } : it)));
+      } catch (error) {
+        const msg = error?.response?.data?.message || error?.message || "Network error";
+        setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: "error", error: msg } : it)));
       }
     }
+
     setSubmitting(false);
   };
 
-  const successCount = items.filter(it => it.status === "success").length;
-  const errorCount   = items.filter(it => it.status === "error").length;
-  const pendingCount = items.filter(it => it.status === "idle").length;
+  const successCount = items.filter((it) => it.status === "success").length;
+  const errorCount = items.filter((it) => it.status === "error").length;
+  const pendingCount = items.filter((it) => it.status === "idle").length;
 
-  return (
-    <div>
-      {/* Summary bar */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
-        {[
-          { label: "Ready to upload", value: pendingCount, color: "#374151", bg: "#f9fafb", border: "#e5e7eb" },
-          { label: "Uploaded ✓",      value: successCount, color: "#15803d", bg: "#f0fdf4", border: "#bbf7d0" },
-          { label: "Failed ✗",        value: errorCount,   color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
-        ].map(s => (
-          <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 14, padding: "14px 18px" }}>
-            <div style={{ fontSize: 28, fontWeight: 900, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: s.color, opacity: 0.8 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Item list */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-        {items.map((item, idx) => {
-          const preview = item.image ? URL.createObjectURL(item.image) : null;
-          const sc = item.status === "success" ? { bg: "#f0fdf4", border: "#bbf7d0", dot: "#22c55e" }
-                   : item.status === "error"   ? { bg: "#fef2f2", border: "#fecaca", dot: "#ef4444" }
-                   : item.status === "uploading" ? { bg: "#eff6ff", border: "#bfdbfe", dot: "#3b82f6" }
-                   : { bg: "white", border: "#e5e7eb", dot: "#e5e7eb" };
-          return (
-            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: sc.bg, border: `1px solid ${sc.border}`, borderRadius: 12 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: sc.dot, flexShrink: 0 }} />
-              {preview && <img src={preview} alt="" style={{ width: 40, height: 36, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 800, fontSize: 14 }}>{item.name}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                  {item.category} · AED {item.price}
-                  {item.customizations.length > 0 && ` · ${item.customizations.length} customization group${item.customizations.length !== 1 ? "s" : ""}`}
-                  {item.ingredients?.length > 0 && <span style={{ color: "#16a34a" }}> · 📦 {item.ingredients.length} ingredient{item.ingredients.length !== 1 ? "s" : ""}</span>}
-                </div>
-              </div>
-              {item.status === "uploading" && <span style={{ fontSize: 12, color: "#3b82f6", fontWeight: 700 }}>Uploading...</span>}
-              {item.status === "success"   && <span style={{ fontSize: 12, color: "#15803d", fontWeight: 700 }}>✓ Done</span>}
-              {item.status === "error"     && <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 700 }}>✗ {item.error}</span>}
-              {item.status === "idle"      && <span style={{ fontSize: 12, color: "#9ca3af" }}>Pending</span>}
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={{ display: "flex", gap: 12, justifyContent: "space-between" }}>
-        <button type="button" onClick={onBack} disabled={submitting} style={{ padding: "11px 20px", borderRadius: 12, border: "1px solid var(--border)", background: "white", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>← Back</button>
-        <button type="button" onClick={submitAll} disabled={submitting || pendingCount === 0} style={{
-          padding: "12px 32px", borderRadius: 12, border: "none",
-          background: (submitting || pendingCount === 0) ? "#9ca3af" : "linear-gradient(135deg,#ff4e2a,#ff6a3d)",
-          color: "white", fontWeight: 900, fontSize: 15, cursor: (submitting || pendingCount === 0) ? "not-allowed" : "pointer",
-          boxShadow: (submitting || pendingCount === 0) ? "none" : "0 4px 14px rgba(255,78,42,0.35)",
-        }}>
-          {submitting ? "Uploading..." : successCount === items.length ? "✓ All Done!" : `🚀 Upload ${pendingCount} Item${pendingCount !== 1 ? "s" : ""}`}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main page ───────────────────────────────────────────────────
-export default function AddFood() {
-  const [step, setStep] = useState(0);
-  const [categories, setCategories] = useState([{ id: uid(), name: "" }]);
-  const [templates, setTemplates] = useState([]);
-  const [items, setItems] = useState([]);
-  const [inventoryItems, setInventoryItems] = useState([]);
-
-  useEffect(() => {
-    const loadInv = async () => {
-      try {
-        const res = await api.get("/api/inventory");
-        if (res.data?.success) setInventoryItems(res.data.data);
-      } catch { }
-    };
-    loadInv();
-  }, []);
+  const textMain = dark ? "#f8fafc" : "#111827";
+  const textMuted = dark ? "#94a3b8" : "#6b7280";
+  const border = dark ? "rgba(255,255,255,0.12)" : "#e5e7eb";
+  const surface = dark ? "#111827" : "#ffffff";
 
   return (
     <RestaurantLayout>
-      <div style={{ marginBottom: 6 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 26, fontWeight: 900, letterSpacing: "-0.5px" }}>Add Menu Items</h2>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>Build your entire menu in one go</p>
+      <div style={{ marginBottom: 8 }}>
+        <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: "-0.5px", color: textMain }}>Add Food</h2>
+        <p style={{ margin: "4px 0 0", fontSize: 13, color: textMuted }}>
+          Add food first, then review and upload.
+        </p>
       </div>
 
-      <div style={{ marginTop: 24 }}>
-        <Steps current={step} />
+      <div style={{ marginTop: 18 }}>
+        <Stepper step={step} dark={dark} />
 
         {step === 0 && (
-          <StepSetup
-            categories={categories} setCategories={setCategories}
-            templates={templates} setTemplates={setTemplates}
-            onNext={() => setStep(1)}
-          />
+          <div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {items.map((item) => (
+                <ItemEditor
+                  key={item.id}
+                  item={item}
+                  dark={dark}
+                  categoryOptions={categoryOptions}
+                  inventoryItems={inventoryItems}
+                  onUpdate={updateItem}
+                  onRemove={removeItem}
+                  onAddGroup={addGroup}
+                  onRemoveGroup={removeGroup}
+                  onUpdateGroup={updateGroup}
+                  onAddOption={addOption}
+                  onRemoveOption={removeOption}
+                  onUpdateOption={updateOption}
+                  onAddIngredient={addIngredient}
+                  onRemoveIngredient={removeIngredient}
+                />
+              ))}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={addItem}
+                style={{ border: `1px dashed ${dark ? "#475569" : "#cbd5e1"}`, borderRadius: 12, background: surface, color: textMain, padding: "11px 18px", fontWeight: 800, cursor: "pointer" }}
+              >
+                + Add Another Food
+              </button>
+
+              <button
+                type="button"
+                onClick={moveToReview}
+                disabled={validCount === 0}
+                style={{ border: "none", borderRadius: 12, background: validCount === 0 ? (dark ? "#334155" : "#e5e7eb") : "linear-gradient(135deg,#ff4e2a,#ff6a3d)", color: validCount === 0 ? (dark ? "#94a3b8" : "#6b7280") : "#fff", padding: "11px 24px", fontWeight: 900, cursor: validCount === 0 ? "not-allowed" : "pointer" }}
+              >
+                Review {validCount} Item{validCount !== 1 ? "s" : ""} →
+              </button>
+            </div>
+          </div>
         )}
+
         {step === 1 && (
-          <StepItems
-            items={items} setItems={setItems}
-            categories={categories} templates={templates}
-            inventoryItems={inventoryItems}
-            onBack={() => setStep(0)}
-            onNext={() => setStep(2)}
-          />
-        )}
-        {step === 2 && (
-          <StepReview
-            items={items} setItems={setItems}
-            onBack={() => setStep(1)}
-          />
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 10, marginBottom: 14 }}>
+              <div style={{ background: dark ? "#1e293b" : "#f9fafb", border: `1px solid ${border}`, borderRadius: 12, padding: 12 }}>
+                <div style={{ fontSize: 24, fontWeight: 900, color: textMain }}>{pendingCount}</div>
+                <div style={{ fontSize: 12, color: textMuted, fontWeight: 700 }}>Pending</div>
+              </div>
+              <div style={{ background: dark ? "rgba(22,163,74,0.2)" : "#f0fdf4", border: `1px solid ${dark ? "rgba(134,239,172,0.4)" : "#bbf7d0"}`, borderRadius: 12, padding: 12 }}>
+                <div style={{ fontSize: 24, fontWeight: 900, color: dark ? "#bbf7d0" : "#166534" }}>{successCount}</div>
+                <div style={{ fontSize: 12, color: dark ? "#bbf7d0" : "#166534", fontWeight: 700 }}>Uploaded</div>
+              </div>
+              <div style={{ background: dark ? "rgba(127,29,29,0.2)" : "#fef2f2", border: `1px solid ${dark ? "rgba(252,165,165,0.4)" : "#fecaca"}`, borderRadius: 12, padding: 12 }}>
+                <div style={{ fontSize: 24, fontWeight: 900, color: dark ? "#fca5a5" : "#991b1b" }}>{errorCount}</div>
+                <div style={{ fontSize: 12, color: dark ? "#fca5a5" : "#991b1b", fontWeight: 700 }}>Failed</div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+              {items.map((item) => {
+                const statusColor =
+                  item.status === "success"
+                    ? (dark ? "#86efac" : "#166534")
+                    : item.status === "error"
+                    ? (dark ? "#fca5a5" : "#991b1b")
+                    : item.status === "uploading"
+                    ? (dark ? "#93c5fd" : "#1d4ed8")
+                    : textMuted;
+
+                return (
+                  <div key={item.id} style={{ background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
+                    {item.image ? (
+                      <img src={URL.createObjectURL(item.image)} alt="" style={{ width: 44, height: 40, borderRadius: 8, objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ width: 44, height: 40, borderRadius: 8, background: dark ? "#334155" : "#f3f4f6", display: "grid", placeItems: "center" }}>📷</div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: textMain }}>{item.name || "Untitled"}</div>
+                      <div style={{ fontSize: 12, color: textMuted }}>
+                        {item.category || "No category"} · AED {item.price || "0"}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: statusColor }}>
+                      {item.status === "idle" && "Pending"}
+                      {item.status === "uploading" && "Uploading..."}
+                      {item.status === "success" && "Done"}
+                      {item.status === "error" && `Error: ${item.error || "Upload failed"}`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => setStep(0)}
+                disabled={submitting}
+                style={{ border: `1px solid ${border}`, borderRadius: 12, background: surface, color: textMain, padding: "11px 18px", fontWeight: 800, cursor: submitting ? "not-allowed" : "pointer" }}
+              >
+                ← Back to Edit
+              </button>
+
+              <button
+                type="button"
+                onClick={uploadAll}
+                disabled={submitting || items.length === 0}
+                style={{ border: "none", borderRadius: 12, background: submitting || items.length === 0 ? (dark ? "#334155" : "#9ca3af") : "linear-gradient(135deg,#ff4e2a,#ff6a3d)", color: "#fff", padding: "11px 24px", fontWeight: 900, cursor: submitting || items.length === 0 ? "not-allowed" : "pointer" }}
+              >
+                {submitting ? "Uploading..." : `Upload ${items.length} Item${items.length !== 1 ? "s" : ""}`}
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </RestaurantLayout>

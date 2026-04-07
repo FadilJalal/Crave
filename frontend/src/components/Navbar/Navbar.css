@@ -103,6 +103,30 @@
 /* Nav actions group */
 .nb-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 
+.nb-theme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 50px;
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  font-family: var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.nb-theme-btn:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
 /* Restaurants link */
 .nb-restaurants-link {
   display: flex; align-items: center; gap: 6px;
@@ -243,6 +267,7 @@
   .nb-inner { padding: 0 16px; gap: 10px; }
   .nb-location { display: none; }
   .nb-search-wrap { max-width: none; }
+  .nb-theme-btn { padding: 9px 12px; font-size: 12px; }
   .nb-cart-label { display: none; }
   .nb-cart-btn { padding: 9px 12px; }
 }
@@ -258,3 +283,40 @@
 .nb-loc-map { height:280px; width:100%; }
 .nb-loc-map-confirm { margin:10px 14px 14px; padding:10px; border-radius:50px; border:none; background:var(--brand); color:white; font-size:13px; font-weight:800; font-family:var(--font-body); cursor:pointer; box-shadow:0 4px 14px rgba(255,48,8,0.25); transition:all 0.2s; }
 .nb-loc-map-confirm:hover { background:var(--brand-dark); transform:translateY(-1px); }
+
+[data-theme="dark"] .nb-location,
+[data-theme="dark"] .nb-search,
+[data-theme="dark"] .nb-theme-btn,
+[data-theme="dark"] .nb-restaurants-link,
+[data-theme="dark"] .nb-cart-btn,
+[data-theme="dark"] .nb-avatar {
+  background: #1a1b2e;
+  border-color: rgba(255,255,255,0.12);
+}
+
+[data-theme="dark"] .nb-search:focus-within,
+[data-theme="dark"] .nb-search-open {
+  background: #111827;
+}
+
+[data-theme="dark"] .nb-search-results,
+[data-theme="dark"] .nb-dropdown,
+[data-theme="dark"] .nb-loc-dropdown {
+  background: #111827;
+  border-color: rgba(255,255,255,0.12);
+}
+
+[data-theme="dark"] .nb-search-item:hover,
+[data-theme="dark"] .nb-dd-item:hover,
+[data-theme="dark"] .nb-loc-suggestion:hover,
+[data-theme="dark"] .nb-loc-restaurant:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+[data-theme="dark"] .nb-dd-item,
+[data-theme="dark"] .nb-dd-header,
+[data-theme="dark"] .nb-si-name,
+[data-theme="dark"] .nb-loc-rest-name,
+[data-theme="dark"] .nb-signin {
+  color: var(--text);
+}

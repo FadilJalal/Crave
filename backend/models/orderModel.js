@@ -30,6 +30,23 @@ const orderSchema = new mongoose.Schema(
       default: 0,
     },
 
+    // Shared delivery selection metadata (MVP)
+    isSharedDelivery: {
+      type: Boolean,
+      default: false,
+    },
+
+    sharedMatchedOrderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "order",
+      default: null,
+    },
+
+    sharedSavings: {
+      type: Number,
+      default: 0,
+    },
+
     address: {
       type: Object,
       required: true,

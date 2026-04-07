@@ -15,16 +15,13 @@ import ReviewSummary from '../../components/ReviewSummary/ReviewSummary';
 const RestaurantMenu = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const { url, food_list, fetchFoodList, cartItems, currency, addToCart } = useContext(StoreContext);
+  const { url, food_list, fetchFoodList, cartItems, currency } = useContext(StoreContext);
   const [restaurant, setRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('All');
   const [restaurantAvgRating, setRestaurantAvgRating] = useState(null);
   const [restaurantReviewCount, setRestaurantReviewCount] = useState(0);
   const [reviewsRefreshKey, setReviewsRefreshKey] = useState(0);
-  const [comboBudget, setComboBudget] = useState(60);
-  const [comboLoading, setComboLoading] = useState(false);
-  const [comboResult, setComboResult] = useState(null);
   const navigate = useNavigate();
 
   // ✅ Force refresh when admin toggles food (detects ?refresh= param from Menu.jsx hack)
@@ -144,81 +141,6 @@ const RestaurantMenu = () => {
     return { count, total: Math.round(total * 100) / 100 };
   }, [cartItems, food_list, id]);
 
-  const buildCombo = () => {
-    const budget = Math.max(20, Number(comboBudget) || 0);
-    const candidates = menuItems.filter((item) => item.inStock !== false && Number(item.price) > 0);
-
-    if (!candidates.length) {
-      setComboResult(null);
-      toast.info('No available items to build a combo right now.');
-      return;
-    }
-
-    setComboLoading(true);
-
-    setTimeout(() => {
-      let best = null;
-      const targetItems = budget < 45 ? 2 : budget < 85 ? 3 : 4;
-
-      for (let attempt = 0; attempt < 120; attempt++) {
-        const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-        const picked = [];
-        const usedCategories = new Set();
-        let total = 0;
-        let score = 0;
-
-        for (const item of shuffled) {
-          if (picked.length >= targetItems) break;
-          if (total + item.price > budget) continue;
-
-          const category = String(item.category || 'other').toLowerCase();
-          const rating = Number(item.avgRating) > 0 ? Number(item.avgRating) : 3.8;
-          const ratingCount = Number(item.ratingCount) || 0;
-
-          const diversityBonus = usedCategories.has(category) ? 0 : 1.2;
-          const qualityScore = rating * 3 + Math.min(2.2, Math.log10(ratingCount + 1) * 1.8);
-          const valueScore = qualityScore - item.price * 0.06 + diversityBonus;
-
-          if (valueScore < 8.5 && picked.length > 0) continue;
-
-          picked.push(item);
-          usedCategories.add(category);
-          total += item.price;
-          score += valueScore;
-        }
-
-        if (!picked.length) continue;
-
-        const budgetUse = total / budget;
-        const fitBonus = budgetUse > 0.72 && budgetUse <= 1 ? 2.2 : 0;
-        const finalScore = score + fitBonus + usedCategories.size * 0.3;
-
-        if (!best || finalScore > best.score) {
-          best = { items: picked, total, score: finalScore, budget };
-        }
-      }
-
-      if (!best) {
-        toast.info('Could not build a combo for this budget. Try a higher amount.');
-        setComboResult(null);
-      } else {
-        setComboResult({
-          items: best.items,
-          total: Math.round(best.total * 100) / 100,
-          budget: best.budget,
-          saved: Math.round((best.budget - best.total) * 100) / 100,
-        });
-      }
-
-      setComboLoading(false);
-    }, 350);
-  };
-
-  const addComboToCart = () => {
-    if (!comboResult?.items?.length) return;
-    comboResult.items.forEach((item) => addToCart(item._id));
-    toast.success('AI combo added to cart');
-  };
 
 
 
@@ -324,49 +246,6 @@ const RestaurantMenu = () => {
       )}
 
       <SurgeIndicator restaurantId={id} />
-
-      <div className='rm-ai-combo'>
-        <div className='rm-ai-combo-top'>
-          <h3 className='rm-ai-combo-title'>AI Combo Builder</h3>
-          <p className='rm-ai-combo-sub'>Build a balanced combo under your budget.</p>
-        </div>
-
-        <div className='rm-ai-combo-controls'>
-          <label className='rm-ai-combo-label'>Budget ({currency.trim()})</label>
-          <input
-            className='rm-ai-combo-input'
-            type='number'
-            min='20'
-            step='1'
-            value={comboBudget}
-            onChange={(e) => setComboBudget(e.target.value)}
-          />
-          <button className='rm-ai-combo-btn' onClick={buildCombo} disabled={comboLoading || !menuItems.length}>
-            {comboLoading ? 'Building…' : 'Generate Combo'}
-          </button>
-        </div>
-
-        {comboResult?.items?.length > 0 && (
-          <div className='rm-ai-combo-result'>
-            <div className='rm-ai-combo-meta'>
-              <span>Total: {currency}{comboResult.total}</span>
-              <span>Budget: {currency}{comboResult.budget}</span>
-              <span>Left: {currency}{comboResult.saved}</span>
-            </div>
-
-            <div className='rm-ai-combo-items'>
-              {comboResult.items.map((item) => (
-                <div key={item._id} className='rm-ai-combo-item'>
-                  <p className='rm-ai-combo-item-name'>{item.name}</p>
-                  <p className='rm-ai-combo-item-meta'>{item.category || 'Food'} · {currency}{item.price}</p>
-                </div>
-              ))}
-            </div>
-
-            <button className='rm-ai-combo-add' onClick={addComboToCart}>Add Combo to Cart</button>
-          </div>
-        )}
-      </div>
 
       <div className='rm-menu-header'>
         <h2 className='rm-menu-title'>Menu</h2>
