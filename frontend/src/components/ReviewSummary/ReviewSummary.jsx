@@ -13,7 +13,8 @@ const ReviewSummary = ({ restaurantId, refreshKey = 0 }) => {
     
     const fetchSummary = async () => {
       try {
-        const res = await axios.get(`${url}/api/ai/review-summary/${restaurantId}`);
+        const cacheKey = Date.now(); // Force fresh data
+        const res = await axios.get(`${url}/api/ai/review-summary/${restaurantId}?_=${cacheKey}`);
         if (res.data.success) {
           setSummary(res.data.data);
         }

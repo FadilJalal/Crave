@@ -10,10 +10,6 @@ export function ThemeProvider({ children }) {
     localStorage.setItem("as_theme", dark ? "dark" : "light");
   }, [dark]);
 
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   return (
     <ThemeContext.Provider value={{ dark, toggle: () => setDark(d => !d) }}>
       {children}

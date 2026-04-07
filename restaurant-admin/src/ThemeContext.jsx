@@ -3,17 +3,16 @@ import { createContext, useContext, useEffect, useState } from "react";
 const ThemeContext = createContext({ dark: false, toggle: () => {} });
 
 export function ThemeProvider({ children }) {
-  const [dark, setDark] = useState(() => localStorage.getItem("ra_theme") === "dark");
+  const [dark, setDark] = useState(() => {
+    const isDark = localStorage.getItem("ra_theme") === "dark";
+    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+    return isDark;
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
     localStorage.setItem("ra_theme", dark ? "dark" : "light");
   }, [dark]);
-
-  // Apply on first render too
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <ThemeContext.Provider value={{ dark, toggle: () => setDark(d => !d) }}>

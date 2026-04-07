@@ -7,6 +7,8 @@
   "scripts": {
     "server": "nodemon --quiet server.js",
     "start": "node server.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "cleanup:removed-ai-features": "node scripts/removeDeprecatedAIFeatures.js"
   },
   "author": "",
@@ -28,5 +30,14 @@
     "stripe": "^14.17.0",
     "validator": "^13.11.0",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "jest": "^30.0.5"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
   }
 }

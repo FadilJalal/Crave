@@ -400,6 +400,10 @@ router.get("/review-summary/:restaurantId", async (req, res) => {
     const raw = data?.choices?.[0]?.message?.content || "{}";
     const parsed = JSON.parse(raw);
 
+    // Filter out placeholder values
+    const isPlaceholder = (str) => ["theme1", "theme2", "issue1", "issue2", "one sentence"].includes(str?.toLowerCase?.());
+    const cleanArray = (arr) => Array.isArray(arr) ? arr.filter(item => !isPlaceholder(item)) : [];
+    
     const ratingAvg = Math.round(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length * 10) / 10;
 
     res.json({
@@ -408,14 +412,27 @@ router.get("/review-summary/:restaurantId", async (req, res) => {
         totalReviews: reviews.length,
         avgRating: ratingAvg,
         summary: parsed?.summary || "See themes below",
-        positiveThemes: Array.isArray(parsed?.positive) ? parsed.positive.slice(0, 5) : [],
-        negativeThemes: Array.isArray(parsed?.negative) ? parsed.negative.slice(0, 4) : [],
+        positiveThemes: cleanArray(parsed?.positive).slice(0, 5),
+        negativeThemes: cleanArray(parsed?.negative).slice(0, 4),
         aiGenerated: true,
       },
     });
   } catch (e) {
     console.error("[ai/review-summary]", e.message);
-    res.json({ success: false, message: "Review summary failed" });
+    // Return empty themes instead of failing, so UI doesn't break
+    const reviews = await reviewModel.find({ restaurantId: req.params.restaurantId }).lean().catch(() => []);
+    const ratingAvg = reviews.length ? Math.round(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length * 10) / 10 : 0;
+    res.json({
+      success: true,
+      data: {
+        totalReviews: reviews.length,
+        avgRating: ratingAvg,
+        summary: "Unable to generate AI summary",
+        positiveThemes: [],
+        negativeThemes: [],
+        aiGenerated: false,
+      },
+    });
   }
 });
 

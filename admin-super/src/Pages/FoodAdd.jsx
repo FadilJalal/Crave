@@ -36,7 +36,6 @@ export default function FoodAdd() {
 
   useEffect(() => {
     fetchRestaurants();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onSubmitHandler = async (e) => {

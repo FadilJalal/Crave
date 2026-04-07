@@ -9,7 +9,17 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'react/jsx-runtime'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          vendor: ['axios', 'react-toastify'],
+        },
+      },
+    },
+  },
   server: {
-    port: 5175,
+    port: 5174,
   },
 })
