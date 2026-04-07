@@ -171,8 +171,10 @@ export default function Menu() {
     fontSize: 11, fontWeight: 800, color: "var(--muted)",
     marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px",
   };
-  const panelBg = dark ? "#1f2937" : "#fff";
-  const rowBg = dark ? "#1f2937" : "#ffffff";
+  const panelBg = dark ? "var(--sidebar-bg)" : "#fff";
+  const panelText = dark ? "var(--sidebar-text)" : "#1a1d23";
+  const rowBg = dark ? "var(--sidebar-bg)" : "#fff";
+  const rowText = dark ? "var(--sidebar-text)" : "#1a1d23";
   const rowBorder = dark ? "1px solid rgba(255,255,255,0.1)" : "1px solid var(--border)";
   const rowShadow = dark ? "0 2px 14px rgba(0,0,0,0.28)" : "0 2px 10px rgba(17,24,39,0.04)";
   const softText = dark ? "rgba(255,255,255,0.65)" : "#9ca3af";
@@ -190,7 +192,7 @@ export default function Menu() {
       </div>
 
       {!loading && (
-        <div style={{ background: panelBg, border: rowBorder, borderRadius: 16,
+        <div style={{ background: panelBg, color: panelText, border: rowBorder, borderRadius: 16,
           padding: "18px 20px", marginBottom: 24 }}>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, alignItems: "end" }}>
@@ -303,7 +305,7 @@ export default function Menu() {
         <div className="list">
           {filtered.map(f => {
             return (
-              <div key={f._id} className="list-row" style={{ background: rowBg, border: rowBorder, boxShadow: rowShadow, gap: 12, flexWrap: "wrap" }}>
+              <div key={f._id} className="list-row" style={{ background: rowBg, color: rowText, border: rowBorder, boxShadow: rowShadow, gap: 12, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: "1 1 260px" }}>
                   <div style={{ position: "relative" }}>
                     <img

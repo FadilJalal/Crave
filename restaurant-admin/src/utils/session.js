@@ -4,8 +4,7 @@ const FRONTEND_FALLBACK_URL = "http://localhost:5174";
 export const DASHBOARD_PATH = "/dashboard";
 
 export function redirectToFrontend() {
-  const target = import.meta.env.VITE_FRONTEND_URL || FRONTEND_FALLBACK_URL;
-  window.location.href = target;
+  window.location.href = "http://localhost:5173";
 }
 
 export function clearRestaurantSession() {

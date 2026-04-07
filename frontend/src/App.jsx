@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react'
 import Home from './pages/Home/Home'
 import Footer from './components/Footer/Footer'
@@ -17,6 +16,11 @@ import ResetPassword from './pages/ResetPassword/ResetPassword'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 import OrderTracking from './pages/OrderTracking/OrderTracking'
 import { NotificationProvider } from './Context/NotificationContext'
+import PaymentMethods from './pages/PaymentMethods';
+import Addresses from './pages/Addresses';
+import Favourites from './pages/Favourites';
+import Language from './pages/Language';
+import Settings from './pages/Settings';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -56,6 +60,11 @@ const App = () => {
             <Route path='/restaurants' element={<Restaurants />} />
             <Route path='/restaurants/:id' element={<RestaurantMenu />} />
             <Route path='/reset-password' element={<ResetPassword />} />
+            <Route path='/payment-methods' element={<PaymentMethods />} />
+            <Route path='/addresses' element={<Addresses />} />
+            <Route path='/favourites' element={<Favourites />} />
+            <Route path='/language' element={<Language />} />
+            <Route path='/settings' element={<Settings />} />
           </Routes>
         </ErrorBoundary>
       </div>

@@ -9,59 +9,59 @@ const STATUS_OPTIONS = ["Food Processing", "Out for delivery", "Delivered", "Can
 const STATUS_COLORS = {
   "Food Processing": { bg: "#fff7ed", color: "#c2410c", border: "#fed7aa" },
   "Out for delivery": { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
-  "Delivered":        { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
-  "Cancelled":        { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" },
+  "Delivered": { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
+  "Cancelled": { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" },
 };
 
 const DATE_PRESETS = [
-  { label: "All Time",   value: "all" },
-  { label: "Today",      value: "today" },
-  { label: "Yesterday",  value: "yesterday" },
-  { label: "Last 7 days",value: "7days" },
-  { label: "Last 30 days",value: "30days" },
+  { label: "All Time", value: "all" },
+  { label: "Today", value: "today" },
+  { label: "Yesterday", value: "yesterday" },
+  { label: "Last 7 days", value: "7days" },
+  { label: "Last 30 days", value: "30days" },
 ];
 
 function isInDateRange(dateStr, preset) {
   if (preset === "all") return true;
-  const d   = new Date(dateStr);
+  const d = new Date(dateStr);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (preset === "today")     return d >= today;
-  if (preset === "yesterday") { const y = new Date(today); y.setDate(y.getDate()-1); return d >= y && d < today; }
-  if (preset === "7days")     { const t = new Date(today); t.setDate(t.getDate()-7); return d >= t; }
-  if (preset === "30days")    { const t = new Date(today); t.setDate(t.getDate()-30); return d >= t; }
+  if (preset === "today") return d >= today;
+  if (preset === "yesterday") { const y = new Date(today); y.setDate(y.getDate() - 1); return d >= y && d < today; }
+  if (preset === "7days") { const t = new Date(today); t.setDate(t.getDate() - 7); return d >= t; }
+  if (preset === "30days") { const t = new Date(today); t.setDate(t.getDate() - 30); return d >= t; }
   return true;
 }
 
 export default function Orders() {
   const { dark } = useTheme();
-  const [orders, setOrders]     = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
 
   // ── New: sound + auto-refresh state ──
   const [soundEnabled, setSoundEnabled] = useState(() => {
     try { return localStorage.getItem("crave_sound") !== "off"; } catch { return true; }
   });
-  const [lastRefresh, setLastRefresh]   = useState(null);
-  const knownIdsRef  = useRef(null); // null = first load ever
-  const audioCtxRef  = useRef(null);
-  const intervalRef  = useRef(null);
+  const [lastRefresh, setLastRefresh] = useState(null);
+  const knownIdsRef = useRef(null); // null = first load ever
+  const audioCtxRef = useRef(null);
+  const intervalRef = useRef(null);
 
   // Filters
-  const [search,       setSearch]       = useState("");
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [datePreset,   setDatePreset]   = useState("all");
-  const [payFilter,    setPayFilter]    = useState("all");
-  const [sortBy,       setSortBy]       = useState("newest");
-  const [showFilters,  setShowFilters]  = useState(true);
+  const [datePreset, setDatePreset] = useState("all");
+  const [payFilter, setPayFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
+  const [showFilters, setShowFilters] = useState(true);
 
   const toggleExpand = (id) =>
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   // Persist sound pref
   useEffect(() => {
-    try { localStorage.setItem("crave_sound", soundEnabled ? "on" : "off"); } catch {}
+    try { localStorage.setItem("crave_sound", soundEnabled ? "on" : "off"); } catch { }
   }, [soundEnabled]);
 
   // 3-tone ascending beep via Web Audio API — no file needed
@@ -72,7 +72,7 @@ export default function Orders() {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       const ctx = audioCtxRef.current;
       const beep = (freq, start, dur) => {
-        const osc  = ctx.createOscillator();
+        const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
@@ -84,10 +84,10 @@ export default function Orders() {
         osc.start(ctx.currentTime + start);
         osc.stop(ctx.currentTime + start + dur + 0.05);
       };
-      beep(880,  0,    0.12);
+      beep(880, 0, 0.12);
       beep(1100, 0.15, 0.12);
       beep(1320, 0.30, 0.18);
-    } catch {}
+    } catch { }
   }, [soundEnabled]);
 
   const loadOrders = useCallback(async (isBackground = false) => {
@@ -170,19 +170,19 @@ export default function Orders() {
     }
 
     if (statusFilter !== "all") result = result.filter(o => o.status === statusFilter);
-    if (payFilter    !== "all") result = result.filter(o => payFilter === "paid" ? o.payment : !o.payment);
-    if (cityFilter   !== "all") result = result.filter(o => o.address?.city === cityFilter);
-    if (datePreset   !== "all") result = result.filter(o => isInDateRange(o.createdAt, datePreset));
+    if (payFilter !== "all") result = result.filter(o => payFilter === "paid" ? o.payment : !o.payment);
+    if (cityFilter !== "all") result = result.filter(o => o.address?.city === cityFilter);
+    if (datePreset !== "all") result = result.filter(o => isInDateRange(o.createdAt, datePreset));
 
     result.sort((a, b) => {
       const aDelivered = a.status === "Delivered";
       const bDelivered = b.status === "Delivered";
       if (aDelivered !== bDelivered) return aDelivered ? 1 : -1;
 
-      if (sortBy === "newest")  return new Date(b.createdAt) - new Date(a.createdAt);
-      if (sortBy === "oldest")  return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortBy === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortBy === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
       if (sortBy === "highest") return (b.amount || 0) - (a.amount || 0);
-      if (sortBy === "lowest")  return (a.amount || 0) - (b.amount || 0);
+      if (sortBy === "lowest") return (a.amount || 0) - (b.amount || 0);
       return 0;
     });
 
@@ -199,7 +199,9 @@ export default function Orders() {
     setCityFilter("all"); setDatePreset("all"); setSortBy("newest");
   };
 
-  const surface = dark ? "#0f172a" : "white";
+  // White in light mode, sidebar color in dark mode
+  const surface = dark ? "var(--sidebar-bg)" : "#fff";
+  const surfaceText = dark ? "var(--sidebar-text)" : "#1a1d23";
   const softSurface = dark ? "#111827" : "#fafafa";
 
   return (
@@ -247,7 +249,7 @@ export default function Orders() {
             }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+              <line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="11" y1="18" x2="13" y2="18" />
             </svg>
             Filters
             {activeFilterCount > 0 && (
@@ -265,7 +267,7 @@ export default function Orders() {
       {/* ── Filter Panel ── */}
       {showFilters && (
         <div style={{
-          background: surface, borderRadius: 16, border: "1px solid var(--border)",
+          background: surface, color: surfaceText, borderRadius: 16, border: "1px solid var(--border)",
           boxShadow: "0 4px 24px rgba(0,0,0,0.08)", padding: "20px 22px", marginBottom: 20,
         }}>
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: 14, alignItems: "end" }}>
@@ -275,7 +277,7 @@ export default function Orders() {
               <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Search</div>
               <div style={{ position: "relative" }}>
                 <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
                 <input
                   value={search} onChange={e => setSearch(e.target.value)}
@@ -358,7 +360,7 @@ export default function Orders() {
       {/* ── Orders list ── */}
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[1,2,3].map(i => <div key={i} style={{ height: 72, background: surface, borderRadius: 16, border: "1px solid var(--border)" }} />)}
+          {[1, 2, 3].map(i => <div key={i} style={{ height: 72, background: surface, borderRadius: 16, border: "1px solid var(--border)" }} />)}
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--muted)" }}>
@@ -374,17 +376,22 @@ export default function Orders() {
         <div className="list">
           {filtered.map((order) => {
             const isOpen = expanded[order._id];
-            const addr   = order.address || {};
+            const addr = order.address || {};
             const statusStyle = STATUS_COLORS[order.status] || STATUS_COLORS["Food Processing"];
             const subtotal = (order.amount || 0) - (order.deliveryFee || 0);
             const isShared = !!order.isSharedDelivery;
-            const sharedBorder = dark ? "rgba(139,92,246,0.45)" : "#ddd6fe";
-            const sharedGlow = dark ? "0 0 0 1px rgba(139,92,246,0.28), 0 10px 22px rgba(76,29,149,0.25)" : "0 8px 18px rgba(76,29,149,0.10)";
-            const sharedAccent = dark ? "#a78bfa" : "#7c3aed";
-            const sharedAccentSoft = dark ? "rgba(124,58,237,0.16)" : "#f5f3ff";
+            // Removed purple border/glow for shared orders
 
             return (
-              <div key={order._id} style={{ background: isShared && dark ? "linear-gradient(180deg, rgba(91,33,182,0.18) 0%, rgba(15,23,42,1) 18%)" : surface, border: `1px solid ${isShared ? sharedBorder : "var(--border)"}`, borderRadius: 18, boxShadow: isShared ? sharedGlow : "0 8px 18px rgba(17,24,39,0.06)", overflow: "hidden", position: "relative" }}>
+              <div key={order._id} style={{
+                background: dark ? surface : "#fff",
+                color: dark ? surfaceText : "#1a1d23",
+                border: `1px solid var(--border)`,
+                borderRadius: 18,
+                boxShadow: "0 8px 18px rgba(17,24,39,0.06)",
+                overflow: "hidden",
+                position: "relative"
+              }}>
 
                 {/* Header */}
                 <div style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
@@ -398,9 +405,9 @@ export default function Orders() {
                       {(() => {
                         const method = order.paymentMethod || (order.payment ? "stripe" : "cod");
                         const map = {
-                          cod:    { label: "💵 COD",          bg: "#fef3c7", color: "#92400e", border: "#fde68a" },
-                          stripe: { label: "💳 Paid Online",  bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
-                          split:  { label: "🧮 Split",        bg: "#ede9fe", color: "#5b21b6", border: "#c4b5fd" },
+                          cod: { label: "💵 COD", bg: "#fef3c7", color: "#92400e", border: "#fde68a" },
+                          stripe: { label: "💳 Paid Online", bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
+                          split: { label: "🧮 Split", bg: "#ede9fe", color: "#5b21b6", border: "#c4b5fd" },
                         };
                         const m = map[method] || map.cod;
                         return (
@@ -418,7 +425,7 @@ export default function Orders() {
                       })()}
                       {isShared && (
                         <>
-                          <span style={{ fontSize: 11, fontWeight: 900, padding: "3px 9px", borderRadius: 999, background: sharedAccentSoft, color: sharedAccent, border: `1px solid ${sharedBorder}` }}>
+                          <span style={{ fontSize: 11, fontWeight: 900, padding: "3px 9px", borderRadius: 999, background: dark ? "rgba(124,58,237,0.16)" : "#f5f3ff", color: dark ? "#a78bfa" : "#7c3aed", border: dark ? "1px solid rgba(139,92,246,0.45)" : "1px solid #ddd6fe" }}>
                             🤝 Shared Route
                           </span>
                           {Number(order.sharedSavings || 0) > 0 && (
@@ -445,7 +452,15 @@ export default function Orders() {
                     </div>
                     {isShared && (
                       <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: sharedAccent, background: sharedAccentSoft, border: `1px solid ${sharedBorder}`, borderRadius: 999, padding: "2px 9px" }}>
+                        <span style={{
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: dark ? "#a78bfa" : "#7c3aed",
+                          background: dark ? "rgba(124,58,237,0.16)" : "#f5f3ff",
+                          border: dark ? "1px solid rgba(139,92,246,0.45)" : "1px solid #ddd6fe",
+                          borderRadius: 999,
+                          padding: "2px 9px"
+                        }}>
                           2-stop shared route
                         </span>
                         {order.sharedMatchedOrderId && (
@@ -461,7 +476,7 @@ export default function Orders() {
                           ? Object.entries(it.selections).filter(([, v]) => v && (Array.isArray(v) ? v.length > 0 : true))
                           : [];
                         const selText = selEntries.length > 0
-                          ? " (" + selEntries.map(([k,v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(", ") + ")"
+                          ? " (" + selEntries.map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(", ") + ")"
                           : "";
                         return `${it.name} x${it.quantity}${selText}`;
                       }).join("  ·  ")}
@@ -492,7 +507,7 @@ export default function Orders() {
                                   {it.price != null && <div style={{ fontSize: 12, color: "var(--muted)" }}>AED {((it.price + (it.extraPrice || 0)) * it.quantity).toFixed(2)}</div>}
                                 </div>
                               </div>
-                              {it.selections && Object.entries(it.selections).filter(([,v]) => v && (Array.isArray(v) ? v.length > 0 : true)).length > 0 && (
+                              {it.selections && Object.entries(it.selections).filter(([, v]) => v && (Array.isArray(v) ? v.length > 0 : true)).length > 0 && (
                                 <div style={{ marginTop: 10, padding: "12px 14px", background: "#fff7ed", borderRadius: 10, border: "1.5px dashed #fb923c" }}>
                                   <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.8px", color: "#c2410c", marginBottom: 8, textTransform: "uppercase" }}>🍳 Customizations</div>
                                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -559,10 +574,10 @@ export default function Orders() {
                         <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.6px", color: "var(--muted)", marginBottom: 10, textTransform: "uppercase" }}>Delivery Address</div>
                         <div style={{ padding: "14px 16px", background: surface, borderRadius: 12, border: "1px solid var(--border)", fontSize: 14, lineHeight: 1.9 }}>
                           <div style={{ fontWeight: 900, fontSize: 15, marginBottom: 6 }}>{addr.firstName} {addr.lastName}</div>
-                          {addr.building    && <div style={{ color: "var(--text-secondary)" }}>🏢 {addr.building}</div>}
-                          {addr.apartment   && <div style={{ color: "var(--text-secondary)" }}>🚪 {addr.apartment}</div>}
-                          {addr.street      && <div style={{ color: "var(--text-secondary)" }}>📍 {addr.street}</div>}
-                          {addr.area        && <div style={{ color: "var(--text-secondary)" }}>🗺️ {addr.area}</div>}
+                          {addr.building && <div style={{ color: "var(--text-secondary)" }}>🏢 {addr.building}</div>}
+                          {addr.apartment && <div style={{ color: "var(--text-secondary)" }}>🚪 {addr.apartment}</div>}
+                          {addr.street && <div style={{ color: "var(--text-secondary)" }}>📍 {addr.street}</div>}
+                          {addr.area && <div style={{ color: "var(--text-secondary)" }}>🗺️ {addr.area}</div>}
                           {(addr.city || addr.state) && <div style={{ color: "var(--text-secondary)" }}>🏙️ {[addr.city, addr.state].filter(Boolean).join(", ")}</div>}
                           {(addr.zipcode || addr.country) && <div style={{ color: "var(--text-secondary)" }}>{[addr.zipcode, addr.country].filter(Boolean).join(", ")}</div>}
                           <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 3 }}>

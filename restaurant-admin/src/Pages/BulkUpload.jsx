@@ -255,22 +255,24 @@ const rowsReducer = (state, action) => {
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
-const STATUS_STYLE = {
-  success:   { dot: "#22c55e", bg: "#f0fdf4", border: "#bbf7d0" },
-  error:     { dot: "#ef4444", bg: "#fef2f2", border: "#fecaca" },
-  uploading: { dot: "#3b82f6", bg: "#eff6ff", border: "#bfdbfe" },
-  invalid:   { dot: "#f59e0b", bg: "#fffbeb", border: "#fde68a" },
-  idle:      { dot: "#d1d5db", bg: "#fff",    border: "#e5e7eb" },
-};
+const getStatusStyle = (dark) => ({
+  success:   { dot: "#22c55e", bg: dark ? "#052e16" : "#f0fdf4", border: dark ? "#166534" : "#bbf7d0" },
+  error:     { dot: "#ef4444", bg: dark ? "#3b0d0c" : "#fef2f2", border: dark ? "#b91c1c" : "#fecaca" },
+  uploading: { dot: "#3b82f6", bg: dark ? "#1e293b" : "#eff6ff", border: dark ? "#2563eb" : "#bfdbfe" },
+  invalid:   { dot: "#f59e0b", bg: dark ? "#78350f" : "#fffbeb", border: dark ? "#f59e0b" : "#fde68a" },
+  idle:      { dot: "#d1d5db", bg: dark ? "#1e293b" : "#fff",    border: dark ? "#334155" : "#e5e7eb" },
+});
 
-const rowStyle = (row) =>
-  row.status !== "idle" ? STATUS_STYLE[row.status] : row.valid ? STATUS_STYLE.idle : STATUS_STYLE.invalid;
+const rowStyle = (row, dark) => {
+  const STATUS_STYLE = getStatusStyle(dark);
+  return row.status !== "idle" ? STATUS_STYLE[row.status] : row.valid ? STATUS_STYLE.idle : STATUS_STYLE.invalid;
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const Pill = ({ children, color, bg, border }) => (
+const Pill = ({ children, color, bg, border, dark }) => (
   <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999,
-    color, background: bg, border: `1px solid ${border}`, whiteSpace: "nowrap" }}>
+    color: color || (dark ? "#f8fafc" : "#1a1d23"), background: bg || (dark ? "#1e293b" : "#fff"), border: `1px solid ${border || (dark ? "#334155" : "#e5e7eb")}`, whiteSpace: "nowrap" }}>
     {children}
   </span>
 );
@@ -774,21 +776,21 @@ export default function BulkUpload() {
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
-                    <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                    <tr style={{ background: dark ? "#1e293b" : "#f9fafb", borderBottom: dark ? "1px solid #334155" : "1px solid #e5e7eb" }}>
                       {["", "Image", "Name", "Category", "Price", "Description", "Customizations", "Ingredients", "Status", ""].map((h, i) => (
                         <th key={i} style={{ padding: "10px 12px", textAlign: "left",
-                          fontWeight: 700, color: "#6b7280", fontSize: 12, whiteSpace: "nowrap" }}>{h}</th>
+                          fontWeight: 700, color: dark ? "#cbd5e1" : "#6b7280", fontSize: 12, whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((row) => {
-                      const sc        = rowStyle(row);
+                      const sc        = rowStyle(row, dark);
                       const isEdit    = editId === row.id;
                       const custCount = row.customizations?.length || 0;
                       return (
                         <tr key={row.id}
-                          style={{ borderBottom: "1px solid #f3f4f6", background: sc.bg, cursor: "pointer" }}
+                          style={{ borderBottom: dark ? "1px solid #334155" : "1px solid #f3f4f6", background: sc.bg, cursor: "pointer" }}
                           onClick={() => setEditId(isEdit ? null : row.id)}>
 
                           {/* Status dot */}
@@ -867,7 +869,8 @@ export default function BulkUpload() {
                                           <Pill key={pi}
                                             color={matched ? "#166534" : "#1d4ed8"}
                                             bg={matched ? "#f0fdf4" : "#eff6ff"}
-                                            border={matched ? "#bbf7d0" : "#bfdbfe"}>
+                                            border={matched ? "#bbf7d0" : "#bfdbfe"}
+                                            dark={dark}>
                                             {matched ? "📦" : "✚"} {ing.name}:{ing.qty}{!matched ? " (new)" : ""}
                                           </Pill>
                                         );
@@ -889,12 +892,12 @@ export default function BulkUpload() {
                           {/* Status / errors */}
                           <td style={{ padding: "10px 12px" }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                              {row.errors.map((e, i)   => <Pill key={i} color="#dc2626" bg="#fef2f2" border="#fecaca">✗ {e}</Pill>)}
-                              {row.warnings.map((w, i) => <Pill key={i} color="#92400e" bg="#fffbeb" border="#fde68a">⚠ {w}</Pill>)}
-                              {row.status === "success" && <Pill color="#15803d" bg="#f0fdf4" border="#bbf7d0">✓ Uploaded</Pill>}
-                              {row.status === "error"   && <Pill color="#dc2626" bg="#fef2f2" border="#fecaca">✗ {row.uploadError}</Pill>}
+                              {row.errors.map((e, i)   => <Pill key={i} color="#dc2626" bg="#fef2f2" border="#fecaca" dark={dark}>✗ {e}</Pill>)}
+                              {row.warnings.map((w, i) => <Pill key={i} color="#92400e" bg="#fffbeb" border="#fde68a" dark={dark}>⚠ {w}</Pill>)}
+                              {row.status === "success" && <Pill color="#15803d" bg="#f0fdf4" border="#bbf7d0" dark={dark}>✓ Uploaded</Pill>}
+                              {row.status === "error"   && <Pill color="#dc2626" bg="#fef2f2" border="#fecaca" dark={dark}>✗ {row.uploadError}</Pill>}
                               {row.valid && !row.errors.length && !row.warnings.length && row.status === "idle" &&
-                                <Pill color="#15803d" bg="#f0fdf4" border="#bbf7d0">✓ Ready</Pill>}
+                                <Pill color="#15803d" bg="#f0fdf4" border="#bbf7d0" dark={dark}>✓ Ready</Pill>}
                             </div>
                           </td>
 
@@ -955,7 +958,7 @@ export default function BulkUpload() {
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {createdInvItems.map((item, i) => (
-                    <Pill key={i} color="#166534" bg="#f0fdf4" border="#bbf7d0">
+                    <Pill key={i} color="#166534" bg="#f0fdf4" border="#bbf7d0" dark={dark}>
                       ✚ {item.itemName}
                     </Pill>
                   ))}

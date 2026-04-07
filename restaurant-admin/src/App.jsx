@@ -21,14 +21,14 @@ import AICustomerSegmentation from "./Pages/AICustomerSegmentation";
 import Inventory from "./Pages/Inventory";
 import InventoryAnalytics from "./Pages/InventoryAnalytics";
 import ProtectedFeature from "./components/ProtectedFeature";
+import Login from "./Pages/Login";
 
 export default function App() {
   return (
     <Routes>
       {/* ✅ MUST be public */}
+      <Route path="/login" element={<Login />} />
       <Route path="/bridge" element={<Bridge />} />
-
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -50,7 +50,8 @@ export default function App() {
       <Route path="/ai-insights" element={<ProtectedRoute><ProtectedFeature featureName="aiInsights"><AIInsights /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><AICustomerSegmentation /></ProtectedFeature></ProtectedRoute>} />
 
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }

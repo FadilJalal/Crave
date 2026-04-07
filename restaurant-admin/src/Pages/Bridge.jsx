@@ -40,9 +40,5 @@ export default function Bridge() {
     });
   }, []);
 
-  return (
-    <div style={{ color: "white", display: "grid", placeItems: "center", height: "100vh" }}>
-      Verifying credentials...
-    </div>
-  );
+  return null;
 }
