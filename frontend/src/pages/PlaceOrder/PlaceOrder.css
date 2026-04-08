@@ -53,23 +53,50 @@
 }
 
 .po-delivery-mode-opts {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 10px;
+		display: flex;
+		gap: 12px;
+		flex-wrap: wrap;
+}
+
+@media (max-width: 520px) {
+	.po-delivery-mode-opts {
+		flex-direction: column;
+		gap: 10px;
+	}
 }
 
 .po-delivery-mode-opt {
 	border: 1.5px solid var(--border);
 	border-radius: var(--radius-sm);
-	padding: 10px 12px;
+	padding: 14px 14px 14px 16px;
 	background: var(--card);
 	color: var(--text);
 	display: flex;
+	flex-direction: row;
 	justify-content: space-between;
 	align-items: center;
-	font-size: 13px;
+	font-size: 14px;
 	font-weight: 600;
 	cursor: pointer;
+	min-height: 48px;
+	transition: border-color 0.18s, background 0.18s;
+}
+.po-delivery-mode-opt.unavailable {
+	background: #f8fafc;
+	color: var(--text-3);
+	border-style: dashed;
+	border-color: #e5e7eb;
+	cursor: not-allowed;
+	opacity: 0.85;
+	position: relative;
+}
+.po-delivery-mode-opt.unavailable strong {
+	color: var(--text-3);
+}
+.po-delivery-mode-opt.unavailable .po-unavailable-icon {
+	margin-right: 7px;
+	font-size: 15px;
+	color: #eab308;
 }
 
 .po-delivery-mode-opt.active {

@@ -320,29 +320,48 @@ const placeOrder = async (req, res) => {
       quantity: 1,
     });
 
-    // ✅ Only call Stripe when actually needed — won't crash server on startup
     const stripe = getStripe();
-    const session = await stripe.checkout.sessions.create({
-      success_url: `${frontend_URL}/verify?success=true&orderId=${newOrder._id}`,
-      cancel_url: `${frontend_URL}/verify?success=false&orderId=${newOrder._id}`,
-      line_items,
-      mode: "payment",
-    });
-
-    // Save session ID for potential refunds
-    newOrder.stripeSessionId = session.id;
-    await newOrder.save();
-
-    // ── Automatically deduct inventory for ordered items ──────────────────
-    const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
-    if (DEBUG_ORDER_LOGS) {
-      console.log("[placeOrder] Inventory deduction result:", inventoryDeduction);
+    if (req.body.paymentMethodId) {
+      // --- Pay with saved card (Payment Intents API) ---
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round((req.body.amount || 0) * 100),
+        currency,
+        payment_method: req.body.paymentMethodId,
+        confirmation_method: 'automatic',
+        confirm: true,
+        return_url: `${frontend_URL}/verify?success=true&orderId=${newOrder._id}`,
+        metadata: { orderId: newOrder._id.toString() },
+      });
+      if (paymentIntent.status === 'succeeded') {
+        newOrder.payment = true;
+        newOrder.stripeSessionId = paymentIntent.id;
+        await newOrder.save();
+        // Deduct inventory
+        const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
+        if (DEBUG_ORDER_LOGS) {
+          console.log("[placeOrder] Inventory deduction result:", inventoryDeduction);
+        }
+        return res.json({ success: true, paid: true, orderId: newOrder._id });
+      } else {
+        return res.json({ success: false, message: 'Card payment failed', paymentIntentStatus: paymentIntent.status });
+      }
+    } else {
+      // --- Pay with new card (Stripe Checkout) ---
+      const session = await stripe.checkout.sessions.create({
+        success_url: `${frontend_URL}/verify?success=true&orderId=${newOrder._id}`,
+        cancel_url: `${frontend_URL}/verify?success=false&orderId=${newOrder._id}`,
+        line_items,
+        mode: "payment",
+      });
+      newOrder.stripeSessionId = session.id;
+      await newOrder.save();
+      // Deduct inventory
+      const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
+      if (DEBUG_ORDER_LOGS) {
+        console.log("[placeOrder] Inventory deduction result:", inventoryDeduction);
+      }
+      return res.json({ success: true, session_url: session.url });
     }
-    if (!inventoryDeduction.success) {
-      console.warn("[placeOrder] Inventory deduction failed but order already placed. Manual review needed.", inventoryDeduction);
-    }
-
-    res.json({ success: true, session_url: session.url });
   } catch (error) {
     console.error("[placeOrder] Error:", error.message);
     res.status(500).json({ success: false, message: error.message || "Error placing order" });

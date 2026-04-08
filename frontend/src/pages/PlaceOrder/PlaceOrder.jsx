@@ -1,4 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { getSavedCards } from '../savedCards.js';
 import './PlaceOrder.css';
 import { StoreContext } from '../../Context/StoreContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -17,6 +19,14 @@ function haversine(lat1, lon1, lat2, lon2) {
 const PlaceOrder = () => {
   const [payment, setPayment] = useState('cod');
   const [loading, setLoading] = useState(false);
+  const [savedCards, setSavedCards] = useState([]);
+  const [selectedCardId, setSelectedCardId] = useState("");
+  const [useNewCard, setUseNewCard] = useState(false);
+  const [newCardName, setNewCardName] = useState("");
+  const [newCardError, setNewCardError] = useState("");
+  const [saveNewCard, setSaveNewCard] = useState(true);
+  const stripe = useStripe();
+  const elements = useElements();
   const [distanceWarning, setDistanceWarning] = useState('');
   const [eta, setEta] = useState(null);
   const [deliveryMode, setDeliveryMode] = useState('standard');
@@ -66,7 +76,7 @@ const PlaceOrder = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load saved profile (phone + last address) on mount
+  // Load saved profile (phone + last address) and cards on mount
   useEffect(() => {
     if (!token) return;
     axios.get(url + '/api/user/profile', { headers: { token } })
@@ -88,6 +98,8 @@ const PlaceOrder = () => {
         }
       })
       .catch(() => {});
+    setSavedCards(getSavedCards());
+    setUseNewCard(false);
   }, [token]);
   // Fetch AI ETA
   useEffect(() => {
@@ -288,20 +300,56 @@ const PlaceOrder = () => {
 
     try {
       if (payment === 'stripe') {
-        const res = await axios.post(url + '/api/order/place', orderData, { headers: { token } });
-        if (res.data.success) {
-          if (promo?.code) { try { await axios.post(url + '/api/promo/use', { code: promo.code, restaurantId: promo.restaurantId }, { headers: { token } }); } catch {} }
-          // Save phone + address to profile silently
-          try {
-            await axios.put(url + '/api/user/profile', {
-              phone: data.phone,
-              address: { street: data.street, building: data.building, apartment: data.apartment, area: data.area, city: data.city, country: data.country, zipcode: data.zipcode }
-            }, { headers: { token } });
-          } catch {}
-          window.location.replace(res.data.session_url);
+        let paymentMethodId = selectedCardId;
+        if (useNewCard) {
+          setNewCardError("");
+          if (!stripe || !elements) { setNewCardError("Stripe not loaded"); setLoading(false); return; }
+          if (!newCardName) { setNewCardError("Name on card required"); setLoading(false); return; }
+          const cardElement = elements.getElement(CardElement);
+          const { error: stripeError, paymentMethod } = await stripe.createPaymentMethod({
+            type: 'card',
+            card: cardElement,
+            billing_details: { name: newCardName }
+          });
+          if (stripeError) {
+            setNewCardError(stripeError.message);
+            setLoading(false);
+            return;
+          }
+          paymentMethodId = paymentMethod.id;
+          if (saveNewCard) {
+            // Save locally for demo; in production, save to backend
+            const newCard = {
+              id: paymentMethod.id,
+              brand: paymentMethod.card.brand,
+              last4: paymentMethod.card.last4,
+              exp: paymentMethod.card.exp_month + '/' + paymentMethod.card.exp_year,
+              name: paymentMethod.billing_details.name
+            };
+            const updated = [...savedCards, newCard];
+            setSavedCards(updated);
+            import('../savedCards.js').then(mod => mod.saveCards(updated));
+          }
         }
-        else if (res.data.outOfRange) toast.error('🚫 ' + res.data.message, { autoClose: 6000 });
-        else toast.error(res.data.message || 'Something went wrong');
+        if (!paymentMethodId) {
+          toast.error('Please select or enter a card for payment.');
+          setLoading(false);
+          return;
+        }
+        const res = await axios.post(url + '/api/order/place', { ...orderData, paymentMethodId }, { headers: { token } });
+        if (res.data.success && res.data.paid) {
+          // Paid with saved card, no redirect needed
+          toast.success('Payment successful! Order placed.');
+          setCartItems({});
+          navigate('/myorders');
+        } else if (res.data.success && res.data.session_url) {
+          // New card, redirect to Stripe Checkout
+          window.location.replace(res.data.session_url);
+        } else if (res.data.outOfRange) {
+          toast.error('🚫 ' + res.data.message, { autoClose: 6000 });
+        } else {
+          toast.error(res.data.message || 'Something went wrong');
+        }
       } else {
         const res = await axios.post(url + '/api/order/placecod', orderData, { headers: { token } });
         if (res.data.success) {
@@ -385,6 +433,104 @@ const PlaceOrder = () => {
                 <div><p className='po-pay-name'>Split by Card</p><p className='po-pay-sub'>Multiple cards, custom amounts</p></div>
               </div>
             </div>
+
+            {/* Show saved cards if Stripe is selected */}
+            {payment === 'stripe' && (
+              <div style={{ marginTop: 32 }}>
+                <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 12, letterSpacing: 0.3, color: '#1e293b' }}>Choose a Card</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {savedCards.map(card => {
+                    const isSelected = !useNewCard && selectedCardId === card.id;
+                    const cardIcon = card.brand.toLowerCase().includes('visa')
+                      ? '🟦'
+                      : card.brand.toLowerCase().includes('master')
+                        ? '🟥'
+                        : '💳';
+                    return (
+                      <label
+                        key={card.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
+                          border: isSelected ? '2px solid #ff4e2a' : '1.5px solid #e5e7eb',
+                          borderRadius: 14,
+                          background: isSelected ? '#fff6f0' : '#fff',
+                          boxShadow: isSelected ? '0 2px 8px 0 #ffedd5' : '0 1px 4px 0 #f3f4f6',
+                          cursor: 'pointer',
+                          position: 'relative',
+                          transition: 'border 0.18s, box-shadow 0.18s, background 0.18s',
+                          minHeight: 48,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = isSelected ? '#fff6f0' : '#f9fafb'}
+                        onMouseLeave={e => e.currentTarget.style.background = isSelected ? '#fff6f0' : '#fff'}
+                      >
+                        <input
+                          type="radio"
+                          name="selectedCard"
+                          value={card.id}
+                          checked={isSelected}
+                          onChange={() => { setSelectedCardId(card.id); setUseNewCard(false); }}
+                          style={{ accentColor: '#ff4e2a', marginRight: 2, width: 18, height: 18 }}
+                        />
+                        <span style={{ fontSize: 22, marginRight: 2 }}>{cardIcon}</span>
+                        <span style={{ fontWeight: 800, letterSpacing: 1, fontSize: 16, color: '#222' }}>{card.brand.toUpperCase()} ****{card.last4}</span>
+                        <span style={{ fontSize: 13, color: '#6b7280', marginLeft: 10 }}>Exp: {card.exp}</span>
+                        <span style={{ fontSize: 13, color: '#6b7280', marginLeft: 10 }}>{card.name}</span>
+                        {isSelected && (
+                          <span style={{ position: 'absolute', right: 18, top: 18, fontSize: 18, color: '#ff4e2a' }}>✔</span>
+                        )}
+                      </label>
+                    );
+                  })}
+                  {/* New card option */}
+                  <label
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
+                      border: useNewCard ? '2px solid #ff4e2a' : '1.5px dashed #e5e7eb',
+                      borderRadius: 14,
+                      background: useNewCard ? '#fff6f0' : '#fff',
+                      boxShadow: useNewCard ? '0 2px 8px 0 #ffedd5' : '0 1px 4px 0 #f3f4f6',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      transition: 'border 0.18s, box-shadow 0.18s, background 0.18s',
+                      minHeight: 48,
+                    }}
+                    onClick={() => { setUseNewCard(true); setSelectedCardId(""); }}
+                  >
+                    <input
+                      type="radio"
+                      name="selectedCard"
+                      checked={useNewCard}
+                      onChange={() => { setUseNewCard(true); setSelectedCardId(""); }}
+                      style={{ accentColor: '#ff4e2a', marginRight: 2, width: 18, height: 18 }}
+                    />
+                    <span style={{ fontSize: 22, marginRight: 2 }}>➕</span>
+                    <span style={{ fontWeight: 800, letterSpacing: 1, fontSize: 16, color: '#222' }}>Pay with a new card</span>
+                  </label>
+                </div>
+                {/* New card form */}
+                {useNewCard && (
+                  <div style={{ marginTop: 16, background: '#fff', borderRadius: 14, padding: '14px 14px 10px', boxShadow: '0 1px 6px 0 #f3f4f6' }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 8, color: '#1e293b' }}>Enter Card Details</div>
+                    <div style={{ marginBottom: 10 }}>
+                      <input
+                        type="text"
+                        placeholder="Name on Card"
+                        value={newCardName}
+                        onChange={e => setNewCardName(e.target.value)}
+                        style={{ width: '100%', padding: 10, borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: 14, marginBottom: 8 }}
+                      />
+                      <div style={{ border: '1.5px solid #e5e7eb', borderRadius: 8, padding: 10, background: '#f9fafb' }}>
+                        <CardElement options={{ style: { base: { fontSize: '15px', color: '#222', fontFamily: 'DM Sans, sans-serif', '::placeholder': { color: '#bdbdbd' } }, invalid: { color: '#dc2626' } } }} />
+                      </div>
+                    </div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 8 }}>
+                      <input type="checkbox" checked={saveNewCard} onChange={e => setSaveNewCard(e.target.checked)} style={{ accentColor: '#ff4e2a' }} /> Save card for future payments
+                    </label>
+                    {newCardError && <div style={{ color: '#dc2626', fontWeight: 700, marginBottom: 8 }}>{newCardError}</div>}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {payment === 'split' && (
@@ -435,11 +581,14 @@ const PlaceOrder = () => {
 
                 <button
                   type='button'
-                  className={`po-delivery-mode-opt ${deliveryMode === 'shared' ? 'active' : ''}`}
+                  className={`po-delivery-mode-opt ${!sharedQuote?.eligible ? 'unavailable' : ''} ${deliveryMode === 'shared' ? 'active' : ''}`}
                   onClick={() => sharedQuote?.eligible && setDeliveryMode('shared')}
                   disabled={!sharedQuote?.eligible || sharedQuoteLoading}
                 >
-                  <span>Shared</span>
+                  <span style={{display:'flex',alignItems:'center'}}>
+                    {!sharedQuote?.eligible && <span className="po-unavailable-icon">&#9888;</span>}
+                    Shared
+                  </span>
                   <strong>
                     {sharedQuoteLoading
                       ? 'Checking...'

@@ -21,6 +21,8 @@ import Addresses from './pages/Addresses';
 import Favourites from './pages/Favourites';
 import Language from './pages/Language';
 import Settings from './pages/Settings';
+import { Elements } from '@stripe/react-stripe-js';
+import { stripePromise } from "./StripeProvider.jsx";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -32,6 +34,7 @@ const App = () => {
   const [showLogin, setShowLogin] = useState(false);
 
   return (
+    <Elements stripe={stripePromise}>
     <NotificationProvider>
       <ToastContainer
         position="top-right"
@@ -70,6 +73,7 @@ const App = () => {
       </div>
       <Footer />
     </NotificationProvider>
+    </Elements>
   )
 }
 
