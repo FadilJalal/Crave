@@ -1,4 +1,5 @@
 import { useState, useContext, useMemo } from 'react';
+import { Heart } from 'lucide-react';
 import './FoodItem.css';
 import { StoreContext } from '../../Context/StoreContext';
 import { useTheme } from '../../Context/ThemeContext';
@@ -23,8 +24,22 @@ function getDietTags(name, desc, cat) {
   return tags;
 }
 
-const FoodItem = ({ image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, restaurantActive = true, avgRating = 0, ratingCount = 0, inStock = true }) => {
-  const { cartItems, addToCart, removeFromCart, getItemCount, url, currency } = useContext(StoreContext);
+const FoodItem = (props) => {
+  const {
+    image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, restaurantActive = true, avgRating = 0, ratingCount = 0, inStock = true, forceFavourite
+  } = props;
+  const { cartItems, addToCart, removeFromCart, getItemCount, url, currency, favourites = [], isFavourite, addFavourite, removeFavourite, food_list } = useContext(StoreContext);
+
+  // Support forceFavourite prop for Favourites page
+  // (already destructured above)
+    // Find the full food object for this item (for favouriting)
+    const foodObj = useMemo(() => {
+      if (food_list && food_list.length) {
+        return food_list.find(f => f._id === id) || { _id: id, name, image, category: restaurantId?.category || '', price };
+      }
+      return { _id: id, name, image, category: restaurantId?.category || '', price };
+    }, [food_list, id, name, image, restaurantId, price]);
+
   const { dark } = useTheme();
 
   const count = getItemCount(id);
@@ -113,8 +128,33 @@ const FoodItem = ({ image, name, price, description, id, restaurantId, customiza
               {dealTag.label}
             </div>
           )}
+
           <img className='fi-img' src={image?.startsWith('http') ? image : url + '/images/' + image} alt={name}
             onError={e => { e.target.src = 'https://via.placeholder.com/300x200?text=Food'; }} />
+
+          {/* Heart icon for favourites */}
+          <button
+            className='fi-heart-btn'
+            style={{
+              position: 'absolute', top: 12, right: 12, zIndex: 2, background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: '50%', width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px #0001', cursor: 'pointer', padding: 0
+            }}
+            aria-label={isFavourite?.(id) ? 'Remove from favourites' : 'Add to favourites'}
+            onClick={e => {
+              e.stopPropagation();
+              if (isFavourite?.(id)) {
+                removeFavourite?.(id);
+              } else {
+                addFavourite?.(foodObj);
+              }
+            }}
+          >
+            <Heart
+              size={22}
+              stroke="#ff3a0a"
+              fill={forceFavourite || isFavourite?.(id) ? '#ff3a0a' : 'none'}
+              style={{ transition: 'fill 0.2s, stroke 0.2s' }}
+            />
+          </button>
 
           {restName && (
             <div className='fi-rest-badge'>

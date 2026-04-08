@@ -16,11 +16,11 @@ import ResetPassword from './pages/ResetPassword/ResetPassword'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 import OrderTracking from './pages/OrderTracking/OrderTracking'
 import { NotificationProvider } from './Context/NotificationContext'
-import PaymentMethods from './pages/PaymentMethods';
-import Addresses from './pages/Addresses';
-import Favourites from './pages/Favourites';
-import Language from './pages/Language';
-import Settings from './pages/Settings';
+import PaymentMethods from './pages/PaymentMethods/PaymentMethods';
+import Addresses from './pages/Addresses/Addresses';
+import Favourites from './pages/Favourites/Favourites';
+import Language from './pages/Language/Language';
+import Settings from './pages/Settings/Settings';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from "./StripeProvider.jsx";
 

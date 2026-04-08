@@ -99,4 +99,76 @@ const updateProfile = async (req, res) => {
   }
 };
 
-export { loginUser, registerUser, getProfile, updateProfile };
+// ── Address Management ─────────────────────────────────────────────
+const getAddresses = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.body.userId).select("savedAddresses");
+    if (!user) return res.json({ success: false, message: "User not found" });
+    res.json({ success: true, addresses: user.savedAddresses || [] });
+  } catch (error) {
+    res.json({ success: false, message: "Failed to load addresses" });
+  }
+};
+
+const addAddress = async (req, res) => {
+  try {
+    const { address } = req.body;
+    if (!address || !address.street || !address.city) {
+      return res.json({ success: false, message: "Address, street, and city are required" });
+    }
+    const user = await userModel.findById(req.body.userId).select("savedAddresses");
+    if (!user) return res.json({ success: false, message: "User not found" });
+    const addresses = user.savedAddresses || [];
+    // Prevent exact duplicates
+    const exists = addresses.some(a =>
+      a.street === address.street &&
+      a.area === address.area &&
+      a.city === address.city &&
+      a.building === address.building
+    );
+    if (exists) return res.json({ success: false, message: "Address already exists" });
+    addresses.unshift({ ...address, isDefault: addresses.length === 0 });
+    await userModel.findByIdAndUpdate(req.body.userId, { savedAddresses: addresses });
+    res.json({ success: true, addresses });
+  } catch (error) {
+    res.json({ success: false, message: "Failed to add address" });
+  }
+};
+
+const deleteAddress = async (req, res) => {
+  try {
+    const { addressIndex } = req.body;
+    const user = await userModel.findById(req.body.userId).select("savedAddresses");
+    if (!user) return res.json({ success: false, message: "User not found" });
+    let addresses = user.savedAddresses || [];
+    if (addressIndex < 0 || addressIndex >= addresses.length) {
+      return res.json({ success: false, message: "Invalid address index" });
+    }
+    addresses.splice(addressIndex, 1);
+    // If default was deleted, set first as default
+    if (!addresses.some(a => a.isDefault) && addresses.length > 0) addresses[0].isDefault = true;
+    await userModel.findByIdAndUpdate(req.body.userId, { savedAddresses: addresses });
+    res.json({ success: true, addresses });
+  } catch (error) {
+    res.json({ success: false, message: "Failed to delete address" });
+  }
+};
+
+const setDefaultAddress = async (req, res) => {
+  try {
+    const { addressIndex } = req.body;
+    const user = await userModel.findById(req.body.userId).select("savedAddresses");
+    if (!user) return res.json({ success: false, message: "User not found" });
+    let addresses = user.savedAddresses || [];
+    if (addressIndex < 0 || addressIndex >= addresses.length) {
+      return res.json({ success: false, message: "Invalid address index" });
+    }
+    addresses = addresses.map((a, i) => ({ ...a, isDefault: i === addressIndex }));
+    await userModel.findByIdAndUpdate(req.body.userId, { savedAddresses: addresses });
+    res.json({ success: true, addresses });
+  } catch (error) {
+    res.json({ success: false, message: "Failed to set default address" });
+  }
+};
+
+export { loginUser, registerUser, getProfile, updateProfile, getAddresses, addAddress, deleteAddress, setDefaultAddress };

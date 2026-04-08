@@ -1,9 +1,10 @@
+
+import Stripe from "stripe";
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 import restaurantModel from "../models/restaurantModel.js";
 import { isRestaurantOpen } from "../utils/restaurantHours.js";
 import { deductInventoryForOrder, restoreInventoryForCancelledOrder } from "./inventoryController.js";
-import Stripe from "stripe";
 
 // ✅ FIXED: lazy-init Stripe so a missing key doesn't crash the server at startup
 const getStripe = () => {
@@ -323,10 +324,13 @@ const placeOrder = async (req, res) => {
     const stripe = getStripe();
     if (req.body.paymentMethodId) {
       // --- Pay with saved card (Payment Intents API) ---
+      // Always include the customer parameter to avoid Stripe errors
+      const orderUser = await userModel.findById(req.body.userId);
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round((req.body.amount || 0) * 100),
         currency,
         payment_method: req.body.paymentMethodId,
+        customer: orderUser?.stripeCustomerId || undefined,
         confirmation_method: 'automatic',
         confirm: true,
         return_url: `${frontend_URL}/verify?success=true&orderId=${newOrder._id}`,

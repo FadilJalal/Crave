@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { getSavedCards } from '../savedCards.js';
 import './PlaceOrder.css';
 import { StoreContext } from '../../Context/StoreContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -66,41 +65,48 @@ const PlaceOrder = () => {
     return address;
   };
 
-  // Re-sync area/city whenever the navbar location changes (same-tab custom event)
   useEffect(() => {
     const onLocChange = () => setData(prev => parseLocation({ ...prev }));
     window.addEventListener('crave_location_changed', onLocChange);
     return () => window.removeEventListener('crave_location_changed', onLocChange);
   }, []);
-  const { getTotalCartAmount, token, food_list, foodListLoading, cartItems, url, setCartItems, currency, deliveryCharge } = useContext(StoreContext);
+
+  const { getTotalCartAmount, token, food_list, foodListLoading, cartItems, url, setCartItems, currency, deliveryCharge, addresses, defaultAddress } = useContext(StoreContext);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load saved profile (phone + last address) and cards on mount
+  // Load saved profile and cards from backend
   useEffect(() => {
     if (!token) return;
     axios.get(url + '/api/user/profile', { headers: { token } })
       .then(res => {
         if (res.data.success) {
           const user = res.data.user;
-          const lastAddress = user.savedAddresses?.[0] || {};
+          // Use default address if available
+          let selected = user.savedAddresses?.find(a => a.isDefault) || user.savedAddresses?.[0] || {};
           setData(prev => ({
             ...prev,
             phone: user.phone || prev.phone,
-            street:    lastAddress.street    || prev.street,
-            building:  lastAddress.building  || prev.building,
-            apartment: lastAddress.apartment || prev.apartment,
-            area:      lastAddress.area      || prev.area,
-            city:      lastAddress.city      || prev.city,
-            country:   lastAddress.country   || prev.country,
-            zipcode:   lastAddress.zipcode   || prev.zipcode,
+            street:    selected.street    || prev.street,
+            building:  selected.building  || prev.building,
+            apartment: selected.apartment || prev.apartment,
+            area:      selected.area      || prev.area,
+            city:      selected.city      || prev.city,
+            country:   selected.country   || prev.country,
+            zipcode:   selected.zipcode   || prev.zipcode,
           }));
         }
       })
       .catch(() => {});
-    setSavedCards(getSavedCards());
+
+    // Fetch saved cards from backend using token (GET)
+    axios.get(url + '/api/cards/list', { headers: { token } })
+      .then(res => setSavedCards(res.data.cards || []))
+      .catch(() => setSavedCards([]));
+
     setUseNewCard(false);
   }, [token]);
+
   // Fetch AI ETA
   useEffect(() => {
     if (!food_list.length || !Object.keys(cartItems).length) return;
@@ -128,7 +134,6 @@ const PlaceOrder = () => {
 
   const onChange = (e) => setData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-  // Check distance against restaurant radius whenever address fields change
   useEffect(() => {
     const city = data.city || data.state || '';
     const area = data.area || '';
@@ -136,7 +141,6 @@ const PlaceOrder = () => {
 
     const timer = setTimeout(async () => {
       try {
-        // Get the restaurant from cart
         const firstItem = Object.values(cartItems).find(e => e.quantity > 0);
         if (!firstItem) return;
         const food = food_list.find(f => f._id === firstItem.itemId);
@@ -147,7 +151,6 @@ const PlaceOrder = () => {
         const radius = restaurant.deliveryRadius;
         if (radius === 0) { setDistanceWarning(''); return; }
 
-        // Geocode the customer address
         const res = await fetch(`${url}/api/geocode`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -170,7 +173,7 @@ const PlaceOrder = () => {
           setDistanceWarning('');
         }
       } catch { setDistanceWarning(''); }
-    }, 800); // debounce 800ms
+    }, 800);
 
     return () => clearTimeout(timer);
   }, [data.city, data.area, data.street, data.state]);
@@ -251,7 +254,6 @@ const PlaceOrder = () => {
     if (!restaurantId) { toast.error('Restaurant info missing. Refresh and try again.'); setLoading(false); return; }
     if (orderItems.some(it => getResId(it) !== restaurantId)) { toast.error('You can only order from one restaurant at a time.'); setLoading(false); return; }
 
-    // Minimum order check
     const restaurant = orderItems[0]?.restaurantId;
     const minOrder = restaurant?.minimumOrder || 0;
     if (minOrder > 0 && subtotal < minOrder) {
@@ -318,17 +320,16 @@ const PlaceOrder = () => {
           }
           paymentMethodId = paymentMethod.id;
           if (saveNewCard) {
-            // Save locally for demo; in production, save to backend
-            const newCard = {
-              id: paymentMethod.id,
-              brand: paymentMethod.card.brand,
-              last4: paymentMethod.card.last4,
-              exp: paymentMethod.card.exp_month + '/' + paymentMethod.card.exp_year,
-              name: paymentMethod.billing_details.name
-            };
-            const updated = [...savedCards, newCard];
-            setSavedCards(updated);
-            import('../savedCards.js').then(mod => mod.saveCards(updated));
+            try {
+              const res = await axios.post(
+                url + '/api/cards/save',
+                { paymentMethodId: paymentMethod.id },
+                { headers: { token } }
+              );
+              if (res.data.success) {
+                setSavedCards(prev => [...prev, res.data.card]);
+              }
+            } catch {}
           }
         }
         if (!paymentMethodId) {
@@ -338,12 +339,10 @@ const PlaceOrder = () => {
         }
         const res = await axios.post(url + '/api/order/place', { ...orderData, paymentMethodId }, { headers: { token } });
         if (res.data.success && res.data.paid) {
-          // Paid with saved card, no redirect needed
           toast.success('Payment successful! Order placed.');
           setCartItems({});
           navigate('/myorders');
         } else if (res.data.success && res.data.session_url) {
-          // New card, redirect to Stripe Checkout
           window.location.replace(res.data.session_url);
         } else if (res.data.outOfRange) {
           toast.error('🚫 ' + res.data.message, { autoClose: 6000 });
@@ -354,7 +353,6 @@ const PlaceOrder = () => {
         const res = await axios.post(url + '/api/order/placecod', orderData, { headers: { token } });
         if (res.data.success) {
           if (promo?.code) { try { await axios.post(url + '/api/promo/use', { code: promo.code, restaurantId: promo.restaurantId }, { headers: { token } }); } catch {} }
-          // Save phone + address to profile silently
           try {
             await axios.put(url + '/api/user/profile', {
               phone: data.phone,
@@ -434,21 +432,20 @@ const PlaceOrder = () => {
               </div>
             </div>
 
-            {/* Show saved cards if Stripe is selected */}
             {payment === 'stripe' && (
               <div style={{ marginTop: 32 }}>
                 <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 12, letterSpacing: 0.3, color: '#1e293b' }}>Choose a Card</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {savedCards.map(card => {
-                    const isSelected = !useNewCard && selectedCardId === card.id;
-                    const cardIcon = card.brand.toLowerCase().includes('visa')
+                    const isSelected = !useNewCard && selectedCardId === card.paymentMethodId;
+                    const cardIcon = card.brand?.toLowerCase().includes('visa')
                       ? '🟦'
-                      : card.brand.toLowerCase().includes('master')
+                      : card.brand?.toLowerCase().includes('master')
                         ? '🟥'
                         : '💳';
                     return (
                       <label
-                        key={card.id}
+                        key={card.paymentMethodId}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
                           border: isSelected ? '2px solid #ff4e2a' : '1.5px solid #e5e7eb',
@@ -466,22 +463,20 @@ const PlaceOrder = () => {
                         <input
                           type="radio"
                           name="selectedCard"
-                          value={card.id}
+                          value={card.paymentMethodId}
                           checked={isSelected}
-                          onChange={() => { setSelectedCardId(card.id); setUseNewCard(false); }}
+                          onChange={() => { setSelectedCardId(card.paymentMethodId); setUseNewCard(false); }}
                           style={{ accentColor: '#ff4e2a', marginRight: 2, width: 18, height: 18 }}
                         />
                         <span style={{ fontSize: 22, marginRight: 2 }}>{cardIcon}</span>
-                        <span style={{ fontWeight: 800, letterSpacing: 1, fontSize: 16, color: '#222' }}>{card.brand.toUpperCase()} ****{card.last4}</span>
-                        <span style={{ fontSize: 13, color: '#6b7280', marginLeft: 10 }}>Exp: {card.exp}</span>
-                        <span style={{ fontSize: 13, color: '#6b7280', marginLeft: 10 }}>{card.name}</span>
+                        <span style={{ fontWeight: 800, letterSpacing: 1, fontSize: 16, color: '#222' }}>{card.brand?.toUpperCase()} ****{card.last4}</span>
+                        <span style={{ fontSize: 13, color: '#6b7280', marginLeft: 10 }}>Exp: {card.expMonth}/{card.expYear}</span>
                         {isSelected && (
                           <span style={{ position: 'absolute', right: 18, top: 18, fontSize: 18, color: '#ff4e2a' }}>✔</span>
                         )}
                       </label>
                     );
                   })}
-                  {/* New card option */}
                   <label
                     style={{
                       display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
@@ -507,7 +502,6 @@ const PlaceOrder = () => {
                     <span style={{ fontWeight: 800, letterSpacing: 1, fontSize: 16, color: '#222' }}>Pay with a new card</span>
                   </label>
                 </div>
-                {/* New card form */}
                 {useNewCard && (
                   <div style={{ marginTop: 16, background: '#fff', borderRadius: 14, padding: '14px 14px 10px', boxShadow: '0 1px 6px 0 #f3f4f6' }}>
                     <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 8, color: '#1e293b' }}>Enter Card Details</div>

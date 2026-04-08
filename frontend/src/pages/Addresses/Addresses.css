@@ -1,0 +1,265 @@
+/* ===== Map Modal ===== */
+.address-map-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.address-map-modal-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.25);
+}
+.address-map-modal-content {
+  position: relative;
+  background: #fff;
+  border-radius: 18px;
+  padding: 24px 24px 16px 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ===== Map Buttons ===== */
+.address-map-btn {
+  background: #fff6f1;
+  color: #ff5a1f;
+  border: 1.5px solid #ff5a1f;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.address-map-btn:hover {
+  background: #ffede0;
+  color: #ff3a00;
+  border-color: #ff3a00;
+}
+/* ===== Page ===== */
+.addresses-page-main {
+  min-height: 100vh;
+  background: #ffffff;
+  display: flex;
+  justify-content: center;
+  padding: 60px 16px;
+}
+
+/* ===== Layout ===== */
+.addresses-container {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  gap: 40px;
+}
+
+/* ===== Sections ===== */
+.address-form-section,
+.address-list-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.address-list-section {
+  align-items: stretch;
+}
+
+/* ===== Titles ===== */
+.address-title {
+  font-size: 1.9rem;
+  font-weight: 900;
+  color: #111;
+}
+
+.address-desc {
+  color: #777;
+  font-size: 14px;
+}
+
+/* ===== Form ===== */
+.address-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  background: #fff;
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid #f1f1f1;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+}
+
+.address-input {
+  padding: 13px 14px;
+  border-radius: 14px;
+  border: 1.5px solid #eee;
+  font-size: 14px;
+  background: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.address-input:focus {
+  border-color: #ff5a1f;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.12);
+  outline: none;
+}
+
+.address-input[name="building"],
+.address-btn {
+  grid-column: span 2;
+}
+
+/* ===== Button ===== */
+.address-btn {
+  background: #ff5a1f;
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.address-btn:hover {
+  background: #ff6f3d;
+  transform: translateY(-1px);
+}
+
+.address-btn:active {
+  transform: scale(0.98);
+}
+
+.address-btn:disabled {
+  opacity: 0.6;
+}
+
+/* ===== Address List ===== */
+.address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.address-empty {
+  color: #bbb;
+  text-align: center;
+}
+
+/* ===== Card ===== */
+.address-item {
+  padding: 18px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #f1f1f1;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  position: relative;
+  transition: all 0.25s ease;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+}
+
+/* Accent line */
+.address-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  border-radius: 4px;
+  background: #ff5a1f;
+  opacity: 0.3;
+}
+
+/* Hover */
+.address-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+}
+
+/* Default */
+.address-item.address-default {
+  border-color: #ff5a1f;
+  box-shadow: 0 10px 30px rgba(255, 90, 31, 0.15);
+}
+
+.address-item.address-default::before {
+  opacity: 1;
+}
+
+/* Info */
+.address-main {
+  font-weight: 800;
+  font-size: 15px;
+  color: #111;
+}
+
+.address-building {
+  font-size: 13px;
+  color: #777;
+  margin-top: 4px;
+}
+
+.address-default-badge {
+  color: #ff5a1f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Actions */
+.address-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.address-set-btn {
+  border: none;
+  background: #f3f3f3;
+  border-radius: 10px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.address-set-btn:hover {
+  background: #ffe5dc;
+}
+
+.address-delete-btn {
+  border: none;
+  background: transparent;
+  color: #ff5a1f;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px;
+}
+
+.address-delete-btn:hover {
+  background: rgba(255, 90, 31, 0.1);
+  border-radius: 8px;
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 900px) {
+  .addresses-container {
+    flex-direction: column;
+  }
+
+  .address-form {
+    grid-template-columns: 1fr;
+  }
+
+  .address-input[name="building"],
+  .address-btn {
+    grid-column: span 1;
+  }
+}

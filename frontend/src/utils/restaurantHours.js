@@ -85,6 +85,7 @@ export function isRestaurantOpen(r) {
   const hours =
     normalizeOpeningHours(r.openingHours) ||
     (r.openingHours && typeof r.openingHours === "object" ? r.openingHours : null);
+  // If no openingHours, treat as open if isActive !== false (fallback for missing data)
   if (!hours || typeof hours !== "object") return true;
 
   const { weekday, mins } = getDubaiNowParts();

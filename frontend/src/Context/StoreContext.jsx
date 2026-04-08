@@ -14,7 +14,14 @@ const StoreContextProvider = (props) => {
   const [token, setToken] = useState("");
   const currency = "AED ";
   // cartItems: { cartKey -> { itemId, quantity, selections, extraPrice } }
-  const [cartItems, setCartItems] = useState({});
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('crave_cart');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   // Calculate delivery fee dynamically from restaurant tiers + customer location
   const deliveryCharge = useMemo(() => {
@@ -79,22 +86,31 @@ const StoreContextProvider = (props) => {
   const addToCart = async (itemId, selections = {}) => {
     const food = food_list.find((f) => f._id === itemId);
     const merged = mergeRestaurantFromDirectory(food, restaurantsById);
-    if (!isRestaurantOpen(merged)) {
+    // Debug log for troubleshooting restaurant open status
+    console.log('[addToCart] merged restaurant:', merged);
+    if (!merged) {
+      console.warn('[addToCart] No restaurant data found for item', itemId, '— allowing add to cart as fallback.');
+    } else if (!isRestaurantOpen(merged)) {
       toast.error("This restaurant is not accepting orders right now.");
       return;
     }
     const extraPrice = calcExtraPrice(food, selections);
     const key = buildCartKey(itemId, selections);
 
-    setCartItems((prev) => ({
-      ...prev,
-      [key]: {
-        itemId,
-        quantity: (prev[key]?.quantity || 0) + 1,
-        selections,
-        extraPrice,
-      },
-    }));
+    setCartItems((prev) => {
+      const updated = {
+        ...prev,
+        [key]: {
+          itemId,
+          quantity: (prev[key]?.quantity || 0) + 1,
+          selections,
+          extraPrice,
+        },
+      };
+      // Persist to localStorage for guests
+      try { localStorage.setItem('crave_cart', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
 
     if (token) {
       try {
@@ -109,12 +125,16 @@ const StoreContextProvider = (props) => {
     setCartItems((prev) => {
       const entry = prev[key];
       if (!entry) return prev;
+      let updated;
       if (entry.quantity <= 1) {
-        const updated = { ...prev };
+        updated = { ...prev };
         delete updated[key];
-        return updated;
+      } else {
+        updated = { ...prev, [key]: { ...entry, quantity: entry.quantity - 1 } };
       }
-      return { ...prev, [key]: { ...entry, quantity: entry.quantity - 1 } };
+      // Persist to localStorage for guests
+      try { localStorage.setItem('crave_cart', JSON.stringify(updated)); } catch {}
+      return updated;
     });
 
     const itemId = key.split("::")[0];
@@ -247,6 +267,12 @@ const StoreContextProvider = (props) => {
       if (savedToken) {
         setToken(savedToken);
         await loadCartData(savedToken);
+      } else {
+        // For guests, load cart from localStorage
+        try {
+          const savedCart = localStorage.getItem('crave_cart');
+          if (savedCart) setCartItems(JSON.parse(savedCart));
+        } catch {}
       }
     }
     loadData();
@@ -259,6 +285,115 @@ const StoreContextProvider = (props) => {
     return () => clearInterval(foodPoll);
   }, []);
 
+
+  // ── Favourites Management ──────────────────────────────────────────
+  const [favourites, setFavourites] = useState(() => {
+    try {
+      const fav = localStorage.getItem('crave_favourites');
+      return fav ? JSON.parse(fav) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const isFavourite = (itemId) => favourites.some(f => f._id === itemId);
+
+  const addFavourite = (food) => {
+    setFavourites(prev => {
+      if (prev.some(f => f._id === food._id)) return prev;
+      const updated = [...prev, food];
+      localStorage.setItem('crave_favourites', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const removeFavourite = (itemId) => {
+    setFavourites(prev => {
+      const updated = prev.filter(f => f._id !== itemId);
+      localStorage.setItem('crave_favourites', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // ── Address Management ─────────────────────────────────────────────
+  const [addresses, setAddresses] = useState([]);
+  const [defaultAddress, setDefaultAddress] = useState(null);
+
+  const fetchAddresses = async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get(url + "/api/user/addresses", { headers: { token } });
+      if (res.data.success) {
+        setAddresses(res.data.addresses);
+        const def = res.data.addresses.find(a => a.isDefault) || res.data.addresses[0] || null;
+        setDefaultAddress(def);
+      }
+    } catch {}
+  };
+
+  const addAddress = async (address) => {
+    if (!token) return;
+    try {
+      const res = await axios.post(url + "/api/user/addresses", { address }, { headers: { token } });
+      if (res.data.success) {
+        setAddresses(res.data.addresses);
+        const def = res.data.addresses.find(a => a.isDefault) || res.data.addresses[0] || null;
+        setDefaultAddress(def);
+        toast.success("Address added");
+      } else {
+        toast.error(res.data.message || "Failed to add address");
+      }
+    } catch { toast.error("Failed to add address"); }
+  };
+
+  const deleteAddress = async (addressIndex) => {
+    if (!token) return;
+    try {
+      const res = await axios.delete(url + "/api/user/addresses", { data: { addressIndex }, headers: { token } });
+      if (res.data.success) {
+        setAddresses(res.data.addresses);
+        const def = res.data.addresses.find(a => a.isDefault) || res.data.addresses[0] || null;
+        setDefaultAddress(def);
+        toast.success("Address deleted");
+      } else {
+        toast.error(res.data.message || "Failed to delete address");
+      }
+    } catch { toast.error("Failed to delete address"); }
+  };
+
+  const setDefaultAddressIndex = async (addressIndex) => {
+    if (!token) return;
+    try {
+      const res = await axios.post(url + "/api/user/addresses/default", { addressIndex }, { headers: { token } });
+      if (res.data.success) {
+        setAddresses(res.data.addresses);
+        const def = res.data.addresses.find(a => a.isDefault) || res.data.addresses[0] || null;
+        setDefaultAddress(def);
+        toast.success("Default address updated");
+      } else {
+        toast.error(res.data.message || "Failed to set default address");
+      }
+    } catch { toast.error("Failed to set default address"); }
+  };
+
+  // Fetch addresses on login
+  useEffect(() => {
+    if (token) fetchAddresses();
+  }, [token]);
+
+  // Sync navbar location with default address on login or address change
+  useEffect(() => {
+    if (defaultAddress && defaultAddress.city) {
+      const loc = {
+        label: [defaultAddress.street, defaultAddress.area, defaultAddress.city].filter(Boolean).join(', '),
+        lat: defaultAddress.location?.lat || '',
+        lng: defaultAddress.location?.lng || ''
+      };
+      localStorage.setItem('crave_location', JSON.stringify(loc));
+      window.dispatchEvent(new Event('crave_location_changed'));
+    }
+  }, [defaultAddress]);
+
   const contextValue = {
     url, food_list, foodListLoading, foodListError, restaurantsById,
     cartItems, addToCart, removeFromCart,
@@ -266,6 +401,10 @@ const StoreContextProvider = (props) => {
     token, setToken, loadCartData, setCartItems,
     currency, deliveryCharge,
     fetchFoodList, // Expose for manual refresh
+    // Favourites
+    favourites, isFavourite, addFavourite, removeFavourite,
+    // Address management
+    addresses, defaultAddress, fetchAddresses, addAddress, deleteAddress, setDefaultAddressIndex, setDefaultAddress,
   };
 
   return (
