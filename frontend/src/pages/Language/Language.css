@@ -1,1 +1,110 @@
-/* CSS for Language page */
+.language-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb; /* clean white background */
+  font-family: "Poppins", sans-serif;
+}
+
+.language-container {
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  width: 420px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+/* TITLE */
+
+.lang-title {
+  font-size: 28px;
+  margin-bottom: 5px;
+  color: #111;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+.lang-sub {
+  font-size: 15px;
+  color: #444;
+  margin-bottom: 25px;
+  font-weight: 600;
+}
+
+.lang-sub {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 25px;
+}
+
+/* GRID */
+.lang-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+/* CARD */
+.lang-card {
+  padding: 15px;
+  border-radius: 14px;
+  background: #f3f4f6;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.25s ease;
+  border: 2px solid transparent;
+}
+
+.lang-card:hover {
+  transform: translateY(-3px);
+  background: #ececec;
+}
+
+/* ACTIVE */
+.lang-card.active {
+  background: #fff;
+  border: 2px solid #ff4d4f; /* your food app accent */
+  box-shadow: 0 5px 15px rgba(255,77,79,0.15);
+}
+
+/* FLAG */
+.flag {
+  font-size: 22px;
+}
+
+/* NAME */
+.name {
+  flex: 1;
+  margin-left: 10px;
+  text-align: left;
+  color: #111;
+}
+
+/* CHECK */
+.check {
+  font-size: 14px;
+  color: #ff4d4f;
+}
+
+/* BUTTON */
+.save-btn {
+  margin-top: 25px;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: #ff4d4f;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.25s;
+}
+
+.save-btn:hover {
+  background: #e63946;
+  transform: translateY(-2px);
+}
