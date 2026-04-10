@@ -1,4 +1,5 @@
 import { useState, useContext, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Heart } from 'lucide-react';
 import './FoodItem.css';
 import { StoreContext } from '../../Context/StoreContext';
@@ -25,8 +26,9 @@ function getDietTags(name, desc, cat) {
 }
 
 const FoodItem = (props) => {
+  const { t, i18n } = useTranslation();
   const {
-    image, name, price, description, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, restaurantActive = true, avgRating = 0, ratingCount = 0, inStock = true, forceFavourite
+    image, name, name_en, name_ar, price, description, desc_en, desc_ar, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, restaurantActive = true, avgRating = 0, ratingCount = 0, inStock = true, forceFavourite
   } = props;
   const { cartItems, addToCart, removeFromCart, getItemCount, url, currency, favourites = [], isFavourite, addFavourite, removeFavourite, food_list } = useContext(StoreContext);
 
@@ -48,7 +50,11 @@ const FoodItem = (props) => {
   const restActive = restaurantActive;
   const hasCustomizations = customizations && customizations.length > 0;
   const category = restaurantId?.category || '';
-  const dietTags = useMemo(() => getDietTags(name, description, category), [name, description, category]);
+  // Pick name/description based on language
+  const lang = t('language') === 'اللغة' && i18n.language === 'ar' ? 'ar' : i18n.language;
+  const displayName = lang === 'ar' ? (name_ar || name) : (name_en || name);
+  const displayDesc = lang === 'ar' ? (desc_ar || description) : (desc_en || description);
+  const dietTags = useMemo(() => getDietTags(displayName, displayDesc, category), [displayName, displayDesc, category]);
 
   const [showCustomize, setShowCustomize] = useState(false);
   const [selections, setSelections] = useState({});
@@ -178,7 +184,7 @@ const FoodItem = (props) => {
               <span style={{ color: 'white', fontWeight: 800, fontSize: 13,
                 background: 'rgba(0,0,0,0.5)', padding: '4px 12px',
                 borderRadius: 20, letterSpacing: '0.5px' }}>
-                Not Available
+                {t('not_available')}
               </span>
             </div>
           )}
@@ -195,7 +201,7 @@ const FoodItem = (props) => {
               <span style={{ color: 'white', fontWeight: 800, fontSize: 13,
                 background: 'rgba(0,0,0,0.5)', padding: '4px 12px',
                 borderRadius: 20, letterSpacing: '0.5px' }}>
-                Unavailable
+                {t('unavailable')}
               </span>
             </div>
           )}
@@ -212,7 +218,7 @@ const FoodItem = (props) => {
               <span style={{ color: 'white', fontWeight: 800, fontSize: 13,
                 background: 'rgba(0,0,0,0.5)', padding: '4px 12px',
                 borderRadius: 20, letterSpacing: '0.5px' }}>
-                Closed
+                {t('closed')}
               </span>
             </div>
           )}
@@ -224,14 +230,14 @@ const FoodItem = (props) => {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/>
                   </svg>
-                  CUSTOMIZE
+                  {t('customize')}
                 </button>
               ) : (
                 <button className='fi-add-btn' onClick={() => addToCart(id)}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                   </svg>
-                  ADD
+                  {t('add')}
                 </button>
               )
             ) : (
@@ -257,7 +263,7 @@ const FoodItem = (props) => {
 
         <div className='fi-body'>
           <div className='fi-top'>
-            <p className='fi-name'>{name}</p>
+            <p className='fi-name'>{displayName}</p>
             <div className='fi-rating'>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -266,7 +272,7 @@ const FoodItem = (props) => {
               {ratingCount > 0 && <span style={{fontSize:10, opacity:0.6}}>({ratingCount})</span>}
             </div>
           </div>
-          <p className='fi-desc'>{description}</p>
+          <p className='fi-desc'>{displayDesc}</p>
           {dietTags.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '2px 0 6px' }}>
               {dietTags.map(t => (
@@ -282,8 +288,8 @@ const FoodItem = (props) => {
           <div className='fi-footer'>
             <p className='fi-price'>{currency}{price}</p>
             <div className='fi-footer-right'>
-              {hasCustomizations && <span className='fi-customizable-badge'>Customizable</span>}
-              <p className='fi-delivery'>🕐 20-30 min</p>
+              {hasCustomizations && <span className='fi-customizable-badge'>{t('customizable')}</span>}
+              <p className='fi-delivery'>🕐 20-30 {t('min')}</p>
             </div>
           </div>
         </div>

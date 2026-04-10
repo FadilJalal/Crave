@@ -23,7 +23,7 @@ import Language from './pages/Language/Language';
 import Settings from './pages/Settings/Settings';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from "./StripeProvider.jsx";
-import './i18n';
+import './i18n.mjs';
 
 function ScrollToTop() {
   const { pathname } = useLocation();

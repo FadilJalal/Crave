@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import './RestaurantMenu.css';
@@ -13,6 +14,7 @@ import SentimentSummary from '../../components/SentimentSummary/SentimentSummary
 import ReviewSummary from '../../components/ReviewSummary/ReviewSummary';
 
 const RestaurantMenu = () => {
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const { url, food_list, fetchFoodList, cartItems, currency } = useContext(StoreContext);
@@ -144,7 +146,15 @@ const RestaurantMenu = () => {
 
 
 
+  // Use i18n for categories if translation keys exist
   const categories = ['All', ...new Set(menuItems.map(i => i.category))];
+  const getCategoryLabel = (cat) => {
+    if (cat === 'All') return t('all_categories') || 'All';
+    // Try translation key: category_<cat>
+    const key = `category_${cat.replace(/\s+/g, '_').toLowerCase()}`;
+    const translated = t(key);
+    return translated !== key ? translated : cat;
+  };
   const filtered = category === 'All' ? menuItems : menuItems.filter(i => i.category === category);
 
   if (loading) return (
@@ -159,8 +169,8 @@ const RestaurantMenu = () => {
   if (!restaurant) return (
     <div className='rm-page'>
       <div className='rm-not-found'>
-        <p>🍽️ Restaurant not found.</p>
-        <button onClick={() => navigate('/restaurants')}>← Back to Restaurants</button>
+        <p>🍽️ {t('restaurant_not_found') || 'Restaurant not found.'}</p>
+        <button onClick={() => navigate('/restaurants')}>← {t('back_to_restaurants') || 'Back to Restaurants'}</button>
       </div>
     </div>
   );
@@ -172,7 +182,7 @@ const RestaurantMenu = () => {
   if (!restaurantActive) return (
     <div className='rm-page'>
       <div className='rm-hero'>
-        <button className='rm-back' onClick={() => navigate('/restaurants')}>← Back</button>
+        <button className='rm-back' onClick={() => navigate('/restaurants')}>← {t('back')}</button>
       </div>
       <div style={{
         background: 'linear-gradient(135deg, #1f2937, #111827)',
@@ -182,15 +192,15 @@ const RestaurantMenu = () => {
         boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
       }}>
         <div style={{ fontSize: 56 }}>🚫</div>
-        <div style={{ fontSize: 22, fontWeight: 900, color: 'white' }}>Menu Not Available</div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: 'white' }}>{t('menu_not_available') || 'Menu Not Available'}</div>
         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', maxWidth: 340, lineHeight: 1.7 }}>
-          This restaurant's menu is currently unavailable. Please check back later.
+          {t('menu_unavailable_desc') || "This restaurant's menu is currently unavailable. Please check back later."}
         </div>
         <button onClick={() => navigate('/restaurants')} style={{
           marginTop: 12, padding: '12px 28px',
           background: '#ff4e2a', color: '#fff', border: 'none',
           borderRadius: 50, fontWeight: 800, fontSize: 14, cursor: 'pointer',
-        }}>← Browse other restaurants</button>
+        }}>← {t('browse_other_restaurants') || 'Browse other restaurants'}</button>
       </div>
     </div>
   );
@@ -199,7 +209,7 @@ const RestaurantMenu = () => {
     <div className='rm-page'>
       <div className='rm-hero'>
         <button className='rm-back' onClick={() => navigate('/restaurants')}>
-          ← Back
+          ← {t('back')}
         </button>
         <div className='rm-hero-content'>
           <div className='rm-logo-wrap'>
@@ -218,14 +228,14 @@ const RestaurantMenu = () => {
             </p>
             <div className='rm-meta'>
               <span className={`rm-status ${openStatus ? 'rm-open' : 'rm-closed'}`}>
-                {openStatus ? '● Open Now' : '● Closed'}
+                {openStatus ? t('open_now') : t('closed')}
               </span>
-              <span>🕐 {restaurant.avgPrepTime || 30} min prep</span>
+              <span>🕐 {restaurant.avgPrepTime || 30} {t('min_prep') || 'min prep'}</span>
               {restaurantAvgRating > 0
-                ? <span>⭐ {restaurantAvgRating.toFixed(1)} ({restaurantReviewCount} review{restaurantReviewCount !== 1 ? 's' : ''})</span>
-                : <span>⭐ No reviews yet</span>
+                ? <span>⭐ {restaurantAvgRating.toFixed(1)} ({restaurantReviewCount} {t('review', { count: restaurantReviewCount })})</span>
+                : <span>⭐ {t('no_reviews_yet') || 'No reviews yet'}</span>
               }
-              <span>🍽️ {menuItems.length} items</span>
+              <span>🍽️ {menuItems.length} {t('items') || 'items'}</span>
             </div>
           </div>
         </div>
@@ -239,7 +249,7 @@ const RestaurantMenu = () => {
               className={`rm-cat-pill ${category === cat ? 'rm-cat-active' : ''}`}
               onClick={() => setCategory(cat)}
             >
-              {cat}
+              {getCategoryLabel(cat)}
             </button>
           ))}
         </div>
@@ -248,8 +258,8 @@ const RestaurantMenu = () => {
       <SurgeIndicator restaurantId={id} />
 
       <div className='rm-menu-header'>
-        <h2 className='rm-menu-title'>Menu</h2>
-        <span className='rm-menu-count'>{filtered.length} items</span>
+        <h2 className='rm-menu-title'>{t('menu') || 'Menu'}</h2>
+        <span className='rm-menu-count'>{filtered.length} {t('items') || 'items'}</span>
       </div>
 
       {!openStatus && (
@@ -263,12 +273,12 @@ const RestaurantMenu = () => {
           <div style={{ fontSize: 52, flexShrink: 0 }}>🔒</div>
           <div>
             <div style={{ fontSize: 22, fontWeight: 900, color: 'white', marginBottom: 6 }}>
-              {restaurant.isActive ? "We're Closed Right Now" : "Restaurant Unavailable"}
+              {restaurant.isActive ? t('closed_now') : t('restaurant_unavailable')}
             </div>
             <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
               {restaurant.isActive
-                ? 'This restaurant is currently outside its opening hours. Check back later to place an order.'
-                : 'This restaurant is temporarily unavailable and not accepting orders.'}
+                ? t('outside_opening_hours')
+                : t('restaurant_temp_unavailable')}
             </div>
             {restaurant.isActive && (() => {
               const next = nextOpeningTime(restaurant);
@@ -290,7 +300,7 @@ const RestaurantMenu = () => {
 
       {filtered.length === 0 ? (
         <div className='rm-empty'>
-          <p>🍽️ No menu items found for this category.</p>
+          <p>🍽️ {t('no_menu_items_found') || 'No menu items found for this category.'}</p>
         </div>
       ) : (
         <div style={{ position: 'relative' }}>
@@ -301,23 +311,30 @@ const RestaurantMenu = () => {
             userSelect: openStatus ? 'auto' : 'none',
             transition: 'filter 0.3s, opacity 0.3s',
           }}>
-            {filtered.map(item => (
-                <FoodItem
-                  key={item._id}
-                  id={item._id}
-                  name={item.name}
-                  description={item.description}
-                  price={item.price}
-                  image={item.image}
-                  restaurantId={item.restaurantId}
-                  customizations={item.customizations || []}
-                  avgRating={item.avgRating || 0}
-                  ratingCount={item.ratingCount || 0}
-                  inStock={item.inStock !== false}
-                  restaurantOpen={openStatus}
-                  restaurantActive={restaurantActive}
-                />
-              ))}
+            {filtered.map(item => {
+                // Use i18n keys for food name/desc if present
+                const foodNameKey = `food_${item._id}`;
+                const foodDescKey = `desc_${item._id}`;
+                const name = t(foodNameKey) !== foodNameKey ? t(foodNameKey) : item.name;
+                const description = t(foodDescKey) !== foodDescKey ? t(foodDescKey) : item.description;
+                return (
+                  <FoodItem
+                    key={item._id}
+                    id={item._id}
+                    name={name}
+                    description={description}
+                    price={item.price}
+                    image={item.image}
+                    restaurantId={item.restaurantId}
+                    customizations={item.customizations || []}
+                    avgRating={item.avgRating || 0}
+                    ratingCount={item.ratingCount || 0}
+                    inStock={item.inStock !== false}
+                    restaurantOpen={openStatus}
+                    restaurantActive={restaurantActive}
+                  />
+                );
+              })}
           </div>
         </div>
       )}
@@ -339,17 +356,17 @@ const RestaurantMenu = () => {
         <div className='rm-mini-cart-info'>
           <p className='rm-mini-cart-count'>
             {restaurantCartSummary.count > 0
-              ? `${restaurantCartSummary.count} item${restaurantCartSummary.count !== 1 ? 's' : ''} in cart`
-              : 'Your cart is empty'}
+              ? t('items_in_cart', { count: restaurantCartSummary.count })
+              : t('cart_empty')}
           </p>
-          <p className='rm-mini-cart-total'>Subtotal: {currency}{restaurantCartSummary.total.toFixed(2)}</p>
+          <p className='rm-mini-cart-total'>{t('subtotal')}: {currency}{restaurantCartSummary.total.toFixed(2)}</p>
         </div>
         <button
           className='rm-mini-cart-btn'
           onClick={() => navigate('/cart')}
           disabled={restaurantCartSummary.count === 0}
         >
-          {restaurantCartSummary.count > 0 ? 'View Cart' : 'Add items first'}
+          {restaurantCartSummary.count > 0 ? t('view_cart') : t('add_items_first')}
         </button>
       </div>
     </div>

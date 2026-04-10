@@ -1,110 +1,76 @@
-.language-page {
+
+.language-page-main {
+  background: linear-gradient(120deg, #f8fafc 0%, #fff 100%);
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f9fafb; /* clean white background */
   font-family: "Poppins", sans-serif;
 }
 
-.language-container {
-  background: white;
-  padding: 40px;
-  border-radius: 20px;
-  width: 420px;
-  text-align: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+.language-card {
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.07);
+  border-radius: 18px;
+  padding: 48px 40px 40px 40px;
+  min-width: 340px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeIn 0.7s cubic-bezier(.4,0,.2,1);
 }
 
-/* TITLE */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-.lang-title {
-  font-size: 28px;
-  margin-bottom: 5px;
-  color: #111;
-  font-weight: 900;
+
+.language-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #1a202c;
   letter-spacing: -1px;
 }
 
-.lang-sub {
-  font-size: 15px;
-  color: #444;
-  margin-bottom: 25px;
-  font-weight: 600;
+
+.language-desc {
+  color: #555;
+  margin-bottom: 28px;
+  font-size: 1.08rem;
+  text-align: center;
 }
 
-.lang-sub {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 25px;
-}
 
-/* GRID */
-.lang-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-}
-
-/* CARD */
-.lang-card {
-  padding: 15px;
-  border-radius: 14px;
-  background: #f3f4f6;
-  cursor: pointer;
+.language-buttons {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  transition: all 0.25s ease;
-  border: 2px solid transparent;
+  gap: 18px;
+  margin-top: 18px;
 }
 
-.lang-card:hover {
-  transform: translateY(-3px);
-  background: #ececec;
-}
 
-/* ACTIVE */
-.lang-card.active {
-  background: #fff;
-  border: 2px solid #ff4d4f; /* your food app accent */
-  box-shadow: 0 5px 15px rgba(255,77,79,0.15);
-}
-
-/* FLAG */
-.flag {
-  font-size: 22px;
-}
-
-/* NAME */
-.name {
-  flex: 1;
-  margin-left: 10px;
-  text-align: left;
-  color: #111;
-}
-
-/* CHECK */
-.check {
-  font-size: 14px;
-  color: #ff4d4f;
-}
-
-/* BUTTON */
-.save-btn {
-  margin-top: 25px;
-  width: 100%;
-  padding: 12px;
+.language-buttons button {
+  padding: 12px 28px;
   border: none;
   border-radius: 12px;
-  background: #ff4d4f;
-  color: white;
-  font-weight: bold;
+  background: linear-gradient(90deg, #ff4e2a 60%, #ff8c42 100%);
+  color: #fff;
   cursor: pointer;
-  transition: 0.25s;
+  font-weight: 600;
+  font-size: 1.08rem;
+  box-shadow: 0 2px 8px rgba(255,78,42,0.08);
+  transition: 0.2s;
+  outline: none;
 }
 
-.save-btn:hover {
-  background: #e63946;
-  transform: translateY(-2px);
+.language-buttons button:active {
+  transform: scale(0.97);
+}
+
+
+.language-buttons button:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 16px rgba(255,140,66,0.13);
 }

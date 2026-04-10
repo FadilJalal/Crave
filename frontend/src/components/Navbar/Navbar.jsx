@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import './Navbar.css';
 import { assets } from '../../assets/assets';
 import { Link, useNavigate } from 'react-router-dom';
@@ -15,6 +16,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 }
 
 const Navbar = ({ setShowLogin }) => {
+  const { t } = useTranslation();
   const { token, setToken, setCartItems, food_list, cartItems, url } = useContext(StoreContext);
   const { notifications, unreadCount, markAllRead, clearAll } = useContext(NotificationContext);
   const { dark, toggle } = useContext(ThemeContext);
@@ -324,7 +326,7 @@ const Navbar = ({ setShowLogin }) => {
           )}
         </div>
 
-        <Link to='/restaurants' className='nb-restaurants-link'>🍽️ Restaurants</Link>
+        <Link to='/restaurants' className='nb-restaurants-link'>🍽️ {t('restaurants')}</Link>
 
         {/* Search */}
         <div className='nb-search-wrap' ref={searchRef}>
@@ -332,7 +334,7 @@ const Navbar = ({ setShowLogin }) => {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-            <input type='text' placeholder='Search food, restaurants...' value={searchQuery}
+            <input type='text' placeholder={t('search_placeholder')} value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchOpen(true)} />
             {searchQuery && <button className='nb-search-clear' onClick={() => { setSearchQuery(''); setSearchResults([]); }}>✕</button>}
           </div>
@@ -419,12 +421,12 @@ const Navbar = ({ setShowLogin }) => {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />
             </svg>
-            <span className='nb-cart-label'>Cart</span>
+            <span className='nb-cart-label'>{t('cart')}</span>
             {cartCount > 0 && <span className='nb-cart-badge'>{cartCount}</span>}
           </Link>
 
           {!token ? (
-            <button className='nb-signin' onClick={() => setShowLogin(true)}>Sign in</button>
+            <button className='nb-signin' onClick={() => setShowLogin(true)}>{t('sign_in') || 'Sign in'}</button>
           ) : (
             <div className='nb-profile' ref={profileRef}>
               <button className='nb-avatar' onClick={() => setOpenProfile(!openProfile)}>
@@ -440,51 +442,51 @@ const Navbar = ({ setShowLogin }) => {
                         <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
                       </svg>
                     </div>
-                    <span>My Account</span>
+                    <span>{t('my_account') || 'My Account'}</span>
                   </div>
                   <hr className='nb-dd-hr' />
                   <button className='nb-dd-item' onClick={() => { navigate('/myorders'); setOpenProfile(false); }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
                     </svg>
-                    My Orders
+                    {t('my_orders') || 'My Orders'}
                   </button>
                                     {/* ...existing menu items... */}
                   <button className='nb-dd-item' onClick={() => { navigate('/payment-methods'); setOpenProfile(false); }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="2" y="7" width="20" height="10" rx="2" /><path d="M2 11h20" />
                     </svg>
-                    Payment Methods
+                    {t('payment_methods') || 'Payment Methods'}
                   </button>
                   <button className='nb-dd-item' onClick={() => { navigate('/addresses'); setOpenProfile(false); }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" /><circle cx="12" cy="9" r="2.5" />
                     </svg>
-                    Addresses
+                    {t('addresses') || 'Addresses'}
                   </button>
                   <button className='nb-dd-item' onClick={() => { navigate('/favourites'); setOpenProfile(false); }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                     </svg>
-                    My Favourite
+                    {t('my_favourite') || 'My Favourite'}
                   </button>
                   <button className='nb-dd-item' onClick={() => { navigate('/language'); setOpenProfile(false); }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20" />
                     </svg>
-                    Language
+                    {t('language')}
                   </button>
                   <button className='nb-dd-item' onClick={() => { navigate('/settings'); setOpenProfile(false); }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09A1.65 1.65 0 008.91 3.05V3a2 2 0 014 0v.09c.26.11.5.26.71.45.21.19.4.41.56.65.16.24.29.5.39.77.1.27.17.55.21.84.04.29.06.59.06.89v.09c0 .34-.03.67-.09 1-.06.33-.15.65-.27.96-.12.31-.27.61-.45.89-.18.28-.39.54-.62.78-.23.24-.49.45-.77.63-.28.18-.58.33-.89.45-.31.12-.63.21-.96.27-.33.06-.66.09-1 .09h-.09c-.3 0-.6-.02-.89-.06-.29-.04-.57-.11-.84-.21-.27-.1-.53-.23-.77-.39-.24-.16-.46-.35-.65-.56-.19-.21-.34-.45-.45-.71V3a2 2 0 014 0v.09c.11.26.26.5.45.71.19.21.41.4.65.56.24.16.5.29.77.39.27.1.55.17.84.21.29.04.59.06.89.06h.09c.34 0 .67-.03 1-.09.33-.06.65-.15.96-.27.31-.12.61-.27.89-.45.28-.18.54-.39.78-.62.24-.23.45-.49.63-.77.18-.28.33-.58.45-.89.12-.31.21-.63.27-.96.06-.33.09-.66.09-1v-.09c0-.3-.02-.6-.06-.89-.04-.29-.11-.57-.21-.84-.1-.27-.23-.53-.39-.77-.16-.24-.35-.46-.56-.65-.21-.19-.45-.34-.71-.45V3a2 2 0 014 0v.09c-.11.26-.26.5-.45.71-.19.21-.41.4-.65.56-.24.16-.5.29-.77.39-.27.1-.55.17-.84.21-.29.04-.59.06-.89.06h-.09c-.34 0-.67.03-1 .09-.33.06-.65.15-.96.27-.31.12-.61.27-.89.45-.28.18-.54.39-.78.62-.24-.23-.45-.49-.63-.77-.18-.28-.33-.58-.45-.89-.12-.31-.21-.63-.27-.96-.06-.33-.09-.66-.09 1v.09c0 .3.02.6.06.89.04.29.11.57.21.84.1.27.23.53.39.77.16.24.35.46.56.65.21.19.45.34.71.45V3a2 2 0 014 0v.09z" />
                     </svg>
-                    Settings
+                    {t('settings') || 'Settings'}
                   </button>
                   <button className='nb-dd-item nb-dd-logout' onMouseDown={e => { e.preventDefault(); logout(); }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                     </svg>
-                    Sign Out
+                    {t('sign_out') || 'Sign Out'}
                   </button>
                 </div>
               )}
