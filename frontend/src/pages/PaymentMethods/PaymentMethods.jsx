@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { StoreContext } from "../../Context/StoreContext";
 import axios from "axios";
@@ -18,6 +19,7 @@ function CardBrandIcon({ brand }) {
 }
 
 export default function PaymentMethods() {
+  const { t } = useTranslation();
   const [cards, setCards] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -50,7 +52,7 @@ export default function PaymentMethods() {
         });
         if (mounted) setCards(res.data.cards || []);
       } catch {
-        if (mounted) setError("Failed to fetch cards.");
+        if (mounted) setError(t("failed_fetch_cards"));
       }
 
       if (mounted) setFetching(false);
@@ -69,7 +71,7 @@ export default function PaymentMethods() {
     setSuccess("");
 
     if (!stripe || !elements) return;
-    if (!name) return setError("Name is required");
+    if (!name) return setError(t("name_required"));
 
     setLoading(true);
 
@@ -99,13 +101,13 @@ export default function PaymentMethods() {
         setCards((prev) => [...prev, res.data.card]);
         setShowForm(false);
         setName("");
-        setSuccess("Card added!");
+        setSuccess(t("card_added"));
         cardElement.clear();
       } else {
-        setError(res.data.message || "Failed to save card");
+        setError(res.data.message || t("failed_save_card"));
       }
     } catch {
-      setError("Failed to save card");
+      setError(t("failed_save_card"));
     }
 
     setLoading(false);
@@ -130,9 +132,9 @@ export default function PaymentMethods() {
       );
 
       setCards((prev) => prev.filter((_, i) => i !== idx));
-      setSuccess("Card removed");
+      setSuccess(t("card_removed"));
     } catch {
-      setError("Failed to remove card");
+      setError(t("failed_remove_card"));
     }
 
     setLoading(false);
@@ -143,20 +145,20 @@ export default function PaymentMethods() {
     <main className="pm-main-bg">
       <section className="pm-section">
         <header className="pm-header">
-          <h1 className="pm-title-pro">Payment Methods</h1>
+          <h1 className="pm-title-pro">{t("payment_methods")}</h1>
           <button
             className="pm-add-btn-pro"
             onClick={() => setShowForm((prev) => !prev)}
             disabled={loading || fetching}
           >
-            {showForm ? "Cancel" : "+ Add Card"}
+            {showForm ? t("cancel") : t("add_card")}
           </button>
         </header>
 
         {/* ===== Form ===== */}
         {showForm && (
           <form className="pm-form-pro" onSubmit={handleAddCard}>
-            <label className="pm-label-pro">Name on Card</label>
+            <label className="pm-label-pro">{t("name_on_card")}</label>
 
             <input
               className="pm-input-pro"
@@ -185,17 +187,17 @@ export default function PaymentMethods() {
             {success && <div className="pm-success-pro">{success}</div>}
 
             <button className="pm-save-btn-pro" disabled={loading}>
-              {loading ? "Saving..." : "Save Card"}
+              {loading ? t("saving") : t("save_card")}
             </button>
           </form>
         )}
 
         {/* ===== Cards List ===== */}
         <div className="pm-list-pro">
-          {fetching && <div className="pm-loading-pro">Loading...</div>}
+          {fetching && <div className="pm-loading-pro">{t("loading")}</div>}
 
           {!fetching && cards.length === 0 && !error && (
-            <div className="pm-empty-pro">No cards saved yet</div>
+            <div className="pm-empty-pro">{t("no_cards_saved")}</div>
           )}
 
           {!showForm && error && (
@@ -222,7 +224,7 @@ export default function PaymentMethods() {
                 onClick={() => handleRemove(idx)}
                 disabled={loading}
               >
-                Remove
+                {t("remove")}
               </button>
             </div>
           ))}

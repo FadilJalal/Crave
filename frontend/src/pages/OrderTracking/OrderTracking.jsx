@@ -1,15 +1,16 @@
 import React, { useContext, useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { StoreContext } from '../../Context/StoreContext';
 import LiveDeliveryMap from '../../components/LiveDeliveryMap/LiveDeliveryMap';
 import './OrderTracking.css';
 
-const STEPS = [
-  { key: 'Order Placed',    label: 'Order Placed', icon: '🧾', desc: 'Your order has been received.',              eta: null },
-  { key: 'Food Processing', label: 'Preparing',    icon: '👨‍🍳', desc: 'The restaurant is preparing your food.',    eta: '15–25 min' },
-  { key: 'Out for Delivery',label: 'On the Way',   icon: '🛵', desc: 'Your order is out for delivery.',           eta: '10–20 min' },
-  { key: 'Delivered',       label: 'Delivered',    icon: '✅', desc: 'Enjoy your meal!',                          eta: null },
+const STEPS = (t) => [
+  { key: 'Order Placed',    label: t("my_orders_title").replace('طلباتي', 'تم الطلب').replace('My Orders', 'Order Placed'), icon: '🧾', desc: t("order_placed_desc"),              eta: null },
+  { key: 'Food Processing', label: t("preparing"),    icon: '👨‍🍳', desc: t("preparing_desc"),    eta: '15–25 min' },
+  { key: 'Out for Delivery',label: t("on_the_way"),   icon: '🛵', desc: t("on_the_way_desc"),           eta: '10–20 min' },
+  { key: 'Delivered',       label: t("status_delivered"),    icon: '✅', desc: t("enjoy_meal"),                          eta: null },
 ];
 
 const stepIndex = (status) => {
@@ -39,6 +40,7 @@ const OrderTracking = () => {
   const { orderId } = useParams();
   const { url, token, currency } = useContext(StoreContext);
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
 
   const [order, setOrder]           = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -77,7 +79,7 @@ const OrderTracking = () => {
   }, [token, orderId]);
 
   const step        = order ? stepIndex(order.status) : 0;
-  const currentStep = STEPS[step];
+  const currentStep = STEPS(t)[step];
   const isDelivered = step === 3;
   const displayTotal = order ? getOrderDisplayTotal(order) : 0;
   const splitCashDue = order?.paymentMethod === 'split' ? Math.max(0, Number(order?.amount || 0)) : 0;
@@ -89,8 +91,8 @@ const OrderTracking = () => {
     <div className="ot-page">
       <div className="ot-empty">
         <div className="ot-empty-icon">🔒</div>
-        <p className="ot-empty-title">Please log in to track your order</p>
-        <button className="ot-btn" onClick={() => navigate('/')}>Go Home</button>
+        <p className="ot-empty-title">{t("please_login_track")}</p>
+        <button className="ot-btn" onClick={() => navigate('/')}>{t("go_home")}</button>
       </div>
     </div>
   );
@@ -109,9 +111,9 @@ const OrderTracking = () => {
     <div className="ot-page">
       <div className="ot-empty">
         <div className="ot-empty-icon">⚠️</div>
-        <p className="ot-empty-title">Order not found</p>
-        <p className="ot-empty-sub">We couldn't load this order. It may have been removed.</p>
-        <button className="ot-btn" onClick={() => navigate('/myorders')}>Back to Orders</button>
+        <p className="ot-empty-title">{t("order_not_found")}</p>
+        <p className="ot-empty-sub">{t("order_removed_desc")}</p>
+        <button className="ot-btn" onClick={() => navigate('/myorders')}>{t("back_to_orders")}</button>
       </div>
     </div>
   );
@@ -119,11 +121,11 @@ const OrderTracking = () => {
   return (
     <div className="ot-page">
 
-      <button className="ot-back" onClick={() => navigate('/myorders')}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <button className="ot-back" onClick={() => navigate('/myorders')} style={{ flexDirection: i18n.language === 'ar' ? 'row-reverse' : 'row' }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: i18n.language === 'ar' ? 'scaleX(-1)' : 'none' }}>
           <polyline points="15 18 9 12 15 6"/>
         </svg>
-        My Orders
+        {t("my_orders_title")}
       </button>
 
       {/* Main layout: left info + right map */}
@@ -139,7 +141,7 @@ const OrderTracking = () => {
               <h1 className="ot-hero-title">{currentStep.label}</h1>
               <p className="ot-hero-desc">{currentStep.desc}</p>
               {currentStep.eta && !isDelivered && (
-                <span className="ot-eta">⏱ Est. {currentStep.eta}</span>
+                <span className="ot-eta">⏱ {t("est")} {currentStep.eta}</span>
               )}
             </div>
             <div className="ot-order-id-badge">#{String(order._id).slice(-6).toUpperCase()}</div>
@@ -147,7 +149,7 @@ const OrderTracking = () => {
 
           {/* Stepper */}
           <div className="ot-stepper">
-            {STEPS.map((s, idx) => {
+            {STEPS(t).map((s, idx) => {
               const done    = idx <= step;
               const active  = idx === step && !isDelivered;
               const lineActive = idx < step;
@@ -159,7 +161,7 @@ const OrderTracking = () => {
                     </div>
                     <p className={`ot-step-label ${done ? 'ot-label-done' : ''}`}>{s.label}</p>
                   </div>
-                  {idx < STEPS.length - 1 && (
+                  {idx < STEPS(t).length - 1 && (
                     <div className={`ot-line ${lineActive ? 'ot-line-active' : ''}`}>
                       {lineActive && <div className="ot-line-fill" />}
                     </div>
@@ -171,7 +173,7 @@ const OrderTracking = () => {
 
           {/* Order summary */}
           <div className="ot-card">
-            <h3 className="ot-card-title">🛍 Order Summary</h3>
+            <h3 className="ot-card-title">🛍 {t("order_summary")}</h3>
             <ul className="ot-items">
               {(order.items || []).map((item, i) => (
                 <li key={i} className="ot-item">
@@ -182,35 +184,35 @@ const OrderTracking = () => {
               ))}
             </ul>
             <div className="ot-divider" />
-            <div className="ot-total-row"><span>Delivery fee</span><span>{currency}{(order.deliveryFee || 0).toFixed(2)}</span></div>
+            <div className="ot-total-row"><span>{t("delivery_fee")}</span><span>{currency}{(order.deliveryFee || 0).toFixed(2)}</span></div>
             {order.paymentMethod === 'split' && (
-              <div className="ot-total-row"><span>Cash due</span><span>{currency}{splitCashDue.toFixed(2)}</span></div>
+              <div className="ot-total-row"><span>{t("cash_due")}</span><span>{currency}{splitCashDue.toFixed(2)}</span></div>
             )}
-            <div className="ot-total-row ot-total-bold"><span>Total</span><span>{currency}{displayTotal.toFixed(2)}</span></div>
+            <div className="ot-total-row ot-total-bold"><span>{t("total")}</span><span>{currency}{displayTotal.toFixed(2)}</span></div>
             <div className="ot-total-row">
-              <span>Payment</span>
+              <span>{t("payment")}</span>
               <span className={`ot-pay-badge ${order.payment ? 'ot-paid' : 'ot-unpaid'}`}>
-                {order.payment ? '✓ Paid' : 'Cash on Delivery'}
+                {order.payment ? `✓ ${t("paid")}` : t("cash_on_delivery")}
               </span>
             </div>
           </div>
 
           {/* Delivery details */}
           <div className="ot-card">
-            <h3 className="ot-card-title">📍 Delivery Details</h3>
-            <div className="ot-info-row"><span className="ot-info-label">Name</span><span className="ot-info-value">{order.address?.firstName} {order.address?.lastName}</span></div>
-            <div className="ot-info-row"><span className="ot-info-label">Street</span><span className="ot-info-value">{order.address?.street}</span></div>
+            <h3 className="ot-card-title">📍 {t("delivery_details")}</h3>
+            <div className="ot-info-row"><span className="ot-info-label">{t("name")}</span><span className="ot-info-value">{order.address?.firstName} {order.address?.lastName}</span></div>
+            <div className="ot-info-row"><span className="ot-info-label">{t("street")}</span><span className="ot-info-value">{order.address?.street}</span></div>
             <div className="ot-info-row">
-              <span className="ot-info-label">City</span>
+              <span className="ot-info-label">{t("city")}</span>
               <span className="ot-info-value">{order.address?.city}{order.address?.state ? `, ${order.address.state}` : ''}</span>
             </div>
             {order.address?.phone && (
-              <div className="ot-info-row"><span className="ot-info-label">Phone</span><span className="ot-info-value">{order.address.phone}</span></div>
+              <div className="ot-info-row"><span className="ot-info-label">{t("phone")}</span><span className="ot-info-value">{order.address.phone}</span></div>
             )}
             <div className="ot-divider" />
-            <div className="ot-info-row"><span className="ot-info-label">Placed</span><span className="ot-info-value">{formatDate(order.date || order.createdAt)}</span></div>
+            <div className="ot-info-row"><span className="ot-info-label">{t("placed")}</span><span className="ot-info-value">{formatDate(order.date || order.createdAt)}</span></div>
             {order.restaurantId?.name && (
-              <div className="ot-info-row"><span className="ot-info-label">Restaurant</span><span className="ot-info-value">{order.restaurantId.name}</span></div>
+              <div className="ot-info-row"><span className="ot-info-label">{t("restaurant")}</span><span className="ot-info-value">{order.restaurantId.name}</span></div>
             )}
           </div>
 
@@ -218,7 +220,7 @@ const OrderTracking = () => {
           <div className="ot-footer">
             {lastUpdated && (
               <p className="ot-last-updated">
-                Last updated {lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                {t("last_updated")} {lastUpdated.toLocaleTimeString(i18n.language === 'ar' ? 'ar-AE' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                 {!isDelivered && <span className="ot-live-dot" />}
               </p>
             )}
@@ -226,7 +228,7 @@ const OrderTracking = () => {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
               </svg>
-              Refresh
+              {t("refresh_btn")}
             </button>
           </div>
 
@@ -234,7 +236,7 @@ const OrderTracking = () => {
 
         {/* RIGHT: map — sticky so it stays visible while scrolling left */}
         <div className="ot-right">
-          <h3 className="ot-section-label">📍 Live Delivery Map</h3>
+          <h3 className="ot-section-label">📍 {t("live_delivery_map")}</h3>
           <LiveDeliveryMap key={order.status} order={order} />
         </div>
 

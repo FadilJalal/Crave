@@ -389,3 +389,30 @@
     opacity: 0.6;
     cursor: not-allowed;
 }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .mo-count {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--text-3);
+}
+[data-theme="dark"] .mo-filters {
+  background: var(--card);
+  border-color: var(--border);
+}
+[data-theme="dark"] .mo-filter-input,
+[data-theme="dark"] .mo-filter-select {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text);
+}
+[data-theme="dark"] .mo-clear-filters {
+  background: rgba(220,38,38,0.08);
+  border-color: rgba(220,38,38,0.2);
+  color: #fca5a5;
+}
+[data-theme="dark"] .mo-cancel-btn {
+  background: rgba(220,38,38,0.08);
+  border-color: rgba(220,38,38,0.2);
+  color: #fca5a5;
+}

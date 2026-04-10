@@ -11,3 +11,29 @@
 .oi-small { font-size: 13px; }
 .oi-tile-label { font-size: 11px; color: #9a9a9a; font-weight: 500; margin: 0; }
 @media (max-width: 520px) { .oi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .oi-wrap {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .oi-title {
+  color: var(--text);
+}
+[data-theme="dark"] .oi-sub {
+  color: var(--text-3);
+}
+[data-theme="dark"] .oi-tile {
+  background: var(--bg);
+  border-color: var(--border);
+}
+[data-theme="dark"] .oi-tile:hover {
+  border-color: rgba(255,255,255,0.15);
+}
+[data-theme="dark"] .oi-tile-value {
+  color: var(--text);
+}
+[data-theme="dark"] .oi-tile-label {
+  color: var(--text-3);
+}

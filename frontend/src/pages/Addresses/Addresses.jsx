@@ -1,5 +1,5 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import "./Addresses.css";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -18,7 +18,21 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function Addresses() {
-  const [addresses, setAddresses] = useState([]);
+  const { t } = useTranslation();
+  const [addresses, setAddresses] = useState(() => {
+    try {
+      const saved = localStorage.getItem("crave_addresses");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("crave_addresses", JSON.stringify(addresses));
+  }, [addresses]);
+
   const [form, setForm] = useState({
     street: "",
     area: "",
@@ -159,14 +173,14 @@ export default function Addresses() {
 
         {/* ===== FORM ===== */}
         <section className="address-form-section">
-          <h1 className="address-title">Your Addresses</h1>
-          <p className="address-desc">Add and manage delivery locations</p>
+          <h1 className="address-title">{t("your_addresses")}</h1>
+          <p className="address-desc">{t("add_manage_locations")}</p>
 
           <form className="address-form" onSubmit={handleAdd}>
             <input
               className="address-input"
               name="street"
-              placeholder="Street"
+              placeholder={t("street_placeholder")}
               value={form.street}
               onChange={handleChange}
             />
@@ -174,7 +188,7 @@ export default function Addresses() {
             <input
               className="address-input"
               name="area"
-              placeholder="Area"
+              placeholder={t("area_placeholder")}
               value={form.area}
               onChange={handleChange}
             />
@@ -182,7 +196,7 @@ export default function Addresses() {
             <input
               className="address-input"
               name="city"
-              placeholder="City"
+              placeholder={t("city_placeholder")}
               value={form.city}
               onChange={handleChange}
             />
@@ -190,7 +204,7 @@ export default function Addresses() {
             <input
               className="address-input"
               name="building"
-              placeholder="Building / Apartment"
+              placeholder={t("building_placeholder")}
               value={form.building}
               onChange={handleChange}
             />
@@ -202,7 +216,7 @@ export default function Addresses() {
                 className="address-map-btn"
                 onClick={() => setShowMap(true)}
               >
-                🗺️ Pick on Map
+                {t("pick_on_map")}
               </button>
 
               <button
@@ -210,14 +224,14 @@ export default function Addresses() {
                 className="address-map-btn"
                 onClick={handleUseCurrentLocation}
               >
-                📍 Use my location
+                {t("use_my_location")}
               </button>
 
-              {loadingLoc && <span>Loading...</span>}
+              {loadingLoc && <span>{t("loading")}</span>}
             </div>
 
             <button className="address-btn" disabled={adding}>
-              {adding ? "Adding..." : "Add Address"}
+              {adding ? t("adding") : t("add_address")}
             </button>
           </form>
 
@@ -230,7 +244,7 @@ export default function Addresses() {
               />
 
               <div className="address-map-modal-content">
-                <h3>Pick Location</h3>
+                <h3>{t("pick_location")}</h3>
 
                 <MapContainer
                   key={showMap ? "open" : "closed"}
@@ -246,7 +260,7 @@ export default function Addresses() {
                   className="address-map-btn"
                   onClick={() => setShowMap(false)}
                 >
-                  Close
+                  {t("close")}
                 </button>
               </div>
             </div>
@@ -257,7 +271,7 @@ export default function Addresses() {
         <section className="address-list-section">
           <div className="address-list">
             {addresses.length === 0 && (
-              <p className="address-empty">No addresses yet</p>
+              <p className="address-empty">{t("no_addresses_yet")}</p>
             )}
 
             {addresses.map((addr, idx) => (
@@ -270,7 +284,7 @@ export default function Addresses() {
                 <div>
                   <div className="address-main">
                     {addr.street}, {addr.city}
-                    {addr.isDefault && <span> • Default</span>}
+                    {addr.isDefault && <span className="address-default-badge">{t("default")}</span>}
                   </div>
 
                   <div className="address-building">
@@ -280,13 +294,14 @@ export default function Addresses() {
 
                 <div className="address-actions">
                   {!addr.isDefault && (
-                    <button onClick={() => setDefaultAddressIndex(idx)}>
-                      Set Default
+                    <button className="address-set-btn" onClick={() => setDefaultAddressIndex(idx)}>
+                      {t("set_default")}
                     </button>
                   )}
 
-                  <button onClick={() => deleteAddress(idx)}>
-                    Delete
+                  <button className="address-delete-btn" onClick={() => deleteAddress(idx)}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px'}}><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                    {t("delete")}
                   </button>
                 </div>
               </div>

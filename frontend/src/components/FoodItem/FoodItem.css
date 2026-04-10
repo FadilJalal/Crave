@@ -139,3 +139,9 @@
   background: rgba(17,24,39,0.9);
   border-color: rgba(255,78,42,0.6);
 }
+
+[data-theme="dark"] .fi-rating {
+  background: rgba(245,158,11,0.12);
+  border-color: rgba(245,158,11,0.25);
+  color: #fbbf24;
+}

@@ -1,10 +1,11 @@
 .profile-page {
-  background: var(--profile-bg, #f6f7fa);
+  background: var(--bg);
   min-height: 100vh;
   padding: 40px 0 0 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  transition: background 0.2s;
 }
 
 .profile-row {
@@ -14,15 +15,18 @@
 }
 
 .profile-card {
-  background: var(--profile-card-bg, #fff);
-  border-radius: 32px;
-  box-shadow: 0 4px 32px rgba(44,62,80,0.07);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 28px;
+  box-shadow: var(--shadow-md);
+  border: 1.5px solid var(--border);
   padding: 32px 36px 28px 36px;
   min-width: 380px;
   max-width: 420px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  transition: background 0.2s, color 0.2s, border 0.2s, box-shadow 0.2s;
 }
 
 .profile-card-header {
@@ -33,7 +37,7 @@
 
 .profile-icon {
   font-size: 2.2rem;
-  background: #f3f4f6;
+  background: var(--bg);
   border-radius: 16px;
   padding: 8px 12px;
   color: #6c47ff;
@@ -45,13 +49,15 @@
 .profile-card-title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #23272f;
+  color: var(--text);
+  transition: color 0.2s;
 }
 
 .profile-card-desc {
   font-size: 0.98rem;
-  color: #7e808c;
+  color: var(--text-3);
   font-weight: 500;
+  transition: color 0.2s;
 }
 
 .profile-bar-row {
@@ -65,15 +71,17 @@
   font-size: 1.05rem;
   color: #6c47ff;
   font-weight: 600;
+  transition: color 0.2s;
 }
 
 .profile-bar {
   flex: 1;
   height: 10px;
-  background: #f3f4f6;
+  background: var(--bg);
   border-radius: 8px;
   overflow: hidden;
   margin: 0 8px;
+  transition: background 0.2s;
 }
 
 .profile-bar-fill {
@@ -84,35 +92,22 @@
 
 .profile-bar-percent {
   font-size: 1.05rem;
-  color: #7e808c;
+  color: var(--text-3);
   font-weight: 600;
+  transition: color 0.2s;
 }
 
-/* Light theme */
-/* Light theme */
 .profile-order-row {
   display: flex;
   align-items: center;
   gap: 18px;
-  background: #fafbfc;
+  background: var(--bg);
   border-radius: 18px;
   padding: 14px 18px;
   margin-top: 10px;
-  box-shadow: 0 2px 8px rgba(44,62,80,0.04);
-  border: 1.5px solid #ffe3d6;
-  transition: background 0.2s, border 0.2s;
-}
-
-body.dark .profile-order-row, .profile-page.dark .profile-order-row {
-  background: #101114 !important;
-  border: 1.5px solid #23242a;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-}
-
-body.dark .profile-order-row, .profile-page.dark .profile-order-row {
-  background: #18191f;
-  border: 1.5px solid #23242a;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  box-shadow: var(--shadow-sm);
+  border: 1.5px solid var(--border);
+  transition: background 0.2s, border 0.2s, box-shadow 0.2s;
 }
 
 .profile-order-img {
@@ -120,7 +115,7 @@ body.dark .profile-order-row, .profile-page.dark .profile-order-row {
   height: 54px;
   border-radius: 12px;
   object-fit: cover;
-  background: #fff;
+  background: var(--card);
 }
 
 .profile-order-info {
@@ -130,7 +125,7 @@ body.dark .profile-order-row, .profile-page.dark .profile-order-row {
 .profile-order-title {
   font-size: 1.08rem;
   font-weight: 700;
-  color: #23272f;
+  color: var(--text);
 }
 
 .profile-order-price {
@@ -164,62 +159,26 @@ body.dark .profile-order-row, .profile-page.dark .profile-order-row {
 }
 
 .profile-refresh-btn {
-  background: #fff;
-  color: #23272f;
+  background: var(--card);
+  color: var(--text);
   border: none;
   border-radius: 24px;
   padding: 10px 28px;
   font-weight: 700;
   font-size: 1.05rem;
-  box-shadow: 0 1px 4px rgba(44,62,80,0.07);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
   transition: background 0.18s;
 }
 
 .profile-refresh-btn:hover {
-  background: #f3f4f6;
+  background: var(--bg);
 }
 
-/* DARK THEME OVERRIDES */
-body.dark .profile-page, .profile-page.dark {
-  --profile-bg: #111217;
-  --profile-card-bg: #18191f;
+/* ── Dark Mode ── */
+[data-theme="dark"] .profile-icon {
+  background: rgba(108,71,255,0.12);
 }
-
-body.dark .profile-card, .profile-page.dark .profile-card {
-  background: var(--profile-card-bg, #18191f);
-  color: #fff;
-}
-
-body.dark .profile-card-title, .profile-page.dark .profile-card-title {
-  color: #fff;
-}
-
-body.dark .profile-card-desc, .profile-page.dark .profile-card-desc {
-  color: #b0b3c6;
-}
-
-body.dark .profile-bar {
-  background: #23242a;
-}
-
-body.dark .profile-bar-label {
-  color: #b0b3c6;
-}
-
-body.dark .profile-bar-percent {
-  color: #b0b3c6;
-}
-
-body.dark .profile-order-row {
-  background: #18191f;
-}
-
-body.dark .profile-refresh-btn {
-  background: #23242a;
-  color: #fff;
-}
-
-body.dark .profile-refresh-btn:hover {
-  background: #18191f;
+[data-theme="dark"] .profile-bar-label {
+  color: #a78bfa;
 }

@@ -1,11 +1,13 @@
 // frontend/src/components/LoginPopup/LoginPopup.jsx
 import React, { useContext, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import './LoginPopup.css';
 import { StoreContext } from '../../Context/StoreContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
 const LoginPopup = ({ setShowLogin }) => {
+  const { t, i18n } = useTranslation();
   const { setToken, url, loadCartData } = useContext(StoreContext);
   const [mode, setMode]         = useState('user');
   const [isLogin, setIsLogin]   = useState(false);
@@ -35,7 +37,7 @@ const LoginPopup = ({ setShowLogin }) => {
       if (mode === 'admin') {
         const res = await axios.post(`${url}/api/admin/login-super`, { email: data.email, password: data.password });
         if (res.data.success) {
-          window.location.href = `${import.meta.env.VITE_SUPER_ADMIN_URL || 'http://localhost:5173'}/bridge?token=${encodeURIComponent(res.data.token)}`;
+          window.location.href = `${import.meta.env.VITE_SUPER_ADMIN_URL || 'http://localhost:5174'}/bridge?token=${encodeURIComponent(res.data.token)}`;
           setShowLogin(false);
         } else {
           if (res.data.message === 'Not a superadmin account') {
@@ -52,7 +54,7 @@ const LoginPopup = ({ setShowLogin }) => {
           localStorage.setItem('restaurantInfo', JSON.stringify(res.data.restaurant));
           setShowLogin(false);
           // Force redirect to the correct restaurant admin panel URL
-          window.location.href = `http://localhost:5175/bridge?token=${encodeURIComponent(res.data.token)}`;
+          window.location.href = `${import.meta.env.VITE_RESTAURANT_ADMIN_URL || 'http://localhost:5175'}/bridge?token=${encodeURIComponent(res.data.token)}`;
         } else {
           if (res.data.message === 'Restaurant not found' || res.data.message === 'Restaurant is disabled') {
             toast.error('This login is for Restaurant Admins only. If you are a Super Admin, please use the Admin tab.');
@@ -92,9 +94,9 @@ const LoginPopup = ({ setShowLogin }) => {
   };
 
   const tabs = [
-    { id: 'user',       label: 'Customer',   icon: '👤' },
-    { id: 'restaurant', label: 'Restaurant', icon: '🍽️' },
-    { id: 'admin',      label: 'Admin',      icon: '⚙️' },
+    { id: 'user',       label: t("tab_customer"),   icon: '👤' },
+    { id: 'restaurant', label: t("tab_restaurant"), icon: '🍽️' },
+    { id: 'admin',      label: t("tab_admin"),      icon: '⚙️' },
   ];
 
   const showForgotLink = (mode === 'user' && isLogin) || mode === 'restaurant';
@@ -131,32 +133,32 @@ const LoginPopup = ({ setShowLogin }) => {
           <>
             {mode === 'user' && (
               <div className='lp-toggle'>
-                <button className={`lp-tog-btn ${!isLogin ? 'lp-tog-active' : ''}`} type='button' onClick={() => setIsLogin(false)}>Sign Up</button>
-                <button className={`lp-tog-btn ${isLogin ? 'lp-tog-active' : ''}`} type='button' onClick={() => setIsLogin(true)}>Sign In</button>
+                <button className={`lp-tog-btn ${!isLogin ? 'lp-tog-active' : ''}`} type='button' onClick={() => setIsLogin(false)}>{t("sign_up")}</button>
+                <button className={`lp-tog-btn ${isLogin ? 'lp-tog-active' : ''}`} type='button' onClick={() => setIsLogin(true)}>{t("sign_in")}</button>
               </div>
             )}
 
             <form onSubmit={onSubmit} className='lp-form'>
               {mode === 'user' && !isLogin && (
                 <div className='lp-field'>
-                  <label>Full Name</label>
-                  <input name='name' value={data.name} onChange={onChange} placeholder='John Doe' required />
+                  <label>{t("full_name")}</label>
+                  <input name='name' value={data.name} onChange={onChange} placeholder={t("full_name")} required />
                 </div>
               )}
 
               <div className='lp-field'>
-                <label>Email Address</label>
+                <label>{t("email_address")}</label>
                 <input name='email' type='email' value={data.email} onChange={onChange} placeholder='you@example.com' required />
               </div>
 
               <div className='lp-field'>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label style={{ margin: 0 }}>Password</label>
+                  <label style={{ margin: 0 }}>{t("password")}</label>
                   {showForgotLink && (
                     <button type='button'
                       onClick={() => { setScreen('forgot'); setForgotEmail(data.email); }}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#ff4e2a', fontWeight: 700, padding: 0 }}>
-                      Forgot password?
+                      {t("forgot_password")}
                     </button>
                   )}
                 </div>
@@ -171,11 +173,11 @@ const LoginPopup = ({ setShowLogin }) => {
 
               <div className='lp-terms'>
                 <input type='checkbox' id='lp-agree' required />
-                <label htmlFor='lp-agree'>I agree to the <span>Terms of Use</span> & <span>Privacy Policy</span></label>
+                <label htmlFor='lp-agree'>{t("i_agree")} <span>{t("terms_of_use")}</span> {t("and_the")} <span>{t("privacy_policy")}</span></label>
               </div>
 
               <button className='lp-submit' type='submit' disabled={loading}>
-                {loading ? 'Please wait...' : mode === 'admin' ? 'Admin Login' : mode === 'restaurant' ? 'Restaurant Login' : isLogin ? 'Sign In' : 'Create Account'}
+                {loading ? t("please_wait") : mode === 'admin' ? t("admin_login") : mode === 'restaurant' ? t("restaurant_login") : isLogin ? t("sign_in") : t("create_account")}
               </button>
             </form>
           </>
@@ -186,41 +188,40 @@ const LoginPopup = ({ setShowLogin }) => {
           <div style={{ marginTop: 8 }}>
             <button type='button' onClick={() => setScreen('main')}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#6b7280', fontWeight: 700, padding: '0 0 14px', display: 'block' }}>
-              ← Back
+              ← {t("back_arrow").replace("←", "").trim()}
             </button>
-            <h3 style={{ margin: '0 0 6px', fontWeight: 900, color: '#111827', fontSize: 18 }}>Reset password</h3>
+            <h3 style={{ margin: '0 0 6px', fontWeight: 900, color: '#111827', fontSize: 18 }}>{t("reset_password")}</h3>
             <p style={{ margin: '0 0 20px', fontSize: 13, color: '#6b7280' }}>
-              We'll send a reset link to your {mode === 'restaurant' ? 'restaurant' : ''} email.
+              {t("reset_link_sent_to")} {mode === 'restaurant' ? t("tab_restaurant") : ''} email.
             </p>
             <form onSubmit={onForgot} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className='lp-field'>
-                <label>Email Address</label>
+                <label>{t("email_address")}</label>
                 <input type='email' value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)}
                   placeholder='you@example.com' autoFocus />
               </div>
               <button className='lp-submit' type='submit' disabled={loading}>
-                {loading ? 'Sending...' : 'Send Reset Link →'}
+                {loading ? t("please_wait") : t("send_reset_link")}
               </button>
             </form>
           </div>
         )}
 
-        {/* ── SENT SCREEN ── */}
         {screen === 'forgot-sent' && (
           <div style={{ textAlign: 'center', padding: '12px 0' }}>
             <div style={{ fontSize: 52, marginBottom: 12 }}>📬</div>
-            <h3 style={{ margin: '0 0 8px', fontWeight: 900, color: '#111827', fontSize: 18 }}>Check your inbox</h3>
+            <h3 style={{ margin: '0 0 8px', fontWeight: 900, color: '#111827', fontSize: 18 }}>{t("check_inbox")}</h3>
             <p style={{ margin: '0 0 8px', fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>
-              We sent a reset link to <strong>{forgotEmail}</strong>.<br/>Expires in <strong>1 hour</strong>.
+              {t("we_sent_link")} <strong>{forgotEmail}</strong>.<br/>{t("expires_in")} <strong>{t("one_hour")}</strong>.
             </p>
             <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 20px' }}>
-              Didn't get it? Check spam or{' '}
+              {t("didnt_get_it")}{' '}
               <button type='button' onClick={() => setScreen('forgot')}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ff4e2a', fontWeight: 700, fontSize: 12, padding: 0 }}>
-                try again
+                {t("try_again")}
               </button>.
             </p>
-            <button className='lp-submit' type='button' onClick={() => setScreen('main')}>Back to Login</button>
+            <button className='lp-submit' type='button' onClick={() => setScreen('main')}>{t("back_to_login")}</button>
           </div>
         )}
 

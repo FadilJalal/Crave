@@ -1,5 +1,5 @@
-// frontend/src/pages/Cart/Cart.jsx
 import React, { useContext, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import './Cart.css';
 import { StoreContext } from '../../Context/StoreContext';
@@ -8,6 +8,7 @@ import CartUpsell from '../../components/CartUpsell/CartUpsell';
 import PromoSection from '../../components/PromoSection/PromoSection';
 
 const Cart = () => {
+  const { t, i18n } = useTranslation();
   const { cartItems, food_list, foodListLoading, removeFromCart, addToCart, getTotalCartAmount, url, token, currency, deliveryCharge } = useContext(StoreContext);
   const navigate = useNavigate();
 
@@ -60,7 +61,7 @@ const Cart = () => {
 
   const handleApplyPromo = async () => {
     if (!promoInput.trim()) return;
-    if (!token) { setPromoError('Please sign in to use a promo code.'); return; }
+    if (!token) { setPromoError(t("please_sign_in_promo")); return; }
     setPromoLoading(true);
     setPromoError('');
     try {
@@ -70,7 +71,7 @@ const Cart = () => {
       } else {
         setPromoError(res.data.message);
       }
-    } catch { setPromoError('Could not apply code. Try again.'); }
+    } catch { setPromoError(t("could_not_apply_promo")); }
     finally { setPromoLoading(false); }
   };
 
@@ -86,25 +87,25 @@ const Cart = () => {
 
   return (
     <div className='cart-page'>
-      <h1 className='cart-title'>Your Cart</h1>
+      <h1 className='cart-title'>{t("your_cart")}</h1>
 
       {foodListLoading ? (
         <div className='cart-empty'>
           <div className='cart-empty-icon'>⏳</div>
-          <p className='cart-empty-title'>Loading your cart...</p>
+          <p className='cart-empty-title'>{t("loading_cart")}</p>
         </div>
       ) : cartRows.length === 0 ? (
         <div className='cart-empty'>
           <div className='cart-empty-icon'>🛒</div>
-          <p className='cart-empty-title'>Your cart is empty</p>
-          <p className='cart-empty-sub'>Add some delicious items to get started!</p>
-          <button className='cart-empty-btn' onClick={() => navigate('/')}>Browse Menu</button>
+          <p className='cart-empty-title'>{t("cart_is_empty")}</p>
+          <p className='cart-empty-sub'>{t("add_items_delicious")}</p>
+          <button className='cart-empty-btn' onClick={() => navigate('/')}>{t("browse_menu")}</button>
         </div>
       ) : (
         <div className='cart-layout'>
           <div className='cart-items-section'>
             <div className='cart-items-header'>
-              <span>{cartRows.length} item{cartRows.length !== 1 ? 's' : ''} in your cart</span>
+              <span>{t("items_in_your_cart_count", { count: cartRows.length })}</span>
             </div>
 
             {cartRows.map(({ key, food, entry }) => {
@@ -136,7 +137,7 @@ const Cart = () => {
                     {/* ✅ Show per-item price if there's an extra charge */}
                     {entry.extraPrice > 0 && (
                       <p className='cart-row-unit-price'>
-                        {currency}{food.price} + {currency}{entry.extraPrice} extra
+                        {currency}{food.price} + {currency}{entry.extraPrice} {t("extra")}
                       </p>
                     )}
                   </div>
@@ -185,29 +186,31 @@ const Cart = () => {
           </div>
 
           <div className='cart-summary'>
-            <h3 className='cart-summary-title'>Order Summary</h3>
+            <h3 className='cart-summary-title'>{t("order_summary")}</h3>
             <div className='cart-summary-rows'>
-              <div className='cart-sum-row'><span>Subtotal</span><span>{currency}{subtotal.toFixed(2)}</span></div>
-              {discount > 0 && <div className='cart-sum-row' style={{ color: '#16a34a', fontWeight: 700 }}><span>Discount ({appliedPromo.code})</span><span>- {currency}{discount.toFixed(2)}</span></div>}
-              <div className='cart-sum-row'><span>Delivery fee</span><span>{subtotal === 0 ? `${currency}0.00` : `${currency}${deliveryCharge}.00`}</span></div>
-              <div className='cart-sum-row cart-sum-row-total'><span>Total</span><span>{currency}{grandTotal.toFixed(2)}</span></div>
+              <div className='cart-sum-row'><span>{t("subtotal")}</span><span>{currency}{subtotal.toFixed(2)}</span></div>
+              {discount > 0 && <div className='cart-sum-row' style={{ color: '#16a34a', fontWeight: 700 }}><span>{t("discount_label")} ({appliedPromo.code})</span><span>- {currency}{discount.toFixed(2)}</span></div>}
+              <div className='cart-sum-row'><span>{t("delivery_fee")}</span><span>{subtotal === 0 ? `${currency}0.00` : `${currency}${deliveryCharge}.00`}</span></div>
+              <div className='cart-sum-row cart-sum-row-total'><span>{t("total")}</span><span>{currency}{grandTotal.toFixed(2)}</span></div>
             </div>
 
             <button className='cart-checkout-btn'
               disabled={cartMinimumOrder > 0 && subtotal < cartMinimumOrder}
               style={cartMinimumOrder > 0 && subtotal < cartMinimumOrder ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
               onClick={() => { if (cartMinimumOrder > 0 && subtotal < cartMinimumOrder) return; navigate('/order', { state: { promo: appliedPromo ? { ...appliedPromo, restaurantId: cartRestaurantId } : null } }); }}>
-              Proceed to Checkout
+              {t("proceed_to_checkout")}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
               </svg>
             </button>
             {cartMinimumOrder > 0 && subtotal < cartMinimumOrder && (
               <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', fontSize: 13, color: '#92400e', fontWeight: 600 }}>
-                🛒 Minimum order is AED {cartMinimumOrder}. Add AED {(cartMinimumOrder - subtotal).toFixed(2)} more to checkout.
+                {t("min_order_msg", { minOrder: cartMinimumOrder, diff: (cartMinimumOrder - subtotal).toFixed(2) })}
               </div>
             )}
-            <button className='cart-continue-btn' onClick={() => navigate('/')}>← Continue Shopping</button>
+            <button className='cart-continue-btn' onClick={() => navigate('/')}>
+              {i18n.language === 'ar' ? t("continue_shopping").replace("←", "→") : t("continue_shopping")}
+            </button>
           </div>
         </div>
       )}

@@ -105,3 +105,17 @@
 .fc-send:hover:not(:disabled) { background: var(--brand-dark); transform: scale(1.08); }
 .fc-send:disabled { opacity: 0.4; cursor: not-allowed; }
 @media (max-width: 420px) { .fc-window { width: calc(100vw - 32px); right: 16px; } .fc-bubble { right: 16px; bottom: 16px; } }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .fc-input:focus {
+  background: var(--bg);
+}
+[data-theme="dark"] .fc-window {
+  box-shadow: 0 24px 72px rgba(0,0,0,0.5);
+}
+[data-theme="dark"] .fc-header {
+  background: linear-gradient(135deg, #0f1117, #1a1b2e);
+}
+[data-theme="dark"] .fc-like-btn {
+  background: rgba(26,27,46,0.88);
+}

@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import './PlaceOrder.css';
 import { StoreContext } from '../../Context/StoreContext';
@@ -16,6 +17,7 @@ function haversine(lat1, lon1, lat2, lon2) {
 }
 
 const PlaceOrder = () => {
+  const { t } = useTranslation();
   const [payment, setPayment] = useState('cod');
   const [loading, setLoading] = useState(false);
   const [savedCards, setSavedCards] = useState([]);
@@ -377,64 +379,64 @@ const PlaceOrder = () => {
   return (
     <div className='po-page'>
       <div className='po-header'>
-        <button className='po-back' onClick={() => navigate('/cart')}>← Back to Cart</button>
-        <h1 className='po-title'>Checkout</h1>
+        <button className='po-back' onClick={() => navigate('/cart')}>{t("back_to_cart")}</button>
+        <h1 className='po-title'>{t("checkout")}</h1>
       </div>
 
       <form onSubmit={placeOrder} className='po-layout'>
         <div className='po-left'>
           <div className='po-card'>
-            <h3 className='po-card-title'><span className='po-step'>1</span> Delivery Details</h3>
+            <h3 className='po-card-title'><span className='po-step'>1</span> {t("delivery_details")}</h3>
             <div className='po-grid-2'>
-              <div className='po-field'><label>First Name</label><input name='firstName' value={data.firstName} onChange={onChange} placeholder='John' required /></div>
-              <div className='po-field'><label>Last Name</label><input name='lastName' value={data.lastName} onChange={onChange} placeholder='Doe' required /></div>
+              <div className='po-field'><label>{t("first_name")}</label><input name='firstName' value={data.firstName} onChange={onChange} placeholder='John' required /></div>
+              <div className='po-field'><label>{t("last_name")}</label><input name='lastName' value={data.lastName} onChange={onChange} placeholder='Doe' required /></div>
             </div>
             <div className='po-grid-2'>
-              <div className='po-field'><label>Email Address</label><input name='email' type='email' value={data.email} onChange={onChange} placeholder='john@example.com' required /></div>
-              <div className='po-field'><label>Phone Number</label><input name='phone' value={data.phone} onChange={onChange} placeholder='+971 50 000 0000' required /></div>
+              <div className='po-field'><label>{t("email_address")}</label><input name='email' type='email' value={data.email} onChange={onChange} placeholder='john@example.com' required /></div>
+              <div className='po-field'><label>{t("phone_number")}</label><input name='phone' value={data.phone} onChange={onChange} placeholder='+971 50 000 0000' required /></div>
             </div>
-            <div className='po-field'><label>Street Address</label><input name='street' value={data.street} onChange={onChange} placeholder='e.g. Al Nahda Street, Sheikh Zayed Road' required /></div>
+            <div className='po-field'><label>{t("street_address")}</label><input name='street' value={data.street} onChange={onChange} placeholder='e.g. Al Nahda Street, Sheikh Zayed Road' required /></div>
             <div className='po-grid-2'>
-              <div className='po-field'><label>Building / Villa Name</label><input name='building' value={data.building} onChange={onChange} placeholder='e.g. Al Reef Tower, Villa 12' /></div>
-              <div className='po-field'><label>Apartment / Room No.</label><input name='apartment' value={data.apartment} onChange={onChange} placeholder='e.g. Apt 401, Floor 4' /></div>
-            </div>
-            <div className='po-grid-2'>
-              <div className='po-field'><label>Area / Neighbourhood</label><input name='area' value={data.area} onChange={onChange} placeholder='e.g. Downtown, JBR, Deira' required /></div>
-              <div className='po-field'><label>City</label><input name='city' value={data.city} onChange={onChange} placeholder='Dubai' required /></div>
+              <div className='po-field'><label>{t("building_villa")}</label><input name='building' value={data.building} onChange={onChange} placeholder='e.g. Al Reef Tower, Villa 12' /></div>
+              <div className='po-field'><label>{t("apartment_room")}</label><input name='apartment' value={data.apartment} onChange={onChange} placeholder='e.g. Apt 401, Floor 4' /></div>
             </div>
             <div className='po-grid-2'>
-              <div className='po-field'><label>Country</label><input name='country' value={data.country} onChange={onChange} placeholder='UAE' required /></div>
-              <div className='po-field'><label>Zip Code <span style={{fontWeight:400,color:'#9ca3af'}}>(optional)</span></label><input name='zipcode' value={data.zipcode} onChange={onChange} placeholder='00000' /></div>
+              <div className='po-field'><label>{t("area_neighbourhood")}</label><input name='area' value={data.area} onChange={onChange} placeholder='e.g. Downtown, JBR, Deira' required /></div>
+              <div className='po-field'><label>{t("city")}</label><input name='city' value={data.city} onChange={onChange} placeholder='Dubai' required /></div>
+            </div>
+            <div className='po-grid-2'>
+              <div className='po-field'><label>{t("country")}</label><input name='country' value={data.country} onChange={onChange} placeholder='UAE' required /></div>
+              <div className='po-field'><label>{t("zip_code")} <span style={{fontWeight:400,color:'#9ca3af'}}>{t("optional")}</span></label><input name='zipcode' value={data.zipcode} onChange={onChange} placeholder='00000' /></div>
             </div>
             <div className='po-field'>
-              <label>Delivery Notes <span style={{fontWeight:400,color:'#9ca3af'}}>(optional)</span></label>
+              <label>{t("delivery_notes")} <span style={{fontWeight:400,color:'#9ca3af'}}>{t("optional")}</span></label>
               <input name='deliveryNotes' value={data.deliveryNotes} onChange={onChange} placeholder='e.g. Ring doorbell, leave at door, call on arrival...' />
             </div>
           </div>
 
           <div className='po-card'>
-            <h3 className='po-card-title'><span className='po-step'>2</span> Payment Method</h3>
+            <h3 className='po-card-title'><span className='po-step'>2</span> {t("payment_method")}</h3>
             <div className='po-payment-opts'>
               <div className={`po-payment-opt ${payment === 'cod' ? 'po-pay-active' : ''}`} onClick={() => setPayment('cod')}>
                 <div className='po-pay-radio'>{payment === 'cod' && <div className='po-pay-dot'/>}</div>
                 <div className='po-pay-icon'>💵</div>
-                <div><p className='po-pay-name'>Cash on Delivery</p><p className='po-pay-sub'>Pay when your order arrives</p></div>
+                <div><p className='po-pay-name'>{t("cash_on_delivery")}</p><p className='po-pay-sub'>{t("pay_when_arrives")}</p></div>
               </div>
               <div className={`po-payment-opt ${payment === 'stripe' ? 'po-pay-active' : ''}`} onClick={() => setPayment('stripe')}>
                 <div className='po-pay-radio'>{payment === 'stripe' && <div className='po-pay-dot'/>}</div>
                 <div className='po-pay-icon'>💳</div>
-                <div><p className='po-pay-name'>Credit / Debit Card</p><p className='po-pay-sub'>Secure payment via Stripe</p></div>
+                <div><p className='po-pay-name'>{t("credit_debit_card")}</p><p className='po-pay-sub'>{t("secure_payment_stripe")}</p></div>
               </div>
               <div className={`po-payment-opt ${payment === 'split' ? 'po-pay-active' : ''}`} onClick={() => setPayment('split')}>
                 <div className='po-pay-radio'>{payment === 'split' && <div className='po-pay-dot'/>}</div>
                 <div className='po-pay-icon'>🧮</div>
-                <div><p className='po-pay-name'>Split by Card</p><p className='po-pay-sub'>Multiple cards, custom amounts</p></div>
+                <div><p className='po-pay-name'>{t("split_by_card")}</p><p className='po-pay-sub'>{t("multiple_cards_custom")}</p></div>
               </div>
             </div>
 
             {payment === 'stripe' && (
               <div style={{ marginTop: 32 }}>
-                <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 12, letterSpacing: 0.3, color: '#1e293b' }}>Choose a Card</div>
+                <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 12, letterSpacing: 0.3, color: '#1e293b' }}>{t("choose_a_card")}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {savedCards.map(card => {
                     const isSelected = !useNewCard && selectedCardId === card.paymentMethodId;
@@ -499,12 +501,12 @@ const PlaceOrder = () => {
                       style={{ accentColor: '#ff4e2a', marginRight: 2, width: 18, height: 18 }}
                     />
                     <span style={{ fontSize: 22, marginRight: 2 }}>➕</span>
-                    <span style={{ fontWeight: 800, letterSpacing: 1, fontSize: 16, color: '#222' }}>Pay with a new card</span>
+                    <span style={{ fontWeight: 800, letterSpacing: 1, fontSize: 16, color: '#222' }}>{t("pay_with_new_card")}</span>
                   </label>
                 </div>
                 {useNewCard && (
                   <div style={{ marginTop: 16, background: '#fff', borderRadius: 14, padding: '14px 14px 10px', boxShadow: '0 1px 6px 0 #f3f4f6' }}>
-                    <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 8, color: '#1e293b' }}>Enter Card Details</div>
+                    <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 8, color: '#1e293b' }}>{t("enter_card_details")}</div>
                     <div style={{ marginBottom: 10 }}>
                       <input
                         type="text"
@@ -518,7 +520,7 @@ const PlaceOrder = () => {
                       </div>
                     </div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 8 }}>
-                      <input type="checkbox" checked={saveNewCard} onChange={e => setSaveNewCard(e.target.checked)} style={{ accentColor: '#ff4e2a' }} /> Save card for future payments
+                      <input type="checkbox" checked={saveNewCard} onChange={e => setSaveNewCard(e.target.checked)} style={{ accentColor: '#ff4e2a' }} /> {t("save_card_for_future")}
                     </label>
                     {newCardError && <div style={{ color: '#dc2626', fontWeight: 700, marginBottom: 8 }}>{newCardError}</div>}
                   </div>
@@ -554,22 +556,22 @@ const PlaceOrder = () => {
 
         <div className='po-right'>
           <div className='po-card po-summary-card'>
-            <h3 className='po-card-title'>Order Summary</h3>
+            <h3 className='po-card-title'>{t("order_summary")}</h3>
             <div className='po-sum-rows'>
-              <div className='po-sum-row'><span>Subtotal</span><span>{currency}{subtotal.toFixed(2)}</span></div>
-              {discount > 0 && <div className='po-sum-row' style={{ color: '#16a34a', fontWeight: 700 }}><span>Discount ({promo.code})</span><span>- {currency}{discount.toFixed(2)}</span></div>}
-              <div className='po-sum-row'><span>Delivery</span><span>{currency}{selectedDeliveryFee.toFixed(2)}</span></div>
-              <div className='po-sum-row po-sum-total'><span>Total</span><span>{currency}{finalTotal.toFixed(2)}</span></div>
+              <div className='po-sum-row'><span>{t("subtotal")}</span><span>{currency}{subtotal.toFixed(2)}</span></div>
+              {discount > 0 && <div className='po-sum-row' style={{ color: '#16a34a', fontWeight: 700 }}><span>{t("discount_label")} ({promo.code})</span><span>- {currency}{discount.toFixed(2)}</span></div>}
+              <div className='po-sum-row'><span>{t("delivery_fee")}</span><span>{currency}{selectedDeliveryFee.toFixed(2)}</span></div>
+              <div className='po-sum-row po-sum-total'><span>{t("total")}</span><span>{currency}{finalTotal.toFixed(2)}</span></div>
             </div>
             <div className='po-delivery-mode-box'>
-              <p className='po-delivery-mode-title'>Delivery Type</p>
+              <p className='po-delivery-mode-title'>{t("delivery_type")}</p>
               <div className='po-delivery-mode-opts'>
                 <button
                   type='button'
                   className={`po-delivery-mode-opt ${deliveryMode === 'standard' ? 'active' : ''}`}
                   onClick={() => setDeliveryMode('standard')}
                 >
-                  <span>Standard</span>
+                  <span>{t("standard")}</span>
                   <strong>{currency}{standardDeliveryFee.toFixed(2)}</strong>
                 </button>
 
@@ -581,27 +583,27 @@ const PlaceOrder = () => {
                 >
                   <span style={{display:'flex',alignItems:'center'}}>
                     {!sharedQuote?.eligible && <span className="po-unavailable-icon">&#9888;</span>}
-                    Shared
+                    {t("shared")}
                   </span>
                   <strong>
                     {sharedQuoteLoading
-                      ? 'Checking...'
+                      ? t("checking")
                       : sharedQuote?.eligible
                         ? `${currency}${Number(sharedQuote.sharedFee || 0).toFixed(2)}`
-                        : 'Unavailable'}
+                        : t("unavailable")}
                   </strong>
                 </button>
               </div>
 
               {sharedQuote?.eligible && (
                 <p className='po-shared-note'>
-                  Save {currency}{Number(sharedQuote.savings || 0).toFixed(2)} by sharing a nearby delivery route.
+                  {t("save_currency", { currency, savings: Number(sharedQuote.savings || 0).toFixed(2) })}
                 </p>
               )}
 
               {!sharedQuoteLoading && sharedQuote && !sharedQuote.eligible && (
                 <p className='po-shared-note po-shared-note-muted'>
-                  {sharedQuote.reason || 'No nearby shared route available right now.'}
+                  {sharedQuote.reason || t("no_nearby_shared_route")}
                 </p>
               )}
             </div>
@@ -621,10 +623,10 @@ const PlaceOrder = () => {
                 </div>
                 <div>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                    Est. delivery: {eta.estimatedMinutes} min
+                    {t("est_delivery", { min: eta.estimatedMinutes })}
                   </p>
                   <p style={{ margin: 0, fontSize: 11, color: 'var(--text-3)', fontWeight: 500 }}>
-                    {eta.distanceKm} km away
+                    {t("away_km", { km: eta.distanceKm })}
                   </p>
                 </div>
               </div>
@@ -640,7 +642,7 @@ const PlaceOrder = () => {
             )}
             <button className='po-submit' type='submit' disabled={loading || !!distanceWarning}
               style={distanceWarning ? { opacity: 0.5, cursor: 'not-allowed' } : {}}>
-              {loading ? 'Placing Order...' : payment === 'cod' ? 'Place Order' : payment === 'split' ? 'Place Split Order' : 'Proceed to Payment'}
+              {loading ? t("placing_order") : payment === 'cod' ? t("place_order") : payment === 'split' ? t("place_split_order") : t("proceed_to_payment")}
             </button>
           </div>
         </div>

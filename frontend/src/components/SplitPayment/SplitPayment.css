@@ -165,3 +165,16 @@
 .sp-main-btn {
   box-shadow: 0 4px 16px rgba(255, 48, 8, 0.25) !important;
 }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .sp-card-row-active {
+  background: var(--bg);
+  border-color: var(--brand);
+}
+[data-theme="dark"] .sp-chip-btn:hover {
+  background: var(--bg);
+}
+[data-theme="dark"] .sp-chip-btn-muted {
+  background: var(--bg);
+  border-color: var(--border);
+}

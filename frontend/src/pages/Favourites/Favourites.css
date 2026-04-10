@@ -115,3 +115,21 @@
   color: #ff3a0a;
   fill: #ff3a0a;
 }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .favourites-name {
+  color: var(--text);
+}
+[data-theme="dark"] .favourites-cat {
+  color: var(--text-3);
+}
+[data-theme="dark"] .favourites-empty {
+  color: var(--text-3);
+}
+[data-theme="dark"] .favourites-img {
+  background: var(--card);
+}
+[data-theme="dark"] .favourites-fooditem {
+  background: var(--card);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+}

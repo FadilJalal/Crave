@@ -82,3 +82,9 @@
   color: var(--text-2);
   padding: 3px 10px;
 }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .cart-sel-value {
+  background: var(--bg);
+  color: var(--text-2);
+}

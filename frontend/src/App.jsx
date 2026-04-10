@@ -3,6 +3,7 @@ import Home from './pages/Home/Home'
 import Footer from './components/Footer/Footer'
 import Navbar from './components/Navbar/Navbar'
 import { Route, Routes, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Cart from './pages/Cart/Cart'
 import LoginPopup from './components/LoginPopup/LoginPopup'
 import PlaceOrder from './pages/PlaceOrder/PlaceOrder'
@@ -24,6 +25,7 @@ import Settings from './pages/Settings/Settings';
 import Profile from './pages/Profile/Profile';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from "./StripeProvider.jsx";
+import { useTheme } from './Context/ThemeContext';
 import './i18n.mjs';
 
 function ScrollToTop() {
@@ -34,6 +36,13 @@ function ScrollToTop() {
 
 const App = () => {
   const [showLogin, setShowLogin] = useState(false);
+  const { i18n } = useTranslation();
+  const { dark } = useTheme();
+
+  useEffect(() => {
+    document.documentElement.dir = 'ltr';
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
 
   return (
     <Elements stripe={stripePromise}>
@@ -46,7 +55,7 @@ const App = () => {
         closeOnClick
         pauseOnHover
         draggable
-        theme="light"
+        theme={dark ? "dark" : "light"}
         toastStyle={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 14 }}
         style={{ zIndex: 99999 }}
       />

@@ -213,3 +213,26 @@
     padding: 10px;
   }
 }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .rs-wrap {
+  background: linear-gradient(135deg, var(--card) 0%, #1e1f35 50%, #1a1b30 100%);
+  border-color: var(--border);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .rs-wrap::before {
+  background: radial-gradient(circle, rgba(255,48,8,0.06) 0%, transparent 70%);
+}
+[data-theme="dark"] .rs-title {
+  color: var(--text);
+}
+[data-theme="dark"] .rs-count {
+  color: var(--text-3);
+}
+[data-theme="dark"] .rs-summary {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-2);
+}
+[data-theme="dark"] .rs-header {
+  border-color: rgba(255,255,255,0.06);
+}

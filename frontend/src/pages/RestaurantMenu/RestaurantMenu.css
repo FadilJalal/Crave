@@ -168,3 +168,10 @@
     font-size: 11px;
   }
 }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .rm-cat-pill {
+  background: var(--card);
+  color: var(--text-2);
+  border-color: var(--border);
+}

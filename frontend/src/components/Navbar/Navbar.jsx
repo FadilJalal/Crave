@@ -263,8 +263,8 @@ const Navbar = ({ setShowLogin }) => {
           {locOpen && (
             <div className='nb-loc-dropdown'>
               <div className='nb-loc-tabs'>
-                <button className={`nb-loc-tab ${locTab === 'search' ? 'nb-loc-tab-active' : ''}`} onClick={() => setLocTab('search')}>🔍 Search</button>
-                <button className={`nb-loc-tab ${locTab === 'map' ? 'nb-loc-tab-active' : ''}`} onClick={() => setLocTab('map')}>🗺️ Pick on Map</button>
+                <button className={`nb-loc-tab ${locTab === 'search' ? 'nb-loc-tab-active' : ''}`} onClick={() => setLocTab('search')}>🔍 {t("search")}</button>
+                <button className={`nb-loc-tab ${locTab === 'map' ? 'nb-loc-tab-active' : ''}`} onClick={() => setLocTab('map')}>🗺️ {t("pick_on_map")}</button>
               </div>
 
               {locTab === 'search' && (<>
@@ -272,7 +272,7 @@ const Navbar = ({ setShowLogin }) => {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                   </svg>
-                  <input autoFocus placeholder="Search for your area, city..." value={locQuery} onChange={handleLocInput} />
+                  <input autoFocus placeholder={t("search_area")} value={locQuery} onChange={handleLocInput} />
                   {locLoading && <span className='nb-loc-spinner' style={{ flexShrink: 0 }} />}
                 </div>
                 <button className='nb-loc-gps' onClick={detectGPS}>
@@ -280,11 +280,11 @@ const Navbar = ({ setShowLogin }) => {
                     <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
                     <path d="M12 8a4 4 0 100 8 4 4 0 000-8z"/>
                   </svg>
-                  Use my current location
+                  {t("use_current_location")}
                 </button>
                 {locSuggestions.length > 0 && (
                   <div className='nb-loc-suggestions'>
-                    <div className='nb-loc-section-label'>📍 Address results</div>
+                    <div className='nb-loc-section-label'>📍 {t("address_results")}</div>
                     {locSuggestions.map((s, i) => (
                       <button key={i} className='nb-loc-suggestion' onClick={() => pickLocation(s)}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0, color: '#9ca3af' }}>
@@ -297,7 +297,7 @@ const Navbar = ({ setShowLogin }) => {
                 )}
                 {nearbyRestaurants.length > 0 && (
                   <div className='nb-loc-nearby'>
-                    <div className='nb-loc-section-label'>🍽️ Nearby restaurants</div>
+                    <div className='nb-loc-section-label'>🍽️ {t("nearby_restaurants")}</div>
                     {nearbyRestaurants.map(r => (
                       <button key={r._id} className='nb-loc-restaurant' onClick={() => { setLocOpen(false); navigate(`/restaurants/${r._id}`); }}>
                         <div className='nb-loc-rest-avatar'>
@@ -307,19 +307,19 @@ const Navbar = ({ setShowLogin }) => {
                           <span className='nb-loc-rest-name'>{r.name}</span>
                           <span className='nb-loc-rest-dist'>{r.distance < 1 ? `${Math.round(r.distance * 1000)}m` : `${r.distance.toFixed(1)} km`} away</span>
                         </div>
-                        <span className={`nb-loc-rest-status ${r.isActive ? 'open' : 'closed'}`}>{r.isActive ? 'Open' : 'Closed'}</span>
+                        <span className={`nb-loc-rest-status ${r.isActive ? 'open' : 'closed'}`}>{r.isActive ? t("open_status") : t("closed_status")}</span>
                       </button>
                     ))}
-                    <button className='nb-loc-view-all' onClick={() => { setLocOpen(false); navigate('/restaurants'); }}>View all restaurants →</button>
+                    <button className='nb-loc-view-all' onClick={() => { setLocOpen(false); navigate('/restaurants'); }}>{t("view_all_restaurants")} →</button>
                   </div>
                 )}
               </>)}
 
               {locTab === 'map' && (
                 <div className='nb-loc-map-wrap'>
-                  <p className='nb-loc-map-hint'>📍 Click anywhere or drag the pin to set your location</p>
+                  <p className='nb-loc-map-hint'>📍 {t("map_hint")}</p>
                   <div ref={mapPickerRef} className='nb-loc-map' />
-                  <button className='nb-loc-map-confirm' onClick={confirmMapLocation}>✓ Confirm this location</button>
+                  <button className='nb-loc-map-confirm' onClick={confirmMapLocation}>✓ {t("confirm_location")}</button>
                 </div>
               )}
             </div>
@@ -358,9 +358,9 @@ const Navbar = ({ setShowLogin }) => {
           <button
             onClick={toggle}
             className='nb-theme-btn'
-            title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={dark ? t("switch_light_mode") : t("switch_dark_mode")}
           >
-            {dark ? '☀️ Light Mode' : '🌙 Dark Mode'}
+            {dark ? `☀️ ${t("light_mode")}` : `🌙 ${t("dark_mode")}`}
           </button>
 
           {/* Notification Bell */}
@@ -384,17 +384,17 @@ const Navbar = ({ setShowLogin }) => {
               {openBell && (
                 <div style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 320, background: 'white', borderRadius: 16, boxShadow: '0 8px 40px rgba(0,0,0,0.15)', border: '1px solid #f3f4f6', zIndex: 9999, overflow: 'hidden' }}>
                   <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 800, fontSize: 14, color: '#111827' }}>Order Notifications</span>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: '#111827' }}>{t("order_notifications")}</span>
                     {notifications.length > 0 && (
-                      <button onClick={clearAll} style={{ fontSize: 12, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Clear all</button>
+                      <button onClick={clearAll} style={{ fontSize: 12, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>{t("clear_all")}</button>
                     )}
                   </div>
                   <div style={{ maxHeight: 360, overflowY: 'auto' }}>
                     {notifications.length === 0 ? (
                       <div style={{ padding: '32px 16px', textAlign: 'center', color: '#9ca3af' }}>
                         <div style={{ fontSize: 28, marginBottom: 8 }}>🔔</div>
-                        <div style={{ fontSize: 13, fontWeight: 600 }}>No notifications yet</div>
-                        <div style={{ fontSize: 12, marginTop: 4 }}>Order updates will appear here</div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{t("no_notifications_yet")}</div>
+                        <div style={{ fontSize: 12, marginTop: 4 }}>{t("order_updates_appear_here")}</div>
                       </div>
                     ) : notifications.map(n => (
                       <div key={n.id} style={{ padding: '12px 16px', borderBottom: '1px solid #f9fafb', display: 'flex', gap: 12, alignItems: 'flex-start', cursor: 'pointer', transition: 'background .15s' }}

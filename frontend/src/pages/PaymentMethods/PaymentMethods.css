@@ -1,7 +1,7 @@
 /* ===== Page ===== */
 .pm-main-bg {
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--bg);
   display: flex;
   justify-content: center;
   padding: 60px 16px;
@@ -11,11 +11,11 @@
 .pm-section {
   width: 100%;
   max-width: 460px;
-  background: #ffffff;
+  background: var(--card);
   border-radius: 24px;
   padding: 28px;
-  border: 1px solid #f1f1f1;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -31,7 +31,7 @@
 .pm-title-pro {
   font-size: 1.9rem;
   font-weight: 900;
-  color: #111;
+  color: var(--text);
   letter-spacing: -0.5px;
 }
 
@@ -68,22 +68,23 @@
 .pm-label-pro {
   font-size: 13px;
   font-weight: 600;
-  color: #666;
+  color: var(--text-3);
 }
 
 /* Inputs */
 .pm-input-pro {
   padding: 13px 14px;
   border-radius: 14px;
-  border: 1.5px solid #eee;
+  border: 1.5px solid var(--border);
   font-size: 15px;
-  background: #fafafa;
+  background: var(--bg);
+  color: var(--text);
   transition: all 0.2s ease;
 }
 
 .pm-input-pro:focus {
   border-color: #ff5a1f;
-  background: #fff;
+  background: var(--card);
   box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.12);
   outline: none;
 }
@@ -92,8 +93,8 @@
 .pm-card-el-pro {
   padding: 14px;
   border-radius: 14px;
-  border: 1.5px solid #eee;
-  background: #fafafa;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
 }
 
 /* ===== Save Button ===== */
@@ -118,23 +119,16 @@
   transform: scale(0.98);
 }
 
-/* ===== Payment Card (FIXED) ===== */
+/* ===== Payment Card ===== */
 .pm-item-pro {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 20px;
   border-radius: 20px;
-
-  /* Strong contrast */
-  background: #ffffff;
-  border: 1px solid #eaeaea;
-
-  /* MUCH stronger shadow */
-  box-shadow:
-    0 6px 16px rgba(0,0,0,0.06),
-    0 12px 32px rgba(0,0,0,0.10);
-
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
   transition: all 0.25s ease;
   position: relative;
 }
@@ -154,16 +148,13 @@
 /* HOVER = lift like real card */
 .pm-item-pro:hover {
   transform: translateY(-6px);
-
-  box-shadow:
-    0 12px 24px rgba(0,0,0,0.12),
-    0 24px 48px rgba(0,0,0,0.16);
+  box-shadow: var(--shadow-lg);
 }
 
-/* Remove button (make it cleaner) */
+/* Remove button */
 .pm-remove-btn-pro {
   margin-left: auto;
-  background: #fff3ed;
+  background: var(--brand-soft);
   border: none;
   color: #ff5a1f;
   font-weight: 700;
@@ -174,14 +165,14 @@
 }
 
 .pm-remove-btn-pro:hover {
-  background: #ffe0d4;
+  background: var(--brand-mid);
 }
 
 /* ===== States ===== */
 .pm-empty-pro,
 .pm-loading-pro {
   text-align: center;
-  color: #bbb;
+  color: var(--text-3);
   padding: 20px;
   font-size: 14px;
 }

@@ -1,108 +1,23 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import enTranslations from "./locales/en.json";
+import arTranslations from "./locales/ar.json";
+import LanguageDetector from "i18next-browser-languagedetector";
 
-i18n.use(initReactI18next).init({
-  fallbackLng: "en",
-  debug: false,
-
-  resources: {
-    en: {
-      translation: {
-        language: "Language",
-        change_language: "Change your preferred language here.",
-        cart: "Cart",
-        dark_mode: "Dark Mode",
-        search_placeholder: "Search food, restaurants",
-        restaurants: "Restaurants",
-        welcome: "Welcome",
-        menu_not_available: "Menu is not available",
-        sign_in: "Sign in",
-        my_account: "My Account",
-        my_orders: "My Orders",
-        payment_methods: "Payment Methods",
-        addresses: "Addresses",
-        my_favourite: "My Favourite",
-        settings: "Settings",
-        sign_out: "Sign Out",
-        restaurant_not_found: "Restaurant not found.",
-        back_to_restaurants: "Back to Restaurants",
-        back: "Back",
-        menu_unavailable_desc: "This restaurant's menu is currently unavailable. Please check back later.",
-        browse_other_restaurants: "Browse other restaurants",
-        open_now: "● Open Now",
-        closed: "● Closed",
-        min_prep: "min prep",
-        review: "review",
-        no_reviews_yet: "No reviews yet",
-        items: "items",
-        menu: "Menu",
-        closed_now: "We're Closed Right Now",
-        restaurant_unavailable: "Restaurant Unavailable",
-        outside_opening_hours: "This restaurant is currently outside its opening hours. Check back later to place an order.",
-        restaurant_temp_unavailable: "This restaurant is temporarily unavailable and not accepting orders.",
-        no_menu_items_found: "No menu items found for this category.",
-        items_in_cart: "{{count}} item(s) in cart",
-        cart_empty: "Your cart is empty",
-        subtotal: "Subtotal",
-        view_cart: "View Cart",
-        add_items_first: "Add items first",
-        customize: "Customize",
-        add: "Add",
-        customizable: "Customizable",
-        not_available: "Not Available",
-        unavailable: "Unavailable",
-        min: "min"
-      }
-    },
-    ar: {
-      translation: {
-        language: "اللغة",
-        change_language: "قم بتغيير لغتك المفضلة هنا.",
-        cart: "السلة",
-        dark_mode: "الوضع الداكن",
-        search_placeholder: "ابحث عن طعام أو مطاعم",
-        restaurants: "مطاعم",
-        welcome: "مرحبا",
-        menu_not_available: "القائمة غير متوفرة",
-        sign_in: "تسجيل الدخول",
-        my_account: "حسابي",
-        my_orders: "طلباتي",
-        payment_methods: "طرق الدفع",
-        addresses: "العناوين",
-        my_favourite: "مفضلتي",
-        settings: "الإعدادات",
-        sign_out: "تسجيل الخروج",
-        restaurant_not_found: "المطعم غير موجود.",
-        back_to_restaurants: "العودة إلى قائمة المطاعم",
-        back: "رجوع",
-        menu_unavailable_desc: "قائمة هذا المطعم غير متوفرة حالياً. يرجى المحاولة لاحقاً.",
-        browse_other_restaurants: "تصفح مطاعم أخرى",
-        open_now: "● مفتوح الآن",
-        closed: "● مغلق",
-        min_prep: "دقيقة تجهيز",
-        review: "تقييم",
-        no_reviews_yet: "لا توجد تقييمات بعد",
-        items: "أصناف",
-        menu: "القائمة",
-        closed_now: "المطعم مغلق حالياً",
-        restaurant_unavailable: "المطعم غير متوفر",
-        outside_opening_hours: "هذا المطعم خارج أوقات العمل حالياً. يرجى العودة لاحقاً للطلب.",
-        restaurant_temp_unavailable: "هذا المطعم غير متوفر مؤقتاً ولا يستقبل الطلبات.",
-        no_menu_items_found: "لا توجد أصناف في هذه الفئة.",
-        items_in_cart: "{{count}} صنف في السلة",
-        cart_empty: "سلتك فارغة",
-        subtotal: "المجموع الفرعي",
-        view_cart: "عرض السلة",
-        add_items_first: "أضف أصناف أولاً",
-        customize: "تخصيص",
-        add: "أضف",
-        customizable: "قابل للتخصيص",
-        not_available: "غير متوفر",
-        unavailable: "غير متاح",
-        min: "دقيقة"
+i18n
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    fallbackLng: "en",
+    debug: false,
+    resources: {
+      en: {
+        translation: enTranslations
+      },
+      ar: {
+        translation: arTranslations
       }
     }
-  }
-});
+  });
 
 export default i18n;

@@ -1,57 +1,44 @@
-:root {
-    --bg-app: #f6f7fa;
-    --bg-card: #fff;
-    --text-main: #23272f;
-    --text-sub: #7e808c;
-    --accent: #ff5231;
-    --border: #f0f0f0;
-    --item-hover: #f5f6fa;
-    --section-divider: #f3f4f6;
-    --shadow: 0 8px 32px rgba(44,62,80,0.07);
-    --radius: 22px;
-    --icon-bg-account: #fff0ed;
-    --icon-bg-payments: #eef2ff;
-    --icon-bg-security: #f0fdf4;
-    --icon-bg-notification: #f6f7fa;
-}
-
+/* Settings Page - Unified Theme */
 .settings-container {
     min-height: 100vh;
-    background: var(--bg-app);
+    background: var(--bg);
     padding: 48px 10px 48px 10px;
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'DM Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     display: flex;
     justify-content: center;
     align-items: flex-start;
+    transition: background 0.2s;
 }
 
 .settings-card {
     width: 100%;
     max-width: 480px;
-    background: var(--bg-card);
-    border-radius: var(--radius);
+    background: var(--card);
+    border-radius: 22px;
     overflow: hidden;
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-md);
     margin-top: 8px;
+    transition: background 0.2s, color 0.2s;
 }
 
 .settings-header {
     padding: 32px 28px 12px 28px;
     border-bottom: 1px solid var(--border);
-    background: #fff;
+    background: var(--card);
+    transition: background 0.2s;
 }
 
 .settings-title {
     font-size: 28px;
     font-weight: 800;
-    color: var(--text-main);
+    color: var(--text);
     margin: 0;
     letter-spacing: -0.5px;
     font-family: 'DM Sans', 'Segoe UI', Arial, sans-serif;
 }
 
 .settings-subtitle {
-    color: var(--text-sub);
+    color: var(--text-3);
     font-size: 14px;
     margin-top: 8px;
     font-weight: 500;
@@ -59,8 +46,9 @@
 
 .settings-section {
     padding: 8px 0 0 0;
-    border-bottom: 10px solid var(--section-divider);
-    background: #fff;
+    border-bottom: 10px solid var(--bg);
+    background: var(--card);
+    transition: background 0.2s, border-bottom 0.2s;
 }
 
 .settings-section:last-of-type {
@@ -72,7 +60,7 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 1.2px;
-    color: var(--text-sub);
+    color: var(--text-3);
     font-weight: 700;
     opacity: 0.85;
 }
@@ -89,15 +77,14 @@
 }
 
 .settings-item:active {
-    background-color: var(--item-hover);
-    box-shadow: 0 2px 8px rgba(44,62,80,0.04);
+    background-color: var(--bg);
 }
 
 .item-icon {
     width: 42px;
     height: 42px;
-    background: var(--icon-bg-account);
-    color: var(--accent);
+    background: var(--brand-soft);
+    color: var(--brand);
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -107,12 +94,11 @@
     flex-shrink: 0;
     box-shadow: 0 1px 4px rgba(44,62,80,0.04);
 }
-}
 
-/* Category specific colors for a "premium" feel */
+/* Category specific colors */
 .item-icon.payments { background: #eef2ff; color: #4f46e5; }
-.item-icon.security { background: var(--icon-bg-security); color: #16a34a; }
-.item-icon.notification-sub { background: var(--icon-bg-notification); color: var(--text-sub); width: 32px; height: 32px; border-radius: 8px; margin-right: 16px; justify-content: center; align-items: center; display: flex; }
+.item-icon.security { background: #f0fdf4; color: #16a34a; }
+.item-icon.notification-sub { background: var(--bg); color: var(--text-3); width: 32px; height: 32px; border-radius: 8px; margin-right: 16px; justify-content: center; align-items: center; display: flex; }
 
 .item-content {
     flex: 1;
@@ -126,23 +112,25 @@
     display: block;
     font-size: 15px;
     font-weight: 600;
-    color: var(--text-main);
+    color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: color 0.2s;
 }
 
 .item-desc {
     font-size: 12px;
-    color: var(--text-sub);
+    color: var(--text-3);
     margin-top: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: color 0.2s;
 }
 
 .chevron {
-    color: #bebfc5;
+    color: var(--text-3);
     margin-left: 8px;
 }
 
@@ -189,9 +177,9 @@ input:checked + .slider:before {
     width: calc(100% - 56px);
     margin: 32px 28px 28px 28px;
     padding: 16px;
-    background: #fff;
-    border: 1.5px solid #ffe3d6;
-    color: #ff5231;
+    background: var(--card);
+    border: 1.5px solid var(--brand-mid);
+    color: var(--brand);
     border-radius: 14px;
     font-weight: 700;
     font-size: 15px;
@@ -204,11 +192,23 @@ input:checked + .slider:before {
     gap: 8px;
     letter-spacing: 0.01em;
 }
-}
 
 .logout-btn:hover {
-    background: #fff5ed;
-    border-color: #ff5231;
-    color: #e04d13;
+    background: var(--brand-soft);
+    border-color: var(--brand);
+    color: var(--brand);
     box-shadow: 0 2px 8px rgba(255,82,49,0.07);
+}
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .item-icon.payments {
+  background: rgba(79,70,229,0.12);
+  color: #818cf8;
+}
+[data-theme="dark"] .item-icon.security {
+  background: rgba(22,163,74,0.12);
+  color: #4ade80;
+}
+[data-theme="dark"] .slider {
+  background-color: #3a3b4a;
 }

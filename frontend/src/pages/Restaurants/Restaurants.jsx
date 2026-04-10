@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import './Restaurants.css';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +16,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 }
 
 const Restaurants = () => {
+  const { t, i18n } = useTranslation();
   const { url } = useContext(StoreContext);
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -81,12 +83,12 @@ const Restaurants = () => {
     <div className='rp-page'>
       <div className='rp-header'>
         <div>
-          <h1 className='rp-title'>Restaurants</h1>
+          <h1 className='rp-title'>{t("restaurants")}</h1>
           <p className='rp-sub'>
-            {loading ? 'Loading...' : (
+            {loading ? t("loading") : (
               <>
-                {restaurants.length} restaurants
-                {userLocation && <span style={{ color: '#ff4e2a', fontWeight: 700 }}> near {userLocation.label}</span>}
+                {t("n_restaurants", { count: restaurants.length })}
+                {userLocation && <span style={{ color: '#ff4e2a', fontWeight: 700 }}>{t("near_location", { location: userLocation.label })}</span>}
               </>
             )}
           </p>
@@ -96,7 +98,7 @@ const Restaurants = () => {
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           <input
-            placeholder='Search restaurants...'
+            placeholder={t("search_restaurants")}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -112,7 +114,7 @@ const Restaurants = () => {
       ) : filtered.length === 0 ? (
         <div className='rp-empty'>
           <div className='rp-empty-icon'>🍽️</div>
-          <p>{restaurants.length === 0 ? 'No restaurants added yet.' : 'No restaurants match your search.'}</p>
+          <p>{restaurants.length === 0 ? t("no_restaurants_added") : t("no_restaurants_match_search")}</p>
         </div>
       ) : (
         <div className='rp-grid'>
@@ -131,9 +133,9 @@ const Restaurants = () => {
                 onClick={() => !outOfRange && navigate(`/restaurants/${r._id}`)}
                 title={
                   outOfRange
-                    ? `Delivery only within ${radius} km`
+                    ? t("delivery_only_within", { km: radius })
                     : closedNow
-                      ? (nextTxt || 'Closed — you can still browse the menu')
+                      ? (nextTxt || t("closed_browse_menu"))
                       : ''
                 }
               >
@@ -152,19 +154,19 @@ const Restaurants = () => {
                     {r.name[0]}
                   </div>
                   <span className={`rp-status ${open ? 'rp-open' : 'rp-closed'}`}>
-                    {!active ? 'Unavailable' : open ? 'Open' : 'Closed'}
+                    {!active ? t("status_unavailable") : open ? t("status_open") : t("status_closed")}
                   </span>
                   {closedNow && (
                     <div className="rp-closed-overlay" aria-hidden>
                       <span className="rp-closed-overlay-icon">🔒</span>
-                      <span className="rp-closed-overlay-text">Not taking orders</span>
+                      <span className="rp-closed-overlay-text">{t("not_taking_orders")}</span>
                     </div>
                   )}
                   {dist && (
                     <span className='rp-distance'>📍 {dist}</span>
                   )}
                   {outOfRange && (
-                    <span className='rp-out-of-range'>🚫 Too Far</span>
+                    <span className='rp-out-of-range'>🚫 {t("too_far")}</span>
                   )}
                 </div>
                 <div className='rp-card-body'>
@@ -182,7 +184,7 @@ const Restaurants = () => {
                   </div>
                   {outOfRange && (
                     <p className='rp-range-warning'>
-                      Delivers only within {radius} km · You are {r.distance?.toFixed(1)} km away
+                      {t("delivers_only_within_distance", { radius: radius, distance: r.distance?.toFixed(1) })}
                     </p>
                   )}
                 </div>
@@ -200,10 +202,10 @@ const Restaurants = () => {
                     }}
                   >
                     {outOfRange
-                      ? 'Out of delivery range'
+                      ? t("out_of_delivery_range")
                       : closedNow
-                        ? 'Browse menu →'
-                        : 'View Menu →'}
+                        ? (i18n.language === 'ar' ? t("browse_menu_arrow").replace("→", "←") : t("browse_menu_arrow"))
+                        : (i18n.language === 'ar' ? t("view_menu_arrow").replace("→", "←") : t("view_menu_arrow"))}
                   </button>
                 </div>
               </div>

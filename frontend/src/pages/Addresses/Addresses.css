@@ -14,19 +14,20 @@
 }
 .address-map-modal-content {
   position: relative;
-  background: #fff;
+  background: var(--card);
   border-radius: 18px;
   padding: 24px 24px 16px 24px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  box-shadow: var(--shadow-lg);
   z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
+  color: var(--text);
 }
 
 /* ===== Map Buttons ===== */
 .address-map-btn {
-  background: #fff6f1;
+  background: rgba(255, 90, 31, 0.1);
   color: #ff5a1f;
   border: 1.5px solid #ff5a1f;
   border-radius: 10px;
@@ -36,14 +37,14 @@
   transition: all 0.18s;
 }
 .address-map-btn:hover {
-  background: #ffede0;
-  color: #ff3a00;
-  border-color: #ff3a00;
+  background: rgba(255, 90, 31, 0.18);
+  color: #ff5a1f;
+  border-color: #ff5a1f;
 }
 /* ===== Page ===== */
 .addresses-page-main {
   min-height: 100vh;
-  background: #ffffff;
+  background: transparent;
   display: flex;
   justify-content: center;
   padding: 60px 16px;
@@ -72,40 +73,49 @@
 
 /* ===== Titles ===== */
 .address-title {
-  font-size: 1.9rem;
-  font-weight: 900;
-  color: #111;
+  font-family: var(--font-display, inherit);
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 4px;
 }
 
 .address-desc {
-  color: #777;
-  font-size: 14px;
+  color: var(--text-2);
+  font-size: 15px;
+  margin-bottom: 15px;
 }
 
 /* ===== Form ===== */
 .address-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  background: #fff;
-  padding: 20px;
-  border-radius: 20px;
-  border: 1px solid #f1f1f1;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+  gap: 16px;
+  background: var(--card);
+  padding: 28px;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .address-input {
-  padding: 13px 14px;
-  border-radius: 14px;
-  border: 1.5px solid #eee;
-  font-size: 14px;
-  background: #fafafa;
-  transition: all 0.2s ease;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  font-size: 15px;
+  background: var(--bg);
+  color: var(--text);
+  transition: all 0.25s ease;
+}
+
+.address-input::placeholder {
+  color: var(--text-3);
 }
 
 .address-input:focus {
   border-color: #ff5a1f;
-  background: #fff;
+  background: var(--card);
   box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.12);
   outline: none;
 }
@@ -117,13 +127,15 @@
 
 /* ===== Button ===== */
 .address-btn {
-  background: #ff5a1f;
+  background: linear-gradient(135deg, #ff5a1f, #e53900);
   color: white;
   border: none;
   border-radius: 14px;
-  padding: 14px;
-  font-weight: 800;
+  padding: 16px;
+  font-weight: 700;
+  font-size: 15px;
   cursor: pointer;
+  box-shadow: 0 4px 15px rgba(255, 90, 31, 0.3);
   transition: all 0.25s ease;
 }
 
@@ -148,22 +160,23 @@
 }
 
 .address-empty {
-  color: #bbb;
+  color: var(--text-3);
   text-align: center;
 }
 
 /* ===== Card ===== */
 .address-item {
-  padding: 18px;
-  border-radius: 18px;
-  background: #ffffff;
-  border: 1px solid #f1f1f1;
+  padding: 24px;
+  border-radius: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 14px;
   position: relative;
   transition: all 0.25s ease;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Accent line */
@@ -171,12 +184,13 @@
   content: "";
   position: absolute;
   left: 0;
-  top: 12px;
-  bottom: 12px;
-  width: 4px;
-  border-radius: 4px;
-  background: #ff5a1f;
-  opacity: 0.3;
+  top: 16px;
+  bottom: 16px;
+  width: 5px;
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, #ff5a1f, #ff8c69);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 /* Hover */
@@ -197,41 +211,53 @@
 
 /* Info */
 .address-main {
-  font-weight: 800;
-  font-size: 15px;
-  color: #111;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .address-building {
-  font-size: 13px;
-  color: #777;
-  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text-2);
+  margin-top: 6px;
 }
 
 .address-default-badge {
+  background: rgba(255, 90, 31, 0.1);
   color: #ff5a1f;
   font-size: 12px;
   font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: inline-block;
 }
 
 /* Actions */
 .address-actions {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
 }
 
 .address-set-btn {
-  border: none;
-  background: #f3f3f3;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
   border-radius: 10px;
-  padding: 6px 12px;
+  padding: 8px 14px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s ease;
 }
 
 .address-set-btn:hover {
-  background: #ffe5dc;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .address-delete-btn {
@@ -239,13 +265,17 @@
   background: transparent;
   color: #ff5a1f;
   font-weight: 700;
+  font-size: 14px;
   cursor: pointer;
-  padding: 6px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+  border-radius: 10px;
 }
 
 .address-delete-btn:hover {
   background: rgba(255, 90, 31, 0.1);
-  border-radius: 8px;
 }
 
 /* ===== Mobile ===== */

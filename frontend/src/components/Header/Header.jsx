@@ -1,7 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import './Header.css';
 
-const Header = () => (
+const Header = () => {
+  const { t } = useTranslation();
+  return (
   <section className='hero'>
     {/* Animated mesh background */}
     <div className='hero-mesh'>
@@ -17,20 +20,20 @@ const Header = () => (
         <div className='hero-chips'>
           <span className='hero-chip'>
             <span className='hero-chip-dot'/>
-            Free delivery on first order
+            {t("free_delivery_first")}
           </span>
           <span className='hero-chip hero-chip-alt'>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            20 min avg
+            {t("avg_min")}
           </span>
         </div>
 
         <h1 className='hero-headline'>
-          <span className='hero-line-1'>Craving</span>
+          <span className='hero-line-1'>{t("hero_line_1")}</span>
           <span className='hero-line-2'>
-            something
+            {t("hero_line_2")}
             <span className='hero-highlight'>
-              <span className='hero-highlight-text'>delicious</span>
+              <span className='hero-highlight-text'>{t("hero_highlight")}</span>
               <svg className='hero-highlight-svg' viewBox="0 0 200 12" preserveAspectRatio="none">
                 <path d="M2 8 C50 2, 150 2, 198 8" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round"/>
               </svg>
@@ -40,16 +43,16 @@ const Header = () => (
         </h1>
 
         <p className='hero-desc'>
-          Skip the hassle. Order from the best restaurants around you and get it delivered fresh to your door.
+          {t("hero_desc")}
         </p>
 
         <div className='hero-cta-row'>
           <a href='#explore-menu' className='hero-cta'>
-            <span>Order Now</span>
+            <span>{t("order_now")}</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </a>
           <a href='#food-display' className='hero-cta-ghost'>
-            See what's trending
+            {t("see_trending")}
           </a>
         </div>
 
@@ -61,7 +64,7 @@ const Header = () => (
             <div className='hero-ta' style={{background:'#FEF3C7'}}>🥰</div>
           </div>
           <div className='hero-trust-text'>
-            <span className='hero-trust-bold'>10k+ happy foodies</span>
+            <span className='hero-trust-bold'>{t("happy_foodies")}</span>
             <span className='hero-trust-stars'>★★★★★ <span>4.8</span></span>
           </div>
         </div>
@@ -71,46 +74,46 @@ const Header = () => (
       <div className='hero-bento'>
         {/* Cuisine tiles */}
         <div className='hb-card hb-cuisines'>
-          <p className='hb-cuisines-label'>Browse Cuisines</p>
+          <p className='hb-cuisines-label'>{t("browse_cuisines")}</p>
           <div className='hb-cuisine-grid'>
             <a href='#explore-menu' className='hb-cuisine'>
               <span className='hb-cuisine-emoji'>🍕</span>
-              <span className='hb-cuisine-name'>Pizza</span>
+              <span className='hb-cuisine-name'>{t("pizza")}</span>
             </a>
             <a href='#explore-menu' className='hb-cuisine'>
               <span className='hb-cuisine-emoji'>🍔</span>
-              <span className='hb-cuisine-name'>Burgers</span>
+              <span className='hb-cuisine-name'>{t("burgers")}</span>
             </a>
             <a href='#explore-menu' className='hb-cuisine'>
               <span className='hb-cuisine-emoji'>🍣</span>
-              <span className='hb-cuisine-name'>Sushi</span>
+              <span className='hb-cuisine-name'>{t("sushi")}</span>
             </a>
             <a href='#explore-menu' className='hb-cuisine'>
               <span className='hb-cuisine-emoji'>🌮</span>
-              <span className='hb-cuisine-name'>Tacos</span>
+              <span className='hb-cuisine-name'>{t("tacos")}</span>
             </a>
             <a href='#explore-menu' className='hb-cuisine'>
               <span className='hb-cuisine-emoji'>🍜</span>
-              <span className='hb-cuisine-name'>Noodles</span>
+              <span className='hb-cuisine-name'>{t("noodles")}</span>
             </a>
             <a href='#explore-menu' className='hb-cuisine'>
               <span className='hb-cuisine-emoji'>🥗</span>
-              <span className='hb-cuisine-name'>Healthy</span>
+              <span className='hb-cuisine-name'>{t("healthy")}</span>
             </a>
           </div>
         </div>
 
         {/* Match Your Mood */}
         <div className='hb-card hb-mood'>
-          <p className='hb-mood-label'>Match Your Mood</p>
-          <p className='hb-mood-sub'>Pick a vibe, get matched</p>
+          <p className='hb-mood-label'>{t("match_mood")}</p>
+          <p className='hb-mood-sub'>{t("pick_vibe")}</p>
           <div className='hb-mood-pills'>
-            <a href='#mood-picker' className='hb-pill'><span>🎉</span> Celebration</a>
-            <a href='#mood-picker' className='hb-pill'><span>🛋️</span> Comfort</a>
-            <a href='#mood-picker' className='hb-pill'><span>🥗</span> Healthy</a>
-            <a href='#mood-picker' className='hb-pill'><span>🌶️</span> Adventurous</a>
-            <a href='#mood-picker' className='hb-pill'><span>⚡</span> Quick Bite</a>
-            <a href='#mood-picker' className='hb-pill'><span>🍰</span> Sweet Tooth</a>
+            <a href='#mood-picker' className='hb-pill'><span>🎉</span> {t("celebration")}</a>
+            <a href='#mood-picker' className='hb-pill'><span>🛋️</span> {t("comfort")}</a>
+            <a href='#mood-picker' className='hb-pill'><span>🥗</span> {t("healthy")}</a>
+            <a href='#mood-picker' className='hb-pill'><span>🌶️</span> {t("adventurous")}</a>
+            <a href='#mood-picker' className='hb-pill'><span>⚡</span> {t("quick_bite")}</a>
+            <a href='#mood-picker' className='hb-pill'><span>🍰</span> {t("sweet_tooth")}</a>
           </div>
         </div>
 
@@ -118,13 +121,13 @@ const Header = () => (
         <div className='hb-card hb-promo'>
           <span className='hb-promo-emoji'>🎁</span>
           <div className='hb-promo-text'>
-            <p className='hb-promo-title'>First order? It's on us.</p>
-            <p className='hb-promo-desc'>Free delivery + 20% off with code <strong>CRAVE20</strong></p>
+            <p className='hb-promo-title'>{t("first_order_promo")}</p>
+            <p className='hb-promo-desc'>{t("free_delivery_code")} <strong>CRAVE20</strong></p>
           </div>
         </div>
       </div>
     </div>
   </section>
-);
+)};
 
 export default Header;

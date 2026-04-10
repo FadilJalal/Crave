@@ -132,3 +132,13 @@
 
 @media (max-width: 860px) { .po-layout { grid-template-columns: 1fr; } .po-summary-card { position: static; order: -1; } }
 @media (max-width: 560px) { .po-grid-2 { grid-template-columns: 1fr; } }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .po-field input:focus {
+  background: var(--bg);
+}
+[data-theme="dark"] .po-delivery-mode-opt.unavailable {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.06);
+  color: var(--text-3);
+}

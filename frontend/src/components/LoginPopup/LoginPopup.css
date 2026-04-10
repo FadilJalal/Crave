@@ -68,3 +68,16 @@
   .lp-toggle { margin-bottom: 14px; }
   .lp-form { gap: 12px; }
 }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .lp-modal {
+  background: var(--card);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+}
+[data-theme="dark"] .lp-tog-active {
+  background: var(--bg);
+  color: var(--text);
+}
+[data-theme="dark"] .lp-field input:focus {
+  background: var(--bg);
+}

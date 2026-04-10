@@ -71,3 +71,13 @@
 
 /* ── Responsive ── */
 @media (max-width:600px) { .ldm-address{max-width:140px} .ldm-step-label{display:none} .ldm-map-container{height:240px} }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .ldm-map-badge {
+  background: rgba(26,27,46,0.92);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .ldm-distance-pill {
+  background: rgba(59,130,246,0.12);
+  color: #93c5fd;
+}

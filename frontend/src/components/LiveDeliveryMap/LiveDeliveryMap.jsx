@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { StoreContext } from '../../Context/StoreContext';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import './LiveDeliveryMap.css';
 
-const statusConfig = {
-  'food processing': { label: 'Preparing',    icon: '👨‍🍳', color: '#f59e0b', step: 1, progress: 0   },
-  'out for delivery':{ label: 'On the Way',   icon: '🛵',  color: '#3b82f6', step: 2, progress: 0.5 },
-  'delivered':       { label: 'Delivered',    icon: '✅',  color: '#22c55e', step: 3, progress: 1   },
-  'default':         { label: 'Order Placed', icon: '📋',  color: '#FF3008', step: 0, progress: 0   },
-};
+const statusConfig = (t) => ({
+  'food processing': { label: t('preparing'),    icon: '👨‍🍳', color: '#f59e0b', step: 1, progress: 0   },
+  'out for delivery':{ label: t('on_the_way'),   icon: '🛵',  color: '#3b82f6', step: 2, progress: 0.5 },
+  'delivered':       { label: t('status_delivered'),    icon: '✅',  color: '#22c55e', step: 3, progress: 1   },
+  'default':         { label: t("my_orders_title").replace('طلباتي', 'تم الطلب').replace('My Orders', 'Order Placed'), icon: '📋',  color: '#FF3008', step: 0, progress: 0   },
+});
 
-function getStatusConfig(status) {
-  return statusConfig[(status || '').toLowerCase().trim()] || statusConfig['default'];
+function getStatusConfig(status, t) {
+  return statusConfig(t)[(status || '').toLowerCase().trim()] || statusConfig(t)['default'];
 }
 
 function buildDisplayAddress(address) {
@@ -151,6 +152,7 @@ function makePulseIcon(L, emoji, borderColor) {
 
 export default function LiveDeliveryMap({ order }) {
   const { url } = useContext(StoreContext);
+  const { t } = useTranslation();
   const [customerCoords, setCustomerCoords] = useState(null);
   const [firstOrderCoords, setFirstOrderCoords] = useState(null);
   const [loading, setLoading]   = useState(true);
@@ -164,7 +166,7 @@ export default function LiveDeliveryMap({ order }) {
   const firstStopProgressRef = useRef(null);
   const firstStopNotifiedRef = useRef(false);
 
-  const statusInfo       = getStatusConfig(order?.status);
+  const statusInfo       = getStatusConfig(order?.status, t);
   const displayAddress   = buildDisplayAddress(order?.address);
   const firstOrderAddress = order?.isSharedDelivery ? order?.sharedMatchedOrderId?.address : null;
   const restaurantCoords = order?.restaurantId?.location
@@ -355,14 +357,14 @@ export default function LiveDeliveryMap({ order }) {
       markersRef.current.customer = L.marker(customerCoords, {
         icon: makeEmojiIcon(L, '🏠', '#22c55e'),
         zIndexOffset: 100,
-      }).addTo(map).bindPopup('<b>Your delivery address</b>');
+      }).addTo(map).bindPopup(`<b>${t("your_delivery_address")}</b>`);
 
       // Shared first-order drop marker
       if (firstOrderCoords) {
         markersRef.current.firstOrder = L.marker(firstOrderCoords, {
           icon: makeEmojiIcon(L, '📦', '#8b5cf6'),
           zIndexOffset: 110,
-        }).addTo(map).bindPopup('<b>First order drop location</b>');
+        }).addTo(map).bindPopup(`<b>${t("first_order_drop")}</b>`);
       }
     });
 
@@ -389,7 +391,7 @@ export default function LiveDeliveryMap({ order }) {
 
     if (statusInfo.progress >= splitT) {
       firstStopNotifiedRef.current = true;
-      toast.info('First order delivered. Rider is now heading to your location.');
+      toast.info(t("first_order_delivered_msg"));
     }
   }, [order?.isSharedDelivery, order?.status, firstOrderCoords, statusInfo.progress]);
 
@@ -439,15 +441,15 @@ export default function LiveDeliveryMap({ order }) {
 
       {/* Legend + distance bar */}
       <div className="ldm-info-bar">
-        {restaurantCoords && <><div className="ldm-legend-item"><span className="ldm-dot-restaurant"/>Restaurant</div><div className="ldm-legend-sep"/></>}
-        <div className="ldm-legend-item"><span className="ldm-dot-rider"/>{isDelivered?'Delivered':'Rider'}</div>
-        {firstOrderCoords && <><div className="ldm-legend-sep"/><div className="ldm-legend-item"><span className="ldm-dot-first-order"/>First order</div></>}
+        {restaurantCoords && <><div className="ldm-legend-item"><span className="ldm-dot-restaurant"/>{t("restaurant")}</div><div className="ldm-legend-sep"/></>}
+        <div className="ldm-legend-item"><span className="ldm-dot-rider"/>{isDelivered?t("status_delivered"):t("rider")}</div>
+        {firstOrderCoords && <><div className="ldm-legend-sep"/><div className="ldm-legend-item"><span className="ldm-dot-first-order"/>{t("first_order")}</div></>}
         <div className="ldm-legend-sep"/>
-        <div className="ldm-legend-item"><span className="ldm-dot-customer"/>Your location</div>
+        <div className="ldm-legend-item"><span className="ldm-dot-customer"/>{t("your_location")}</div>
         {distanceKm && <>
           <div className="ldm-legend-sep"/>
           <div className="ldm-legend-item ldm-distance-text">
-            Distance: <strong>{distanceKm<1?`${Math.round(distanceKm*1000)} m`:`${distanceKm.toFixed(2)} km`}</strong>
+            {t("distance")}: <strong>{distanceKm<1?`${Math.round(distanceKm*1000)} m`:`${distanceKm.toFixed(2)} km`}</strong>
           </div>
         </>}
       </div>
@@ -456,19 +458,19 @@ export default function LiveDeliveryMap({ order }) {
       <div className="ldm-map-container">
         {loading && (
           <div className="ldm-map-placeholder skeleton">
-            <div className="ldm-map-loading"><div className="ldm-spinner"/><p>Locating your address…</p></div>
+            <div className="ldm-map-loading"><div className="ldm-spinner"/><p>{t("locating_address")}</p></div>
           </div>
         )}
         {!loading && error && (
           <div className="ldm-map-placeholder ldm-map-error">
-            <span>📍</span><p>Couldn't pin your address on the map.</p>
-            <small>{displayAddress||'No address provided'}</small>
+            <span>📍</span><p>{t("couldnt_pin_address")}</p>
+            <small>{displayAddress||t("no_address_provided")}</small>
           </div>
         )}
         {!loading && !error && (
           <div className="ldm-leaflet-wrap">
             <div ref={mapDivRef} className="ldm-leaflet-map"/>
-            {!isDelivered && <div className="ldm-map-badge"><span className="ldm-live-dot"/>Live</div>}
+            {!isDelivered && <div className="ldm-map-badge"><span className="ldm-live-dot"/>{t("live")}</div>}
           </div>
         )}
       </div>

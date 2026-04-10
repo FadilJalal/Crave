@@ -169,8 +169,8 @@ const RestaurantMenu = () => {
   if (!restaurant) return (
     <div className='rm-page'>
       <div className='rm-not-found'>
-        <p>🍽️ {t('restaurant_not_found') || 'Restaurant not found.'}</p>
-        <button onClick={() => navigate('/restaurants')}>← {t('back_to_restaurants') || 'Back to Restaurants'}</button>
+        <p>🍽️ {t('restaurant_not_found')}</p>
+        <button onClick={() => navigate('/restaurants')}>← {t('back_to_restaurants')}</button>
       </div>
     </div>
   );
@@ -192,15 +192,15 @@ const RestaurantMenu = () => {
         boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
       }}>
         <div style={{ fontSize: 56 }}>🚫</div>
-        <div style={{ fontSize: 22, fontWeight: 900, color: 'white' }}>{t('menu_not_available') || 'Menu Not Available'}</div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: 'white' }}>{t('menu_not_available')}</div>
         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', maxWidth: 340, lineHeight: 1.7 }}>
-          {t('menu_unavailable_desc') || "This restaurant's menu is currently unavailable. Please check back later."}
+          {t('menu_unavailable_desc')}
         </div>
         <button onClick={() => navigate('/restaurants')} style={{
           marginTop: 12, padding: '12px 28px',
           background: '#ff4e2a', color: '#fff', border: 'none',
           borderRadius: 50, fontWeight: 800, fontSize: 14, cursor: 'pointer',
-        }}>← {t('browse_other_restaurants') || 'Browse other restaurants'}</button>
+        }}>← {t('browse_other_restaurants')}</button>
       </div>
     </div>
   );
@@ -230,12 +230,12 @@ const RestaurantMenu = () => {
               <span className={`rm-status ${openStatus ? 'rm-open' : 'rm-closed'}`}>
                 {openStatus ? t('open_now') : t('closed')}
               </span>
-              <span>🕐 {restaurant.avgPrepTime || 30} {t('min_prep') || 'min prep'}</span>
+              <span>🕐 {restaurant.avgPrepTime || 30} {t('min_prep')}</span>
               {restaurantAvgRating > 0
-                ? <span>⭐ {restaurantAvgRating.toFixed(1)} ({restaurantReviewCount} {t('review', { count: restaurantReviewCount })})</span>
-                : <span>⭐ {t('no_reviews_yet') || 'No reviews yet'}</span>
+                ? <span>⭐ {restaurantAvgRating.toFixed(1)} ({restaurantReviewCount} {t('review')})</span>
+                : <span>⭐ {t('no_reviews_yet')}</span>
               }
-              <span>🍽️ {menuItems.length} {t('items') || 'items'}</span>
+              <span>🍽️ {menuItems.length} {t('items')}</span>
             </div>
           </div>
         </div>
@@ -258,8 +258,8 @@ const RestaurantMenu = () => {
       <SurgeIndicator restaurantId={id} />
 
       <div className='rm-menu-header'>
-        <h2 className='rm-menu-title'>{t('menu') || 'Menu'}</h2>
-        <span className='rm-menu-count'>{filtered.length} {t('items') || 'items'}</span>
+        <h2 className='rm-menu-title'>{t('menu')}</h2>
+        <span className='rm-menu-count'>{filtered.length} {t('items')}</span>
       </div>
 
       {!openStatus && (
@@ -300,7 +300,7 @@ const RestaurantMenu = () => {
 
       {filtered.length === 0 ? (
         <div className='rm-empty'>
-          <p>🍽️ {t('no_menu_items_found') || 'No menu items found for this category.'}</p>
+          <p>🍽️ {t('no_menu_items_found')}</p>
         </div>
       ) : (
         <div style={{ position: 'relative' }}>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import './PromoSection.css';
 
 const PromoSection = ({
@@ -12,11 +13,12 @@ const PromoSection = ({
   onRemove,
   onPickCode,
 }) => {
+  const { t } = useTranslation();
   return (
     <div className='promo-section'>
       <div className='promo-section-head'>
-        <h4>Promo codes</h4>
-        <span>Save more on this order</span>
+        <h4>{t("promo_codes")}</h4>
+        <span>{t("save_more")}</span>
       </div>
 
       {availablePromos.length > 0 && (
@@ -29,13 +31,13 @@ const PromoSection = ({
               disabled={!!appliedPromo}
               onClick={() => onPickCode?.(promo.code)}
               title={promo.type === 'percent'
-                ? `${promo.value}% off${promo.minOrder > 0 ? ` · Min AED ${promo.minOrder}` : ''}`
-                : `AED ${promo.value} off${promo.minOrder > 0 ? ` · Min AED ${promo.minOrder}` : ''}`}
+                ? `${promo.value}% ${t("off")}${promo.minOrder > 0 ? ` · ${t("min_aed")} ${promo.minOrder}` : ''}`
+                : `AED ${promo.value} ${t("off")}${promo.minOrder > 0 ? ` · ${t("min_aed")} ${promo.minOrder}` : ''}`}
             >
               <span className='promo-chip-code'>{promo.code}</span>
               <span className='promo-chip-meta'>
-                {promo.type === 'percent' ? `${promo.value}% off` : `AED ${promo.value} off`}
-                {promo.minOrder > 0 ? ` · Min AED ${promo.minOrder}` : ''}
+                {promo.type === 'percent' ? `${promo.value}% ${t("off")}` : `AED ${promo.value} ${t("off")}`}
+                {promo.minOrder > 0 ? ` · ${t("min_aed")} ${promo.minOrder}` : ''}
               </span>
             </button>
           ))}
@@ -50,7 +52,7 @@ const PromoSection = ({
           </svg>
           <input
             type='text'
-            placeholder='Enter promo code...'
+            placeholder={t("enter_promo_code")}
             value={promoInput}
             onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
             disabled={!!appliedPromo}
@@ -58,7 +60,7 @@ const PromoSection = ({
           />
           {appliedPromo && (
             <button type='button' className='promo-entry-remove' onClick={onRemove}>
-              Remove
+              {t("remove")}
             </button>
           )}
         </div>
@@ -68,7 +70,7 @@ const PromoSection = ({
           onClick={onApply}
           disabled={!!appliedPromo || promoLoading}
         >
-          {promoLoading ? '...' : appliedPromo ? 'Applied' : 'Apply'}
+          {promoLoading ? '...' : appliedPromo ? t("applied") : t("apply")}
         </button>
       </div>
 

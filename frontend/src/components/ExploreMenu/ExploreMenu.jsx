@@ -1,4 +1,5 @@
 import React, { useContext, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import './ExploreMenu.css';
 import { StoreContext } from '../../Context/StoreContext';
 
@@ -55,6 +56,7 @@ function getCategoryEmoji(name) {
 }
 
 const ExploreMenu = ({ category, setCategory }) => {
+  const { t } = useTranslation();
   const { food_list = [] } = useContext(StoreContext);
   const scrollRef = useRef(null);
 
@@ -81,14 +83,14 @@ const ExploreMenu = ({ category, setCategory }) => {
     <div className='em-wrap' id='explore-menu'>
       <div className='em-header'>
         <div>
-          <p className='em-label'>Explore Categories</p>
-          <h2 className='em-title'>What are you craving?</h2>
+          <p className='em-label'>{t("explore_categories")}</p>
+          <h2 className='em-title'>{t("what_are_you_craving")}</h2>
         </div>
         <div className='em-nav'>
           {category !== 'All' && (
             <button className='em-clear' onClick={() => setCategory('All')}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              Clear
+              {t("clear")}
             </button>
           )}
           <button className='em-arrow' onClick={() => scroll(-1)} aria-label="Scroll left">
@@ -110,8 +112,8 @@ const ExploreMenu = ({ category, setCategory }) => {
           <div className='em-card-icon'>
             <span>🍽️</span>
           </div>
-          <span className='em-card-name'>All</span>
-          <span className='em-card-count'>{food_list.length} items</span>
+          <span className='em-card-name'>{t("all")}</span>
+          <span className='em-card-count'>{food_list.length} {t("items")}</span>
         </button>
 
         {categoryData.map(cat => (
@@ -125,7 +127,7 @@ const ExploreMenu = ({ category, setCategory }) => {
               <span>{cat.emoji}</span>
             </div>
             <span className='em-card-name'>{cat.name}</span>
-            <span className='em-card-count'>{cat.count} item{cat.count !== 1 ? 's' : ''}</span>
+            <span className='em-card-count'>{cat.count} {t("items")}</span>
           </button>
         ))}
       </div>

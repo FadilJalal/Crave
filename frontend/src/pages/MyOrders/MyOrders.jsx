@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import './MyOrders.css';
 import axios from 'axios';
@@ -60,6 +61,7 @@ const isInDateRange = (dateStr, preset) => {
 };
 
 const MyOrders = () => {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const { url, token, currency } = useContext(StoreContext);
@@ -174,7 +176,7 @@ const MyOrders = () => {
 
   if (loading) return (
     <div className='mo-page'>
-      <h1 className='mo-title'>My Orders</h1>
+      <h1 className='mo-title'>{t("my_orders_title")}</h1>
       <div className='mo-loading'>
         {[1,2,3].map(i => <div key={i} className='mo-skeleton skeleton'/>)}
       </div>
@@ -183,12 +185,12 @@ const MyOrders = () => {
 
   if (fetchError) return (
     <div className='mo-page'>
-      <h1 className='mo-title'>My Orders</h1>
+      <h1 className='mo-title'>{t("my_orders_title")}</h1>
       <div className='mo-empty'>
         <div className='mo-empty-icon'>⚠️</div>
-        <p className='mo-empty-title'>Failed to load orders</p>
-        <p className='mo-empty-sub'>There was a problem connecting to the server.</p>
-        <button className='mo-order-btn' onClick={fetchOrders}>Try Again</button>
+        <p className='mo-empty-title'>{t("failed_load_orders")}</p>
+        <p className='mo-empty-sub'>{t("problem_connecting_server")}</p>
+        <button className='mo-order-btn' onClick={fetchOrders}>{t("try_again_btn")}</button>
       </div>
     </div>
   );
@@ -196,18 +198,18 @@ const MyOrders = () => {
   return (
     <div className='mo-page'>
       <div className='mo-header'>
-        <h1 className='mo-title'>My Orders</h1>
+        <h1 className='mo-title'>{t("my_orders_title")}</h1>
         <div className='mo-header-actions'>
           {orders.length > 0 && (
             <span className='mo-count'>
-              {filteredOrders.length} of {orders.length}
+              {t("n_of_m_orders", { filtered: filteredOrders.length, total: orders.length })}
             </span>
           )}
           <button className='mo-refresh' onClick={fetchOrders}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
             </svg>
-            Refresh
+            {t("refresh_btn")}
           </button>
         </div>
       </div>
@@ -217,29 +219,29 @@ const MyOrders = () => {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder='Search order id, item, restaurant, status...'
+            placeholder={t("search_order_placeholder")}
             className='mo-filter-input'
           />
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className='mo-filter-select'>
-            <option value='all'>All statuses</option>
-            <option value='food processing'>Food Processing</option>
-            <option value='out for delivery'>Out for Delivery</option>
-            <option value='delivered'>Delivered</option>
-            <option value='cancelled'>Cancelled</option>
+            <option value='all'>{t("all_statuses")}</option>
+            <option value='food processing'>{t("status_food_processing")}</option>
+            <option value='out for delivery'>{t("status_out_for_delivery")}</option>
+            <option value='delivered'>{t("status_delivered")}</option>
+            <option value='cancelled'>{t("status_cancelled")}</option>
           </select>
           <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className='mo-filter-select'>
-            {DATE_FILTERS.map((f) => (
-              <option key={f.value} value={f.value}>{f.label}</option>
-            ))}
+            <option value='all'>{t("all_time")}</option>
+            <option value='7days'>{t("last_7_days")}</option>
+            <option value='30days'>{t("last_30_days")}</option>
           </select>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className='mo-filter-select'>
-            <option value='newest'>Newest first</option>
-            <option value='oldest'>Oldest first</option>
-            <option value='highest'>Highest amount</option>
-            <option value='lowest'>Lowest amount</option>
+            <option value='newest'>{t("newest_first")}</option>
+            <option value='oldest'>{t("oldest_first")}</option>
+            <option value='highest'>{t("highest_amount")}</option>
+            <option value='lowest'>{t("lowest_amount")}</option>
           </select>
           {activeFilterCount > 0 && (
-            <button type='button' className='mo-clear-filters' onClick={clearFilters}>Clear</button>
+            <button type='button' className='mo-clear-filters' onClick={clearFilters}>{t("clear_btn")}</button>
           )}
         </div>
       )}
@@ -247,16 +249,16 @@ const MyOrders = () => {
       {orders.length === 0 ? (
         <div className='mo-empty'>
           <div className='mo-empty-icon'>📦</div>
-          <p className='mo-empty-title'>No orders yet</p>
-          <p className='mo-empty-sub'>Your order history will appear here.</p>
-          <button className='mo-order-btn' onClick={() => navigate('/')}>Start Ordering</button>
+          <p className='mo-empty-title'>{t("no_orders_yet")}</p>
+          <p className='mo-empty-sub'>{t("order_history_appear")}</p>
+          <button className='mo-order-btn' onClick={() => navigate('/')}>{t("start_ordering_btn")}</button>
         </div>
       ) : filteredOrders.length === 0 ? (
         <div className='mo-empty'>
           <div className='mo-empty-icon'>🔎</div>
-          <p className='mo-empty-title'>No orders match your filters</p>
-          <p className='mo-empty-sub'>Try changing search or filter options.</p>
-          <button className='mo-order-btn' onClick={clearFilters}>Clear Filters</button>
+          <p className='mo-empty-title'>{t("no_orders_match_filters")}</p>
+          <p className='mo-empty-sub'>{t("try_changing_search")}</p>
+          <button className='mo-order-btn' onClick={clearFilters}>{t("clear_filters_btn")}</button>
         </div>
       ) : (
         <>
@@ -275,7 +277,7 @@ const MyOrders = () => {
                   <div className='mo-card-top'>
                     <div className='mo-order-icon'>{isCancelled ? '🚫' : '📦'}</div>
                     <div className='mo-order-info'>
-                      <p className='mo-order-id'>Order #{String(order._id).slice(-6).toUpperCase()}</p>
+                      <p className='mo-order-id'>{t("order_id", { id: String(order._id).slice(-6).toUpperCase() })}</p>
                       <p className='mo-order-items'>
                         {(order.items || []).map((it, idx) =>
                           `${it.name} x${it.quantity}${idx < order.items.length - 1 ? ', ' : ''}`
@@ -285,7 +287,7 @@ const MyOrders = () => {
                     <div className='mo-order-right'>
                       <p className='mo-order-amount'>{currency}{displayTotal.toFixed(2)}</p>
                       <span className={`mo-status-badge ${isDelivered ? 'mo-delivered' : isCancelled ? 'mo-cancelled' : 'mo-active'}`}>
-                        {isDelivered ? '✓ Delivered' : isCancelled ? '🚫 Cancelled' : '⏱ ' + (order.status || 'Processing')}
+                        {isDelivered ? `✓ ${t("status_delivered")}` : isCancelled ? `🚫 ${t("status_cancelled")}` : '⏱ ' + (order.status || 'Processing')}
                       </span>
                     </div>
                   </div>
@@ -298,7 +300,11 @@ const MyOrders = () => {
                             <div className={`mo-prog-dot ${idx <= step ? 'mo-prog-done' : ''} ${idx === step ? 'mo-prog-current' : ''}`}>
                               {idx <= step ? '✓' : idx + 1}
                             </div>
-                            <p className={`mo-prog-label ${idx <= step ? 'mo-prog-label-done' : ''}`}>{s}</p>
+                            <p className={`mo-prog-label ${idx <= step ? 'mo-prog-label-done' : ''}`}>
+                              {s === 'Order Placed' ? t("my_orders_title").replace('طلباتي', 'تم الطلب').replace('My Orders', 'Order Placed') : 
+                               s === 'Food Processing' ? t("status_food_processing") : 
+                               s === 'Out for Delivery' ? t("status_out_for_delivery") : t("status_delivered")}
+                            </p>
                           </div>
                           {idx < STATUS_STEPS.length - 1 && (
                             <div className={`mo-prog-line ${idx < step ? 'mo-prog-line-done' : ''}`}/>
@@ -311,7 +317,7 @@ const MyOrders = () => {
                   <div className='mo-card-actions'>
                     {!isCancelled && (
                       <button className='mo-track-btn' onClick={() => navigate(`/order/track/${order._id}`)}>
-                        🛵 Track Order
+                        {t("track_order")}
                       </button>
                     )}
                     {isCancellable && (
@@ -320,7 +326,7 @@ const MyOrders = () => {
                         onClick={() => handleCancel(order._id)}
                         disabled={cancelling[order._id]}
                       >
-                        {cancelling[order._id] ? 'Cancelling…' : `✕ Cancel (${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')})`}
+                        {cancelling[order._id] ? t("cancelling") : `✕ ${t("status_cancelled").replace('ألغيت', 'إلغاء')} (${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')})`}
                       </button>
                     )}
                   </div>
@@ -344,22 +350,22 @@ const MyOrders = () => {
           <div style={{ background: 'white', borderRadius: 20, padding: 28, width: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', margin: '0 16px' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 36, textAlign: 'center', marginBottom: 12 }}>🚫</div>
-            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 900, color: '#111827', textAlign: 'center' }}>Cancel this order?</h3>
+            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 900, color: '#111827', textAlign: 'center' }}>{t("cancel_modal_title")}</h3>
             <p style={{ margin: '0 0 24px', fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 1.5 }}>
-              This cannot be undone. The restaurant will be notified.
+              {t("cancel_modal_desc")}
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => setCancelModal(null)}
                 style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid #e5e7eb', background: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', color: '#374151' }}
               >
-                Keep Order
+                {t("keep_order_btn")}
               </button>
               <button
                 onClick={() => confirmCancel(cancelModal)}
                 style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#dc2626', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                Yes, Cancel
+                {t("yes_cancel_btn")}
               </button>
             </div>
           </div>

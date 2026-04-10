@@ -1,4 +1,5 @@
 import { useContext, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import './FoodDisplay.css';
 import FoodItem from '../FoodItem/FoodItem';
 import { StoreContext } from '../../Context/StoreContext';
@@ -28,6 +29,7 @@ const computeTags = (food_list) => {
 };
 
 const FoodDisplay = ({ category }) => {
+  const { t } = useTranslation();
   const { food_list = [], restaurantsById = {} } = useContext(StoreContext);
   const dealTags = useMemo(() => computeTags(food_list), [food_list]);
   const filtered = food_list.filter(item => category === 'All' || item.category === category);
@@ -36,13 +38,13 @@ const FoodDisplay = ({ category }) => {
     <div className='fd-wrap' id='food-display'>
       <div className='fd-header'>
         <div>
-          <h2 className='fd-title'>{category === 'All' ? 'Top Picks Near You' : category}</h2>
-          <p className='fd-count'>{filtered.length} item{filtered.length !== 1 ? 's' : ''} available</p>
+          <h2 className='fd-title'>{category === 'All' ? t("top_picks_near_you") : category}</h2>
+          <p className='fd-count'>{filtered.length} {t("items_available")}</p>
         </div>
         {category !== 'All' && <span className='fd-category-tag'>{category}</span>}
       </div>
       {filtered.length === 0 ? (
-        <div className='fd-empty'><div className='fd-empty-icon'>🍽️</div><p>No items in this category yet.</p></div>
+        <div className='fd-empty'><div className='fd-empty-icon'>🍽️</div><p>{t("no_items_in_category")}</p></div>
       ) : (
         <div className='fd-grid'>
           {filtered.map(item => {

@@ -1,3 +1,4 @@
+/* Dark mode handled via [data-theme="dark"] at end of file */
 /* --- Base Page Layout --- */
 .rp-page {
   padding: 40px 5% 80px; /* Added horizontal padding for smaller screens */
@@ -37,7 +38,7 @@
   height: 44px;
   border: 1.5px solid var(--border, #e5e7eb);
   border-radius: 50px;
-  background: #fff;
+  background: var(--card);
   transition: all 0.2s ease;
   min-width: 280px;
 }
@@ -72,10 +73,24 @@
   border-radius: var(--radius-lg, 16px);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s, background 0.2s;
   display: flex;
   flex-direction: column;
   position: relative;
+}
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .rp-card {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.35);
+}
+[data-theme="dark"] .rp-search {
+  background: var(--card);
+  border-color: var(--border);
+}
+[data-theme="dark"] .rp-card-closed {
+  border-color: rgba(220,38,38,0.3);
 }
 
 .rp-card:hover:not(.rp-card-disabled):not(.rp-card-closed) {

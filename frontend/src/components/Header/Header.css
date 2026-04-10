@@ -451,3 +451,27 @@
   .hero-bento { display: none; }
   .hero-cta { padding: 14px 28px; font-size: 15px; }
 }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .hb-card {
+  background: rgba(26,27,46,0.88);
+  border-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .hb-card:hover {
+  box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .hero-chip-alt {
+  background: rgba(26,27,46,0.8);
+  color: var(--text-2);
+}
+[data-theme="dark"] .hero-ta {
+  border-color: #1a1b2e;
+}
+[data-theme="dark"] .hb-promo {
+  background: linear-gradient(135deg, rgba(255,48,8,0.08), rgba(26,27,46,0.88));
+}
+[data-theme="dark"] .fi-rating {
+  background: rgba(245,158,11,0.12);
+  border-color: rgba(245,158,11,0.25);
+  color: #fbbf24;
+}
