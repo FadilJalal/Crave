@@ -83,50 +83,106 @@ router.post("/smart-search", async (req, res) => {
     const { query, restaurantId } = req.body;
     if (!query) return res.json({ success: false, message: "Query required" });
     const q = query.toLowerCase().trim();
+    const apiKey = extractGroqApiKey(req);
+
+    let parsedParams = {
+      maxPrice: null, minPrice: null,
+      category: null, dietary: [],
+      cleanSearch: q, aiUsed: false
+    };
+
+    if (apiKey) {
+      try {
+        const prompt = [
+          "You are a food search parser.",
+          "Extract search parameters from the user query.",
+          "Return ONLY valid JSON with this exact shape: {\"maxPrice\": number|null, \"minPrice\": number|null, \"category\": string|null, \"dietary\": string[], \"cleanSearch\": string}",
+          "Rules:",
+          "- dietary can ONLY contain these exact strings: 'vegan', 'vegetarian', 'spicy', 'healthy', 'keto', 'glutenFree'.",
+          "- cleanSearch should be the core food item (e.g. 'chicken', 'pasta', 'pizza') with all price and dietary words removed.",
+          `User Query: "${query}"`
+        ].join("\n");
+
+        const resp = await fetch(GROQ_CHAT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model: "llama-3.1-8b-instant",
+            temperature: 0.1,
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: "Return valid JSON only." },
+              { role: "user", content: prompt },
+            ],
+          }),
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const raw = data?.choices?.[0]?.message?.content || "{}";
+          const aiParsed = JSON.parse(raw);
+          parsedParams = {
+            maxPrice: Number(aiParsed.maxPrice) || null,
+            minPrice: Number(aiParsed.minPrice) || null,
+            category: aiParsed.category?.toLowerCase() || null,
+            dietary: Array.isArray(aiParsed.dietary) ? aiParsed.dietary : [],
+            cleanSearch: aiParsed.cleanSearch?.toLowerCase() || q,
+            aiUsed: true
+          };
+        }
+      } catch (aiErr) {
+        console.warn("[ai/smart-search] Groq parsing failed, falling back to regex");
+      }
+    }
+
+    if (!parsedParams.aiUsed) {
+      let maxPrice = null, minPrice = null;
+      const um = q.match(/under\s+(\d+)|below\s+(\d+)|less\s+than\s+(\d+)|max\s+(\d+)/);
+      if (um) maxPrice = Number(um.slice(1).find(Boolean));
+      const am = q.match(/above\s+(\d+)|over\s+(\d+)|more\s+than\s+(\d+)|min\s+(\d+)/);
+      if (am) minPrice = Number(am.slice(1).find(Boolean));
+      const rm = q.match(/(\d+)\s*(?:to|-)\s*(\d+)/);
+      if (rm && !um && !am) { minPrice = Number(rm[1]); maxPrice = Number(rm[2]); }
+
+      const dietaryTerms = [];
+      if (/vegan/i.test(q)) dietaryTerms.push("vegan");
+      if (/vegetarian|veg\b/i.test(q)) dietaryTerms.push("vegetarian");
+      if (/spicy|hot\b/i.test(q)) dietaryTerms.push("spicy");
+      if (/healthy|light|diet/i.test(q)) dietaryTerms.push("healthy");
+      if (/keto/i.test(q)) dietaryTerms.push("keto");
+      if (/gluten.?free/i.test(q)) dietaryTerms.push("glutenFree");
+
+      const cats = ["salad","rolls","deserts","sandwich","cake","pure veg","pasta","noodles","burger","pizza","biryani","grills","seafood","drinks","soup","breakfast","snacks"];
+      const matchedCat = cats.find(c => q.includes(c));
+      const clean = q.replace(/under\s+\d+|below\s+\d+|less\s+than\s+\d+|above\s+\d+|over\s+\d+|\d+\s*to\s*\d+|aed|cheap|budget|spicy|hot|healthy|vegan|vegetarian|keto|gluten.?free/gi, "").trim();
+
+      parsedParams = { maxPrice, minPrice, category: matchedCat || null, dietary: dietaryTerms, cleanSearch: clean, aiUsed: false };
+    }
+
     const filter = { inStock: true };
     if (restaurantId) filter.restaurantId = restaurantId;
-
-    let maxPrice = null, minPrice = null;
-    const um = q.match(/under\s+(\d+)|below\s+(\d+)|less\s+than\s+(\d+)|max\s+(\d+)/);
-    if (um) maxPrice = Number(um.slice(1).find(Boolean));
-    const am = q.match(/above\s+(\d+)|over\s+(\d+)|more\s+than\s+(\d+)|min\s+(\d+)/);
-    if (am) minPrice = Number(am.slice(1).find(Boolean));
-    const rm = q.match(/(\d+)\s*(?:to|-)\s*(\d+)/);
-    if (rm && !um && !am) { minPrice = Number(rm[1]); maxPrice = Number(rm[2]); }
-    if (maxPrice) filter.price = { ...filter.price, $lte: maxPrice };
-    if (minPrice) filter.price = { ...filter.price, $gte: minPrice };
-
-    const dietaryTerms = [];
-    if (/vegan/i.test(q)) dietaryTerms.push("vegan");
-    if (/vegetarian|veg\b/i.test(q)) dietaryTerms.push("vegetarian");
-    if (/spicy|hot\b/i.test(q)) dietaryTerms.push("spicy");
-    if (/healthy|light|diet/i.test(q)) dietaryTerms.push("healthy");
-    if (/keto/i.test(q)) dietaryTerms.push("keto");
-    if (/gluten.?free/i.test(q)) dietaryTerms.push("glutenFree");
-
-    const cats = ["salad","rolls","deserts","sandwich","cake","pure veg","pasta","noodles","burger","pizza","biryani","grills","seafood","drinks","soup","breakfast","snacks"];
-    const matchedCat = cats.find(c => q.includes(c));
-    if (matchedCat) filter.category = new RegExp(matchedCat, "i");
-
-    const clean = q.replace(/under\s+\d+|below\s+\d+|less\s+than\s+\d+|above\s+\d+|over\s+\d+|\d+\s*to\s*\d+|aed|cheap|budget|spicy|hot|healthy|vegan|vegetarian|keto|gluten.?free/gi, "").trim();
+    if (parsedParams.maxPrice) filter.price = { ...filter.price, $lte: parsedParams.maxPrice };
+    if (parsedParams.minPrice) filter.price = { ...filter.price, $gte: parsedParams.minPrice };
+    if (parsedParams.category) filter.category = new RegExp(parsedParams.category, "i");
 
     let foods = await foodModel.find(filter).populate("restaurantId", "name logo isActive").lean();
 
-    if (clean.length > 1) {
-      const sw = clean.split(/\s+/).filter(w => w.length > 1);
+    const cleanSearchStr = parsedParams.cleanSearch.trim();
+    if (cleanSearchStr.length > 1) {
+      const sw = cleanSearchStr.split(/\s+/).filter(w => w.length > 1);
       foods = foods.map(f => {
         const t = `${f.name} ${f.description} ${f.category}`.toLowerCase();
         let rel = 0;
         sw.forEach(s => { if (t.includes(s)) rel += 2; });
-        if (f.name.toLowerCase().includes(clean)) rel += 5;
+        if (f.name.toLowerCase().includes(cleanSearchStr)) rel += 5;
         return { ...f, relevance: rel };
       }).filter(f => f.relevance > 0).sort((a, b) => b.relevance - a.relevance);
     }
 
-    if (dietaryTerms.length > 0) {
+    if (parsedParams.dietary && parsedParams.dietary.length > 0) {
       foods = foods.filter(f => {
         const tags = getDietaryTags(f.name, f.description, f.category);
-        return dietaryTerms.some(d => tags.includes(d));
+        return parsedParams.dietary.some(d => tags.includes(d));
       });
     }
 
@@ -135,7 +191,18 @@ router.post("/smart-search", async (req, res) => {
       calories: estimateCalories(f.name, f.description, f.category, f.price),
     }));
 
-    res.json({ success: true, data: results, count: results.length, parsed: { maxPrice, minPrice, category: matchedCat, dietary: dietaryTerms } });
+    res.json({ 
+      success: true, 
+      data: results, 
+      count: results.length, 
+      parsed: { 
+        maxPrice: parsedParams.maxPrice, 
+        minPrice: parsedParams.minPrice, 
+        category: parsedParams.category, 
+        dietary: parsedParams.dietary,
+        aiUsed: parsedParams.aiUsed 
+      } 
+    });
   } catch (e) {
     console.error("[ai/smart-search]", e);
     res.json({ success: false, message: "Search failed" });
@@ -276,30 +343,59 @@ router.post("/eta", async (req, res) => {
 // ── 6. MOOD RECOMMENDATIONS ─────────────────────────────────────────────────
 router.post("/mood", async (req, res) => {
   try {
-    const { mood, restaurantId } = req.body;
-    if (!mood || !MOOD_MAP[mood]) {
+    const { mood, customMood, restaurantId } = req.body;
+    
+    // If no mood or custom text, just return the predefined moods
+    if (!mood && !customMood) {
       return res.json({ success: true, moods: Object.entries(MOOD_MAP).map(([k, v]) => ({ key: k, emoji: v.emoji, label: v.label })) });
     }
-    const cfg = MOOD_MAP[mood];
+
     const filter = {};
     if (restaurantId) filter.restaurantId = restaurantId;
-
     const allFoods = await foodModel.find(filter).populate("restaurantId", "name logo isActive").lean();
-    const scored = allFoods.map(f => {
-      let s = 0;
-      if (cfg.categories.some(c => f.category?.toLowerCase().includes(c))) s += 3;
-      if (cfg.keywords.test(`${f.name} ${f.description}`)) s += 2;
-      if (mood === "budget" && f.price <= 25) s += 2;
-      else if (mood === "celebrating" && f.price >= 40) s += 1;
-      return { ...f, moodScore: s };
-    }).filter(f => f.moodScore > 0).sort((a, b) => b.moodScore - a.moodScore);
 
+    let scored = [];
+    let cfg = { label: "Custom Mood", categories: [], keywords: /.*/ };
     const requestApiKey = extractGroqApiKey(req);
+
+    if (customMood) {
+      cfg.label = `"${customMood}"`;
+      // For custom moods, if there's an API key, we'll let Groq do the absolute heavy lifting 
+      // without needing regex keyword matching first. If no API key, fallback is random sort (limited).
+      if (!requestApiKey) {
+         // Naive fallback: search by words
+         const words = customMood.toLowerCase().split(' ').filter(w => w.length > 3);
+         scored = allFoods.map(f => {
+            let s = 0;
+            const str = `${f.name} ${f.description} ${f.category}`.toLowerCase();
+            words.forEach(w => { if (str.includes(w)) s += 2; });
+            return { ...f, moodScore: s };
+         }).filter(f => f.moodScore > 0).sort((a, b) => b.moodScore - a.moodScore);
+      } else {
+         // Pass ALL potentially relevant items to Groq (cap at 60 for token limits)
+         scored = allFoods.slice(0, 60).map(f => ({ ...f, moodScore: 1 })); 
+      }
+    } else {
+      // Predefined mood logic
+      cfg = MOOD_MAP[mood];
+      scored = allFoods.map(f => {
+        let s = 0;
+        if (cfg.categories.some(c => f.category?.toLowerCase().includes(c))) s += 3;
+        if (cfg.keywords.test(`${f.name} ${f.description}`)) s += 2;
+        if (mood === "budget" && f.price <= 25) s += 2;
+        else if (mood === "celebrating" && f.price >= 40) s += 1;
+        return { ...f, moodScore: s };
+      }).filter(f => f.moodScore > 0).sort((a, b) => b.moodScore - a.moodScore);
+    }
+
     const aiRankMap = new Map();
     let aiUsed = false;
+    
+    // Reranking/Ranking via Groq
     if (requestApiKey && scored.length > 0) {
       try {
-        const aiRanked = await rerankMoodWithGroq({ foods: scored, mood, cfg, apiKey: requestApiKey });
+        const queryToRank = customMood || mood;
+        const aiRanked = await rerankMoodWithGroq({ foods: scored, mood: queryToRank, cfg, apiKey: requestApiKey });
         aiRanked.forEach((r) => aiRankMap.set(r.id, r));
         if (aiRanked.length > 0) {
           aiUsed = true;

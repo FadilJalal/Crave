@@ -19,9 +19,28 @@ const MOODS = [
 const MoodPicker = () => {
   const { url, restaurantsById = {} } = useContext(StoreContext);
   const [activeMood, setActiveMood] = useState(null);
+  const [customMood, setCustomMood] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [usedAi, setUsedAi] = useState(false);
+
+  const handleCustomSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!customMood.trim()) return;
+    setActiveMood("custom");
+    setLoading(true);
+    try {
+      const res = await axios.post(url + "/api/ai/mood", { customMood: customMood.trim(), restaurantId: null });
+      if (res.data.success) {
+        setResults(res.data.data || []);
+        setUsedAi(Boolean(res.data?.meta?.aiUsed));
+      }
+    } catch {
+      setResults([]);
+      setUsedAi(false);
+    }
+    setLoading(false);
+  };
 
   const pickMood = async (mood) => {
     if (activeMood === mood) {
@@ -31,6 +50,7 @@ const MoodPicker = () => {
       return;
     }
     setActiveMood(mood);
+    setCustomMood("");
     setLoading(true);
     try {
       const res = await axios.post(url + "/api/ai/mood", { mood });
@@ -49,8 +69,21 @@ const MoodPicker = () => {
     <div className="mp-wrap" id="mood-picker">
       <div className="mp-header">
         <h2 className="mp-title">Match Your Mood</h2>
-        <p className="mp-sub">Pick a vibe and we'll find the perfect food for you</p>
+        <p className="mp-sub">Pick a vibe or describe exactly how you feel.</p>
       </div>
+
+      <form onSubmit={handleCustomSubmit} className="mp-form">
+        <input 
+          type="text" 
+          className="mp-input" 
+          placeholder="e.g. Rough day at work, need huge comfort food..." 
+          value={customMood}
+          onChange={(e) => setCustomMood(e.target.value)}
+        />
+        <button type="submit" className="mp-submit" disabled={!customMood.trim() || loading}>
+          ✨ Match
+        </button>
+      </form>
 
       <div className="mp-moods">
         {MOODS.map((m) => (
@@ -75,7 +108,7 @@ const MoodPicker = () => {
       {results.length > 0 && (
         <div className="mp-results">
           <p className="mp-count">
-            {results.length} items match your {MOODS.find(m => m.key === activeMood)?.label} mood
+            {results.length} items match your {activeMood === "custom" ? "custom vibe" : MOODS.find(m => m.key === activeMood)?.label + " mood"}
             {usedAi ? " (AI-ranked)" : ""}
           </p>
           <div className="mp-grid">

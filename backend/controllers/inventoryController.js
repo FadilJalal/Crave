@@ -135,6 +135,29 @@ const addInventoryItem = async (req, res) => {
             });
         }
 
+        let linkedMenuItems = [];
+
+        try {
+            // Auto-link: Attempt to find a menu item with the exact same name
+            const foodModel = (await import("../models/foodModel.js")).default;
+            
+            // Look for matching names, considering simple pluralization/singularization
+            const itemNameClean = itemName.trim();
+            const matchingFood = await foodModel.findOne({ 
+                restaurantId: req.restaurantId,
+                name: new RegExp(`^${itemNameClean}$`, 'i') // Case-insensitive exact match
+            });
+            
+            if (matchingFood) {
+                linkedMenuItems.push({
+                    foodId: matchingFood._id,
+                    quantityPerOrder: 1
+                });
+            }
+        } catch (e) {
+            console.error("Auto-linking failed during item creation:", e);
+        }
+
         const newItem = new inventoryModel({
             restaurantId: req.restaurantId,
             itemName,
@@ -148,10 +171,21 @@ const addInventoryItem = async (req, res) => {
             expiryDate: expiryDate ? new Date(expiryDate) : null,
             notes,
             isActive: true,
+            linkedMenuItems,
             lastRestocked: new Date()
         });
 
         await newItem.save();
+
+        if (linkedMenuItems.length > 0) {
+            const populated = await inventoryModel.findById(newItem._id).populate("linkedMenuItems.foodId", "name image price category");
+            const rawFoodIds = (populated.linkedMenuItems || []).map(link => String(link.foodId?._id || link.foodId || ""));
+            return res.json({
+                success: true,
+                message: "Inventory item added and auto-linked successfully",
+                data: serializeInventoryItem(populated, rawFoodIds)
+            });
+        }
 
         res.json({
             success: true,
@@ -682,25 +716,20 @@ const linkMenuItem = async (req, res) => {
         const item = await inventoryModel.findOne({ _id: id, restaurantId: req.restaurantId });
         if (!item) return res.status(404).json({ success: false, message: "Inventory item not found" });
 
-        item.linkedMenuItems = normalizeLinkedMenuItems(
-            (item.linkedMenuItems || []).map(link => ({
-                foodId: link.foodId,
-                quantityPerOrder: link.quantityPerOrder,
-                _rawFoodId: String(link.foodId || "")
-            }))
-        ).map(link => ({
-            foodId: link.resolvedFoodId,
-            quantityPerOrder: link.quantityPerOrder,
-        }));
-
-        const existing = item.linkedMenuItems.find(l => String(l.foodId) === String(foodId));
+        const existing = item.linkedMenuItems?.find(l => String(l.foodId) === String(foodId));
+        
         if (existing) {
-            existing.quantityPerOrder = Number(quantityPerOrder);
+            await inventoryModel.updateOne(
+                { _id: id, "linkedMenuItems.foodId": foodId },
+                { $set: { "linkedMenuItems.$.quantityPerOrder": Number(quantityPerOrder) } }
+            );
         } else {
-            item.linkedMenuItems.push({ foodId, quantityPerOrder: Number(quantityPerOrder) });
+            await inventoryModel.updateOne(
+                { _id: id },
+                { $push: { linkedMenuItems: { foodId, quantityPerOrder: Number(quantityPerOrder) } } }
+            );
         }
-
-        await item.save();
+        
         const populated = await inventoryModel.findById(id).populate("linkedMenuItems.foodId", "name image price category");
         const rawFoodIds = (populated.linkedMenuItems || []).map(link => String(link.foodId?._id || link.foodId || ""));
         res.json({ success: true, message: "Menu item linked", data: serializeInventoryItem(populated, rawFoodIds) });
@@ -721,8 +750,10 @@ const unlinkMenuItem = async (req, res) => {
         const item = await inventoryModel.findOne({ _id: id, restaurantId: req.restaurantId });
         if (!item) return res.status(404).json({ success: false, message: "Inventory item not found" });
 
-        item.linkedMenuItems = item.linkedMenuItems.filter(l => String(l.foodId) !== String(foodId));
-        await item.save();
+        await inventoryModel.updateOne(
+            { _id: id },
+            { $pull: { linkedMenuItems: { foodId: foodId } } }
+        );
 
         res.json({ success: true, message: "Menu item unlinked" });
     } catch (error) {
