@@ -21,6 +21,7 @@ import Addresses from './pages/Addresses/Addresses';
 import Favourites from './pages/Favourites/Favourites';
 import Language from './pages/Language/Language';
 import Settings from './pages/Settings/Settings';
+import Profile from './pages/Profile/Profile';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from "./StripeProvider.jsx";
 import './i18n.mjs';
@@ -69,6 +70,7 @@ const App = () => {
             <Route path='/favourites' element={<Favourites />} />
             <Route path='/language' element={<Language />} />
             <Route path='/settings' element={<Settings />} />
+            <Route path='/profile' element={<Profile />} />
           </Routes>
         </ErrorBoundary>
       </div>
