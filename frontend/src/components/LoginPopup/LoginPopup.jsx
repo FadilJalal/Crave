@@ -37,7 +37,13 @@ const LoginPopup = ({ setShowLogin }) => {
         if (res.data.success) {
           window.location.href = `${import.meta.env.VITE_SUPER_ADMIN_URL || 'http://localhost:5173'}/bridge?token=${encodeURIComponent(res.data.token)}`;
           setShowLogin(false);
-        } else { toast.error(res.data.message || 'Admin login failed'); }
+        } else {
+          if (res.data.message === 'Not a superadmin account') {
+            toast.error('This login is for Super Admins only. If you are a restaurant, please use the Restaurant tab.');
+          } else {
+            toast.error(res.data.message || 'Admin login failed');
+          }
+        }
         return;
       }
       if (mode === 'restaurant') {
@@ -45,8 +51,15 @@ const LoginPopup = ({ setShowLogin }) => {
         if (res.data.success) {
           localStorage.setItem('restaurantInfo', JSON.stringify(res.data.restaurant));
           setShowLogin(false);
-          window.location.href = `${import.meta.env.VITE_RESTAURANT_ADMIN_URL || 'http://localhost:5175'}/bridge?token=${encodeURIComponent(res.data.token)}`;
-        } else { toast.error(res.data.message || 'Restaurant login failed'); }
+          // Force redirect to the correct restaurant admin panel URL
+          window.location.href = `http://localhost:5175/bridge?token=${encodeURIComponent(res.data.token)}`;
+        } else {
+          if (res.data.message === 'Restaurant not found' || res.data.message === 'Restaurant is disabled') {
+            toast.error('This login is for Restaurant Admins only. If you are a Super Admin, please use the Admin tab.');
+          } else {
+            toast.error(res.data.message || 'Restaurant login failed');
+          }
+        }
         return;
       }
       const endpoint = isLogin ? '/api/user/login' : '/api/user/register';
