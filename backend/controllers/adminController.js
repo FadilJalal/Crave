@@ -38,9 +38,9 @@ export const loginRestaurant = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Normalize email to lowercase
-    const restaurant = await restaurantModel.findOne({ email: email.toLowerCase() });
-    
+
+    // Case-insensitive email match
+    const restaurant = await restaurantModel.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
     if (!restaurant) {
       return res.status(401).json({ success: false, message: "Restaurant not found" });
     }
