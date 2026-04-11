@@ -1,82 +1,119 @@
-import React, { useRef } from 'react';
+import React, { useContext, useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { assets } from '../../assets/assets';
+import { StoreContext } from '../../Context/StoreContext';
+import { isRestaurantOpen } from '../../utils/restaurantHours';
+import burger from '../../assets/burger.png';
+import pizza from '../../assets/pizza.png';
+import fries from '../../assets/fries.png';
+import shawarma from '../../assets/shawarma.png';
 import './Header.css';
 
+const DEFAULT_LOCATION = 'Sharjah, UAE';
+const SLIDES = [
+    { img: burger, name: 'Burger' },
+    { img: pizza, name: 'Pizza' },
+    { img: fries, name: 'Fries' },
+    { img: shawarma, name: 'Shawarma' }
+];
+
+const readSavedLocation = () => {
+    try {
+        const saved = JSON.parse(localStorage.getItem('crave_location') || 'null');
+        return saved?.label || DEFAULT_LOCATION;
+    } catch {
+        return DEFAULT_LOCATION;
+    }
+};
+
 const Header = () => {
-  const { t } = useTranslation();
-  const heroRef = useRef(null);
-  const mouse = useRef({ x: 0, y: 0 });
-  const raf = useRef(null);
+    const { t } = useTranslation();
+    const { restaurantsById = {} } = useContext(StoreContext);
+    const [locationLabel, setLocationLabel] = useState(() => readSavedLocation());
+    const [currentSlide, setCurrentSlide] = useState(0);
 
-  const handleMouseMove = (e) => {
-    const { clientX, clientY } = e;
+    // Auto-slide every 3 seconds
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
+        }, 3000);
+        return () => clearInterval(timer);
+    }, []);
 
-    mouse.current = {
-      x: (clientX / window.innerWidth) * 2 - 1,
-      y: (clientY / window.innerHeight) * 2 - 1,
+    useEffect(() => {
+        const syncLocation = () => setLocationLabel(readSavedLocation());
+        syncLocation();
+        window.addEventListener('crave_location_changed', syncLocation);
+        return () => window.removeEventListener('crave_location_changed', syncLocation);
+    }, []);
+
+    const text = (key, fallback) => {
+        const value = t(key);
+        return value && value !== key ? value : fallback;
     };
 
-    if (!raf.current) {
-      raf.current = requestAnimationFrame(() => {
-        applyParallax();
-        raf.current = null;
-      });
-    }
-  };
+    const restaurantCount = useMemo(() => Object.keys(restaurantsById).length, [restaurantsById]);
+    const openNowCount = useMemo(() => {
+        return Object.values(restaurantsById).filter((restaurant) => isRestaurantOpen(restaurant)).length;
+    }, [restaurantsById]);
 
-  const applyParallax = () => {
-    const elements = heroRef.current.querySelectorAll('[data-speed]');
-    elements.forEach((el) => {
-      const speed = el.getAttribute('data-speed');
-      const x = mouse.current.x * speed;
-      const y = mouse.current.y * speed;
+    return (
+        <section className="crave-hero">
+            <div className="hero-pattern" />
+            <div className="hero-spotlight" />
 
-      el.style.transform = `translate(${x}px, ${y}px)`;
-    });
-  };
+            <div className="crave-hero__inner">
+                <div className="hero-content">
+                    <div className="hero-badge">
+                        <span>Delivery in {locationLabel}</span>
+                    </div>
 
-  return (
-    <section
-      className="cinematic-hero"
-      ref={heroRef}
-      onMouseMove={handleMouseMove}
-    >
-      {/* Background Glow */}
-      <div className="ch-glow ch-glow-1" data-speed="-20" />
-      <div className="ch-glow ch-glow-2" data-speed="30" />
+                    <h1 className="hero-title">
+                        <span>Elevated Eats.</span>
+                        <span>Delivered <em>Fast</em>.</span>
+                    </h1>
 
-      {/* Background Image */}
-      <div className="ch-bg" data-speed="15">
-        <img src={assets.hero_burger_bg} alt="" />
-      </div>
+                    <p className="hero-description">
+                        {text('hero_desc', 'Get the best meals from your local neighborhood favorites delivered fresh and fast to your doorstep.')}
+                    </p>
 
-      {/* Floating Food */}
-      <img src={assets.pizza_hero} className="ch-float pizza" data-speed="40" />
-      <img src={assets.fries_hero} className="ch-float fries" data-speed="-50" />
+                    <div className="hero-actions">
+                        <a href="#explore-menu" className="hero-btn hero-btn--primary">
+                            {text('order_now', 'Order Now')}
+                        </a>
+                        <Link to="/restaurants" className="hero-btn hero-btn--secondary">
+                            {text('restaurants', 'Restaurants')}
+                        </Link>
+                    </div>
+                </div>
 
-      {/* Content */}
-      <div className="ch-content">
-        <h1 className="ch-title">
-          CRAVE <br />
-          <span>GALAXY VIBES</span>
-        </h1>
+                <div className="hero-visual">
+                    <div className="hero-slider">
+                        <div className="hero-plate" />
+                        {SLIDES.map((slide, index) => (
+                            <div key={index} className={`hero-slide-item ${index === currentSlide ? 'active' : ''}`}>
+                                <img
+                                    src={slide.img}
+                                    alt={slide.name}
+                                    className="hero-slide-img"
+                                />
+                            </div>
+                        ))}
+                    </div>
 
-        <p className="ch-subtitle">
-          {t('hero_desc')}
-        </p>
+                    <div className="hero-float-tag hero-float-tag--delivery">
+                        <span className="tag-label">Avg. Delivery</span>
+                        <span className="tag-val">25 min</span>
+                    </div>
 
-        <div className="ch-cta">
-          <a href="#explore-menu" className="btn-primary">
-            ORDER NOW →
-          </a>
-          <a href="#food-display" className="btn-secondary">
-            SEE TRENDING
-          </a>
-        </div>
-      </div>
-    </section>
-  );
+                    <div className="hero-float-tag hero-float-tag--rating">
+                        <span className="tag-label">Hyped spots</span>
+                        <span className="tag-val">{openNowCount || restaurantCount || "50+"} Live</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
 };
 
 export default Header;

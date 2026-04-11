@@ -1,0 +1,108 @@
+.intelligence-bar {
+    width: 100%;
+    background: #ffffff;
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+    padding: 6px 0;
+    z-index: 999;
+    position: fixed;
+    top: var(--navbar-h);
+    left: 0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+    backdrop-filter: blur(10px);
+}
+
+.bar-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.bar-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bar-emoji {
+    font-size: 14px;
+}
+
+.bar-greeting {
+    font-family: var(--font-body); /* Changed from display to body for cleaner look */
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--text-main);
+}
+
+.bar-stats {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 48, 8, 0.04);
+    padding: 2px 8px;
+    border-radius: 100px;
+}
+
+.stat-item {
+    font-size: 11px;
+    color: var(--text-2);
+}
+
+.stat-item b {
+    color: var(--brand);
+    font-weight: 800;
+}
+
+.stat-separator {
+    color: rgba(0,0,0,0.1);
+    font-size: 8px;
+}
+
+.bar-section--nudge {
+    background: var(--brand);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bar-section--nudge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255,48,8,0.2);
+    background: var(--brand-dark);
+}
+
+.nudge-icon { font-size: 12px; }
+
+.animate-fade-in {
+    animation: fadeInDown 0.5s ease-out forwards;
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+[data-theme="dark"] .intelligence-bar {
+    background: rgba(17, 17, 26, 0.85);
+    border-color: rgba(255,255,255,0.05);
+}
+
+[data-theme="dark"] .bar-greeting { color: #fff; }
+[data-theme="dark"] .bar-stats { background: rgba(255,48,8,0.1); }
+[data-theme="dark"] .stat-item { color: #aaa; }
+
+@media (max-width: 768px) {
+    .bar-container { padding: 0 16px; }
+    .bar-stats { display: none; } /* Hide stats on mobile for space */
+}

@@ -66,20 +66,20 @@ const App = () => {
         <ErrorBoundary>
           <Routes>
             <Route path='/' element={<Home />} />
-            <Route path='/cart' element={<Cart />} />
-            <Route path='/order' element={<PlaceOrder />} />
-            <Route path='/myorders' element={<MyOrders />} />
-            <Route path='/order/track/:orderId' element={<OrderTracking />} />
-            <Route path='/verify' element={<Verify />} />
-            <Route path='/restaurants' element={<Restaurants />} />
-            <Route path='/restaurants/:id' element={<RestaurantMenu />} />
-            <Route path='/reset-password' element={<ResetPassword />} />
-            <Route path='/payment-methods' element={<PaymentMethods />} />
-            <Route path='/addresses' element={<Addresses />} />
-            <Route path='/favourites' element={<Favourites />} />
-            <Route path='/language' element={<Language />} />
-            <Route path='/settings' element={<Settings />} />
-            <Route path='/profile' element={<Profile />} />
+            <Route path='/cart' element={<div className="app-container"><Cart /></div>} />
+            <Route path='/order' element={<div className="app-container"><PlaceOrder /></div>} />
+            <Route path='/myorders' element={<div className="app-container"><MyOrders /></div>} />
+            <Route path='/order/track/:orderId' element={<div className="app-container"><OrderTracking /></div>} />
+            <Route path='/verify' element={<div className="app-container"><Verify /></div>} />
+            <Route path='/restaurants' element={<div className="app-container"><Restaurants /></div>} />
+            <Route path='/restaurants/:id' element={<div className="app-container"><RestaurantMenu /></div>} />
+            <Route path='/reset-password' element={<div className="app-container"><ResetPassword /></div>} />
+            <Route path='/payment-methods' element={<div className="app-container"><PaymentMethods /></div>} />
+            <Route path='/addresses' element={<div className="app-container"><Addresses /></div>} />
+            <Route path='/favourites' element={<div className="app-container"><Favourites /></div>} />
+            <Route path='/language' element={<div className="app-container"><Language /></div>} />
+            <Route path='/settings' element={<div className="app-container"><Settings /></div>} />
+            <Route path='/profile' element={<div className="app-container"><Profile /></div>} />
           </Routes>
         </ErrorBoundary>
       </div>

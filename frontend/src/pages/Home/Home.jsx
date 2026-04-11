@@ -3,14 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './Home.css'
 import Header from '../../components/Header/Header'
-import ExploreMenu from '../../components/ExploreMenu/ExploreMenu'
+import CategoryReel from '../../components/CategoryReel/CategoryReel'
+import HighlightGrid from '../../components/HighlightGrid/HighlightGrid'
 import FoodDisplay from '../../components/FoodDisplay/FoodDisplay'
 import AIRecommendations from '../../components/AIRecommendations/AIRecommendations'
-import PersonalisedBanner from '../../components/PersonalisedBanner/PersonalisedBanner'
 import FoodChat from '../../components/FoodChat/FoodChat'
 import FlashDeals from '../../components/FlashDeals/FlashDeals'
 import MoodPicker from '../../components/MoodPicker/MoodPicker'
-import ReorderNudge from '../../components/ReorderNudge/ReorderNudge'
 import { StoreContext } from '../../Context/StoreContext'
 
 const Home = () => {
@@ -28,22 +27,17 @@ const Home = () => {
   return (
     <>
       <Header />
-      <PersonalisedBanner />
-      <ReorderNudge />
-
-      <FlashDeals />
-
-      <ExploreMenu setCategory={setCategory} category={category} />
-      <FoodDisplay category={category} />
-
-      <div className="home-divider" />
-
-      <MoodPicker />
-
-      <div className="home-divider" />
-
-      <AIRecommendations />
-      <FoodChat />
+      <CategoryReel category={category} setCategory={setCategory} />
+      <HighlightGrid />
+      <div className="app-container">
+        <FlashDeals />
+        <FoodDisplay category={category} />
+        <div className="home-divider" />
+        <MoodPicker />
+        <div className="home-divider" />
+        <AIRecommendations />
+        <FoodChat />
+      </div>
 
       {totalItems > 0 && (
         <div className="home-mini-cart">

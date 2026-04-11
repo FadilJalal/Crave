@@ -12,6 +12,8 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
     "@stripe/react-stripe-js": "^5.6.1",
     "@stripe/stripe-js": "^8.9.0",
     "axios": "^1.6.7",
@@ -22,7 +24,8 @@
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.22.0",
-    "react-toastify": "^10.0.4"
+    "react-toastify": "^10.0.4",
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
