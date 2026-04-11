@@ -6,14 +6,26 @@
   --text-muted: #666;
   width: 100%;
   position: relative;
-  min-height: auto;
-  margin: 0;
+  margin-top: 0;
+  min-height: 100vh;
   padding: 0;
   background: var(--hero-bg);
   display: flex;
   align-items: flex-start;
   overflow: hidden;
   isolation: isolate;
+}
+
+.hero-visual {
+  flex: 1.1;
+  height: 420px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transform: translateY(40px);
+  /* 🔥 moves whole image block DOWN */
 }
 
 /* Premium Background Accents */
@@ -41,10 +53,10 @@
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 40px 32px 60px;
+  padding: calc(var(--navbar-h) + 32px) 32px 100px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 40px;
 }
 
@@ -66,7 +78,7 @@
   color: var(--accent);
   font-size: 13px;
   font-weight: 800;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
@@ -91,12 +103,12 @@
 
 .hero-title {
   font-family: var(--font-display);
-  font-size: clamp(48px, 6vw, 88px);
+  font-size: clamp(40px, 5.5vw, 76px);
   font-weight: 800;
-  line-height: 0.9;
+  line-height: 1.0;
   letter-spacing: -0.04em;
   color: var(--text-main);
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .hero-title span {
@@ -162,7 +174,7 @@
 /* Visual / Slider Area */
 .hero-visual {
   flex: 1.1;
-  height: 600px;
+  height: 420px;
   position: relative;
   display: flex;
   align-items: center;
@@ -173,9 +185,11 @@
   position: relative;
   width: 100%;
   height: 100%;
+
   display: flex;
   align-items: center;
   justify-content: center;
+  /* ✅ CENTER */
 }
 
 .hero-slide-item {
@@ -191,19 +205,44 @@
   justify-content: center;
 }
 
+@media (max-width: 1200px) {
+  .hero-slide-img {
+    width: 420px;
+    height: 420px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-slide-img {
+    width: 320px;
+    height: 320px;
+  }
+}
+
 .hero-slide-item.active {
   opacity: 1;
   transform: scale(1) translateY(0);
   pointer-events: auto;
 }
 
+.hero-slide-item.active .hero-slide-img {
+  transform: scale(1.05) translateY(12px);
+}
+
 .hero-slide-img {
-  max-width: 90%;
-  max-height: 90%;
+  width: 460px;
+  /* ✅ slightly smaller = better balance */
+  height: 460px;
   object-fit: contain;
-  /* Added realistic shadow requested */
-  filter: drop-shadow(0 40px 60px rgba(0, 0, 0, 0.25));
+
+  display: block;
+  margin: 0 auto;
+
+  filter: drop-shadow(0 35px 55px rgba(0, 0, 0, 0.22));
+  /* softer shadow */
   animation: heroFloat 5s ease-in-out infinite;
+
+  transition: transform 0.4s ease;
 }
 
 /* Floating Elements (Glassmorphism) */
@@ -351,7 +390,7 @@
 
   .hero-visual {
     width: 100%;
-    height: 480px;
+    height: 360px;
   }
 
   .tag--rating {
@@ -370,7 +409,7 @@
   }
 
   .hero-visual {
-    height: 360px;
+    height: 280px;
   }
 
   .glass-tag {

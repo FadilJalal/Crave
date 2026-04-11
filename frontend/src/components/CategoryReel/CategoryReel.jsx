@@ -50,7 +50,7 @@ const CategoryReel = ({ category, setCategory }) => {
   };
 
   return (
-    <section className="category-reel">
+    <section className="category-reel" id="explore-menu">
       <div className="reel-inner">
         <div className="reel-header">
           <h2 className="reel-title">{t("what_are_you_craving")}</h2>
