@@ -8,7 +8,7 @@ import FoodDisplay from '../../components/FoodDisplay/FoodDisplay'
 import AIRecommendations from '../../components/AIRecommendations/AIRecommendations'
 import PersonalisedBanner from '../../components/PersonalisedBanner/PersonalisedBanner'
 import FoodChat from '../../components/FoodChat/FoodChat'
-import SmartSearch from '../../components/SmartSearch/SmartSearch'
+import FlashDeals from '../../components/FlashDeals/FlashDeals'
 import MoodPicker from '../../components/MoodPicker/MoodPicker'
 import ReorderNudge from '../../components/ReorderNudge/ReorderNudge'
 import { StoreContext } from '../../Context/StoreContext'
@@ -31,7 +31,7 @@ const Home = () => {
       <PersonalisedBanner />
       <ReorderNudge />
 
-      <SmartSearch />
+      <FlashDeals />
 
       <ExploreMenu setCategory={setCategory} category={category} />
       <FoodDisplay category={category} />
