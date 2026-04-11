@@ -318,3 +318,9 @@
 [data-theme="dark"] .nb-signin {
   color: var(--text);
 }
+.navbar {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
