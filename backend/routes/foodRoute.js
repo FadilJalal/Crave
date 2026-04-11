@@ -45,6 +45,28 @@ foodRouter.get("/list/public", async (req, res) => {
       .populate("restaurantId", "name logo isActive openingHours location deliveryRadius minimumOrder deliveryTiers")
       .lean();
 
+    // Auto-expire any Lightning Deals whose timer has passed
+    const now = new Date();
+    const expiredIds = foods
+      .filter(f => f.isFlashDeal && f.flashDealExpiresAt && new Date(f.flashDealExpiresAt) <= now)
+      .map(f => f._id);
+
+    if (expiredIds.length > 0) {
+      // Fire-and-forget: update in background without blocking the response
+      foodModel.updateMany(
+        { _id: { $in: expiredIds } },
+        { $set: { isFlashDeal: false, salePrice: null } }
+      ).catch(err => console.error("[EXPIRE DEALS ERROR]", err));
+
+      // Strip expired deals from the response immediately
+      foods.forEach(f => {
+        if (expiredIds.some(id => String(id) === String(f._id))) {
+          f.isFlashDeal = false;
+          f.salePrice = null;
+        }
+      });
+    }
+
     res.json({ success: true, data: foods });
   } catch (error) {
     console.error("[PUBLIC LIST ERROR]", error);
@@ -141,6 +163,25 @@ foodRouter.post("/edit", (req, res, next) => {
       } catch (e) {
         food.customizations = [];
       }
+    }
+
+    // ⚡ Lightning Deal fields
+    if (req.body.isFlashDeal !== undefined) {
+      food.isFlashDeal = req.body.isFlashDeal === "true";
+    }
+    if (req.body.salePrice !== undefined) {
+      food.salePrice = req.body.salePrice === "" ? null : Number(req.body.salePrice);
+    }
+    if (req.body.flashDealExpiresAt !== undefined) {
+      food.flashDealExpiresAt = req.body.flashDealExpiresAt === "" ? null : new Date(req.body.flashDealExpiresAt);
+    }
+    if (req.body.flashDealTotalStock !== undefined) {
+      food.flashDealTotalStock = req.body.flashDealTotalStock === "" ? null : Number(req.body.flashDealTotalStock);
+    }
+    // If deal is being turned off, clear the sale price too
+    if (req.body.isFlashDeal === "false") {
+      food.salePrice = null;
+      food.flashDealExpiresAt = null;
     }
 
     if (req.file) {

@@ -23,6 +23,59 @@ export default function Menu() {
   const [deletingCat, setDeletingCat] = useState(false);
   const { dark } = useTheme();
 
+  // ── Lightning Deal Management State ──
+  const [managingItem, setManagingItem]       = useState(null);
+  const [dealPrice, setDealPrice]             = useState("");
+  const [dealPercentage, setDealPercentage]   = useState("");
+  const [dealExpiresAt, setDealExpiresAt]     = useState("");
+  const [dealStock, setDealStock]             = useState("");
+  const [isDealActive, setIsDealActive]       = useState(false);
+  const [savingDeal, setSavingDeal]           = useState(false);
+
+  const openDealManager = (item) => {
+    setManagingItem(item);
+    setDealPrice(item.salePrice || "");
+    setDealPercentage(
+      item.salePrice && item.price
+        ? Math.round((1 - item.salePrice / item.price) * 100)
+        : ""
+    );
+    const exp = item.flashDealExpiresAt ? new Date(item.flashDealExpiresAt) : null;
+    if (exp) {
+      exp.setMinutes(exp.getMinutes() - exp.getTimezoneOffset());
+      setDealExpiresAt(exp.toISOString().slice(0, 16));
+    } else {
+      setDealExpiresAt("");
+    }
+    setDealStock(item.flashDealTotalStock || "");
+    setIsDealActive(item.isFlashDeal || false);
+  };
+
+  const saveFlashDeal = async () => {
+    if (!managingItem) return;
+    setSavingDeal(true);
+    try {
+      const form = new FormData();
+      form.append("id", managingItem._id);
+      form.append("isFlashDeal", String(isDealActive));
+      form.append("salePrice", dealPrice ? String(dealPrice) : "");
+      form.append("flashDealExpiresAt", dealExpiresAt ? new Date(dealExpiresAt).toISOString() : "");
+      form.append("flashDealTotalStock", dealStock ? String(dealStock) : "");
+      const res = await api.post("/api/food/edit", form);
+      if (res.data?.success) {
+        setFoods(prev => prev.map(f =>
+          f._id === managingItem._id
+            ? { ...f, isFlashDeal: isDealActive, salePrice: dealPrice ? Number(dealPrice) : undefined,
+                flashDealExpiresAt: dealExpiresAt ? new Date(dealExpiresAt).toISOString() : undefined,
+                flashDealTotalStock: dealStock ? Number(dealStock) : undefined }
+            : f
+        ));
+        setManagingItem(null);
+      } else { alert(res.data?.message || "Failed to update deal"); }
+    } catch { alert("Failed to update deal"); }
+    finally { setSavingDeal(false); }
+  };
+
   const loadFoods = async () => {
     try {
       setLoading(true);
@@ -344,6 +397,17 @@ export default function Menu() {
                     {(f.inStock ?? true) ? "✓ ON" : "✕ OFF"}
                   </button>
 
+                  <button onClick={() => openDealManager(f)}
+                    style={{
+                      padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 800,
+                      background: f.isFlashDeal ? "#FF3008" : (dark ? "rgba(255,48,8,0.15)" : "#fff3f0"),
+                      color: f.isFlashDeal ? "#fff" : "#FF3008",
+                      border: `1px solid ${f.isFlashDeal ? "#FF3008" : "rgba(255,48,8,0.3)"}`,
+                      cursor: "pointer", whiteSpace: "nowrap",
+                      boxShadow: f.isFlashDeal ? "0 4px 12px rgba(255,48,8,0.35)" : "none",
+                    }}>
+                    ⚡ {f.isFlashDeal ? "Active Deal" : "Lightning Deal"}
+                  </button>
                   <button onClick={() => navigate(`/edit-food/${f._id}`)}
                     style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #bfdbfe",
                       background: dark ? "rgba(29,78,216,0.2)" : "#eff6ff", color: dark ? "#93c5fd" : "#1d4ed8", fontWeight: 700,
@@ -360,6 +424,206 @@ export default function Menu() {
               </div>
             );
           })}
+        </div>
+      )}
+      {/* ⚡ Lightning Deal Manager Modal */}
+      {managingItem && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+        }}>
+          <div style={{
+            background: dark ? "#111827" : "#fff",
+            width: "100%", maxWidth: 480, borderRadius: 24, padding: 32,
+            boxShadow: "0 24px 80px rgba(0,0,0,0.35)",
+            position: "relative", border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "#eee"}`,
+            maxHeight: "90vh", overflowY: "auto"
+          }}>
+            {/* Close */}
+            <button onClick={() => setManagingItem(null)}
+              style={{ position: "absolute", top: 18, right: 18, background: "none", border: "none",
+                fontSize: 22, cursor: "pointer", color: "var(--muted)", lineHeight: 1 }}>
+              ✕
+            </button>
+
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(255,48,8,0.1)",
+                display: "grid", placeItems: "center", flexShrink: 0 }}>
+                <span style={{ fontSize: 26 }}>⚡</span>
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "var(--text)" }}>Lightning Deal Manager</h3>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>Configure time-limited promotions</p>
+              </div>
+            </div>
+
+            {/* Product preview */}
+            <div style={{ display: "flex", alignItems: "center", gap: 14, padding: 14,
+              borderRadius: 14, background: dark ? "rgba(255,255,255,0.04)" : "#f9fafb",
+              border: "1px solid var(--border)", marginBottom: 22 }}>
+              <img src={`${BASE_URL}/images/${managingItem.image}`}
+                style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover" }} />
+              <div>
+                <div style={{ fontWeight: 800, color: "var(--text)", fontSize: 15 }}>{managingItem.name}</div>
+                <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>Regular price: AED {managingItem.price}</div>
+              </div>
+            </div>
+
+            {/* Activate toggle */}
+            <label style={{
+              display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
+              background: isDealActive ? "rgba(255,48,8,0.08)" : (dark ? "rgba(255,255,255,0.04)" : "#f9fafb"),
+              padding: "14px 16px", borderRadius: 14,
+              border: `2px solid ${isDealActive ? "#FF3008" : "var(--border)"}`,
+              transition: "all 0.2s", marginBottom: 20
+            }}>
+              <input type="checkbox" checked={isDealActive}
+                onChange={e => setIsDealActive(e.target.checked)}
+                style={{ width: 22, height: 22, accentColor: "#FF3008", flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: 800, color: isDealActive ? "#FF3008" : "var(--text)", fontSize: 15 }}>
+                  {isDealActive ? "⚡ Deal is LIVE" : "Activate Lightning Deal"}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                  {isDealActive ? "Showing on customer homepage" : "Turn on to show in Lightning Deals"}
+                </div>
+              </div>
+            </label>
+
+            {/* Config fields — only show when active */}
+            {isDealActive && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+                {/* Price & Percentage */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.5px" }}>Sale Price (AED)</div>
+                    <input type="number" value={dealPrice}
+                      onChange={e => {
+                        setDealPrice(e.target.value);
+                        if (e.target.value && managingItem.price)
+                          setDealPercentage(Math.round((1 - Number(e.target.value) / managingItem.price) * 100));
+                        else setDealPercentage("");
+                      }}
+                      placeholder="e.g. 20.00"
+                      style={{ width: "100%", padding: "12px 14px", borderRadius: 12,
+                        border: "2px solid #FF3008", outline: "none", fontSize: 18,
+                        fontWeight: 900, fontFamily: "inherit",
+                        background: dark ? "#000" : "#fff", color: "var(--text)", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.5px" }}>Discount (%)</div>
+                    <input type="number" value={dealPercentage}
+                      onChange={e => {
+                        setDealPercentage(e.target.value);
+                        if (e.target.value && managingItem.price) {
+                          const p = managingItem.price * (1 - Number(e.target.value) / 100);
+                          setDealPrice(p > 0 ? p.toFixed(2) : "");
+                        } else setDealPrice("");
+                      }}
+                      placeholder="e.g. 20"
+                      style={{ width: "100%", padding: "12px 14px", borderRadius: 12,
+                        border: "1px solid var(--border)", outline: "none", fontSize: 18,
+                        fontWeight: 900, fontFamily: "inherit",
+                        background: dark ? "rgba(255,255,255,0.05)" : "#f9fafb",
+                        color: "var(--text)", boxSizing: "border-box" }}
+                    />
+                  </div>
+                </div>
+
+                {/* Savings feedback */}
+                {dealPrice && managingItem.price && Number(dealPrice) > 0 && (
+                  <div style={{ fontSize: 13, color: "#FF3008", fontWeight: 800, marginTop: -8,
+                    background: "rgba(255,48,8,0.07)", padding: "8px 14px", borderRadius: 10 }}>
+                    Customer saves AED {(Number(managingItem.price) - Number(dealPrice)).toFixed(2)} · {dealPercentage}% off
+                  </div>
+                )}
+
+                {/* Timer & Stock */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.5px" }}>Deal Ends At</div>
+                    <input type="datetime-local" value={dealExpiresAt}
+                      onChange={e => setDealExpiresAt(e.target.value)}
+                      style={{ width: "100%", padding: "12px 10px", borderRadius: 12,
+                        border: "1px solid var(--border)", outline: "none", fontSize: 13,
+                        fontWeight: 700, fontFamily: "inherit",
+                        background: dark ? "rgba(255,255,255,0.05)" : "#f9fafb",
+                        color: "var(--text)", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.5px" }}>Stock Limit</div>
+                    <input type="number" value={dealStock}
+                      onChange={e => setDealStock(e.target.value)}
+                      placeholder="e.g. 10"
+                      style={{ width: "100%", padding: "12px 14px", borderRadius: 12,
+                        border: "1px solid var(--border)", outline: "none", fontSize: 18,
+                        fontWeight: 900, fontFamily: "inherit",
+                        background: dark ? "rgba(255,255,255,0.05)" : "#f9fafb",
+                        color: "var(--text)", boxSizing: "border-box" }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
+              {/* Quick Remove button — only show if the deal is currently active */}
+              {managingItem.isFlashDeal && (
+                <button
+                  disabled={savingDeal}
+                  onClick={async () => {
+                    setSavingDeal(true);
+                    try {
+                      const form = new FormData();
+                      form.append("id", managingItem._id);
+                      form.append("isFlashDeal", "false");
+                      form.append("salePrice", "");
+                      form.append("flashDealExpiresAt", "");
+                      form.append("flashDealTotalStock", "");
+                      const res = await api.post("/api/food/edit", form);
+                      if (res.data?.success) {
+                        setFoods(prev => prev.map(f =>
+                          f._id === managingItem._id
+                            ? { ...f, isFlashDeal: false, salePrice: undefined, flashDealExpiresAt: undefined }
+                            : f
+                        ));
+                        setManagingItem(null);
+                      } else {
+                        alert(res.data?.message || "Failed");
+                      }
+                    } catch { alert("Failed to remove deal"); }
+                    finally { setSavingDeal(false); }
+                  }}
+                  style={{
+                    width: "100%", padding: "13px",
+                    background: dark ? "rgba(239,68,68,0.15)" : "#fff1f1",
+                    color: "#dc2626", border: "1.5px solid #fca5a5", borderRadius: 14,
+                    fontWeight: 900, fontSize: 14, cursor: savingDeal ? "not-allowed" : "pointer",
+                    transition: "all 0.2s", letterSpacing: "0.3px"
+                  }}>
+                  🗑 Remove Deal (Turn Off)
+                </button>
+              )}
+
+              <button onClick={saveFlashDeal} disabled={savingDeal}
+                style={{
+                  width: "100%", padding: "15px",
+                  background: savingDeal ? "#9ca3af" : "linear-gradient(90deg, #FF3008, #ff6b4a)",
+                  color: "#fff", border: "none", borderRadius: 14,
+                  fontWeight: 900, fontSize: 16, cursor: savingDeal ? "not-allowed" : "pointer",
+                  boxShadow: savingDeal ? "none" : "0 8px 20px rgba(255,48,8,0.35)",
+                  transition: "all 0.2s", letterSpacing: "0.5px"
+                }}>
+                {savingDeal ? "Saving…" : isDealActive ? "⚡ Launch Deal" : "Save Changes"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </RestaurantLayout>
