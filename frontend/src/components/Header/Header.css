@@ -4,16 +4,14 @@
   --accent-soft: rgba(255, 48, 8, 0.1);
   --text-main: #1a1a2e;
   --text-muted: #666;
-  margin-top: var(--navbar-h, 72px);
   width: 100%;
   position: relative;
-  /* Fixed: use navbar height to eliminate gaps and oversized layout */
-  min-height: calc(100vh - var(--navbar-h, 72px));
+  min-height: auto;
   margin: 0;
   padding: 0;
   background: var(--hero-bg);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   overflow: hidden;
   isolation: isolate;
 }
@@ -43,7 +41,7 @@
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 60px 32px;
+  padding: 40px 32px 60px;
   display: flex;
   justify-content: space-between;
   align-items: center;

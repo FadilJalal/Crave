@@ -47,8 +47,7 @@
   background-size: 200% 100%;
 }
 
-body {
-}
+body {}
 
 [data-theme="dark"] .nb-wrap {
   background: rgba(15, 17, 23, 0.97);
@@ -110,6 +109,25 @@ a {
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 10px;
+}
+
+:root {
+  --navbar-h: 72px;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+}
+:root {
+  --navbar-h: 72px;
+}
+
+body {
+  margin: 0;
+  padding-top: var(--navbar-h);
 }
 
 @keyframes fadeUp {
