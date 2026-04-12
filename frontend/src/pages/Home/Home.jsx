@@ -3,11 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './Home.css'
 import Header from '../../components/Header/Header'
-import TopPicks from '../../components/TopPicks/TopPicks'
-import HighlightGrid from '../../components/HighlightGrid/HighlightGrid'
+import HeaderMarquee from '../../components/HeaderMarquee/HeaderMarquee'
+import TopRestaurants from '../../components/TopRestaurants/TopRestaurants'
 import FoodDisplay from '../../components/FoodDisplay/FoodDisplay'
-import AIRecommendations from '../../components/AIRecommendations/AIRecommendations'
-import FoodChat from '../../components/FoodChat/FoodChat'
 import FlashDeals from '../../components/FlashDeals/FlashDeals'
 import MoodPicker from '../../components/MoodPicker/MoodPicker'
 import { StoreContext } from '../../Context/StoreContext'
@@ -27,13 +25,11 @@ const Home = () => {
   return (
     <>
       <Header />
-      <TopPicks />
+      <HeaderMarquee />
+      <TopRestaurants />
       <div className="app-container">
         <FlashDeals />
         <FoodDisplay category={category} />
-        <div className="home-divider" />
-        <AIRecommendations />
-        <FoodChat />
       </div>
 
       {totalItems > 0 && (
