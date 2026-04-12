@@ -165,8 +165,9 @@ const StoreContextProvider = (props) => {
         const food = food_list.find((f) => f._id === entry.itemId);
         if (food) {
           // Use salePrice if Flash Deal is active (support bool or string "true")
-          const isFlash = food.isFlashDeal === true || food.isFlashDeal === "true";
-          const isNotExpired = food.flashDealExpiresAt && (new Date(food.flashDealExpiresAt).getTime() + 3600000) > now;
+          const isFlash = food.isFlashDeal === true || food.isFlashDeal === "true" || food.isFlashDeal === 1;
+          // Bug 2 Fix: If no expiry is set, it's always valid. If set, check against current time.
+          const isNotExpired = !food.flashDealExpiresAt || (new Date(food.flashDealExpiresAt).getTime() + 3600000) > now;
           const isFlashDealActive = isFlash && food.salePrice && isNotExpired;
           
           const effectivePrice = isFlashDealActive ? food.salePrice : food.price;
@@ -208,14 +209,14 @@ const StoreContextProvider = (props) => {
         setFoodList(response.data.data);
         try {
           localStorage.setItem("crave_food_cache", JSON.stringify(response.data.data));
-          localStorage.setItem("crave_food_cache_v", "10");
+          localStorage.setItem("crave_food_cache_v", "11");
         } catch {}
       } else {
         setFoodListError(true);
         toast.error("Failed to load menu. Please refresh the page.");
         // Try cache
         try {
-          const cacheOk = localStorage.getItem("crave_food_cache_v") === "10";
+          const cacheOk = localStorage.getItem("crave_food_cache_v") === "11";
           const cached = cacheOk ? JSON.parse(localStorage.getItem("crave_food_cache") || "null") : null;
           if (cached?.length) {
             setFoodList(cached);
@@ -228,7 +229,7 @@ const StoreContextProvider = (props) => {
       console.error(`[FETCH ERROR] Failed to fetch food list`);
       // Try cache on network failure
       try {
-        const cacheOk2 = localStorage.getItem("crave_food_cache_v") === "10";
+        const cacheOk2 = localStorage.getItem("crave_food_cache_v") === "11";
         const cached = cacheOk2 ? JSON.parse(localStorage.getItem("crave_food_cache") || "null") : null;
         if (cached?.length) {
           setFoodList(cached);

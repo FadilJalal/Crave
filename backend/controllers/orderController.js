@@ -298,12 +298,13 @@ const placeOrder = async (req, res) => {
       const dbFood = foodMap.get(String(item._id));
       if (!dbFood) throw new Error(`Food item ${item.name} no longer available`);
       
-      const isFlashActive = dbFood.isFlashDeal && dbFood.salePrice && dbFood.flashDealExpiresAt && (new Date(dbFood.flashDealExpiresAt).getTime() + 3600000) > now;
+      // Bug 2 Fix: Check if flash is active. Treat missing expiry as "valid"
+      const isFlashActive = dbFood.isFlashDeal && dbFood.salePrice && (!dbFood.flashDealExpiresAt || (new Date(dbFood.flashDealExpiresAt).getTime() + 3600000) > now);
       const unitPrice = isFlashActive ? dbFood.salePrice : dbFood.price;
       const totalItemPrice = unitPrice + (item.extraPrice || 0);
       calculatedSubtotal += totalItemPrice * item.quantity;
       
-      return { ...item, price: unitPrice }; // Ensure we save the price actually paid
+      return { ...item, price: unitPrice, isFlashDeal: isFlashActive }; // Bug 3: Save flash status to item
     });
 
     const newOrder = new orderModel({
@@ -449,10 +450,11 @@ const placeOrderCod = async (req, res) => {
       const dbFood = foodMap.get(String(item._id));
       if (!dbFood) throw new Error(`Food item ${item.name} no longer available`);
       
-      const isFlashActive = dbFood.isFlashDeal && dbFood.salePrice && dbFood.flashDealExpiresAt && (new Date(dbFood.flashDealExpiresAt).getTime() + 3600000) > now;
+      // Bug 2 Fix: Check if flash is active. Treat missing expiry as "valid"
+      const isFlashActive = dbFood.isFlashDeal && dbFood.salePrice && (!dbFood.flashDealExpiresAt || (new Date(dbFood.flashDealExpiresAt).getTime() + 3600000) > now);
       const unitPrice = isFlashActive ? dbFood.salePrice : dbFood.price;
       calculatedSubtotal += (unitPrice + (item.extraPrice || 0)) * item.quantity;
-      return { ...item, price: unitPrice };
+      return { ...item, price: unitPrice, isFlashDeal: isFlashActive }; // Bug 3: Save flash status
     });
 
     const newOrder = new orderModel({
@@ -484,6 +486,17 @@ const placeOrderCod = async (req, res) => {
     }
     if (!inventoryDeduction.success) {
       console.warn("[placeOrderCod] Inventory deduction failed but order already placed. Manual review needed.", inventoryDeduction);
+    }
+
+    // ── ⚡ Bug 3: Increment Flash Deal Claimed Counter ────────────────────
+    try {
+      for (const item of verifiedItems) {
+        if (item.isFlashDeal) {
+          await foodModel.findByIdAndUpdate(item._id, { $inc: { flashDealClaimed: item.quantity } });
+        }
+      }
+    } catch (e) {
+      console.error("[placeOrderCod] Flash deal claiming failed:", e);
     }
 
     res.json({ success: true, message: "Order Placed Successfully" });
@@ -782,7 +795,20 @@ const verifyOrder = async (req, res) => {
   const { orderId, success } = req.body;
   try {
     if (success === "true") {
-      await orderModel.findByIdAndUpdate(orderId, { payment: true });
+      const order = await orderModel.findById(orderId);
+      if (order && !order.payment) {
+        // Increment flash deal claimed (Bug 3)
+        try {
+          for (const item of order.items) {
+            if (item.isFlashDeal) {
+              await foodModel.findByIdAndUpdate(item._id, { $inc: { flashDealClaimed: item.quantity } });
+            }
+          }
+        } catch (e) {
+          console.error("[verifyOrder] Flash deal claiming failed:", e);
+        }
+        await orderModel.findByIdAndUpdate(orderId, { payment: true });
+      }
       res.json({ success: true, message: "Payment Successful" });
     } else {
       await orderModel.findByIdAndDelete(orderId);

@@ -28,23 +28,71 @@ const FlashDeals = () => {
   };
 
   const deals = useMemo(() => {
-    if (!food_list || food_list.length === 0) return [];
-    return food_list.filter(item => {
-      // Show if it's a flash deal or has a sale price
+    console.group("⚡ [FLASH DEBUG]");
+    console.log("1. Raw food_list length:", food_list?.length || 0);
+
+    if (!food_list || food_list.length === 0) {
+      console.log("❌ No food list data available yet.");
+      console.groupEnd();
+      return [];
+    }
+
+    const filtered = food_list.filter(item => {
+      // Identity Check
       const isManualFlash = item.isFlashDeal === true || item.isFlashDeal === "true" || item.isFlashDeal === 1;
       const hasDiscount = item.salePrice && item.salePrice < item.price;
       
-      if (!isManualFlash && !hasDiscount) return false;
-
-      // STRICT EXPIRY: Hide the moment it passes
-      if (item.flashDealExpiresAt) {
-        return new Date(item.flashDealExpiresAt).getTime() > now;
+      const isCandidate = isManualFlash || hasDiscount;
+      
+      // Expiry Check
+      let isExpired = false;
+      if (item.flashDealExpiresAt && new Date(item.flashDealExpiresAt).getTime() <= now) {
+        isExpired = true;
       }
-      return true;
+      
+      const FINAL_DECISION = isCandidate && !isExpired;
+
+      if (isCandidate) {
+        console.log(`🔍 Potential Deal Found: "${item.name}" | isFlashDeal: ${item.isFlashDeal} | salePrice: ${item.salePrice} | Expired: ${isExpired}`);
+      }
+
+      return FINAL_DECISION;
     });
+
+    console.log("2. Final Deals count after filtering:", filtered.length);
+    console.groupEnd();
+    return filtered;
   }, [food_list, now]);
 
-  if (foodListLoading || !deals.length) return null;
+  // Shimmer effect while loading or waiting for data sync
+  if (foodListLoading) {
+    return (
+      <section className="ld-section">
+        <div className="ld-container">
+          <div className="ld-header">
+            <h2 className="ld-title">Flash Deals <span style={{ color: '#FF3008' }}>near you</span></h2>
+          </div>
+          <div className="ld-grid">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="ld-card-skeleton" style={{ height: '320px', background: '#f0f0f0', borderRadius: '24px', animation: 'shimmer 1.5s infinite' }}></div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // If sync finished and NO deals found, hide gracefully
+  // If sync finished and NO deals found, show debug info instead of null
+  if (!deals.length && !foodListLoading) {
+    return (
+      <section className="ld-section" style={{ border: '10px solid red', padding: '50px', textAlign: 'center', margin: '50px 0' }}>
+        <h1 style={{ color: 'red' }}>⚡ FLASH DEAL DEBUG: 0 DEALS FOUND</h1>
+        <p>Raw items on server: {food_list?.length}</p>
+        <p>Check console (F12) for [FLASH DEBUG] logs</p>
+      </section>
+    );
+  }
 
   return (
     <section className="ld-section" id="flash-deals">

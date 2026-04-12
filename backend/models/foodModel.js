@@ -38,6 +38,7 @@ const foodSchema = new mongoose.Schema({
     salePrice: { type: Number, default: null },
     flashDealExpiresAt: { type: Date, default: null },
     flashDealTotalStock: { type: Number, default: null },
+    flashDealClaimed: { type: Number, default: 0 },
 
     // 📦 Bundle Fields (Merge Sandwich + Beverage)
     isBundle: { type: Boolean, default: false },
