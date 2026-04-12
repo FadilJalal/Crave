@@ -159,7 +159,7 @@ const Header = () => {
                     </div>
 
                     <div className="hero-actions">
-                        <a href="#explore-menu" className="hero-btn hero-btn--primary">
+                        <a href="#food-display" className="hero-btn hero-btn--primary">
                             <span>{text('order_now', 'Order Now')}</span>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                                 stroke="currentColor" strokeWidth="2.5">

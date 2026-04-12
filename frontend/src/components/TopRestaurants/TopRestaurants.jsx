@@ -45,7 +45,7 @@ const TopRestaurants = () => {
     if (restaurants.length === 0) return null;
 
     return (
-        <section className="top-restaurants">
+        <section className="top-restaurants" id="top-restaurants">
             <div className="tr-container">
                 <div className="tr-header">
                     <div className="tr-title-wrap">
