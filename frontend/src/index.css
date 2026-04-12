@@ -1,8 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Syne:wght@700;800&display=swap');
 
 :root {
-  --brand: #FF3008;
-  --brand-dark: #d92600;
+  --brand: #ff5a1f; 
+  --brand-dark: #e64a13;
   --brand-soft: #fff1ef;
   --brand-mid: #ffe0db;
   --text: #1a1a2e;

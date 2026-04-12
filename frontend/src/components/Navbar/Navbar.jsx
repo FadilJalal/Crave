@@ -17,7 +17,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 
 const Navbar = ({ setShowLogin }) => {
   const { t } = useTranslation();
-  const { token, setToken, setCartItems, food_list, cartItems, url } = useContext(StoreContext);
+  const { token, setToken, setCartItems, food_list, cartItems, url, currency } = useContext(StoreContext);
   const { notifications, unreadCount, markAllRead, clearAll } = useContext(NotificationContext);
   const { dark, toggle } = useContext(ThemeContext);
   const navigate = useNavigate();
@@ -28,6 +28,8 @@ const Navbar = ({ setShowLogin }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [scrolled, setScrolled] = useState(false);
+  const [isAiSearching, setIsAiSearching] = useState(false);
+  const searchDebounce = useRef(null);
 
   const [location, setLocation] = useState(() => {
     try {
@@ -83,13 +85,42 @@ const Navbar = ({ setShowLogin }) => {
   }, []);
 
   useEffect(() => {
-    if (!searchQuery.trim()) { setSearchResults([]); return; }
-    const results = (food_list || []).filter(item =>
+    clearTimeout(searchDebounce.current);
+    if (!searchQuery.trim()) { setSearchResults([]); setIsAiSearching(false); return; }
+
+    // Instant local filter for speed
+    const local = (food_list || []).filter(item =>
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.category.toLowerCase().includes(searchQuery.toLowerCase())
     ).slice(0, 5);
-    setSearchResults(results);
-  }, [searchQuery, food_list]);
+    setSearchResults(local);
+
+    // AI Deep Search for intent
+    searchDebounce.current = setTimeout(async () => {
+      setIsAiSearching(true);
+      try {
+        const res = await fetch(`${url}/api/ai/smart-search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: searchQuery })
+        });
+        const data = await res.json();
+        if (data.success) {
+          // If query has price intent (contains numbers), don't show old local results if AI found nothing
+          const hasPriceIntent = /\d+/.test(searchQuery);
+          if (data.data.length > 0) {
+            setSearchResults(data.data.slice(0, 7));
+          } else if (hasPriceIntent) {
+            setSearchResults([]); // No results under that price
+          }
+        }
+      } catch (err) {
+        console.error("AI Search Error:", err);
+      } finally {
+        setIsAiSearching(false);
+      }
+    }, 600);
+  }, [searchQuery, food_list, url]);
 
   const loadNearby = useCallback(async (lat, lng) => {
     try {
@@ -338,16 +369,23 @@ const Navbar = ({ setShowLogin }) => {
               onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchOpen(true)} />
             {searchQuery && <button className='nb-search-clear' onClick={() => { setSearchQuery(''); setSearchResults([]); }}>✕</button>}
           </div>
-          {searchOpen && searchResults.length > 0 && (
+          {searchOpen && (searchResults.length > 0 || isAiSearching) && (
             <div className='nb-search-results'>
+              {isAiSearching && <div className='nb-search-loading'>Searching with AI... ✨</div>}
               {searchResults.map(item => (
                 <div key={item._id} className='nb-search-item' onClick={() => {
                   setSearchQuery(''); setSearchResults([]); setSearchOpen(false);
-                  document.getElementById('food-display')?.scrollIntoView({ behavior: 'smooth' });
+                  navigate(`/restaurants/${item.restaurantId?._id || item.restaurantId}`);
+                  setTimeout(() => {
+                    document.getElementById('food-display')?.scrollIntoView({ behavior: 'smooth' });
+                  }, 100);
                 }}>
-                  <img src={`${item.image}`} alt={item.name} onError={e => e.target.style.display = 'none'} />
-                  <div><p className='nb-si-name'>{item.name}</p><p className='nb-si-cat'>{item.category}</p></div>
-                  <span className='nb-si-price'>${item.price}</span>
+                  <img src={item.image.includes('http') ? item.image : `${url}/images/${item.image}`} alt={item.name} onError={e => e.target.style.display = 'none'} />
+                  <div>
+                    <p className='nb-si-name'>{item.name}</p>
+                    <p className='nb-si-cat'>{item.category} • {item.restaurantId?.name || 'Crave'}</p>
+                  </div>
+                  <span className='nb-si-price'>{currency}{item.price}</span>
                 </div>
               ))}
             </div>

@@ -8,8 +8,8 @@
 /* ── Global Tokens ── */
 .crave-hero {
   --hero-bg: #FFFFFF;
-  --accent: #FF3008;
-  --accent-2: #FF9500;
+  --accent: #ff5a1f; 
+  --accent-2: #ff8c42;
   --text-main: #111111;
   --text-muted: #666666;
   --navbar-height: var(--navbar-h, 80px);

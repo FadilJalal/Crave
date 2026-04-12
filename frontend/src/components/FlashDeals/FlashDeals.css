@@ -30,7 +30,7 @@
   padding: 6px 14px;
   background: rgba(255, 48, 8, 0.08);
   border-radius: 100px;
-  color: #FF3008;
+  color: #ff5a1f;
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
@@ -65,8 +65,8 @@
 }
 
 .ld-view-all:hover {
-  border-color: #FF3008;
-  color: #FF3008;
+  border-color: #ff5a1f;
+  color: #ff5a1f;
   transform: translateX(5px);
 }
 
@@ -87,9 +87,9 @@
 
 /* Card */
 .ld-card {
-  flex: 0 0 265px; /* Slightly narrower */
+  flex: 0 0 calc((100% - 48px) / 4); /* Fits exactly 4 per row with 16px gaps */
   height: auto;
-  min-height: 440px; /* More compact floor */
+  min-height: 410px; /* Slightly more compact */
   scroll-snap-align: start;
   background: #fff;
   border-radius: 22px;
@@ -115,7 +115,7 @@
 /* 🖼️ Image area */
 .ld-img-wrap {
   position: relative;
-  height: 200px; /* Slightly taller for more presence */
+  height: 180px; /* Slightly shorter image area */
   background: #fff;
   display: flex;
   align-items: center;
@@ -155,7 +155,7 @@
   position: absolute;
   top: 12px;
   right: 12px;
-  background: #FF3008;
+  background: #ff5a1f;
   color: #fff;
   padding: 5px 12px;
   border-radius: 8px;
@@ -181,7 +181,7 @@
 
 /* Info */
 .ld-info {
-  padding: 20px 16px 16px;
+  padding: 16px 14px 14px;
   flex-grow: 1;
   display: flex;
   flex-direction: column;
@@ -273,7 +273,7 @@
 .ld-add-btn-v2 {
   width: 100%;
   padding: 12px;
-  background: #FF3008;
+  background: #ff5a1f;
   color: #fff;
   border: none;
   font-weight: 850;
@@ -285,7 +285,7 @@
 }
 
 .ld-add-btn-v2:hover {
-  background: #E02B07;
+  background: #e64a13;
   transform: translateY(-2px);
 }
 

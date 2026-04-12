@@ -91,6 +91,15 @@ router.post("/smart-search", async (req, res) => {
       cleanSearch: q, aiUsed: false
     };
 
+    // Regex Fallback (Always run this to ensure accuracy for simple price intents)
+    let maxP = null, minP = null;
+    const um = q.match(/under\s+(\d+)|below\s+(\d+)|less\s+than\s+(\d+)|max\s+(\d+)/i);
+    if (um) maxP = Number(um.slice(1).find(Boolean));
+    const am = q.match(/above\s+(\d+)|over\s+(\d+)|more\s+than\s+(\d+)|min\s+(\d+)/i);
+    if (am) minP = Number(am.slice(1).find(Boolean));
+    const rm = q.match(/(\d+)\s*(?:to|-)\s*(\d+)/);
+    if (rm && !um && !am) { minP = Number(rm[1]); maxP = Number(rm[2]); }
+
     if (apiKey) {
       try {
         const prompt = [
@@ -122,8 +131,8 @@ router.post("/smart-search", async (req, res) => {
           const raw = data?.choices?.[0]?.message?.content || "{}";
           const aiParsed = JSON.parse(raw);
           parsedParams = {
-            maxPrice: Number(aiParsed.maxPrice) || null,
-            minPrice: Number(aiParsed.minPrice) || null,
+            maxPrice: Number(aiParsed.maxPrice) || maxP,
+            minPrice: Number(aiParsed.minPrice) || minP,
             category: aiParsed.category?.toLowerCase() || null,
             dietary: Array.isArray(aiParsed.dietary) ? aiParsed.dietary : [],
             cleanSearch: aiParsed.cleanSearch?.toLowerCase() || q,
@@ -131,19 +140,11 @@ router.post("/smart-search", async (req, res) => {
           };
         }
       } catch (aiErr) {
-        console.warn("[ai/smart-search] Groq parsing failed, falling back to regex");
+        console.warn("[ai/smart-search] Groq parsing failed");
       }
     }
 
     if (!parsedParams.aiUsed) {
-      let maxPrice = null, minPrice = null;
-      const um = q.match(/under\s+(\d+)|below\s+(\d+)|less\s+than\s+(\d+)|max\s+(\d+)/);
-      if (um) maxPrice = Number(um.slice(1).find(Boolean));
-      const am = q.match(/above\s+(\d+)|over\s+(\d+)|more\s+than\s+(\d+)|min\s+(\d+)/);
-      if (am) minPrice = Number(am.slice(1).find(Boolean));
-      const rm = q.match(/(\d+)\s*(?:to|-)\s*(\d+)/);
-      if (rm && !um && !am) { minPrice = Number(rm[1]); maxPrice = Number(rm[2]); }
-
       const dietaryTerms = [];
       if (/vegan/i.test(q)) dietaryTerms.push("vegan");
       if (/vegetarian|veg\b/i.test(q)) dietaryTerms.push("vegetarian");
@@ -156,27 +157,40 @@ router.post("/smart-search", async (req, res) => {
       const matchedCat = cats.find(c => q.includes(c));
       const clean = q.replace(/under\s+\d+|below\s+\d+|less\s+than\s+\d+|above\s+\d+|over\s+\d+|\d+\s*to\s*\d+|aed|cheap|budget|spicy|hot|healthy|vegan|vegetarian|keto|gluten.?free/gi, "").trim();
 
-      parsedParams = { maxPrice, minPrice, category: matchedCat || null, dietary: dietaryTerms, cleanSearch: clean, aiUsed: false };
+      parsedParams = { maxPrice: maxP, minPrice: minP, category: matchedCat || null, dietary: dietaryTerms, cleanSearch: clean, aiUsed: false };
     }
 
-    const filter = { inStock: true };
+    const priceFilter = {};
+    if (parsedParams.maxPrice) priceFilter.$lte = parsedParams.maxPrice;
+    if (parsedParams.minPrice) priceFilter.$gte = parsedParams.minPrice;
+
+    const filter = {}; // Removed strict inStock:true for more results
     if (restaurantId) filter.restaurantId = restaurantId;
-    if (parsedParams.maxPrice) filter.price = { ...filter.price, $lte: parsedParams.maxPrice };
-    if (parsedParams.minPrice) filter.price = { ...filter.price, $gte: parsedParams.minPrice };
+
+    if (Object.keys(priceFilter).length > 0) {
+      filter.$or = [
+        { isFlashDeal: { $in: [true, "true"] }, salePrice: priceFilter },
+        { isFlashDeal: { $nin: [true, "true"] }, price: priceFilter }
+      ];
+    }
+
     if (parsedParams.category) filter.category = new RegExp(parsedParams.category, "i");
 
     let foods = await foodModel.find(filter).populate("restaurantId", "name logo isActive").lean();
 
-    const cleanSearchStr = parsedParams.cleanSearch.trim();
+    const cleanSearchStr = (parsedParams.cleanSearch || "").trim();
     if (cleanSearchStr.length > 1) {
       const sw = cleanSearchStr.split(/\s+/).filter(w => w.length > 1);
       foods = foods.map(f => {
         const t = `${f.name} ${f.description} ${f.category}`.toLowerCase();
-        let rel = 0;
-        sw.forEach(s => { if (t.includes(s)) rel += 2; });
-        if (f.name.toLowerCase().includes(cleanSearchStr)) rel += 5;
+        let rel = 1; // Base relevance 1 so items aren't filtered out by default
+        sw.forEach(s => { if (t.includes(s)) rel += 3; });
+        if (f.name.toLowerCase().includes(cleanSearchStr)) rel += 10;
         return { ...f, relevance: rel };
       }).filter(f => f.relevance > 0).sort((a, b) => b.relevance - a.relevance);
+    } else {
+       // If no text search, just sort by "Is Flash Deal" to show best deals first
+       foods = foods.sort((a, b) => (b.isFlashDeal ? 1 : -1));
     }
 
     if (parsedParams.dietary && parsedParams.dietary.length > 0) {

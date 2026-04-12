@@ -23,6 +23,7 @@ import Favourites from './pages/Favourites/Favourites';
 import Language from './pages/Language/Language';
 import Settings from './pages/Settings/Settings';
 import Profile from './pages/Profile/Profile';
+import FoodChat from './components/FoodChat/FoodChat';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from "./StripeProvider.jsx";
 import { useTheme } from './Context/ThemeContext';
@@ -84,6 +85,7 @@ const App = () => {
         </ErrorBoundary>
       </div>
       <Footer />
+      <FoodChat />
     </NotificationProvider>
     </Elements>
   )

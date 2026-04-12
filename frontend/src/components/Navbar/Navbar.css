@@ -5,9 +5,9 @@
   width: 100%;
   height: var(--navbar-h);
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -164,6 +164,19 @@
 
 .nb-search-item:hover {
   background: var(--brand-soft);
+}
+
+.nb-search-loading {
+  padding: 14px 16px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: pulse 1.5s infinite;
 }
 
 .nb-search-item img {
@@ -718,7 +731,9 @@
 }
 
 [data-theme="dark"] .nb-wrap {
-  background: rgba(15, 17, 23, 0.65);
+  background: rgba(15, 17, 23, 0.55);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
   border-bottom-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
