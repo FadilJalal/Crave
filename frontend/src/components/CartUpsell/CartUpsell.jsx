@@ -24,7 +24,7 @@ const CartUpsell = () => {
     if (cartFoodIds.size === 0 || !cartRestId) return;
     axios.post(url + '/api/ai/upsell', { cartItemIds: [...cartFoodIds], restaurantId: cartRestId })
       .then(res => { if (res.data.success && res.data.data?.length) setAiSuggestions(res.data.data); })
-      .catch(() => {});
+      .catch(() => { });
   }, [cartRestId, cartItems, url]);
 
   // Fallback to category-based if AI returns nothing
@@ -49,10 +49,13 @@ const CartUpsell = () => {
           return (
             <div key={food._id} className='cu-card'>
               <img src={url + '/images/' + food.image} alt={food.name} className='cu-img'
-                onError={e => e.target.src='https://via.placeholder.com/52'} />
+                onError={e => e.target.src = 'https://via.placeholder.com/52'} />
               <div className='cu-info'>
                 <p className='cu-name'>{food.name}</p>
-                <p className='cu-price'>{currency}{food.price}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <p className='cu-price'>{currency}{food.price}</p>
+                  {food.aiReason && <span className='cu-ai-reason'>✨ {food.aiReason}</span>}
+                </div>
               </div>
               {count === 0
                 ? <button className='cu-add' onClick={() => addToCart(food._id)}>+ Add</button>

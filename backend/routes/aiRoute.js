@@ -153,7 +153,7 @@ router.post("/smart-search", async (req, res) => {
       if (/keto/i.test(q)) dietaryTerms.push("keto");
       if (/gluten.?free/i.test(q)) dietaryTerms.push("glutenFree");
 
-      const cats = ["salad","rolls","deserts","sandwich","cake","pure veg","pasta","noodles","burger","pizza","biryani","grills","seafood","drinks","soup","breakfast","snacks"];
+      const cats = ["salad", "rolls", "deserts", "sandwich", "cake", "pure veg", "pasta", "noodles", "burger", "pizza", "biryani", "grills", "seafood", "drinks", "soup", "breakfast", "snacks"];
       const matchedCat = cats.find(c => q.includes(c));
       const clean = q.replace(/under\s+\d+|below\s+\d+|less\s+than\s+\d+|above\s+\d+|over\s+\d+|\d+\s*to\s*\d+|aed|cheap|budget|spicy|hot|healthy|vegan|vegetarian|keto|gluten.?free/gi, "").trim();
 
@@ -189,8 +189,8 @@ router.post("/smart-search", async (req, res) => {
         return { ...f, relevance: rel };
       }).filter(f => f.relevance > 0).sort((a, b) => b.relevance - a.relevance);
     } else {
-       // If no text search, just sort by "Is Flash Deal" to show best deals first
-       foods = foods.sort((a, b) => (b.isFlashDeal ? 1 : -1));
+      // If no text search, just sort by "Is Flash Deal" to show best deals first
+      foods = foods.sort((a, b) => (b.isFlashDeal ? 1 : -1));
     }
 
     if (parsedParams.dietary && parsedParams.dietary.length > 0) {
@@ -205,17 +205,17 @@ router.post("/smart-search", async (req, res) => {
       calories: estimateCalories(f.name, f.description, f.category, f.price),
     }));
 
-    res.json({ 
-      success: true, 
-      data: results, 
-      count: results.length, 
-      parsed: { 
-        maxPrice: parsedParams.maxPrice, 
-        minPrice: parsedParams.minPrice, 
-        category: parsedParams.category, 
+    res.json({
+      success: true,
+      data: results,
+      count: results.length,
+      parsed: {
+        maxPrice: parsedParams.maxPrice,
+        minPrice: parsedParams.minPrice,
+        category: parsedParams.category,
         dietary: parsedParams.dietary,
-        aiUsed: parsedParams.aiUsed 
-      } 
+        aiUsed: parsedParams.aiUsed
+      }
     });
   } catch (e) {
     console.error("[ai/smart-search]", e);
@@ -310,7 +310,7 @@ router.get("/surge/:restaurantId", async (req, res) => {
     else if (mult < 0.5) level = "low";
 
     const peakHours = hourCounts.map((c, h) => ({ hour: h, count: c })).sort((a, b) => b.count - a.count).slice(0, 3);
-    const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     res.json({ success: true, data: { surgeLevel: level, surgeMultiplier: Math.round(mult * 100) / 100, message: level === "high" ? "🔥 Very busy! Expect longer wait." : level === "moderate" ? "⚡ Moderately busy." : level === "low" ? "😌 Quiet — fast delivery!" : "Normal activity.", peakHours, busiestDay: dayNames[dayCounts.indexOf(Math.max(...dayCounts))] } });
   } catch (e) {
@@ -358,7 +358,7 @@ router.post("/eta", async (req, res) => {
 router.post("/mood", async (req, res) => {
   try {
     const { mood, customMood, restaurantId } = req.body;
-    
+
     // If no mood or custom text, just return the predefined moods
     if (!mood && !customMood) {
       return res.json({ success: true, moods: Object.entries(MOOD_MAP).map(([k, v]) => ({ key: k, emoji: v.emoji, label: v.label })) });
@@ -377,17 +377,17 @@ router.post("/mood", async (req, res) => {
       // For custom moods, if there's an API key, we'll let Groq do the absolute heavy lifting 
       // without needing regex keyword matching first. If no API key, fallback is random sort (limited).
       if (!requestApiKey) {
-         // Naive fallback: search by words
-         const words = customMood.toLowerCase().split(' ').filter(w => w.length > 3);
-         scored = allFoods.map(f => {
-            let s = 0;
-            const str = `${f.name} ${f.description} ${f.category}`.toLowerCase();
-            words.forEach(w => { if (str.includes(w)) s += 2; });
-            return { ...f, moodScore: s };
-         }).filter(f => f.moodScore > 0).sort((a, b) => b.moodScore - a.moodScore);
+        // Naive fallback: search by words
+        const words = customMood.toLowerCase().split(' ').filter(w => w.length > 3);
+        scored = allFoods.map(f => {
+          let s = 0;
+          const str = `${f.name} ${f.description} ${f.category}`.toLowerCase();
+          words.forEach(w => { if (str.includes(w)) s += 2; });
+          return { ...f, moodScore: s };
+        }).filter(f => f.moodScore > 0).sort((a, b) => b.moodScore - a.moodScore);
       } else {
-         // Pass ALL potentially relevant items to Groq (cap at 60 for token limits)
-         scored = allFoods.slice(0, 60).map(f => ({ ...f, moodScore: 1 })); 
+        // Pass ALL potentially relevant items to Groq (cap at 60 for token limits)
+        scored = allFoods.slice(0, 60).map(f => ({ ...f, moodScore: 1 }));
       }
     } else {
       // Predefined mood logic
@@ -404,7 +404,7 @@ router.post("/mood", async (req, res) => {
 
     const aiRankMap = new Map();
     let aiUsed = false;
-    
+
     // Reranking/Ranking via Groq
     if (requestApiKey && scored.length > 0) {
       try {
@@ -440,31 +440,71 @@ router.post("/mood", async (req, res) => {
   }
 });
 
-// ── 7. CART UPSELL ──────────────────────────────────────────────────────────
+// ── 7. AI FLAVOR-MATCH UPSELL (V2) ──────────────────────────────────────────
 router.post("/upsell", async (req, res) => {
   try {
     const { cartItemIds = [], restaurantId } = req.body;
-    if (!cartItemIds.length) return res.json({ success: true, data: [] });
+    if (!cartItemIds.length || !restaurantId) return res.json({ success: true, data: [] });
 
-    const orders = await orderModel.find({ restaurantId, payment: true, "items._id": { $in: cartItemIds } }).lean();
-    const cartSet = new Set(cartItemIds.map(String));
-    const co = {};
-    orders.forEach(o => (o.items || []).forEach(it => {
-      const id = String(it._id);
-      if (!cartSet.has(id)) {
-        if (!co[id]) co[id] = { id, name: it.name, price: it.price, count: 0 };
-        co[id].count++;
-      }
-    }));
+    // 1. Get current cart items
+    const cartItems = await foodModel.find({ _id: { $in: cartItemIds } }).lean();
 
-    const top = Object.values(co).sort((a, b) => b.count - a.count).slice(0, 4);
-    const foods = await foodModel.find({ _id: { $in: top.map(t => t.id) } }).populate("restaurantId", "name logo").lean();
-    const enriched = top.map(t => { const f = foods.find(fd => String(fd._id) === t.id); return f ? { ...f, coOrderCount: t.count, reason: `Ordered together ${t.count} times` } : null; }).filter(Boolean);
+    // 2. Get potentially relevant items from the SAME restaurant
+    // We cap it to avoid token limits, prioritizing popular/deal items
+    const candidates = await foodModel.find({
+      restaurantId,
+      _id: { $nin: cartItemIds },
+      inStock: true
+    }).limit(20).lean();
 
-    res.json({ success: true, data: enriched });
+    if (!candidates.length) return res.json({ success: true, data: [] });
+
+    const apiKey = extractGroqApiKey(req);
+    if (!apiKey) {
+      // Logic Fallback: Just return best items from the same restaurant
+      return res.json({ success: true, data: candidates.slice(0, 3) });
+    }
+
+    // 3. Let Groq "think" about pairings
+    const prompt = [
+      "You are a culinary pairing expert for an food delivery app.",
+      "Given the items in a user's cart, pick the 3 best 'Flavor Matches' from the candidate menu.",
+      "Cart Items:",
+      cartItems.map(f => `${f.name} (${f.description})`).join(", "),
+      "\nCandidate Menu:",
+      candidates.map(f => `ID:${f._id} - ${f.name} (${f.category}: ${f.description})`).join("\n"),
+      "\nRules:",
+      "- Pick exactly 3 items.",
+      "- Provide a short, mouth-watering 'reason' (max 6 words) why they match.",
+      '- Return ONLY strict JSON: {"pairings":[{"id":"string","reason":"string"}]}'
+    ].join("\n");
+
+    const resp = await fetch(GROQ_CHAT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        temperature: 0.4,
+        response_format: { type: "json_object" },
+        messages: [{ role: "system", content: "Return valid JSON pairing recommendations." }, { role: "user", content: prompt }],
+      }),
+    });
+
+    if (!resp.ok) throw new Error("Groq Pairing Failed");
+    const data = await resp.json();
+    const parsed = JSON.parse(data?.choices?.[0]?.message?.content || '{"pairings":[]}');
+
+    const results = (parsed.pairings || [])
+      .map(p => {
+        const f = candidates.find(c => String(c._id) === String(p.id));
+        return f ? { ...f, aiReason: p.reason } : null;
+      })
+      .filter(Boolean);
+
+    res.json({ success: true, data: results });
   } catch (e) {
-    console.error("[ai/upsell]", e);
-    res.status(500).json({ success: false, message: "Failed to fetch upsell recommendations", data: [] });
+    console.error("[ai/upsell] Flavor Match Failed:", e.message);
+    res.json({ success: false, message: "Upsell failed", data: [] });
   }
 });
 
@@ -513,7 +553,7 @@ router.get("/review-summary/:restaurantId", async (req, res) => {
     // Filter out placeholder values
     const isPlaceholder = (str) => ["theme1", "theme2", "issue1", "issue2", "one sentence"].includes(str?.toLowerCase?.());
     const cleanArray = (arr) => Array.isArray(arr) ? arr.filter(item => !isPlaceholder(item)) : [];
-    
+
     const ratingAvg = Math.round(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length * 10) / 10;
 
     res.json({
@@ -554,6 +594,97 @@ router.get("/dietary-bulk/:restaurantId", async (req, res) => {
     res.json({ success: true, data });
   } catch (e) {
     res.json({ success: false, message: "Failed" });
+  }
+});
+
+// ── 10. DEEP AI RECOMMENDATIONS (V3) ──────────────────────────────────────────
+router.post("/recommendations", async (req, res) => {
+  try {
+    const { weather, budget, prefDietary, prefSpicy, token } = req.body;
+    let userId = null;
+    
+    // Optional Auth
+    if (token) {
+       try { const decoded = jwt.verify(token, process.env.JWT_SECRET); userId = decoded.id; } catch(err) {}
+    }
+
+    // 1. GATHER CONTEXT
+    let orders = [];
+    if (userId) {
+       orders = await orderModel.find({ userId, payment: true }).sort({ createdAt: -1 }).limit(20).lean();
+    }
+    
+    const allFoods = await foodModel.find({ inStock: true }).populate("restaurantId", "name logo isActive location").lean();
+
+    // 2. PRE-PROCESS CONTEXT
+    const now = new Date();
+    const hour = now.getHours();
+    let timeOfDay = "late night";
+    if (hour >= 5 && hour < 11) timeOfDay = "breakfast";
+    else if (hour >= 11 && hour < 16) timeOfDay = "lunch";
+    else if (hour >= 16 && hour < 22) timeOfDay = "dinner";
+
+    const itemCounts = {};
+    orders.forEach(o => (o.items || []).forEach(it => {
+      itemCounts[it.name] = (itemCounts[it.name] || 0) + 1;
+    }));
+    const favorites = Object.entries(itemCounts).sort((a,b)=>b[1]-a[1]).slice(0, 5).map(e => e[0]);
+
+    // 3. ASK GROQ TO BRAIN-REORGANIZE THE MENU
+    const apiKey = extractGroqApiKey(req);
+    
+    // Sample diverse foods
+    const sampled = allFoods.sort(() => 0.5 - Math.random()).slice(0, 40).map(f => ({
+      id: f._id,
+      name: f.name,
+      rest: f.restaurantId?.name,
+      price: f.price,
+      cat: f.category,
+      desc: (f.description || "").slice(0, 60)
+    }));
+
+    const guestContext = `User is a guest hungry at ${timeOfDay}. Weather is ${weather || "normal"}. Show trending items.`;
+    const userContext = `User is hungry at ${timeOfDay}. Weather is ${weather || "normal"}. Favorite foods: ${favorites.join(", ")}.`;
+
+    const prompt = [
+      "You are a food discovery expert for Crave.",
+      `Context: ${userId ? userContext : guestContext}`,
+      "Analyze the candidate menu and return EXACTLY 3-4 personalized sections.",
+      "Return ONLY strict JSON: {\"sections\":[{\"title\":\"Section Name\",\"items\":[{\"id\":\"candidateid\",\"reason\":\"Max 8 words\"}]}]}",
+      "Sampled Menu:",
+      JSON.stringify(sampled)
+    ].join("\n");
+
+    const resp = await fetch(GROQ_CHAT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        temperature: 0.6,
+        response_format: { type: "json_object" },
+        messages: [{ role: "system", content: "Valid JSON only." }, { role: "user", content: prompt }],
+      }),
+    });
+
+    const aiData = await resp.json();
+    const parsed = JSON.parse(aiData?.choices?.[0]?.message?.content || '{"sections":[]}');
+
+    // 4. MAP AND ENRICH
+    const finalSections = (parsed.sections || []).map(sec => {
+      const enrichedItems = (sec.items || []).map(aiItem => {
+         const f = allFoods.find(food => String(food._id) === String(aiItem.id));
+         return f ? {
+           _id: f._id, name: f.name, price: f.price, image: f.image,
+           rating: f.rating || 4.5, restaurant: { name: f.restaurantId?.name },
+           reason: aiItem.reason
+         } : null;
+      }).filter(Boolean);
+      return enrichedItems.length >= 2 ? { title: sec.title, items: enrichedItems } : null;
+    }).filter(Boolean);
+
+    res.json({ success: true, sections: finalSections });
+  } catch (e) {
+    res.json({ success: false, sections: [] });
   }
 });
 

@@ -7,6 +7,7 @@ import HeaderMarquee from '../../components/HeaderMarquee/HeaderMarquee'
 import TopRestaurants from '../../components/TopRestaurants/TopRestaurants'
 import FoodDisplay from '../../components/FoodDisplay/FoodDisplay'
 import FlashDeals from '../../components/FlashDeals/FlashDeals'
+import SmartTopPick from '../../components/SmartTopPick/SmartTopPick'
 import { StoreContext } from '../../Context/StoreContext'
 
 const Home = () => {
@@ -25,6 +26,7 @@ const Home = () => {
     <>
       <Header />
       <HeaderMarquee />
+      <SmartTopPick />
       <TopRestaurants />
       <FlashDeals />
       <FoodDisplay category={category} />
