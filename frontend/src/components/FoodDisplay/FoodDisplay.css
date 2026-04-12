@@ -1,5 +1,5 @@
 /* ── Food Display ── */
-.fd-wrap { padding: 8px 0 64px; }
+.fd-wrap { padding: 8px 0 32px; }
 .fd-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; }
 .fd-title { font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--text); }
 .fd-count { font-size: 13px; color: var(--text-3); margin-top: 4px; font-weight: 500; }

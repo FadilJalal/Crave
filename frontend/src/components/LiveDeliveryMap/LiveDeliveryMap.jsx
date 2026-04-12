@@ -131,7 +131,7 @@ function makeEmojiIcon(L, emoji, borderColor) {
 function makePulseIcon(L, emoji, borderColor) {
   return L.divIcon({
     className: '',
-    html: `<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;">
+    html: `<div class=".ldm-map-container { position:relative; height:520px; background:var(--bg); }display:flex;align-items:center;justify-content:center;">
       <div style="
         position:absolute;width:44px;height:44px;border-radius:50%;
         background:${borderColor};opacity:0.2;
@@ -219,6 +219,15 @@ export default function LiveDeliveryMap({ order }) {
     })();
   }, [order?.address, order?.isSharedDelivery, order?.sharedMatchedOrderId?._id, url]);
 
+  // Handle window resizing to prevent map clipping
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapRef.current) mapRef.current.invalidateSize();
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Init Leaflet map once coords are ready and panel is expanded
   useEffect(() => {
     if (!customerCoords || !mapDivRef.current) return;
@@ -250,7 +259,12 @@ export default function LiveDeliveryMap({ order }) {
       mapRef.current = map;
 
       // Force map to recalculate its size after mounting in a flex/grid container
-      setTimeout(() => map.invalidateSize(), 100);
+      const invalidate = () => { if (map) map.invalidateSize(); };
+      invalidate();
+      setTimeout(invalidate, 100);
+      setTimeout(invalidate, 500);
+      setTimeout(invalidate, 1000); 
+
 
       L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?language=en', {
         attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
@@ -258,8 +272,19 @@ export default function LiveDeliveryMap({ order }) {
       }).addTo(map);
 
       // Fit bounds to show all points — tighter padding so it zooms in on the route
+      const fitAll = () => {
+        if (!map) return;
+        const bounds = L.latLngBounds(allPoints);
+        if (routeRef.current && routeRef.current.length > 1) {
+          bounds.extend(routeRef.current);
+        }
+        map.fitBounds(bounds.pad(0.15), { animate: true });
+      };
+
       if (allPoints.length > 1) {
-        map.fitBounds(L.latLngBounds(allPoints).pad(0.15));
+        fitAll();
+        setTimeout(fitAll, 600); // Ensure fit after layout settles
+        setTimeout(fitAll, 1200); // Final check
       }
 
       // ── Road routing via OSRM ──────────────────────────────────────────
@@ -285,8 +310,7 @@ export default function LiveDeliveryMap({ order }) {
             color: '#e53935', weight: 5, opacity: 0.85,
           }).addTo(map);
 
-          // Re-fit bounds to the actual road route
-          map.fitBounds(L.latLngBounds(routePoints).pad(0.15));
+          // Line logic remains, fit handled by fitAll above
 
           // Rider position along the actual road
           const riderPos = interpolateAlongRoute(routePoints, statusInfo.progress);

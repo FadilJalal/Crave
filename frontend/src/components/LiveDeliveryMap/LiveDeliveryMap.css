@@ -44,7 +44,7 @@
 .ldm-dot-customer { width:10px; height:10px; border-radius:50%; background:#22c55e; border:2px solid #fff; box-shadow:0 0 0 1.5px #22c55e; display:inline-block; flex-shrink:0; }
 
 /* ── Map ── */
-.ldm-map-container { position:relative; height:420px; background:var(--bg); }
+.ldm-map-container { position:relative; height:520px; background:var(--bg); }
 .ldm-leaflet-wrap { position:relative; height:100%; width:100%; }
 .ldm-leaflet-map { height:100%; width:100%; z-index:0; }
 .ldm-map-placeholder { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--text-3); font-size:13px; }

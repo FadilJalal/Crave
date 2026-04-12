@@ -17,7 +17,7 @@
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 24px;
-  --navbar-h: 88px; /* Increased to account for floating navbar spacing */
+  --navbar-h: 88px;
   --font-display: 'Syne', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --neon-lime: #BFFF00;
@@ -60,7 +60,6 @@ body {
   background: var(--bg);
   min-height: 100vh;
   overflow-x: hidden;
-  /* Removed duplicate padding-top to fix the gap issue */
 }
 
 a {
@@ -70,14 +69,24 @@ a {
 
 .app {
   width: 100%;
+  padding-top: var(--navbar-h);
   display: flex;
   flex-direction: column;
 }
 
 .app-container {
-  max-width: 1280px;
+  width: 100%;
+  max-width: 1720px;
   margin: 0 auto;
-  padding: 0 32px;
+  padding: 0 24px;
+}
+
+.home-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
+  opacity: 0.3;
 }
 
 /* Custom Scrollbar */

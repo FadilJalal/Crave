@@ -41,7 +41,7 @@ const FlashDeals = () => {
   if (!deals.length) return null;
 
   return (
-    <section className="ld-container">
+    <section className="ld-container" id="flash-deals">
       <div className="ld-header">
         <div className="ld-title-group">
           <span className="ld-icon">⚡</span>

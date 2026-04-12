@@ -43,11 +43,11 @@
 }
 /* ===== Page ===== */
 .addresses-page-main {
-  min-height: 100vh;
+  min-height: calc(100vh - (var(--navbar-h) + 32px));
   background: transparent;
   display: flex;
   justify-content: center;
-  padding: 60px 16px;
+  padding: 0 16px 60px;
 }
 
 /* ===== Layout ===== */

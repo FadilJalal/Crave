@@ -82,8 +82,8 @@ const ExploreMenu = ({ category, setCategory }) => {
   return (
     <div className='em-wrap' id='explore-menu'>
       <div className='em-header'>
-        <div>
-          <p className='em-label'>{t("explore_categories")}</p>
+        <div className="em-title-group">
+          <span className="em-badge">{t("browse_by_category")}</span>
           <h2 className='em-title'>{t("what_are_you_craving")}</h2>
         </div>
         <div className='em-nav'>

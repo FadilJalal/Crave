@@ -1,6 +1,6 @@
 .mo-page {
-    padding: 16px 0 80px;
-    min-height: 60vh;
+    padding: 0 0 80px;
+    min-height: calc(60vh);
 }
 
 .mo-header {

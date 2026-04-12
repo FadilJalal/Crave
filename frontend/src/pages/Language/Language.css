@@ -1,11 +1,12 @@
 
 .language-page-main {
   background: var(--bg);
-  min-height: 100vh;
+  min-height: calc(100vh - (var(--navbar-h) + 32px));
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   font-family: "Poppins", sans-serif;
+  padding: 40px 0;
 }
 
 .language-card {

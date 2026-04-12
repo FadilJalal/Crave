@@ -1,8 +1,8 @@
 /* Settings Page - Unified Theme */
 .settings-container {
-    min-height: 100vh;
+    min-height: calc(100vh - (var(--navbar-h) + 32px));
     background: var(--bg);
-    padding: 48px 10px 48px 10px;
+    padding: 0 40px 60px;
     font-family: 'DM Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     display: flex;
     justify-content: center;
@@ -12,13 +12,23 @@
 
 .settings-card {
     width: 100%;
-    max-width: 480px;
+    max-width: 1200px;
     background: var(--card);
-    border-radius: 22px;
+    border-radius: 28px;
     overflow: hidden;
-    box-shadow: var(--shadow-md);
-    margin-top: 8px;
+    box-shadow: var(--shadow-lg);
+    margin-top: 0;
     transition: background 0.2s, color 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
 }
 
 .settings-header {

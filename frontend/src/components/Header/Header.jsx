@@ -7,10 +7,13 @@ import burger from '../../assets/burger.png';
 import pizza from '../../assets/pizza.png';
 import fries from '../../assets/fries.png';
 import shawarma from '../../assets/shawarma.png';
-import coffee from '../../assets/coffee.png';
+import chickenbucket from '../../assets/chickenbucket.png';
 import pepsi from '../../assets/pepsi.png';
 import chicken from '../../assets/chicken.png';
 import noodles from '../../assets/noodles.png';
+import sandwich from '../../assets/sandwich.png';
+import biriyani from '../../assets/biriyani.png';
+import butterchicken from '../../assets/butterchicken.png';
 import './Header.css';
 
 const DEFAULT_LOCATION = 'Sharjah, UAE';
@@ -21,9 +24,12 @@ const SLIDES = [
     { img: fries, name: 'Fries', color: '#FF3008' },
     { img: chicken, name: 'Chicken', color: '#FFB800' },
     { img: pepsi, name: 'Pepsi', color: '#FF3008' },
-    { img: coffee, name: 'Coffee', color: '#FF3008' },
+    { img: chickenbucket, name: 'Chicken Bucket', color: '#FFB800' },
     { img: shawarma, name: 'Shawarma', color: '#FF3008' },
     { img: noodles, name: 'Noodles', color: '#FFB800' },
+    { img: sandwich, name: 'Sandwich', color: '#FF3008' },
+    { img: biriyani, name: 'Biriyani', color: '#FFB800' },
+    { img: butterchicken, name: 'Butter Chicken', color: '#FF3008' },
 ];
 
 const shuffleArray = (array) => {
@@ -109,6 +115,10 @@ const Header = () => {
 
     return (
         <header className="crave-hero">
+            <div className="hero-aura">
+                <div className="aura-blob aura-blob--1" />
+                <div className="aura-blob aura-blob--2" />
+            </div>
             <div className="hero-bg-accent" />
             <div className="hero-mesh" />
 
@@ -120,10 +130,8 @@ const Header = () => {
                     </div>
 
                     <h1 className="hero-title">
-                        <span>Elevated Eats.</span>
-                        <span className="title-accent">
-                            Delivered <em>Fast</em>.
-                        </span>
+                        <span className="title-line-1">Crave <em>Excellence.</em></span>
+                        <span className="title-line-2">Delivered <em className="accent-text">Faster.</em></span>
                     </h1>
 
                     <p className="hero-description">
@@ -171,25 +179,6 @@ const Header = () => {
                         ))}
                     </div>
 
-                    <div className="hero-floating-elements">
-                        <div className="glass-tag tag--delivery">
-                            <div className="tag-icon">🚀</div>
-                            <div className="tag-text">
-                                <span className="tag-label">Avg. Delivery</span>
-                                <span className="tag-val">25 min</span>
-                            </div>
-                        </div>
-
-                        <div className="glass-tag tag--rating">
-                            <div className="tag-icon">🔥</div>
-                            <div className="tag-text">
-                                <span className="tag-label">Hyped spots</span>
-                                <span className="tag-val">
-                                    {openNowCount || restaurantCount || '50+'} Live
-                                </span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </header>

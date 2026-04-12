@@ -1,8 +1,8 @@
 /* CSS for Favourites page */
 .favourites-page-main {
-  min-height: 100vh;
+  min-height: calc(100vh - (var(--navbar-h) + 32px));
   background: var(--bg);
-  padding: 56px 0 0 0;
+  padding: 0 0 60px 0;
   display: flex;
   flex-direction: column;
   align-items: center;

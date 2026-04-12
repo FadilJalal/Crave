@@ -1,157 +1,230 @@
-/* ── Explore Menu – Card Carousel ── */
-.em-wrap { padding: 20px 0 40px; }
+/* ── Explore Menu – Mood Discovery Reel ── */
+.em-wrap { 
+  padding: 60px 0 40px; 
+  position: relative;
+}
 
 .em-header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 22px;
-  gap: 16px;
+  margin-bottom: 32px;
+  gap: 20px;
 }
-.em-label {
-  font-size: 12px;
-  font-weight: 700;
+
+.em-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 900;
   color: var(--brand);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
-  margin-bottom: 4px;
+  letter-spacing: 1.5px;
+  background: var(--brand-soft);
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 48, 8, 0.1);
 }
+
 .em-title {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: clamp(24px, 4vw, 36px);
   font-weight: 800;
   color: var(--text);
+  letter-spacing: -0.03em;
 }
 
 /* Nav controls */
-.em-nav { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.em-nav { display: flex; align-items: center; gap: 12px; }
+
 .em-arrow {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  border: 1.5px solid var(--border);
-  background: var(--card);
-  color: var(--text-2);
-  display: flex; align-items: center; justify-content: center;
+  width: 44px; 
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
   cursor: pointer;
-  transition: all 0.18s;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
+
 .em-arrow:hover {
   border-color: var(--brand);
-  color: var(--brand);
-  background: var(--brand-soft);
+  background: var(--brand);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(255, 48, 8, 0.2);
 }
+
 .em-clear {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 8px 14px;
-  background: none;
-  border: 1.5px solid var(--border);
-  border-radius: 50px;
-  font-size: 12.5px;
-  font-weight: 600;
-  font-family: var(--font-body);
-  color: var(--text-3);
+  padding: 10px 20px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.18s;
-  white-space: nowrap;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
+
 .em-clear:hover {
   border-color: var(--brand);
   color: var(--brand);
   background: var(--brand-soft);
 }
 
-/* Scrollable track */
+/* Track */
 .em-track {
   display: flex;
-  gap: 14px;
+  gap: 20px;
   overflow-x: auto;
-  padding: 4px 2px 8px;
+  padding: 20px 4px 40px;
   scrollbar-width: none;
   scroll-snap-type: x mandatory;
 }
 .em-track::-webkit-scrollbar { display: none; }
 
-/* Category card */
+/* Premium Category Card */
 .em-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  min-width: 120px;
-  padding: 22px 16px 18px;
-  background: var(--card);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
+  justify-content: center;
+  gap: 12px;
+  min-width: 140px;
+  height: 160px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 24px;
   cursor: pointer;
-  transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
   scroll-snap-align: start;
   position: relative;
-  font-family: var(--font-body);
-}
-.em-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 28px rgba(0,0,0,0.08);
-  border-color: var(--c-ring);
-}
-.em-card-active {
-  border-color: var(--c-accent);
-  background: var(--c-bg);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
-}
-.em-card-active::after {
-  content: '';
-  position: absolute;
-  bottom: -2px; left: 50%;
-  transform: translateX(-50%);
-  width: 28px; height: 3px;
-  background: var(--c-accent);
-  border-radius: 3px;
+  overflow: visible; /* Needed for glow */
 }
 
-/* Icon circle */
-.em-card-icon {
-  width: 52px; height: 52px;
-  border-radius: 50%;
+.em-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
   background: var(--c-bg);
-  border: 2px solid var(--c-ring);
+  opacity: 0;
+  transition: opacity 0.4s;
+  z-index: 0;
+}
+
+.em-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+  border-color: var(--c-accent);
+}
+
+.em-card-active {
+  background: #fff;
+  border-color: var(--c-accent);
+  border-width: 2px;
+}
+
+.em-card-active::before {
+  opacity: 0.15;
+}
+
+/* Floating Glow (The "Magic" part) */
+.em-card::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  width: 60%;
+  height: 20px;
+  background: var(--c-accent);
+  filter: blur(25px);
+  opacity: 0;
+  transition: all 0.4s;
+  pointer-events: none;
+}
+
+.em-card:hover::after,
+.em-card-active::after {
+  opacity: 0.4;
+  width: 80%;
+}
+
+/* Icon Section */
+.em-card-icon {
+  width: 68px;
+  height: 68px;
+  background: #ffffff;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  line-height: 1;
-  transition: transform 0.22s, border-color 0.22s;
+  font-size: 32px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+  z-index: 1;
+  transition: all 0.4s;
+  border: 1px solid rgba(0,0,0,0.03);
 }
+
 .em-card:hover .em-card-icon {
+  transform: scale(1.1) rotate(-5deg);
+  background: var(--c-bg);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+}
+
+.em-card-active .em-card-icon {
+  background: var(--c-bg);
   transform: scale(1.1);
   border-color: var(--c-accent);
-}
-.em-card-active .em-card-icon {
-  border-color: var(--c-accent);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 
 /* Text */
 .em-card-name {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 800;
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 110px;
-  text-align: center;
+  z-index: 1;
+  letter-spacing: -0.01em;
 }
+
 .em-card-count {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-3);
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: rgba(0,0,0,0.04);
+  padding: 2px 8px;
+  border-radius: 6px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all 0.3s;
 }
-.em-card-active .em-card-name { color: var(--c-accent); }
-.em-card-active .em-card-count { color: var(--c-accent); opacity: 0.7; }
+
+.em-card:hover .em-card-count {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.em-card-active .em-card-name {
+  color: var(--c-accent);
+}
 
 @media (max-width: 600px) {
-  .em-card { min-width: 100px; padding: 18px 12px 14px; }
-  .em-card-icon { width: 44px; height: 44px; font-size: 20px; }
+  .em-card { min-width: 120px; height: 140px; border-radius: 18px; }
+  .em-card-icon { width: 56px; height: 56px; font-size: 26px; }
   .em-arrow { display: none; }
 }

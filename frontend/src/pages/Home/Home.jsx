@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './Home.css'
 import Header from '../../components/Header/Header'
-import CategoryReel from '../../components/CategoryReel/CategoryReel'
+import TopPicks from '../../components/TopPicks/TopPicks'
 import HighlightGrid from '../../components/HighlightGrid/HighlightGrid'
 import FoodDisplay from '../../components/FoodDisplay/FoodDisplay'
 import AIRecommendations from '../../components/AIRecommendations/AIRecommendations'
@@ -27,13 +27,10 @@ const Home = () => {
   return (
     <>
       <Header />
-      <CategoryReel category={category} setCategory={setCategory} />
-      <HighlightGrid />
+      <TopPicks />
       <div className="app-container">
         <FlashDeals />
         <FoodDisplay category={category} />
-        <div className="home-divider" />
-        <MoodPicker />
         <div className="home-divider" />
         <AIRecommendations />
         <FoodChat />
@@ -56,4 +53,5 @@ const Home = () => {
     </>
   )
 }
+
 export default Home
