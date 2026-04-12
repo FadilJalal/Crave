@@ -1,70 +1,32 @@
 .nb-wrap {
   position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-
-  width: calc(100% - 40px);
-  max-width: 1400px;
+  top: 0;
+  left: 0;
+  width: 100%;
   height: var(--navbar-h);
-
   z-index: 1000;
-
-  /* 🔥 GLASS EFFECT */
-  background: rgba(255, 255, 255, 0.65);
-  /* semi-transparent */
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(16px);
-  /* main blur */
   -webkit-backdrop-filter: blur(16px);
-  /* safari support */
-
-  border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.08),
-    0 4px 12px rgba(0, 0, 0, 0.05);
-
-  transition: all 0.3s ease;
-}
-
-.nb-wrap.nb-scrolled {
-  top: 10px;
-
-  background: rgba(255, 255, 255, 0.8);
-  /* slightly more solid */
-
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-
-  box-shadow:
-    0 14px 40px rgba(0, 0, 0, 0.12),
-    0 6px 16px rgba(0, 0, 0, 0.06);
-}
-
-.nb-wrap.nb-scrolled {
-  top: 10px;
-
-  background: rgba(255, 255, 255, 0.95);
-
-  box-shadow:
-    0 14px 40px rgba(0, 0, 0, 0.12),
-    0 6px 16px rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .nb-wrap.nb-scrolled {
   background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+  border-bottom-color: rgba(0, 0, 0, 0.1);
 }
 
 .nb-inner {
-  max-width: 1280px;
+  max-width: 1520px;
   margin: 0 auto;
-  padding: 0 28px;
+  padding: 0 40px;
   height: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 24px;
 }
 
 /* Logo */
@@ -756,15 +718,15 @@
 }
 
 [data-theme="dark"] .nb-wrap {
-  background: rgba(10, 10, 15, 0.45);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  background: rgba(15, 17, 23, 0.65);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
 [data-theme="dark"] .nb-wrap.nb-scrolled {
-  background: rgba(5, 5, 10, 0.75);
-  border-color: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6);
+  background: rgba(15, 17, 23, 0.95);
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
 }
 
 [data-theme="dark"] .nb-location,

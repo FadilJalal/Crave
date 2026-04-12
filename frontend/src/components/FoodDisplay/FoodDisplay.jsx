@@ -41,40 +41,42 @@ const FoodDisplay = ({ category }) => {
 
   return (
     <div className='fd-wrap' id='food-display'>
-      <div className='fd-header'>
-        <div className='fd-title-wrap'>
-          <span className='fd-badge'>Curated Selection</span>
-          <h2 className='fd-title'>
-            {category === 'All' ? (
-              <>Top Picks <span style={{ color: '#FF3008' }}>near you</span></>
-            ) : category}
-          </h2>
-          <p className='fd-count'>{shuffledFiltered.length} {t("items_available")}</p>
+      <div className='fd-container'>
+        <div className='fd-header'>
+          <div className='fd-title-wrap'>
+            <span className='fd-badge'>Curated Selection</span>
+            <h2 className='fd-title'>
+              {category === 'All' ? (
+                <>Top Picks <span style={{ color: '#FF3008' }}>near you</span></>
+              ) : category}
+            </h2>
+            <p className='fd-count'>{shuffledFiltered.length} {t("items_available")}</p>
+          </div>
+          <Link to="/restaurants" className="fd-view-all">
+            <span>Explore All</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </Link>
         </div>
-        <Link to="/restaurants" className="fd-view-all">
-          <span>Explore All</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7" />
-          </svg>
-        </Link>
+        {shuffledFiltered.length === 0 ? (
+          <div className='fd-empty'><div className='fd-empty-icon'>🍽️</div><p>{t("no_items_in_category")}</p></div>
+        ) : (
+          <div className='fd-grid'>
+            {shuffledFiltered.map(item => {
+              const merged = mergeRestaurantFromDirectory(item, restaurantsById);
+              return (
+              <FoodItem key={item._id} id={item._id} name={item.name} description={item.description}
+                price={item.price} image={item.image} restaurantId={item.restaurantId}
+                customizations={item.customizations || []} dealTag={dealTags[item._id] || null}
+                restaurantOpen={isRestaurantOpen(merged)}
+                restaurantActive={merged?.isActive !== false}
+                avgRating={item.avgRating || 0} ratingCount={item.ratingCount || 0}
+                inStock={item.inStock !== false} />
+            );})}
+          </div>
+        )}
       </div>
-      {shuffledFiltered.length === 0 ? (
-        <div className='fd-empty'><div className='fd-empty-icon'>🍽️</div><p>{t("no_items_in_category")}</p></div>
-      ) : (
-        <div className='fd-grid'>
-          {shuffledFiltered.map(item => {
-            const merged = mergeRestaurantFromDirectory(item, restaurantsById);
-            return (
-            <FoodItem key={item._id} id={item._id} name={item.name} description={item.description}
-              price={item.price} image={item.image} restaurantId={item.restaurantId}
-              customizations={item.customizations || []} dealTag={dealTags[item._id] || null}
-              restaurantOpen={isRestaurantOpen(merged)}
-              restaurantActive={merged?.isActive !== false}
-              avgRating={item.avgRating || 0} ratingCount={item.ratingCount || 0}
-              inStock={item.inStock !== false} />
-          );})}
-        </div>
-      )}
     </div>
   );
 };

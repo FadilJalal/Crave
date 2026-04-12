@@ -31,6 +31,8 @@ export default function Menu() {
   const [dealStock, setDealStock]             = useState("");
   const [isDealActive, setIsDealActive]       = useState(false);
   const [savingDeal, setSavingDeal]           = useState(false);
+  const [isBundle, setIsBundle]               = useState(false);
+  const [selectedBundleItems, setSelectedBundleItems] = useState([]);
 
   const openDealManager = (item) => {
     setManagingItem(item);
@@ -49,6 +51,8 @@ export default function Menu() {
     }
     setDealStock(item.flashDealTotalStock || "");
     setIsDealActive(item.isFlashDeal || false);
+    setIsBundle(item.isBundle || false);
+    setSelectedBundleItems(item.bundledItems || []);
   };
 
   const saveFlashDeal = async () => {
@@ -61,6 +65,8 @@ export default function Menu() {
       form.append("salePrice", dealPrice ? String(dealPrice) : "");
       form.append("flashDealExpiresAt", dealExpiresAt ? new Date(dealExpiresAt).toISOString() : "");
       form.append("flashDealTotalStock", dealStock ? String(dealStock) : "");
+      form.append("isBundle", String(isBundle));
+      form.append("bundledItems", JSON.stringify(selectedBundleItems));
       const res = await api.post("/api/food/edit", form);
       if (res.data?.success) {
         setFoods(prev => prev.map(f =>
@@ -567,6 +573,48 @@ export default function Menu() {
                         color: "var(--text)", boxSizing: "border-box" }}
                     />
                   </div>
+                </div>
+
+                {/* 📦 Bundle Controls */}
+                <div style={{ padding: "16px", borderRadius: 16, background: dark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${dark ? "#334155" : "#e2e8f0"}` }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 12 }}>
+                    <input type="checkbox" checked={isBundle} onChange={e => setIsBundle(e.target.checked)} style={{ width: 18, height: 18, accentColor: "#FF3008" }} />
+                    <div style={{ fontWeight: 800, fontSize: 13, color: "var(--text)" }}>📦 Create a Bundle deal?</div>
+                  </label>
+                  
+                  {isBundle && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Merge with Other Items</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 120, overflowY: "auto", padding: 4 }}>
+                        {foods.filter(f => f._id !== managingItem._id).map(f => {
+                          const isSelected = selectedBundleItems.includes(f._id);
+                          return (
+                            <button
+                              key={f._id}
+                              onClick={() => {
+                                setSelectedBundleItems(prev => 
+                                  isSelected ? prev.filter(id => id !== f._id) : [...prev, f._id]
+                                );
+                              }}
+                              style={{
+                                padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                                border: `1px solid ${isSelected ? "#FF3008" : "var(--border)"}`,
+                                background: isSelected ? "rgba(255,48,8,0.1)" : "transparent",
+                                color: isSelected ? "#FF3008" : "var(--muted)",
+                                display: "flex", alignItems: "center", gap: 5
+                              }}>
+                              {f.name} {isSelected && "✓"}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {selectedBundleItems.length > 0 && (
+                        <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 700, marginTop: 10 }}>
+                          ✓ {selectedBundleItems.length} items merged into deal
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

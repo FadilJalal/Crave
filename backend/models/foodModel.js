@@ -31,8 +31,18 @@ const foodSchema = new mongoose.Schema({
                 }
             ]
         }
-    ]
-});
+    ],
+
+    // ⚡ Flash Deal Fields
+    isFlashDeal: { type: Boolean, default: false },
+    salePrice: { type: Number, default: null },
+    flashDealExpiresAt: { type: Date, default: null },
+    flashDealTotalStock: { type: Number, default: null },
+
+    // 📦 Bundle Fields (Merge Sandwich + Beverage)
+    isBundle: { type: Boolean, default: false },
+    bundledItems: [{ type: mongoose.Schema.Types.ObjectId, ref: "food" }]
+}, { strict: false });
 
 // ── Performance Indexes ──────────────────────────────────────────────────────
 // These indexes dramatically speed up queries on commonly filtered fields

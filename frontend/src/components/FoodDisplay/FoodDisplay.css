@@ -1,5 +1,10 @@
 /* ── Food Display ── */
-.fd-wrap { padding: 40px 0 60px; }
+.fd-wrap { padding: 0 0 80px; }
+.fd-container {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
 .fd-header { 
   display: flex; 
   justify-content: space-between; 
@@ -65,7 +70,7 @@
 
 .fd-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 22px;
 }
 

@@ -352,23 +352,22 @@ const RestaurantMenu = () => {
         </div>
       </div>
 
-      <div className='rm-mini-cart'>
-        <div className='rm-mini-cart-info'>
-          <p className='rm-mini-cart-count'>
-            {restaurantCartSummary.count > 0
-              ? t('items_in_cart', { count: restaurantCartSummary.count })
-              : t('cart_empty')}
-          </p>
-          <p className='rm-mini-cart-total'>{t('subtotal')}: {currency}{restaurantCartSummary.total.toFixed(2)}</p>
+      {restaurantCartSummary.count > 0 && (
+        <div className='rm-mini-cart'>
+          <div className='rm-mini-cart-info'>
+            <p className='rm-mini-cart-count'>
+              {t('items_in_cart', { count: restaurantCartSummary.count })}
+            </p>
+            <p className='rm-mini-cart-total'>{t('subtotal')}: {currency}{restaurantCartSummary.total.toFixed(2)}</p>
+          </div>
+          <button
+            className='rm-mini-cart-btn'
+            onClick={() => navigate('/cart')}
+          >
+            {t('view_cart')}
+          </button>
         </div>
-        <button
-          className='rm-mini-cart-btn'
-          onClick={() => navigate('/cart')}
-          disabled={restaurantCartSummary.count === 0}
-        >
-          {restaurantCartSummary.count > 0 ? t('view_cart') : t('add_items_first')}
-        </button>
-      </div>
+      )}
     </div>
   );
 };

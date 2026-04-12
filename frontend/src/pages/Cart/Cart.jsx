@@ -109,7 +109,12 @@ const Cart = () => {
             </div>
 
             {cartRows.map(({ key, food, entry }) => {
-              const itemTotal = (food.price + (entry.extraPrice || 0)) * entry.quantity;
+              const now = Date.now();
+              const isFlash = food.isFlashDeal === true || food.isFlashDeal === "true";
+              const isNotExpired = food.flashDealExpiresAt && (new Date(food.flashDealExpiresAt).getTime() + 3600000) > now;
+              const isFlashDealActive = isFlash && food.salePrice && isNotExpired;
+              const effectivePrice = isFlashDealActive ? food.salePrice : food.price;
+              const itemTotal = (effectivePrice + (entry.extraPrice || 0)) * entry.quantity;
               const selPills = parseSelections(entry.selections);
 
               return (
@@ -137,7 +142,7 @@ const Cart = () => {
                     {/* ✅ Show per-item price if there's an extra charge */}
                     {entry.extraPrice > 0 && (
                       <p className='cart-row-unit-price'>
-                        {currency}{food.price} + {currency}{entry.extraPrice} {t("extra")}
+                        {currency}{effectivePrice.toFixed(2)} + {currency}{entry.extraPrice.toFixed(2)} {t("extra")}
                       </p>
                     )}
                   </div>

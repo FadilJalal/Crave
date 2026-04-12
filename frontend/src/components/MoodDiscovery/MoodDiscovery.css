@@ -1,0 +1,134 @@
+/* frontend/src/components/MoodDiscovery/MoodDiscovery.css */
+
+.md-section {
+  padding: 60px 0;
+  background: transparent;
+  width: 100%;
+}
+
+.md-header {
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.md-badge {
+  display: inline-flex;
+  padding: 6px 16px;
+  background: rgba(255, 48, 8, 0.08);
+  color: #FF3008;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+}
+
+.md-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px;
+  line-height: 1;
+  color: #111;
+  letter-spacing: 0.5px;
+}
+
+.md-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+.md-card {
+  position: relative;
+  height: 280px;
+  border-radius: 30px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+.md-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+}
+
+.md-card-bg {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.6s ease;
+}
+
+.md-card:hover .md-card-bg {
+  transform: scale(1.1);
+}
+
+.md-card-content {
+  position: absolute;
+  inset: 0;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: linear-gradient(0deg, rgba(0,0,0,0.6) 0%, transparent 70%);
+  color: white;
+  z-index: 2;
+}
+
+.md-card-icon {
+  font-size: 44px;
+  margin-bottom: 15px;
+  transition: transform 0.3s ease;
+}
+
+.md-card:hover .md-card-icon {
+  transform: scale(1.2) rotate(5deg);
+}
+
+.md-card-label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+.md-card-desc {
+  font-size: 13px;
+  opacity: 0.8;
+  font-weight: 500;
+}
+
+/* Specific Mood Backgrounds */
+.md-bg--latenight { background: linear-gradient(135deg, #1A1A2E, #16213E); }
+.md-bg--health { background: linear-gradient(135deg, #11998E, #38EF7D); }
+.md-bg--comfort { background: linear-gradient(135deg, #F2994A, #F2C94C); }
+.md-bg--date { background: linear-gradient(135deg, #FF416C, #FF4B2B); }
+.md-bg--quick { background: linear-gradient(135deg, #00B4DB, #0083B0); }
+
+/* Decoration dots */
+.md-dots {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 20%, transparent 20%);
+  background-size: 10px 10px;
+  opacity: 0.5;
+}
+
+/* Dark Mode */
+[data-theme='dark'] .md-title {
+  color: #FFF;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .md-grid { grid-template-columns: repeat(2, 1fr); padding: 0 20px; }
+  .md-card { height: 220px; }
+  .md-title { font-size: 38px; }
+}

@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 import restaurantModel from "../models/restaurantModel.js";
+import foodModel from "../models/foodModel.js";
 import { isRestaurantOpen } from "../utils/restaurantHours.js";
 import { deductInventoryForOrder, restoreInventoryForCancelledOrder } from "./inventoryController.js";
 
@@ -285,11 +286,31 @@ const placeOrder = async (req, res) => {
     const sharedDeliveryApplied = applySharedFeeIfValid(standardDeliveryFee, req.body.sharedDelivery);
     const actualDeliveryFee = sharedDeliveryApplied.finalFee;
 
+    // ── 🛡️ SECURE PRICE VERIFICATION ───────────────────────────────────────
+    // Re-verify all item prices from the database to prevent tampering and support Flash Deals.
+    const foodIds = req.body.items.map(i => i._id);
+    const foodDocs = await foodModel.find({ _id: { $in: foodIds } });
+    const foodMap = new Map(foodDocs.map(f => [String(f._id), f]));
+
+    let calculatedSubtotal = 0;
+    const now = Date.now();
+    const verifiedItems = req.body.items.map(item => {
+      const dbFood = foodMap.get(String(item._id));
+      if (!dbFood) throw new Error(`Food item ${item.name} no longer available`);
+      
+      const isFlashActive = dbFood.isFlashDeal && dbFood.salePrice && dbFood.flashDealExpiresAt && (new Date(dbFood.flashDealExpiresAt).getTime() + 3600000) > now;
+      const unitPrice = isFlashActive ? dbFood.salePrice : dbFood.price;
+      const totalItemPrice = unitPrice + (item.extraPrice || 0);
+      calculatedSubtotal += totalItemPrice * item.quantity;
+      
+      return { ...item, price: unitPrice }; // Ensure we save the price actually paid
+    });
+
     const newOrder = new orderModel({
       userId: req.body.userId,
       restaurantId,
-      items: req.body.items,
-      amount: req.body.amount,
+      items: verifiedItems,
+      amount: calculatedSubtotal, // Use our trusted calculation
       deliveryFee: actualDeliveryFee,
       isSharedDelivery: sharedDeliveryApplied.isShared,
       sharedMatchedOrderId: sharedDeliveryApplied.matchedOrderId,
@@ -303,11 +324,11 @@ const placeOrder = async (req, res) => {
     await newOrder.save();
     await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
 
-    const line_items = req.body.items.map((item) => ({
+    const line_items = verifiedItems.map((item) => ({
       price_data: {
         currency,
         product_data: { name: item.name },
-        unit_amount: item.price * 100,
+        unit_amount: Math.round((item.price + (item.extraPrice || 0)) * 100),
       },
       quantity: item.quantity,
     }));
@@ -316,7 +337,7 @@ const placeOrder = async (req, res) => {
       price_data: {
         currency,
         product_data: { name: "Delivery Charge" },
-        unit_amount: actualDeliveryFee * 100,
+        unit_amount: Math.round(actualDeliveryFee * 100),
       },
       quantity: 1,
     });
@@ -417,11 +438,28 @@ const placeOrderCod = async (req, res) => {
     const sharedDeliveryApplied = applySharedFeeIfValid(standardDeliveryFee, req.body.sharedDelivery);
     const actualDeliveryFee = sharedDeliveryApplied.finalFee;
 
+    // ── 🛡️ SECURE PRICE VERIFICATION ───────────────────────────────────────
+    const foodIds = req.body.items.map(i => i._id);
+    const foodDocs = await foodModel.find({ _id: { $in: foodIds } });
+    const foodMap = new Map(foodDocs.map(f => [String(f._id), f]));
+
+    let calculatedSubtotal = 0;
+    const now = Date.now();
+    const verifiedItems = req.body.items.map(item => {
+      const dbFood = foodMap.get(String(item._id));
+      if (!dbFood) throw new Error(`Food item ${item.name} no longer available`);
+      
+      const isFlashActive = dbFood.isFlashDeal && dbFood.salePrice && dbFood.flashDealExpiresAt && (new Date(dbFood.flashDealExpiresAt).getTime() + 3600000) > now;
+      const unitPrice = isFlashActive ? dbFood.salePrice : dbFood.price;
+      calculatedSubtotal += (unitPrice + (item.extraPrice || 0)) * item.quantity;
+      return { ...item, price: unitPrice };
+    });
+
     const newOrder = new orderModel({
       userId: req.body.userId,
       restaurantId,
-      items: req.body.items,
-      amount: req.body.amount,
+      items: verifiedItems,
+      amount: calculatedSubtotal, // Use trusted calculation
       deliveryFee: actualDeliveryFee,
       isSharedDelivery: sharedDeliveryApplied.isShared,
       sharedMatchedOrderId: sharedDeliveryApplied.matchedOrderId,

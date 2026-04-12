@@ -45,27 +45,14 @@ foodRouter.get("/list/public", async (req, res) => {
       .populate("restaurantId", "name logo isActive openingHours location deliveryRadius minimumOrder deliveryTiers")
       .lean();
 
-    // Auto-expire any Lightning Deals whose timer has passed
+    // 🧊 SOFT EXPIRY: Cleanly identifying expired deals for the current response
+    // We no longer strip them from the DB here to avoid "disappearing" bugs.
     const now = new Date();
-    const expiredIds = foods
-      .filter(f => f.isFlashDeal && f.flashDealExpiresAt && new Date(f.flashDealExpiresAt) <= now)
-      .map(f => f._id);
-
-    if (expiredIds.length > 0) {
-      // Fire-and-forget: update in background without blocking the response
-      foodModel.updateMany(
-        { _id: { $in: expiredIds } },
-        { $set: { isFlashDeal: false, salePrice: null } }
-      ).catch(err => console.error("[EXPIRE DEALS ERROR]", err));
-
-      // Strip expired deals from the response immediately
-      foods.forEach(f => {
-        if (expiredIds.some(id => String(id) === String(f._id))) {
-          f.isFlashDeal = false;
-          f.salePrice = null;
-        }
-      });
-    }
+    foods.forEach(f => {
+      if (f.isFlashDeal && f.flashDealExpiresAt && new Date(f.flashDealExpiresAt) <= now) {
+        f.isFlashDeal = false; // Mark as inactive for this response only
+      }
+    });
 
     res.json({ success: true, data: foods });
   } catch (error) {
@@ -178,6 +165,19 @@ foodRouter.post("/edit", (req, res, next) => {
     if (req.body.flashDealTotalStock !== undefined) {
       food.flashDealTotalStock = req.body.flashDealTotalStock === "" ? null : Number(req.body.flashDealTotalStock);
     }
+    
+    // 📦 Bundle fields
+    if (req.body.isBundle !== undefined) {
+      food.isBundle = req.body.isBundle === "true";
+    }
+    if (req.body.bundledItems !== undefined) {
+      try {
+        food.bundledItems = JSON.parse(req.body.bundledItems);
+      } catch (e) {
+        food.bundledItems = [];
+      }
+    }
+
     // If deal is being turned off, clear the sale price too
     if (req.body.isFlashDeal === "false") {
       food.salePrice = null;
