@@ -29,17 +29,21 @@ const rerankMoodWithGroq = async ({ foods, mood, cfg, apiKey }) => {
   }));
 
   const prompt = [
-    "You are a food recommendation ranker.",
-    `Mood key: ${mood}`,
-    `Mood label: ${cfg.label}`,
-    "Return strict JSON only with this shape:",
-    '{"ranked":[{"id":"<candidate id>","score":0-100,"reason":"max 4 words"}]}',
-    "Rules:",
-    "- Pick up to 12 best candidates.",
-    "- id must come from input candidates.",
-    "- Prefer diversity in category when scores are close.",
-    "- Keep reason very short.",
-    "Candidates:",
+    "You are a culinary AI designed to rank food items based on a user's specific 'mood' or 'vibe'.",
+    `Target Vibe: "${mood}"`,
+    `Context: ${cfg.label}`,
+    "\nRanking Criteria:",
+    "1. High Relevance: Directly matches the vibe (e.g., 'sharing' -> buckets, platters, combos, family packs).",
+    "2. Portions: If the mood implies multiple people (family, sharing, party), prioritize items with high portion counts or 'for 2', 'for 4', 'bucket', 'combo'.",
+    "3. Occasion: Match the social context (e.g., 'comfort' -> warm, hearty; 'celebration' -> premium, desserts).",
+    "4. Price Sensitivity: If the vibe is 'budget', EXCLUDE or heavily penalize anything that feels expensive. Focus on maximum value for the lowest AED.",
+    "\nResponse: Return ONLY strict JSON with this shape:",
+    '{"ranked":[{"id":"candidate_id","score":0-100,"reason":"max 5 words matching the reason"}]}',
+    "\nRules:",
+    "- Return up to 12 strongest matches.",
+    "- Reason must explain WHY it matches the mood (e.g., 'Perfect for family sharing').",
+    "- Be extremely strict with ids - they must exist in the list below.",
+    "\nCandidates:",
     JSON.stringify(candidates),
   ].join("\n");
 
@@ -374,32 +378,55 @@ router.post("/mood", async (req, res) => {
 
     if (customMood) {
       cfg.label = `"${customMood}"`;
-      // For custom moods, if there's an API key, we'll let Groq do the absolute heavy lifting 
-      // without needing regex keyword matching first. If no API key, fallback is random sort (limited).
-      if (!requestApiKey) {
-        // Naive fallback: search by words
-        const words = customMood.toLowerCase().split(' ').filter(w => w.length > 3);
-        scored = allFoods.map(f => {
-          let s = 0;
-          const str = `${f.name} ${f.description} ${f.category}`.toLowerCase();
-          words.forEach(w => { if (str.includes(w)) s += 2; });
-          return { ...f, moodScore: s };
-        }).filter(f => f.moodScore > 0).sort((a, b) => b.moodScore - a.moodScore);
+      const searchTerms = customMood.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+      
+      scored = allFoods.map(f => {
+        let s = 0;
+        const text = `${f.name} ${f.description} ${f.category}`.toLowerCase();
+        searchTerms.forEach(t => {
+          if (text.includes(t)) s += 5;
+        });
+        
+        const isGroupMood = /family|sharing|group|together|party|friends/i.test(customMood.toLowerCase());
+        const shareKeywords = /sharing|family|bucket|combo|box|platter|serves|pack|quantity|servings|pcs|pieces/i;
+        
+        if (isGroupMood && shareKeywords.test(text)) s += 15;
+        else if (shareKeywords.test(text)) s += 5;
+
+        return { ...f, moodScore: s };
+      }).sort((a, b) => {
+          if (b.moodScore !== a.moodScore) return b.moodScore - a.moodScore;
+          return String(a._id).localeCompare(String(b._id));
+      });
+
+      if (requestApiKey) {
+        scored = scored.slice(0, 60);
       } else {
-        // Pass ALL potentially relevant items to Groq (cap at 60 for token limits)
-        scored = allFoods.slice(0, 60).map(f => ({ ...f, moodScore: 1 }));
+        scored = scored.filter(f => f.moodScore > 0);
       }
     } else {
       // Predefined mood logic
       cfg = MOOD_MAP[mood];
       scored = allFoods.map(f => {
         let s = 0;
+        const text = `${f.name} ${f.description} ${f.category}`.toLowerCase();
         if (cfg.categories.some(c => f.category?.toLowerCase().includes(c))) s += 3;
-        if (cfg.keywords.test(`${f.name} ${f.description}`)) s += 2;
-        if (mood === "budget" && f.price <= 30) s += 4;
-        else if (mood === "celebrating" && f.price >= 45) s += 1;
+        if (cfg.keywords.test(text)) s += 2;
+        
+        // Strict Budget Enforcement
+        if (mood === "budget") {
+            if (f.price <= 25) s += 10;      // Value items
+            else if (f.price <= 35) s += 5;  // Moderate budget
+            else if (f.price > 45) s -= 30;  // Severe penalty for expensive items
+            else if (f.price > 35) s -= 5;   // Slight penalty for pushing it
+        } 
+        else if (mood === "celebrating" && f.price >= 45) s += 5;
+        
         return { ...f, moodScore: s };
-      }).filter(f => f.moodScore > 0).sort((a, b) => b.moodScore - a.moodScore);
+      }).filter(f => f.moodScore > 0).sort((a, b) => {
+          if (b.moodScore !== a.moodScore) return b.moodScore - a.moodScore;
+          return String(a._id).localeCompare(String(b._id)); // Stable secondary sort
+      });
     }
 
     const aiRankMap = new Map();

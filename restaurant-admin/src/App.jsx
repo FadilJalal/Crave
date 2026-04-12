@@ -22,6 +22,8 @@ import Inventory from "./Pages/Inventory";
 import InventoryAnalytics from "./Pages/InventoryAnalytics";
 import ProtectedFeature from "./components/ProtectedFeature";
 import Login from "./Pages/Login";
+import Coupons from "./Pages/Coupons";
+import Finance from "./Pages/Finance";
 
 export default function App() {
   return (
@@ -37,9 +39,9 @@ export default function App() {
       <Route path="/bulk-upload" element={<ProtectedRoute><ProtectedFeature featureName="bulkUpload"><BulkUpload /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/edit-food/:id" element={<ProtectedRoute><ProtectedFeature featureName="menu"><EditFood /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-      <Route path="/revenue" element={<ProtectedRoute><Revenue /></ProtectedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute><Revenue /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/promos" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><Promos /></ProtectedFeature></ProtectedRoute>} />
+      <Route path="/flash-deals" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><Promos /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
       <Route path="/email-campaign" element={<ProtectedRoute><EmailCampaign /></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
@@ -49,6 +51,8 @@ export default function App() {
       <Route path="/inventory/analytics" element={<ProtectedRoute><InventoryAnalytics /></ProtectedRoute>} />
       <Route path="/ai-insights" element={<ProtectedRoute><ProtectedFeature featureName="aiInsights"><AIInsights /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><AICustomerSegmentation /></ProtectedFeature></ProtectedRoute>} />
+      <Route path="/coupons" element={<ProtectedRoute><Coupons /></ProtectedRoute>} />
+      <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
 
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />

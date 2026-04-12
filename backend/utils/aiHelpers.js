@@ -86,5 +86,6 @@ export const MOOD_MAP = {
   quick:       { categories:["sandwich","wrap","fast food"], keywords:/quick|fast|wrap|roll|sandwich|snack|bite|mini|fast/i, emoji:"⚡", label:"Quick" },
   sweet:       { categories:["dessert","cake","ice cream"], keywords:/cake|sweet|chocolate|ice|dessert|brownie|cookie|cream/i, emoji:"🍰", label:"Sweet" },
   budget:      { categories:["sandwich","wrap","snacks"], keywords:/value|budget|deal|combo|mini|small|cheap/i, emoji:"💰", label:"Budget" },
-  postworkout: { categories:["grilled","high protein","salad"], keywords:/protein|grilled|chicken|egg|lean|steak|fish|bowl|post/i, emoji:"💪", label:"Gym" },
+  postworkout: { categories:["grilled","high protein","salad"], keywords:/protein|grilled|chicken|egg|lean|steak|fish|bowl|post/i, emoji:"💪", label:"Post-Workout" },
+  sharing:     { categories:["pizza","biryani","combos"], keywords:/sharing|family|bucket|combo|box|platter|serves|pack|set/i, emoji:"👨‍👩‍👧‍👦", label:"Sharing" },
 };

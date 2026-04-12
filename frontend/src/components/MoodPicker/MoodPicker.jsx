@@ -1,4 +1,4 @@
-import { useState, useContext, useRef } from "react";
+import { useState, useContext, useRef, useMemo } from "react";
 import axios from "axios";
 import { StoreContext } from "../../Context/StoreContext";
 import FoodItem from "../FoodItem/FoodItem";
@@ -13,7 +13,8 @@ const MOODS = [
   { key: "quick", emoji: "⚡", label: "Quick", color: "#3b82f6" },
   { key: "sweet", emoji: "🍰", label: "Sweet", color: "#d946ef" },
   { key: "budget", emoji: "💰", label: "Budget", color: "#8b5cf6" },
-  { key: "postworkout", emoji: "💪", label: "Post-Workout", color: "#06b6d4" },
+  { key: "postworkout", emoji: "💪", label: "Gym", color: "#06b6d4" },
+  { key: "sharing", emoji: "👨‍👩‍👧‍👦", label: "Sharing", color: "#f43f5e" },
 ];
 
 const MoodPicker = () => {
@@ -67,17 +68,15 @@ const MoodPicker = () => {
       <div className="mp-container">
         
         <div className="mp-header">
-            <div className="mp-title-wrap">
-                <div className="mp-badge-ai">
-                    <span className="mp-ai-icon">✨</span> AI POWERED
-                </div>
-                <h2 className="mp-title">
-                    Match Your <span className="brand-text">Mood</span>
-                </h2>
-                <p className="mp-sub">
-                    Craving something specific? Let Crave AI find it.
-                </p>
+            <div className="mp-badge-ai">
+                <span className="mp-ai-icon">✨</span> CRAVE AI ENGINE
             </div>
+            <h2 className="mp-title">
+                Match Your <span className="brand-text">Mood</span>
+            </h2>
+            <p className="mp-sub">
+                Our AI analyzes your cravings to find the perfect meal match for your current vibe.
+            </p>
         </div>
 
         <div className="mp-card-main">
@@ -90,7 +89,7 @@ const MoodPicker = () => {
                     onChange={(e) => setCustomMood(e.target.value)}
                 />
                 <button type="submit" className="mp-match-btn" disabled={!customMood.trim() || loading}>
-                    {loading ? "Matching..." : "Find Match"}
+                    {loading ? "Analyzing..." : "Find Match"}
                 </button>
             </form>
 
@@ -109,13 +108,7 @@ const MoodPicker = () => {
             </div>
         </div>
 
-        {loading && (
-            <div className="mp-skeleton-grid">
-                {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="mp-skeleton-card"></div>
-                ))}
-            </div>
-        )}
+        {/* Loading screen removed as requested */}
 
         {!loading && results.length === 0 && activeMood && (
             <div className="mp-no-results">
@@ -129,17 +122,15 @@ const MoodPicker = () => {
         {!loading && results.length > 0 && (
             <div className="mp-results-area" ref={resultsRef}>
                 <div className="mp-results-header">
-                    <div className="mp-results-title-row">
-                        <h3 className="mp-results-title">
-                            {usedAi ? "AI Curated Selections" : "Matching Your Mood"}
-                        </h3>
-                        {usedAi && <span className="mp-ai-badge-inline">✨ AI matched</span>}
-                    </div>
-                    <span className="mp-results-count">{results.length} cravings found</span>
+                    <h3 className="mp-results-title">
+                        {usedAi ? "AI Curated Selections" : "Mood Match Results"}
+                        {usedAi && <span className="mp-ai-badge-inline" style={{ marginLeft: '15px' }}>✨ Engine Synced</span>}
+                    </h3>
+                    <span className="mp-results-count">{results.length} cravings identified</span>
                 </div>
                 
                 <div className="mp-grid-display">
-                    {results.map((item) => (
+                    {useMemo(() => results.map((item) => (
                         <div key={item._id} className="mp-item-card">
                             <FoodItem
                                 id={item._id}
@@ -157,11 +148,11 @@ const MoodPicker = () => {
                             />
                             {item.aiReason && (
                                 <div className="mp-match-reason">
-                                    <span className="sparkle">✨</span> {item.aiReason}
+                                    {item.aiReason}
                                 </div>
                             )}
                         </div>
-                    ))}
+                    )), [results, restaurantsById])}
                 </div>
             </div>
         )}

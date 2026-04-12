@@ -8,7 +8,7 @@
 /* ── Global Tokens ── */
 .crave-hero {
   --hero-bg: #FFFFFF;
-  --accent: #ff5a1f; 
+  --accent: #ff5a1f;
   --accent-2: #ff8c42;
   --text-main: #111111;
   --text-muted: #666666;
@@ -305,7 +305,8 @@
 }
 
 .hero-stat__num--accent {
-  color: #00D26A; /* Fresh green for "Open Now" */
+  color: #00D26A;
+  /* Fresh green for "Open Now" */
 }
 
 .hero-stat__lbl {
@@ -355,7 +356,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: -110px; /* Lifted further for perfect centering */
+  margin-top: -110px;
+  /* Lifted further for perfect centering */
 }
 
 .hero-slider-wrap {

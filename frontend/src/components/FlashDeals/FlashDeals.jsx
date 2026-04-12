@@ -28,39 +28,29 @@ const FlashDeals = () => {
   };
 
   const deals = useMemo(() => {
-    console.group("⚡ [FLASH DEBUG]");
-    console.log("1. Raw food_list length:", food_list?.length || 0);
-
     if (!food_list || food_list.length === 0) {
-      console.log("❌ No food list data available yet.");
-      console.groupEnd();
       return [];
     }
 
     const filtered = food_list.filter(item => {
-      // Identity Check
+      // Identity Check: Manual flag OR belongs to a "Flash" category
       const isManualFlash = item.isFlashDeal === true || item.isFlashDeal === "true" || item.isFlashDeal === 1;
+      const isCategoricalFlash = item.category && /flash/i.test(item.category);
       const hasDiscount = item.salePrice && item.salePrice < item.price;
       
-      const isCandidate = isManualFlash || hasDiscount;
+      const isCandidate = isManualFlash || isCategoricalFlash || hasDiscount;
       
-      // Expiry Check
+      // Expiry Check: If it's a categorical flash but no expiry, it's NOT expired
       let isExpired = false;
-      if (item.flashDealExpiresAt && new Date(item.flashDealExpiresAt).getTime() <= now) {
+      if (item.flashDealExpiresAt && (new Date(item.flashDealExpiresAt).getTime() + 3600000) <= now) {
         isExpired = true;
       }
       
       const FINAL_DECISION = isCandidate && !isExpired;
 
-      if (isCandidate) {
-        console.log(`🔍 Potential Deal Found: "${item.name}" | isFlashDeal: ${item.isFlashDeal} | salePrice: ${item.salePrice} | Expired: ${isExpired}`);
-      }
-
       return FINAL_DECISION;
     });
 
-    console.log("2. Final Deals count after filtering:", filtered.length);
-    console.groupEnd();
     return filtered;
   }, [food_list, now]);
 
@@ -83,15 +73,8 @@ const FlashDeals = () => {
   }
 
   // If sync finished and NO deals found, hide gracefully
-  // If sync finished and NO deals found, show debug info instead of null
   if (!deals.length && !foodListLoading) {
-    return (
-      <section className="ld-section" style={{ border: '10px solid red', padding: '50px', textAlign: 'center', margin: '50px 0' }}>
-        <h1 style={{ color: 'red' }}>⚡ FLASH DEAL DEBUG: 0 DEALS FOUND</h1>
-        <p>Raw items on server: {food_list?.length}</p>
-        <p>Check console (F12) for [FLASH DEBUG] logs</p>
-      </section>
-    );
+    return null;
   }
 
   return (

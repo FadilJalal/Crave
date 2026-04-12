@@ -165,7 +165,7 @@ const StoreContextProvider = (props) => {
         const food = food_list.find((f) => f._id === entry.itemId);
         if (food) {
           // Use salePrice if Flash Deal is active (support bool or string "true")
-          const isFlash = food.isFlashDeal === true || food.isFlashDeal === "true" || food.isFlashDeal === 1;
+          const isFlash = food.isFlashDeal === true || food.isFlashDeal === "true" || food.isFlashDeal === 1 || (food.category && /flash/i.test(food.category));
           // Bug 2 Fix: If no expiry is set, it's always valid. If set, check against current time.
           const isNotExpired = !food.flashDealExpiresAt || (new Date(food.flashDealExpiresAt).getTime() + 3600000) > now;
           const isFlashDealActive = isFlash && food.salePrice && isNotExpired;

@@ -140,12 +140,14 @@ const FoodItem = (props) => {
 
           {/* Heart icon for favourites */}
           <button
+            type="button"
             className='fi-heart-btn'
             style={{
               position: 'absolute', top: 12, right: 12, zIndex: 2, background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: '50%', width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px #0001', cursor: 'pointer', padding: 0
             }}
             aria-label={isFavourite?.(id) ? 'Remove from favourites' : 'Add to favourites'}
             onClick={e => {
+              e.preventDefault();
               e.stopPropagation();
               if (isFavourite?.(id)) {
                 removeFavourite?.(id);
@@ -226,14 +228,14 @@ const FoodItem = (props) => {
           <div className='fi-cart-ctrl'>
             {(!restaurantOpen || !inStock || !restActive) ? null : count === 0 ? (
               hasCustomizations ? (
-                <button className='fi-customize-btn' onClick={openCustomize}>
+                <button type="button" className='fi-customize-btn' onClick={openCustomize}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/>
                   </svg>
                   {t('customize')}
                 </button>
               ) : (
-                <button className='fi-add-btn' onClick={() => addToCart(id)}>
+                <button type="button" className='fi-add-btn' onClick={() => addToCart(id)}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                   </svg>
@@ -242,7 +244,7 @@ const FoodItem = (props) => {
               )
             ) : (
               <div className='fi-counter'>
-                <button onClick={() => {
+                <button type="button" onClick={() => {
                   const keys = Object.keys(cartItems).filter(k => cartItems[k].itemId === id);
                   if (keys.length) removeFromCart(keys[keys.length - 1]);
                 }}>
@@ -251,7 +253,7 @@ const FoodItem = (props) => {
                   </svg>
                 </button>
                 <span>{count}</span>
-                <button onClick={() => hasCustomizations ? openCustomize() : addToCart(id)}>
+                <button type="button" onClick={() => hasCustomizations ? openCustomize() : addToCart(id)}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                   </svg>
