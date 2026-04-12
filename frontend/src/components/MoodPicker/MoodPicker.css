@@ -1,52 +1,63 @@
-.mood-section {
+.mp-section {
     padding: 80px 0;
     width: 100%;
     background: transparent;
 }
 
 .mp-container {
-    max-width: 1200px;
+    max-width: 1300px;
     margin: 0 auto;
-    padding: 0 32px;
+    padding: 0 40px;
 }
 
-.mp-hero {
-    text-align: center;
-    margin-bottom: 48px;
-    animation: fadeIn 0.8s ease-out;
+.mp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 40px;
+}
+
+.mp-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .mp-badge-ai {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 16px;
-    background: linear-gradient(135deg, rgba(255, 48, 8, 0.1) 0%, rgba(255, 107, 53, 0.1) 100%);
-    border: 1px solid rgba(255, 48, 8, 0.2);
+    padding: 6px 14px;
+    background: rgba(255, 90, 31, 0.08);
     border-radius: 100px;
-    font-size: 12px;
-    font-weight: 800;
-    color: var(--brand);
+    font-size: 11px;
+    font-weight: 900;
+    color: #ff5a1f;
     text-transform: uppercase;
     letter-spacing: 1px;
-    margin-bottom: 20px;
 }
 
 .mp-title {
-    font-family: var(--font-display);
-    font-size: 42px;
-    font-weight: 900;
-    color: #1a1a2e;
-    margin-bottom: 16px;
-    letter-spacing: -0.03em;
+    font-family: 'Syne', sans-serif;
+    font-size: 56px;
+    font-weight: 1000;
+    color: #000;
+    margin: 0;
+    letter-spacing: -0.04em;
+    text-transform: uppercase;
+    line-height: 0.9;
+}
+
+.brand-text {
+    color: #ff5a1f;
 }
 
 .mp-sub {
-    font-size: 16px;
-    color: #666;
-    max-width: 600px;
-    margin: 0 auto;
-    font-weight: 500;
+    font-size: 15px;
+    color: #64748b;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 0.01em;
 }
 
 /* Main Card */
@@ -54,19 +65,18 @@
     background: white;
     padding: 40px;
     border-radius: 32px;
-    border: 1px solid rgba(0,0,0,0.05);
-    box-shadow: 0 20px 50px rgba(0,0,0,0.04);
+    border: 1px solid rgba(0,0,0,0.03);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.08);
 }
 
 /* Search Box */
 .mp-search-box {
     display: flex;
-    gap: 12px;
+    gap: 15px;
     margin-bottom: 32px;
-    background: #f8f9fa;
+    background: #f1f5f9;
     padding: 8px;
     border-radius: 20px;
-    border: 1px solid rgba(0,0,0,0.05);
 }
 
 .mp-input {
@@ -75,35 +85,28 @@
     border: none;
     padding: 16px 20px;
     font-size: 15px;
-    font-weight: 500;
-    color: #1a1a2e;
-    font-family: var(--font-body);
-}
-
-.mp-input:focus {
-    outline: none;
+    font-weight: 600;
+    color: #000;
+    font-style: italic;
 }
 
 .mp-match-btn {
-    background: var(--brand);
+    background: #000; /* BLACK LIKE REORDER BTN */
     color: white;
     border: none;
-    padding: 0 32px;
-    border-radius: 14px;
-    font-weight: 800;
+    padding: 0 40px;
+    border-radius: 100px;
+    font-weight: 900;
     font-size: 14px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    text-transform: uppercase;
 }
 
 .mp-match-btn:hover:not(:disabled) {
-    background: #e62a07;
-    transform: scale(1.02);
-}
-
-.mp-match-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    background: #ff5a1f;
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(255, 90, 31, 0.2);
 }
 
 /* Mood Grid */
@@ -119,41 +122,39 @@
     align-items: center;
     justify-content: center;
     padding: 20px 12px;
-    background: #fdfdfd;
-    border: 1px solid rgba(0,0,0,0.04);
+    background: #fff;
+    border: 1.5px solid rgba(0,0,0,0.04);
     border-radius: 20px;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.4s ease;
 }
 
 .mp-mood-chip:hover {
-    background: white;
-    border-color: var(--hover-color);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    border-color: #ff5a1f;
+    background: rgba(255, 90, 31, 0.02);
     transform: translateY(-4px);
 }
 
 .mp-mood-chip.active {
-    background: var(--hover-color);
-    border-color: var(--hover-color);
+    background: #ff5a1f;
+    border-color: #ff5a1f;
+    box-shadow: 0 10px 25px rgba(255, 90, 31, 0.25);
 }
 
 .mood-emoji {
-    font-size: 24px;
+    font-size: 26px;
     margin-bottom: 8px;
-    transition: transform 0.3s ease;
 }
 
 .mood-label {
-    font-size: 12px;
-    font-weight: 800;
-    color: #1a1a2e;
+    font-size: 10px;
+    font-weight: 900;
+    color: #000;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
 }
 
-.mp-mood-chip.active .mood-label,
-.mp-mood-chip.active .mood-emoji {
+.mp-mood-chip.active .mood-label {
     color: white;
 }
 
@@ -167,8 +168,14 @@
 .mp-results-header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     margin-bottom: 32px;
+}
+
+.mp-results-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .mp-results-title {
@@ -178,10 +185,85 @@
     color: #1a1a2e;
 }
 
+.mp-ai-badge-inline {
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.2);
+}
+
 .mp-results-count {
     font-size: 13px;
     font-weight: 700;
     color: #666;
+}
+
+/* Skeleton Loader */
+.mp-skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 32px;
+    margin-top: 40px;
+}
+
+.mp-skeleton-card {
+    height: 380px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeletonLoading 1.5s infinite;
+    border-radius: 24px;
+}
+
+@keyframes skeletonLoading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* No Results */
+.mp-no-results {
+    text-align: center;
+    padding: 60px 40px;
+    background: #fdfdfd;
+    border: 2px dashed rgba(0,0,0,0.05);
+    border-radius: 32px;
+    margin-top: 40px;
+}
+
+.no-res-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.mp-no-results h3 {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1a1a2e;
+    margin-bottom: 12px;
+}
+
+.mp-no-results p {
+    color: #666;
+    margin-bottom: 24px;
+}
+
+.clear-vibe-btn {
+    background: #1a1a2e;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.clear-vibe-btn:hover {
+    background: var(--brand);
 }
 
 .mp-grid-display {
@@ -208,7 +290,7 @@
     line-height: 1.5;
 }
 
-/* Loader */
+/* Loader dots fallback */
 .mp-matching-loader {
     text-align: center;
     padding: 60px 0;

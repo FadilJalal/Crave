@@ -14,7 +14,6 @@ import chicken from '../../assets/chicken.png';
 import noodles from '../../assets/noodles.png';
 import sandwich from '../../assets/sandwich.png';
 import biriyani from '../../assets/biriyani.png';
-import butterchicken from '../../assets/butterchicken.png';
 
 import './Header.css';
 
@@ -30,7 +29,6 @@ const SLIDES = [
     { img: noodles, name: 'Noodles', color: '#FFB800' },
     { img: sandwich, name: 'Sandwich', color: '#FF3008' },
     { img: biriyani, name: 'Biriyani', color: '#FFB800' },
-    { img: butterchicken, name: 'Butter Chicken', color: '#FF3008' },
 ];
 
 const shuffleArray = (array) => {

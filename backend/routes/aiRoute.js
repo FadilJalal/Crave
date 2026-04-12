@@ -396,8 +396,8 @@ router.post("/mood", async (req, res) => {
         let s = 0;
         if (cfg.categories.some(c => f.category?.toLowerCase().includes(c))) s += 3;
         if (cfg.keywords.test(`${f.name} ${f.description}`)) s += 2;
-        if (mood === "budget" && f.price <= 25) s += 2;
-        else if (mood === "celebrating" && f.price >= 40) s += 1;
+        if (mood === "budget" && f.price <= 30) s += 4;
+        else if (mood === "celebrating" && f.price >= 45) s += 1;
         return { ...f, moodScore: s };
       }).filter(f => f.moodScore > 0).sort((a, b) => b.moodScore - a.moodScore);
     }

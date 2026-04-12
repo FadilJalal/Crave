@@ -8,6 +8,7 @@ import TopRestaurants from '../../components/TopRestaurants/TopRestaurants'
 import FoodDisplay from '../../components/FoodDisplay/FoodDisplay'
 import FlashDeals from '../../components/FlashDeals/FlashDeals'
 import SmartTopPick from '../../components/SmartTopPick/SmartTopPick'
+import MoodPicker from '../../components/MoodPicker/MoodPicker'
 import { StoreContext } from '../../Context/StoreContext'
 
 const Home = () => {
@@ -27,8 +28,9 @@ const Home = () => {
       <Header />
       <HeaderMarquee />
       <SmartTopPick />
-      <TopRestaurants />
       <FlashDeals />
+      <TopRestaurants />
+      <MoodPicker />
       <FoodDisplay category={category} />
       <div className="app-container">
       </div>

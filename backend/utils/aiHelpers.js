@@ -79,12 +79,12 @@ export function estimateCalories(name, desc, category, price) {
 }
 
 export const MOOD_MAP = {
-  celebrating: { categories:["pizza","burger","grills","biryani"], keywords:/premium|special|large|family|feast|party|platter/i, emoji:"🎉", label:"Celebration" },
-  comfort:     { categories:["biryani","pasta","soup","noodles","burger"], keywords:/cheese|cream|butter|noodle|soup|warm|bowl/i, emoji:"🛋️", label:"Comfort Food" },
-  healthy:     { categories:["salad","pure veg","grills","soup"], keywords:/salad|grilled|fresh|light|lean|steamed|green|protein/i, emoji:"🥗", label:"Healthy" },
-  adventurous: { categories:["seafood","grills","biryani"], keywords:/spicy|hot|exotic|special|fusion|masala/i, emoji:"🌶️", label:"Adventurous" },
-  quick:       { categories:["sandwich","rolls","burger","snacks"], keywords:/quick|fast|wrap|roll|sandwich|snack|bite|mini/i, emoji:"⚡", label:"Quick Bite" },
-  sweet:       { categories:["deserts","cake","drinks"], keywords:/cake|sweet|chocolate|ice|dessert|brownie|cookie|smoothie/i, emoji:"🍰", label:"Sweet Tooth" },
-  budget:      { categories:["sandwich","rolls","snacks","drinks"], keywords:/value|budget|deal|combo|mini|small/i, emoji:"💰", label:"Budget Friendly" },
-  postworkout: { categories:["grills","salad","pure veg"], keywords:/protein|grilled|chicken|egg|lean|steak|fish|bowl/i, emoji:"💪", label:"Post-Workout" },
+  celebrating: { categories:["dessert","pizza","premium","special"], keywords:/premium|special|large|family|feast|party|platter|cake/i, emoji:"🎉", label:"Celebration" },
+  comfort:     { categories:["burger","pasta","soup"], keywords:/cheese|cream|butter|noodle|soup|warm|bowl|comfort/i, emoji:"🛋️", label:"Comfort" },
+  healthy:     { categories:["salad","vegan","grilled"], keywords:/salad|grilled|fresh|light|lean|steamed|green|protein|vegan/i, emoji:"🥗", label:"Healthy" },
+  adventurous: { categories:["spicy","bbq","sushi"], keywords:/spicy|hot|exotic|special|fusion|masala|bbq|sushi|wasabi/i, emoji:"🌶️", label:"Adventurous" },
+  quick:       { categories:["sandwich","wrap","fast food"], keywords:/quick|fast|wrap|roll|sandwich|snack|bite|mini|fast/i, emoji:"⚡", label:"Quick" },
+  sweet:       { categories:["dessert","cake","ice cream"], keywords:/cake|sweet|chocolate|ice|dessert|brownie|cookie|cream/i, emoji:"🍰", label:"Sweet" },
+  budget:      { categories:["sandwich","wrap","snacks"], keywords:/value|budget|deal|combo|mini|small|cheap/i, emoji:"💰", label:"Budget" },
+  postworkout: { categories:["grilled","high protein","salad"], keywords:/protein|grilled|chicken|egg|lean|steak|fish|bowl|post/i, emoji:"💪", label:"Gym" },
 };

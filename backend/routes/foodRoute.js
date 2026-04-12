@@ -45,15 +45,6 @@ foodRouter.get("/list/public", async (req, res) => {
       .populate("restaurantId", "name logo isActive openingHours location deliveryRadius minimumOrder deliveryTiers")
       .lean();
 
-    // 🧊 SOFT EXPIRY: Cleanly identifying expired deals for the current response
-    // We no longer strip them from the DB here to avoid "disappearing" bugs.
-    const now = new Date();
-    foods.forEach(f => {
-      if (f.isFlashDeal && f.flashDealExpiresAt && new Date(f.flashDealExpiresAt) <= now) {
-        f.isFlashDeal = false; // Mark as inactive for this response only
-      }
-    });
-
     res.json({ success: true, data: foods });
   } catch (error) {
     console.error("[PUBLIC LIST ERROR]", error);
@@ -85,6 +76,11 @@ foodRouter.post("/add", adminAuth, upload.single("image"), async (req, res) => {
       category: req.body.category,
       restaurantId,
       customizations,
+      // ⚡ Capture flash deal fields on creation
+      isFlashDeal: req.body.isFlashDeal === "true",
+      salePrice: req.body.salePrice ? Number(req.body.salePrice) : null,
+      flashDealExpiresAt: req.body.flashDealExpiresAt ? new Date(req.body.flashDealExpiresAt) : null,
+      flashDealTotalStock: req.body.flashDealTotalStock ? Number(req.body.flashDealTotalStock) : null
     });
 
     await food.save();

@@ -9,11 +9,11 @@ const MOODS = [
   { key: "celebrating", emoji: "🎉", label: "Celebration", color: "#ec4899" },
   { key: "comfort", emoji: "🛋️", label: "Comfort", color: "#f59e0b" },
   { key: "healthy", emoji: "🥗", label: "Healthy", color: "#10b981" },
-  { key: "adventurous", emoji: "🌶️", label: "Spicy", color: "#ef4444" },
+  { key: "adventurous", emoji: "🌶️", label: "Adventurous", color: "#ef4444" },
   { key: "quick", emoji: "⚡", label: "Quick", color: "#3b82f6" },
   { key: "sweet", emoji: "🍰", label: "Sweet", color: "#d946ef" },
   { key: "budget", emoji: "💰", label: "Budget", color: "#8b5cf6" },
-  { key: "postworkout", emoji: "💪", label: "Gym", color: "#06b6d4" },
+  { key: "postworkout", emoji: "💪", label: "Post-Workout", color: "#06b6d4" },
 ];
 
 const MoodPicker = () => {
@@ -63,15 +63,21 @@ const MoodPicker = () => {
   };
 
   return (
-    <section className="mood-section">
+    <section className="mp-section" id="mood-discovery">
       <div className="mp-container">
-        <div className="mp-hero">
-            <div className="mp-badge-ai">
-                <span className="mp-ai-icon">✨</span>
-                AI Powered
+        
+        <div className="mp-header">
+            <div className="mp-title-wrap">
+                <div className="mp-badge-ai">
+                    <span className="mp-ai-icon">✨</span> AI POWERED
+                </div>
+                <h2 className="mp-title">
+                    Match Your <span className="brand-text">Mood</span>
+                </h2>
+                <p className="mp-sub">
+                    Craving something specific? Let Crave AI find it.
+                </p>
             </div>
-            <h2 className="mp-title">Match Your Mood</h2>
-            <p className="mp-sub">Craving something specific or just feeling a vibe? Let Crave AI find your perfect meal.</p>
         </div>
 
         <div className="mp-card-main">
@@ -103,13 +109,33 @@ const MoodPicker = () => {
             </div>
         </div>
 
-        {results.length > 0 && (
+        {loading && (
+            <div className="mp-skeleton-grid">
+                {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="mp-skeleton-card"></div>
+                ))}
+            </div>
+        )}
+
+        {!loading && results.length === 0 && activeMood && (
+            <div className="mp-no-results">
+                <div className="no-res-icon">🔍</div>
+                <h3>No perfect match found</h3>
+                <p>Try a different mood or type something specific above!</p>
+                <button className="clear-vibe-btn" onClick={() => { setActiveMood(null); setCustomMood(""); }}>Clear vibe</button>
+            </div>
+        )}
+
+        {!loading && results.length > 0 && (
             <div className="mp-results-area" ref={resultsRef}>
                 <div className="mp-results-header">
-                    <h3 className="mp-results-title">
-                        {usedAi ? "AI Recommendations" : "Matching Your Mood"}
-                    </h3>
-                    <span className="mp-results-count">{results.length} results found</span>
+                    <div className="mp-results-title-row">
+                        <h3 className="mp-results-title">
+                            {usedAi ? "AI Curated Selections" : "Matching Your Mood"}
+                        </h3>
+                        {usedAi && <span className="mp-ai-badge-inline">✨ AI matched</span>}
+                    </div>
+                    <span className="mp-results-count">{results.length} cravings found</span>
                 </div>
                 
                 <div className="mp-grid-display">
@@ -137,15 +163,6 @@ const MoodPicker = () => {
                         </div>
                     ))}
                 </div>
-            </div>
-        )}
-        
-        {loading && !results.length && (
-            <div className="mp-matching-loader">
-                <div className="loader-dots">
-                    <span></span><span></span><span></span>
-                </div>
-                <p>Curating your perfect menu...</p>
             </div>
         )}
       </div>
