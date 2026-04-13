@@ -13,6 +13,55 @@ const router = express.Router();
 const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
 
+// AI-powered review reply generation
+router.post("/generate-review-reply", restaurantAuth, async (req, res) => {
+  try {
+    const { reviewText, rating, customerName, instruction } = req.body;
+    const apiKey = process.env.GROQ_API_KEY;
+
+    if (!apiKey) {
+      return res.status(503).json({ success: false, message: "Groq AI is not configured." });
+    }
+
+    const messages = [
+      {
+        role: "system",
+        content: `You are a professional, warm restaurant manager. Write a concise, genuine reply (2-3 sentences max) to this customer review. Be specific to what they said. Do not be generic. Do not use phrases like 'Dear valued customer'. ${
+          instruction ? `\n\nCRITICAL INSTRUCTION FROM MANAGER: ${instruction}` : ""
+        }`,
+      },
+      {
+        role: "user",
+        content: `Customer Name: ${customerName}\nRating: ${rating} Stars\nReview: "${reviewText}"`,
+      },
+    ];
+
+    const resp = await fetch(GROQ_CHAT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        temperature: 0.7,
+        max_tokens: 250,
+        messages,
+      }),
+    });
+
+    if (!resp.ok) throw new Error("Groq generation failed.");
+
+    const data = await resp.json();
+    const reply = String(data?.choices?.[0]?.message?.content || "").trim().replace(/^"|"$/g, '');
+
+    res.json({ success: true, reply });
+  } catch (err) {
+    console.error("[ai/generate-review-reply]", err);
+    res.json({ success: false, message: "Failed to generate reply." });
+  }
+});
+
 const SEGMENT_EMOJI = {
   VIP: "👑",
   Loyal: "💎",
@@ -652,6 +701,60 @@ router.post("/export-segment", restaurantAuth, requireFeature("aiCustomerSegment
 });
 
 // ── 17. AUTO-GENERATE CAMPAIGN SCRIPT (GROQ) ─────────────────────────────
+router.post("/generate-campaign-ai", restaurantAuth, async (req, res) => {
+  try {
+    const { type, description, tone = "professional and warm" } = req.body;
+    const apiKey = process.env.GROQ_API_KEY;
+
+    if (!apiKey) {
+      return res.status(503).json({ success: false, message: "Groq AI is not configured." });
+    }
+
+    const messages = [
+      {
+        role: "system",
+        content: `You are an expert restaurant marketing specialist. Generate a compelling email campaign. 
+        Return ONLY a JSON object with keys: "subject", "heading", and "body". 
+        The body should be 3-4 sentences. Use a ${tone} tone. 
+        No markdown, no preface, just the JSON.`,
+      },
+      {
+        role: "user",
+        content: `Campaign Type: ${type}\nManager's Notes: ${description || "Announce something great to our customers"}`,
+      },
+    ];
+
+    const resp = await fetch(GROQ_CHAT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        temperature: 0.8,
+        max_tokens: 500,
+        messages,
+      }),
+    });
+
+    if (!resp.ok) throw new Error("Groq generation failed.");
+
+    const data = await resp.json();
+    const content = String(data?.choices?.[0]?.message?.content || "").trim();
+    const parsed = parseFirstJsonObject(content);
+
+    if (!parsed || !parsed.subject) {
+      throw new Error("Invalid AI response format.");
+    }
+
+    res.json({ success: true, ...parsed });
+  } catch (err) {
+    console.error("[ai/generate-campaign-ai]", err);
+    res.json({ success: false, message: "Failed to generate campaign content." });
+  }
+});
+
 router.post("/generate-campaign-script", restaurantAuth, requireFeature("aiCustomerSegmentation"), async (req, res) => {
   try {
     const segmentType = String(req.body?.segmentType || "").trim();

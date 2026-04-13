@@ -10,6 +10,7 @@ import {
   Loader2, Filter, Trash2, Edit3, Copy, ShieldCheck, MapPin, ShoppingBag,
   Sparkles
 } from "lucide-react";
+import ConfirmationModal from "../components/ConfirmationModal";
 
 export default function Coupons() {
   const { dark } = useTheme();
@@ -37,6 +38,8 @@ export default function Coupons() {
     orderType: "Both",
     promoType: "standard"
   });
+
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
 
   useEffect(() => {
     if (location.state?.aiSuggestion) {
@@ -102,6 +105,20 @@ export default function Coupons() {
     }
   };
 
+  const handleDelete = async (id) => {
+    try {
+      const res = await api.delete(`/api/promo/${id}`);
+      if (res.data?.success) {
+        toast.success("Promo deleted successfully");
+        fetchData();
+      } else {
+        toast.error(res.data?.message || "Failed to delete");
+      }
+    } catch (err) {
+      toast.error("Error deleting promotion");
+    }
+  };
+
   const bgColor = dark ? "#0f172a" : "#f8fafc";
   const cardBg = dark ? "rgba(255,255,255,0.03)" : "#ffffff";
   const borderColor = dark ? "rgba(255,255,255,0.08)" : "#e2e8f0";
@@ -125,15 +142,15 @@ export default function Coupons() {
         
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "24px", flexWrap: "wrap", gap: "16px" }}>
           <div>
-            <h1 style={{ fontSize: "30px", fontWeight: 950, color: textColor, margin: 0, letterSpacing: "-1.2px" }}>Coupons & Promotions</h1>
-            <p style={{ color: subTextColor, fontSize: "14px", marginTop: "4px" }}>Manage your restaurant incentive strategy.</p>
+            <h1 style={{ fontSize: "30px", fontWeight: 950, color: textColor, margin: 0, letterSpacing: "-1.2px" }}>Promotions Manager</h1>
+            <p style={{ color: subTextColor, fontSize: "14px", marginTop: "4px" }}>Manage your restaurant incentive and promo code strategy.</p>
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
             <button 
               onClick={() => { setFormData({...formData, promoType: 'standard'}); setView("create-coupon"); }}
               style={{ padding: "12px 20px", borderRadius: "12px", border: "none", background: "var(--orange)", color: "white", fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", boxShadow: "0 8px 20px rgba(255,90,31,0.2)" }}
             >
-              <Tag size={16} /> Create Coupon
+              <Tag size={16} /> Create Promo Code
             </button>
           </div>
         </div>
@@ -149,7 +166,7 @@ export default function Coupons() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "24px", alignItems: "start" }}>
               <div style={{ background: cardBg, borderRadius: "24px", border: `1.5px solid ${borderColor}`, overflow: "hidden" }}>
                   <div style={{ padding: "16px 20px", borderBottom: `1.5px solid ${borderColor}` }}>
-                    <h3 style={{ margin: 0, fontSize: "16px", color: textColor, fontWeight: 800 }}>Campaign Records</h3>
+                    <h3 style={{ margin: 0, fontSize: "16px", color: textColor, fontWeight: 800 }}>Promotion Records</h3>
                   </div>
                   <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -159,6 +176,7 @@ export default function Coupons() {
                         <th style={{ padding: "12px 12px", color: subTextColor, fontSize: "11px", fontWeight: 900, textTransform: "uppercase" }}>Type</th>
                         <th style={{ padding: "12px 12px", color: subTextColor, fontSize: "11px", fontWeight: 900, textTransform: "uppercase" }}>Usage</th>
                         <th style={{ padding: "12px 12px", color: subTextColor, fontSize: "11px", fontWeight: 900, textTransform: "uppercase" }}>Status</th>
+                        <th style={{ padding: "12px 20px", color: subTextColor, fontSize: "11px", fontWeight: 900, textTransform: "uppercase", textAlign: "right" }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -176,6 +194,17 @@ export default function Coupons() {
                           <td style={{ padding: "16px 12px" }}>
                             <span style={{ fontSize: "11px", fontWeight: 800, color: p.isActive ? "#10b981" : subTextColor }}>{p.isActive ? "Active" : "Paused"}</span>
                           </td>
+                          <td style={{ padding: "16px 20px", textAlign: "right" }}>
+                            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                              <button 
+                                onClick={() => setConfirmModal({ isOpen: true, id: p._id })}
+                                style={{ background: "none", border: "none", color: "#f43f5e", cursor: "pointer", padding: "4px" }}
+                                title="Delete Promo"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -189,7 +218,11 @@ export default function Coupons() {
                         <AlertCircle color="#f43f5e" size={20} />
                         <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 950, color: textColor }}>Health Monitor</h3>
                      </div>
-                     <AlertBox title="3 Codes Expiring Today" type="danger" dark={dark} />
+                     {stats.expiringSoon > 0 ? (
+                        <AlertBox title={`${stats.expiringSoon} Codes Expiring Soon`} type="danger" dark={dark} />
+                     ) : (
+                        <AlertBox title="All Campaigns Healthy" type="info" dark={dark} />
+                     )}
                   </div>
               </div>
           </div>
@@ -197,9 +230,9 @@ export default function Coupons() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))", gap: "28px", alignItems: "start" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               <div style={{ background: cardBg, borderRadius: "24px", border: `1.5px solid ${borderColor}`, padding: "24px" }}>
-                <button onClick={() => setView("list")} style={{ background: "none", border: "none", color: "var(--orange)", fontWeight: 900, fontSize: "12px", cursor: "pointer", marginBottom: "16px" }}>← Back to Dashboard</button>
+                <button onClick={() => setView("list")} style={{ background: "none", border: "none", color: "var(--orange)", fontWeight: 900, fontSize: "12px", cursor: "pointer", marginBottom: "16px" }}>← Back to Manager</button>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                   <h2 style={{ fontSize: "20px", fontWeight: 950, color: textColor, margin: 0 }}>Configure Campaign</h2>
+                   <h2 style={{ fontSize: "20px", fontWeight: 950, color: textColor, margin: 0 }}>Configure Promotion</h2>
                 </div>
 
                 <div style={{ display: "grid", gap: "16px" }}>
@@ -233,10 +266,19 @@ export default function Coupons() {
                      <div style={{ fontSize: "14px", fontWeight: 900, margin: "8px 0", letterSpacing: "1px" }}>{formData.code || "CODE"}</div>
                   </div>
                </div>
-               <button onClick={handleLaunch} style={{ width: "100%", padding: "16px", borderRadius: "16px", background: "var(--orange)", color: "white", fontSize: "16px", fontWeight: 1000, border: "none", cursor: "pointer", boxShadow: "0 10px 20px rgba(255,90,31,0.2)" }}>Launch Campaign</button>
+               <button onClick={handleLaunch} style={{ width: "100%", padding: "16px", borderRadius: "16px", background: "var(--orange)", color: "white", fontSize: "16px", fontWeight: 1000, border: "none", cursor: "pointer", boxShadow: "0 10px 20px rgba(255,90,31,0.2)" }}>Launch Promotion</button>
             </div>
           </div>
         )}
+        
+        <ConfirmationModal 
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal({ isOpen: false, id: null })}
+          onConfirm={() => handleDelete(confirmModal.id)}
+          title="Delete Promotion?"
+          message="This will permanently remove the promo code and it will no longer be usable by customers."
+          confirmText="Yes, Delete"
+        />
       </div>
     </RestaurantLayout>
   );

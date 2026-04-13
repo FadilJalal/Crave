@@ -6,7 +6,7 @@ const router = express.Router();
 const GOOGLE_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 const GOOGLE_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
-const GROQ_KEY = process.env.GROQ_API_KEY;
+const GROQ_KEY = process.env.GROQ_MOOD_API_KEY;
 
 function tokenize(text = "") {
   return String(text)

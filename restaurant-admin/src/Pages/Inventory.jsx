@@ -3,6 +3,7 @@ import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { toast } from "react-toastify";
 import { useTheme } from "../ThemeContext";
+import ConfirmationModal from "../components/ConfirmationModal";
 
 const CATEGORIES = [
   { value: "all", label: "All", emoji: "📋" },
@@ -303,6 +304,8 @@ export default function Inventory() {
     supplier: { name: "", contact: "", email: "" }, expiryDate: "", notes: ""
   });
 
+  const [confirm, setConfirm] = useState({ isOpen: false, title: "", message: "", onConfirm: () => {}, type: "danger" });
+
   const loadInventory = useCallback(async () => {
     try {
       setLoading(true);
@@ -593,22 +596,26 @@ export default function Inventory() {
   }, []);
 
   const handleDelete = useCallback(async (id) => {
-    if (!window.confirm("Remove this item from inventory?")) return;
-    try {
-      console.log("[Inventory] Deleting item:", id);
-      const res = await api.delete(`/api/inventory/${id}`);
-      console.log("[Inventory] Delete response:", res.data);
-      
-      if (res.data?.success) {
-        toast.success(res.data?.message || "Item removed successfully");
-        await loadInventory();
-      } else {
-        toast.error(res.data?.message || "Failed to remove item");
+    setConfirm({
+      isOpen: true,
+      title: "Remove from inventory?",
+      message: "This item will be permanently deleted from your inventory tracking.",
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          console.log("[Inventory] Deleting item:", id);
+          const res = await api.delete(`/api/inventory/${id}`);
+          if (res.data?.success) {
+            toast.success(res.data?.message || "Item removed successfully");
+            await loadInventory();
+          } else {
+            toast.error(res.data?.message || "Failed to remove item");
+          }
+        } catch (err) { 
+          toast.error(err?.response?.data?.message || "Failed to remove item"); 
+        }
       }
-    } catch (err) { 
-      console.error("[Inventory] Delete error:", err);
-      toast.error(err?.response?.data?.message || "Failed to remove item"); 
-    }
+    });
   }, [loadInventory]);
 
   const toggleSelect = useCallback((id) => setSelectedIds(prev => {
@@ -619,29 +626,36 @@ export default function Inventory() {
 
   const handleBulkUpdate = async () => {
     if (selectedIds.size === 0 || !bulkUpdateField) return;
-    if (!window.confirm(`Update ${bulkUpdateField} for ${selectedIds.size} selected item${selectedIds.size !== 1 ? "s" : ""}?`)) return;
-
-    const updates = [...selectedIds].map(id => ({
-      id,
-      [bulkUpdateField]: bulkUpdateValue
-    }));
-
-    try {
-      const res = await api.post("/api/inventory/bulk-update", { updates });
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        setInventory(prev => prev.map(item => {
-          const changed = res.data.data.find(u => u._id === item._id);
-          return changed ? changed : item;
+    
+    setConfirm({
+      isOpen: true,
+      title: "Bulk Update",
+      message: `Apply ${bulkUpdateField} to ${selectedIds.size} selected items?`,
+      type: "info",
+      onConfirm: async () => {
+        const updates = [...selectedIds].map(id => ({
+          id,
+          [bulkUpdateField]: bulkUpdateValue
         }));
-      } else {
-        setInventory(prev => prev.map(item => selectedIds.has(item._id) ? { ...item, [bulkUpdateField]: bulkUpdateField === 'supplier' ? JSON.parse(bulkUpdateValue || '{}') : bulkUpdateField === 'currentStock' || bulkUpdateField === 'minimumStock' || bulkUpdateField === 'maximumStock' || bulkUpdateField === 'unitCost' ? Number(bulkUpdateValue) : bulkUpdateValue } : item));
-      }
 
-      setSelectedIds(new Set());
-      setShowBulkUpdateModal(false);
-      setBulkUpdateField("");
-      setBulkUpdateValue("");
-    } catch (err) { alert(err?.response?.data?.message || "Failed to update"); }
+        try {
+          const res = await api.post("/api/inventory/bulk-update", { updates });
+          if (res.data?.success && Array.isArray(res.data.data)) {
+            setInventory(prev => prev.map(item => {
+              const changed = res.data.data.find(u => u._id === item._id);
+              return changed ? changed : item;
+            }));
+          } else {
+            setInventory(prev => prev.map(item => selectedIds.has(item._id) ? { ...item, [bulkUpdateField]: bulkUpdateField === 'supplier' ? JSON.parse(bulkUpdateValue || '{}') : bulkUpdateField === 'currentStock' || bulkUpdateField === 'minimumStock' || bulkUpdateField === 'maximumStock' || bulkUpdateField === 'unitCost' ? Number(bulkUpdateValue) : bulkUpdateValue } : item));
+          }
+
+          setSelectedIds(new Set());
+          setShowBulkUpdateModal(false);
+          setBulkUpdateField("");
+          setBulkUpdateValue("");
+        } catch (err) { alert(err?.response?.data?.message || "Failed to update"); }
+      }
+    });
   };
 
   const handleQuickAdjust = useCallback(async (id, adjustment) => {
@@ -794,40 +808,31 @@ export default function Inventory() {
   }, [filtered]);
 
   const handleBulkDelete = useCallback(async () => {
-    console.log("[Inventory] handleBulkDelete called. selectedIds.size:", selectedIds.size, "selectedIds:", [...selectedIds]);
-    
     if (selectedIds.size === 0) {
-      console.log("[Inventory] No items selected, returning");
       toast.warning("Please select items to delete");
       return;
     }
     
-    const confirmMsg = `Remove ${selectedIds.size} selected item${selectedIds.size !== 1 ? "s" : ""} from inventory?`;
-    console.log("[Inventory] Showing confirmation:", confirmMsg);
-    
-    if (!window.confirm(confirmMsg)) {
-      console.log("[Inventory] User canceled deletion");
-      return;
-    }
-    
-    try {
-      console.log("[Inventory] Bulk deleting items:", [...selectedIds]);
-      const res = await api.post("/api/inventory/bulk-delete", { ids: [...selectedIds] });
-      console.log("[Inventory] Bulk delete response:", res.data);
-      
-      if (res.data?.success) {
-        console.log("[Inventory] Deletion successful, reloading inventory");
-        setSelectedIds(new Set());
-        toast.success(res.data?.message || `${res.data?.count || 0} items removed successfully`);
-        await loadInventory();
-      } else {
-        console.log("[Inventory] API returned unsuccessful response:", res.data);
-        toast.error(res.data?.message || "Failed to delete items");
+    setConfirm({
+      isOpen: true,
+      title: "Bulk Delete",
+      message: `Remove ${selectedIds.size} selected items from inventory? This cannot be undone.`,
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          const res = await api.post("/api/inventory/bulk-delete", { ids: [...selectedIds] });
+          if (res.data?.success) {
+            setSelectedIds(new Set());
+            toast.success(res.data?.message || `${res.data?.count || 0} items removed successfully`);
+            await loadInventory();
+          } else {
+            toast.error(res.data?.message || "Failed to delete items");
+          }
+        } catch (err) { 
+          toast.error(err?.response?.data?.message || "Failed to delete items"); 
+        }
       }
-    } catch (err) { 
-      console.error("[Inventory] Bulk delete error:", err?.response?.data || err.message);
-      toast.error(err?.response?.data?.message || "Failed to delete items"); 
-    }
+    });
   }, [selectedIds, loadInventory]);
 
   const categoryCounts = useMemo(() => {
@@ -874,6 +879,14 @@ export default function Inventory() {
             {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton" style={{ height: 200, borderRadius: 16 }} />)}
           </div>
         </div>
+        <ConfirmationModal 
+          isOpen={confirm.isOpen}
+          onClose={() => setConfirm({ ...confirm, isOpen: false })}
+          onConfirm={confirm.onConfirm}
+          title={confirm.title}
+          message={confirm.message}
+          type={confirm.type}
+        />
       </RestaurantLayout>
     );
   }

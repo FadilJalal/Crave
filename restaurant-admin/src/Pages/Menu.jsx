@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api, BASE_URL } from "../utils/api";
 import { useTheme } from "../ThemeContext";
+import { toast } from "react-toastify";
+import ConfirmationModal from "../components/ConfirmationModal";
 
 const SORT_OPTIONS = [
   { label: "A → Z",         value: "az"      },
@@ -22,6 +24,8 @@ export default function Menu() {
   const [sortBy, setSortBy] = useState("az");
   const [deletingCat, setDeletingCat] = useState(false);
   const { dark } = useTheme();
+
+  const [confirm, setConfirm] = useState({ isOpen: false, title: "", message: "", onConfirm: () => {}, type: "danger" });
 
   // ── Lightning Deal Management State ──
   const [managingItem, setManagingItem]       = useState(null);
@@ -94,17 +98,11 @@ export default function Menu() {
         setFoods(foods);
       } else {
         const errorMsg = res.data?.message || "Failed to load menu";
-        console.error("[LOAD FOODS FAILED]", errorMsg);
-        alert(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err) {
       const errorMsg = err?.response?.data?.message || err?.message || "Failed to load menu";
-      console.error("[LOAD FOODS ERROR]", {
-        message: errorMsg,
-        status: err?.response?.status,
-        data: err?.response?.data
-      });
-      alert(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -130,59 +128,67 @@ export default function Menu() {
       console.log("[TOGGLE RESPONSE]", res.data);
       
       if (res.data?.success) {
-        console.log(`[TOGGLE SUCCESS] Item ${id} now inStock=${newStatus}`);
         setFoods(prev => prev.map(f => 
           f._id === id ? { ...f, inStock: newStatus } : f
         ));
-        alert(`Item ${newStatus ? "enabled ✓" : "disabled ✕"}`);
+        toast.success(`Item ${newStatus ? "enabled" : "disabled"}`);
       } else {
-        const errorMsg = res.data?.message || "Failed to toggle availability";
-        console.error("[TOGGLE FAILED]", errorMsg, res.data);
-        alert(errorMsg);
+        toast.error(res.data?.message || "Failed to toggle availability");
       }
     } catch (err) {
-      const errorMsg = err?.response?.data?.message || err?.message || "Network or server error";
-      console.error("[TOGGLE ERROR]", {
-        message: errorMsg,
-        status: err?.response?.status,
-        data: err?.response?.data,
-        fullError: err
-      });
-      alert(errorMsg);
+      toast.error(err?.response?.data?.message || err?.message || "Network error");
     } finally {
       setToggling(prev => ({ ...prev, [id]: false }));
     }
   };
 
   const removeFood = async (id) => {
-    if (!window.confirm("Remove this item from the menu?")) return;
-    try {
-      const res = await api.post("/api/food/remove", { id });
-      if (res.data?.success) setFoods(prev => prev.filter(f => f._id !== id));
-      else alert(res.data?.message || "Failed to remove item");
-    } catch (err) {
-      alert(err?.response?.data?.message || "Failed to remove item");
-    }
+    setConfirm({
+      isOpen: true,
+      title: "Remove from menu?",
+      message: "This item will be permanently deleted from your restaurant menu.",
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          const res = await api.post("/api/food/remove", { id });
+          if (res.data?.success) {
+            setFoods(prev => prev.filter(f => f._id !== id));
+            toast.success("Item removed.");
+          } else {
+            toast.error(res.data?.message || "Failed to remove item");
+          }
+        } catch (err) {
+          toast.error("Error removing item.");
+        }
+      }
+    });
   };
 
   const deleteByCategory = async (category) => {
     const count = foods.filter(f => f.category === category).length;
-    if (!window.confirm(`Delete all ${count} item${count !== 1 ? "s" : ""} in "${category}"? This cannot be undone.`)) return;
-    setDeletingCat(true);
-    try {
-      const res = await api.post("/api/food/remove-by-category", { category });
-      if (res.data?.success) {
-        setFoods(prev => prev.filter(f => f.category !== category));
-        setCatFilter("all");
-        alert(res.data.message);
-      } else {
-        alert(res.data?.message || "Failed to delete category items");
+    setConfirm({
+      isOpen: true,
+      title: "Delete Category Items?",
+      message: `Are you sure you want to delete all ${count} items in "${category}"? This cannot be undone.`,
+      type: "danger",
+      onConfirm: async () => {
+        setDeletingCat(true);
+        try {
+          const res = await api.post("/api/food/remove-by-category", { category });
+          if (res.data?.success) {
+            setFoods(prev => prev.filter(f => f.category !== category));
+            setCatFilter("all");
+            toast.success(res.data.message);
+          } else {
+            toast.error(res.data?.message || "Failed to delete category items");
+          }
+        } catch (err) {
+          toast.error("Failed to delete category items");
+        } finally {
+          setDeletingCat(false);
+        }
       }
-    } catch (err) {
-      alert(err?.response?.data?.message || "Failed to delete category items");
-    } finally {
-      setDeletingCat(false);
-    }
+    });
   };
 
   // --- REMOVED: Stock toggle functionality moved to Inventory section ---
@@ -674,6 +680,15 @@ export default function Menu() {
           </div>
         </div>
       )}
+      
+      <ConfirmationModal 
+        isOpen={confirm.isOpen}
+        onClose={() => setConfirm({ ...confirm, isOpen: false })}
+        onConfirm={confirm.onConfirm}
+        title={confirm.title}
+        message={confirm.message}
+        type={confirm.type}
+      />
     </RestaurantLayout>
   );
 }

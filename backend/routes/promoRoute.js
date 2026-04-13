@@ -46,6 +46,7 @@ const normalizePromoSuggestion = (suggestion, index) => {
     : Math.max(1, Number(suggestion.expiresInDays));
 
   return {
+    title: String(suggestion?.title || `Strategy Idea ${index + 1}`).trim(),
     code: rawCode || `PROMO${index + 1}`,
     type,
     value: type === "percent" ? Math.min(Math.max(5, Math.round(value || 10)), 80) : Math.min(Math.max(5, Math.round(value || 10)), 200),
@@ -53,6 +54,14 @@ const normalizePromoSuggestion = (suggestion, index) => {
     maxUses: Number.isFinite(maxUsesValue) ? Math.round(maxUsesValue) : null,
     expiresInDays: Number.isFinite(expiresInDaysValue) ? Math.round(expiresInDaysValue) : null,
     reason: String(suggestion?.reason || suggestion?.description || "AI-generated promotion idea.").trim(),
+    estimatedImpact: {
+       orders: suggestion?.estimatedImpact?.orders || "+15%",
+       revenue: suggestion?.estimatedImpact?.revenue || "+10%"
+    },
+    tags: {
+       audience: suggestion?.tags?.audience || "All Customers",
+       bestTime: suggestion?.tags?.bestTime || "Weekends"
+    }
   };
 };
 
@@ -186,20 +195,21 @@ promoRouter.post("/ai-suggest", restaurantAuth, requireFeature("aiPromoGenerator
       "You are a restaurant marketing assistant.",
       "Generate exactly 3 practical promo code suggestions for a food delivery restaurant.",
       "Return JSON only with this shape:",
-      '{"headline":"...","suggestions":[{"code":"...","type":"percent|flat","value":20,"minOrder":40,"maxUses":100,"expiresInDays":14,"reason":"..."}]}',
+      '{"headline":"...","suggestions":[{"title":"Campaign Name","code":"...","type":"percent|flat","value":20,"minOrder":40,"maxUses":100,"expiresInDays":14,"reason":"...","estimatedImpact":{"orders":"+15%","revenue":"+10%"},"tags":{"audience":"VIP Customers","bestTime":"Weekend Night"}}]}',
       "Rules:",
-      "- Code must be uppercase, short, memorable, and unique.",
+      "- title must be catchy and relevant to the strategy.",
+      "- Code must be uppercase, short, memorable, and DIRECTLY RELEVANT to the campaign goal or strategy.",
+      "- Ensure codes are professional, brand-safe, and avoid any gibberish or inappropriate strings.",
       "- Use realistic restaurant promo values.",
-      "- Prefer minOrder values that still protect margins.",
-      "- maxUses can be null for unlimited.",
-      "- expiresInDays can be null for no expiry.",
-      "- reason should be one short sentence.",
+      "- estimatedImpact should be a string like '+12%' or '+15%'.",
+      "- tags.audience should be likely target (New Users, VIPs, Families).",
+      "- tags.bestTime should be optimal window (Lunch, Weekends, Sluggish Mondays).",
       `Restaurant: ${restaurant.name}`,
       `Minimum order: AED ${Number(restaurant.minimumOrder || 0)}`,
       `Average menu price: AED ${avgMenuPrice}`,
       `Menu categories: ${categories.join(", ") || "General fast food"}`,
       `Existing promo codes to avoid: ${promos.map((promo) => promo.code).join(", ") || "none"}`,
-      goal ? `Campaign goal from restaurant owner: ${goal}` : "Campaign goal: increase conversion and repeat orders this week.",
+      goal ? `Campaign goal from restaurant owner (MUST REFLECT IN CODE): ${goal}` : "Campaign goal: increase conversion and repeat orders this week.",
     ].join("\n");
 
     const response = await fetch(GROQ_CHAT_URL, {

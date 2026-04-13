@@ -115,15 +115,36 @@ reviewRouter.get("/restaurant-admin/list", restaurantAuth, async (req, res) => {
   }
 });
 
-// ── POST /api/review/reply/:reviewId — restaurant owner replies ──────────────
-reviewRouter.post("/reply/:reviewId", restaurantAuth, async (req, res) => {
+// Alias for frontend requirement
+reviewRouter.get("/restaurant-reviews", restaurantAuth, async (req, res) => {
   try {
-    const { text } = req.body;
+    const reviews = await reviewModel
+      .find({ restaurantId: req.restaurantId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const total = reviews.length;
+    const avg =
+      total > 0
+        ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / total) * 10) / 10
+        : 0;
+
+    res.json({ success: true, data: reviews, avgRating: avg, total });
+  } catch (err) {
+    console.error("[review/restaurant-reviews]", err);
+    res.json({ success: false, message: "Error fetching reviews." });
+  }
+});
+
+// Unified reply endpoint for AI tools
+reviewRouter.post("/reply", restaurantAuth, async (req, res) => {
+  try {
+    const { reviewId, reply: text } = req.body;
     if (!text || !text.trim()) {
       return res.json({ success: false, message: "Reply text is required." });
     }
 
-    const review = await reviewModel.findById(req.params.reviewId);
+    const review = await reviewModel.findById(reviewId);
     if (!review) return res.json({ success: false, message: "Review not found." });
 
     if (String(review.restaurantId) !== String(req.restaurantId)) {
@@ -135,8 +156,28 @@ reviewRouter.post("/reply/:reviewId", restaurantAuth, async (req, res) => {
 
     res.json({ success: true, message: "Reply posted.", reply: review.reply });
   } catch (err) {
-    console.error("[review/reply]", err);
+    console.error("[review/reply-v2]", err);
     res.json({ success: false, message: "Error posting reply." });
+  }
+});
+
+// DELETE /api/review/reply/:reviewId — clear a reply
+reviewRouter.delete("/reply/:reviewId", restaurantAuth, async (req, res) => {
+  try {
+    const review = await reviewModel.findById(req.params.reviewId);
+    if (!review) return res.json({ success: false, message: "Review not found." });
+
+    if (String(review.restaurantId) !== String(req.restaurantId)) {
+      return res.status(403).json({ success: false, message: "Not your review." });
+    }
+
+    review.reply = undefined;
+    await review.save();
+
+    res.json({ success: true, message: "Reply removed." });
+  } catch (err) {
+    console.error("[review/delete-reply]", err);
+    res.json({ success: false, message: "Error deleting reply." });
   }
 });
 

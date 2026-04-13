@@ -39,12 +39,20 @@ if (missingEnvVars.length > 0) {
 }
 
 // ── Check optional AI configuration ──────────────────────────────────────────
-if (!process.env.GROQ_API_KEY) {
-  console.warn("⚠️  [OPTIONAL] GROQ_API_KEY not set — Real AI features disabled.");
-  console.warn("   Get free key at: https://console.groq.com/keys");
-  console.warn("   Mood endpoint can still use a per-request key via x-groq-api-key header");
+// ── Check AI configuration ──────────────────────────────────────────
+const hasAdminAI = !!process.env.GROQ_API_KEY;
+const hasFrontendAI = !!process.env.GROQ_MOOD_API_KEY;
+
+if (hasAdminAI) {
+  console.log("✅ [AI/Admin] Groq Admin API enabled");
 } else {
-  console.log("✅ [AI] Groq API enabled — Real AI features active");
+  console.warn("⚠️  [AI/Admin] GROQ_API_KEY not set — Restaurant admin AI features disabled.");
+}
+
+if (hasFrontendAI) {
+  console.log("✅ [AI/Frontend] Groq Mood/Chat API enabled");
+} else {
+  console.warn("⚠️  [AI/Frontend] GROQ_MOOD_API_KEY not set — Mood discovery/custom chat will fallback or disable.");
 }
 
 // ── Process-level crash guards ───────────────────────────────────────────────
