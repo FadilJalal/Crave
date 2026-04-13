@@ -974,4 +974,51 @@ router.post("/create-campaign", restaurantAuth, requireFeature("aiCustomerSegmen
   }
 });
 
+// ── 19. AI MENU DESCRIPTION WRITER ──────────────────────────────────────────
+router.post("/generate-description", restaurantAuth, async (req, res) => {
+  try {
+    const { name, category, price, ingredients } = req.body;
+    const apiKey = process.env.GROQ_API_KEY;
+
+    if (!apiKey) {
+      return res.status(503).json({ success: false, message: "Groq AI is not configured." });
+    }
+
+    const messages = [
+      {
+        role: "system",
+        content: "You are a professional food copywriter. Write a short appetising menu description (2-3 sentences) for this dish. Be vivid and specific. No generic words like 'delicious' or 'tasty'. Return ONLY the description, nothing else.",
+      },
+      {
+        role: "user",
+        content: `Dish: ${name}\nCategory: ${category}\nPrice: AED ${price}\nKey Ingredients/Notes: ${ingredients || "Standard ingredients"}`,
+      },
+    ];
+
+    const resp = await fetch(GROQ_CHAT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        temperature: 0.85,
+        max_tokens: 120,
+        messages,
+      }),
+    });
+
+    if (!resp.ok) throw new Error("Groq generation failed.");
+
+    const data = await resp.json();
+    const description = String(data?.choices?.[0]?.message?.content || "").trim().replace(/^"|"$/g, '');
+
+    res.json({ success: true, description });
+  } catch (err) {
+    console.error("[ai/generate-description]", err);
+    res.json({ success: false, message: "Failed to generate description." });
+  }
+});
+
 export default router;

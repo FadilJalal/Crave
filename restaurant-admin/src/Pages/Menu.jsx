@@ -37,6 +37,13 @@ export default function Menu() {
   const [savingDeal, setSavingDeal]           = useState(false);
   const [isBundle, setIsBundle]               = useState(false);
   const [selectedBundleItems, setSelectedBundleItems] = useState([]);
+ 
+  // ── AI Menu Description Writer State ──
+  const [descModal, setDescModal]         = useState(null);
+  const [aiIngredients, setAiIngredients] = useState("");
+  const [aiResult, setAiResult]           = useState("");
+  const [aiLoading, setAiLoading]         = useState(false);
+  const [savingDesc, setSavingDesc]       = useState(false);
 
   const openDealManager = (item) => {
     setManagingItem(item);
@@ -192,6 +199,51 @@ export default function Menu() {
   };
 
   // --- REMOVED: Stock toggle functionality moved to Inventory section ---
+ 
+  const generateDescription = async () => {
+    if (!descModal) return;
+    setAiLoading(true);
+    setAiResult("");
+    try {
+      const res = await api.post("/api/ai/restaurant/generate-description", {
+        name: descModal.name,
+        category: descModal.category,
+        price: descModal.price,
+        ingredients: aiIngredients
+      });
+      if (res.data?.success) {
+        setAiResult(res.data.description);
+      } else {
+        toast.error("AI failed to generate description.");
+      }
+    } catch {
+      toast.error("AI Error.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const saveGeneratedDescription = async () => {
+    if (!descModal || !aiResult) return;
+    setSavingDesc(true);
+    try {
+      const form = new FormData();
+      form.append("id", descModal._id);
+      form.append("description", aiResult);
+      const res = await api.post("/api/food/edit", form);
+      if (res.data?.success) {
+        setFoods(prev => prev.map(f => f._id === descModal._id ? { ...f, description: aiResult } : f));
+        setDescModal(null);
+        toast.success("Menu updated!");
+      } else {
+        toast.error(res.data?.message || "Failed to save.");
+      }
+    } catch {
+      toast.error("Save failed.");
+    } finally {
+      setSavingDesc(false);
+    }
+  };
 
   useEffect(() => { loadFoods(); }, []);
 
@@ -242,110 +294,93 @@ export default function Menu() {
   const rowText = dark ? "var(--sidebar-text)" : "#1a1d23";
   const rowBorder = dark ? "1px solid rgba(255,255,255,0.1)" : "1px solid var(--border)";
   const rowShadow = dark ? "0 2px 14px rgba(0,0,0,0.28)" : "0 2px 10px rgba(17,24,39,0.04)";
-  const softText = dark ? "rgba(255,255,255,0.65)" : "#9ca3af";
+  const softText = dark ? "rgba(255,255,255,0.65)" : "#64748b";
+  const textPrimary = dark ? "#f8fafc" : "#0f172a";
 
   return (
     <RestaurantLayout>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-        flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
-        <h2 style={{ margin: 0, minWidth: 0, overflowWrap: "anywhere" }}>
-          Menu&nbsp;
-          <span style={{ fontWeight: 400, color: softText, fontSize: 18 }}>
+        flexWrap: "wrap", gap: 12, marginBottom: 32 }}>
+        <h2 style={{ margin: 0, minWidth: 0, fontWeight: 900, fontSize: 32 }}>
+          Live Menu&nbsp;
+          <span style={{ fontWeight: 600, color: softText, fontSize: 18 }}>
             ({filtered.length}{filtered.length !== foods.length ? ` of ${foods.length}` : ""} items)
           </span>
         </h2>
+        <button onClick={() => navigate("/add-food")} style={{ 
+          padding: "12px 24px", borderRadius: 16, border: "none", 
+          background: "linear-gradient(90deg, #FF3008, #ff6b4a)", color: "white", 
+          fontWeight: 900, fontSize: 14, cursor: "pointer",
+          boxShadow: "0 8px 20px rgba(255,48,8,0.25)",
+          display: "flex", alignItems: "center", gap: 8
+        }}>
+          <span style={{ fontSize: 18 }}>+</span> Add New Item
+        </button>
       </div>
 
       {!loading && (
-        <div style={{ background: panelBg, color: panelText, border: rowBorder, borderRadius: 16,
-          padding: "18px 20px", marginBottom: 24 }}>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, alignItems: "end" }}>
-
+        <div style={{ 
+          background: dark ? "rgba(15,23,42,0.6)" : "white", 
+          backdropFilter: "blur(10px)",
+          border: rowBorder, 
+          borderRadius: 24,
+          padding: "24px", 
+          marginBottom: 32,
+          boxShadow: rowShadow 
+        }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20, alignItems: "end" }}>
             <div>
-              <div style={labelStyle}>Search</div>
+              <label style={labelStyle}>Intelligent Search</label>
               <div style={{ position: "relative" }}>
-                <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }}
-                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-                <input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Name or category..."
-                  style={{ width: "100%", padding: "9px 12px 9px 32px", borderRadius: 10,
-                    border: "1px solid var(--border)", fontSize: 13, outline: "none",
-                    fontFamily: "inherit", boxSizing: "border-box", background: dark ? "#111827" : "white", color: "var(--text)" }}
-                />
+                <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Dish or category..." style={{ ...selectStyle, paddingLeft: 40 }} />
               </div>
             </div>
 
             <div>
-              <div style={labelStyle}>Category</div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <label style={labelStyle}>Category Filter</label>
+              <div style={{ display: "flex", gap: 10 }}>
                 <select value={catFilter} onChange={e => setCatFilter(e.target.value)} style={selectStyle}>
                   <option value="all">All Categories</option>
                   {allCategories.map(c => (
-                    <option key={c} value={c}>{c} ({foods.filter(f => f.category === c).length})</option>
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
                 {catFilter !== "all" && (
-                  <button
-                    onClick={() => deleteByCategory(catFilter)}
-                    disabled={deletingCat}
-                    title={`Delete all items in "${catFilter}"`}
-                    style={{
-                      flexShrink: 0,
-                      display: "flex", alignItems: "center", gap: 5,
-                      padding: "9px 13px", borderRadius: 10, fontSize: 12, fontWeight: 800,
-                      cursor: deletingCat ? "wait" : "pointer",
-                      border: "1px solid #fca5a5",
-                      background: deletingCat ? (dark ? "rgba(220,38,38,0.25)" : "#fee2e2") : (dark ? "rgba(220,38,38,0.18)" : "#fff1f1"),
-                      color: "#dc2626",
-                      whiteSpace: "nowrap",
-                      opacity: deletingCat ? 0.7 : 1,
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                    </svg>
-                    {deletingCat ? "Deleting…" : "Delete All"}
+                  <button onClick={() => deleteByCategory(catFilter)} style={{ padding: "0 14px", borderRadius: 12, border: "none", background: "#fee2e2", color: "#ef4444", cursor: "pointer" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                   </button>
                 )}
               </div>
             </div>
 
             <div>
-              <div style={labelStyle}>Price Range</div>
+              <label style={labelStyle}>Price Range</label>
               <select style={selectStyle} defaultValue="all">
-                <option value="all">All Prices</option>
-                <option value="under20">Under AED 20</option>
-                <option value="20to50">AED 20 – 50</option>
-                <option value="over50">Over AED 50</option>
+                <option value="all">Any Price</option>
+                <option value="low">Under AED 30</option>
+                <option value="mid">AED 30 - 70</option>
+                <option value="high">Above AED 70</option>
               </select>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-            flexWrap: "wrap", gap: 12, marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Sort by:</span>
-              {SORT_OPTIONS.map(opt => (
-                <button key={opt.value} onClick={() => setSortBy(opt.value)} style={{
-                  padding: "6px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer",
-                  border: `1px solid ${sortBy === opt.value ? (dark ? "#ff4e2a" : "#111827") : "var(--border)"}`,
-                  background: sortBy === opt.value ? (dark ? "#ff4e2a" : "#111827") : (dark ? "rgba(255,255,255,0.04)" : "white"),
-                  color: sortBy === opt.value ? "white" : "var(--muted)",
-                }}>
-                  {opt.label}
-                </button>
-              ))}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginTop: 24, paddingTop: 20, borderTop: dark ? "1px solid rgba(255,255,255,0.06)" : "1px solid #f1f5f9" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: softText, textTransform: "uppercase" }}>Sort Matrix:</span>
+              <div style={{ display: "flex", background: dark ? "rgba(0,0,0,0.2)" : "#f1f5f9", padding: 4, borderRadius: 12 }}>
+                {SORT_OPTIONS.map(opt => (
+                  <button key={opt.value} onClick={() => setSortBy(opt.value)} style={{
+                    padding: "6px 14px", borderRadius: 10, border: "none", fontSize: 12, fontWeight: 800, cursor: "pointer",
+                    background: sortBy === opt.value ? (dark ? "#ff4e2a" : "#111827") : "transparent",
+                    color: sortBy === opt.value ? "white" : softText,
+                    transition: "all 0.2s"
+                  }}>{opt.label}</button>
+                ))}
+              </div>
             </div>
             {activeFilterCount > 0 && (
-              <button onClick={clearFilters}
-                style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", background: dark ? "rgba(239,68,68,0.15)" : "#fef2f2",
-                  border: "1px solid #fecaca", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>
-                ✕ Clear filters
-              </button>
+              <button onClick={clearFilters} style={{ background: "none", border: "none", color: "#ef4444", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>✕ Reset Filters</button>
             )}
           </div>
         </div>
@@ -367,71 +402,92 @@ export default function Menu() {
           )}
         </div>
       ) : (
-        <div className="list">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
           {filtered.map(f => {
+            const isOut = !(f.inStock ?? true);
             return (
-              <div key={f._id} className="list-row" style={{ background: rowBg, color: rowText, border: rowBorder, boxShadow: rowShadow, gap: 12, flexWrap: "wrap" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: "1 1 260px" }}>
-                  <div style={{ position: "relative" }}>
-                    <img
-                      src={`${BASE_URL}/images/${f.image}`}
-                      alt={f.name}
-                      style={{ width: 52, height: 52, borderRadius: 10, objectFit: "cover",
-                        border: dark ? "1px solid rgba(255,255,255,0.12)" : "1px solid #e2e8f0" }}
-                      onError={e => { e.target.style.display = "none"; }}
-                    />
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, color: dark ? "#f9fafb" : "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {f.name}
+              <div key={f._id} style={{ 
+                background: rowBg, 
+                borderRadius: 28, 
+                border: rowBorder, 
+                boxShadow: "0 10px 30px rgba(0,0,0,0.04)",
+                overflow: "hidden",
+                transition: "all 0.3s ease",
+                display: "flex",
+                flexDirection: "column",
+                position: "relative"
+              }}>
+                {/* Visual Area */}
+                <div style={{ height: 180, position: "relative", overflow: "hidden" }}>
+                  <img src={`${BASE_URL}/images/${f.image}`} alt={f.name} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: isOut ? 0.4 : 1 }} onError={e => { e.target.style.display = "none"; }} />
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.4))" }} />
+                  
+                  <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 8 }}>
+                    <div style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", color: "white", padding: "6px 12px", borderRadius: 10, fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>
+                      {f.category}
                     </div>
-                    <div className="muted" style={{ fontSize: 12, color: dark ? "rgba(255,255,255,0.65)" : undefined, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.category}</div>
+                  </div>
+
+                  <div style={{ position: "absolute", bottom: 12, right: 12 }}>
+                    <div style={{ background: "rgba(255,255,255,0.9)", color: "#111827", padding: "6px 14px", borderRadius: 12, fontSize: 16, fontWeight: 1000, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.6 }}>AED</span> {f.price}
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end", flex: "1 1 320px" }}>
-                  <div style={{ fontWeight: 700, color: dark ? "#f9fafb" : "#111827" }}>AED {f.price}</div>
+                {/* Info Area */}
+                <div style={{ padding: 20, flex: 1, display: "flex", flexDirection: "column" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, lineHeight: 1.2, color: textPrimary }}>{f.name}</h3>
+                  </div>
 
-                  <button 
-                    onClick={() => toggleItemAvailability(f._id, f.inStock ?? true)}
-                    disabled={toggling[f._id]}
-                    style={{ 
-                      padding: "6px 14px", 
-                      borderRadius: 8, 
-                      border: (f.inStock ?? true) ? "1px solid #86efac" : "1px solid #fca5a5",
-                      background: (f.inStock ?? true) ? "#f0fdf4" : "#fff1f1", 
-                      color: (f.inStock ?? true) ? "#16a34a" : "#dc2626", 
-                      fontWeight: 700,
-                      cursor: toggling[f._id] ? "not-allowed" : "pointer", 
-                      fontSize: 13,
-                      opacity: toggling[f._id] ? 0.6 : 1
-                    }}>
-                    {(f.inStock ?? true) ? "✓ ON" : "✕ OFF"}
-                  </button>
+                  <p style={{ 
+                    fontSize: 13, 
+                    color: softText, 
+                    lineHeight: 1.5, 
+                    margin: "0 0 20px",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    flex: 1
+                  }}>
+                    {f.description || "No description provided. Click AI to generate one."}
+                  </p>
 
-                  <button onClick={() => openDealManager(f)}
-                    style={{
-                      padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 800,
-                      background: f.isFlashDeal ? "#FF3008" : (dark ? "rgba(255,48,8,0.15)" : "#fff3f0"),
-                      color: f.isFlashDeal ? "#fff" : "#FF3008",
-                      border: `1px solid ${f.isFlashDeal ? "#FF3008" : "rgba(255,48,8,0.3)"}`,
-                      cursor: "pointer", whiteSpace: "nowrap",
-                      boxShadow: f.isFlashDeal ? "0 4px 12px rgba(255,48,8,0.35)" : "none",
-                    }}>
-                    ⚡ {f.isFlashDeal ? "Active Deal" : "Lightning Deal"}
-                  </button>
-                  <button onClick={() => navigate(`/edit-food/${f._id}`)}
-                    style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #bfdbfe",
-                      background: dark ? "rgba(29,78,216,0.2)" : "#eff6ff", color: dark ? "#93c5fd" : "#1d4ed8", fontWeight: 700,
-                      cursor: "pointer", fontSize: 13 }}>
-                    Edit
-                  </button>
-                  <button onClick={() => removeFood(f._id)}
-                    style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #fca5a5",
-                      background: dark ? "rgba(220,38,38,0.18)" : "#fff1f1", color: "#dc2626", fontWeight: 700,
-                      cursor: "pointer", fontSize: 13 }}>
-                    Remove
-                  </button>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                     <button onClick={() => toggleItemAvailability(f._id, f.inStock ?? true)} style={{ 
+                       flex: 1, height: 36, borderRadius: 10, border: "none", 
+                       background: isOut ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.1)", 
+                       color: isOut ? "#ef4444" : "#22c55e", 
+                       fontWeight: 900, fontSize: 11, cursor: "pointer" 
+                     }}>
+                       {isOut ? "✕ OUT" : "✓ IN STOCK"}
+                     </button>
+                     <button onClick={() => openDealManager(f)} style={{ 
+                       flex: 1, height: 36, borderRadius: 10, border: "none", 
+                       background: f.isFlashDeal ? "rgba(255,48,8,0.1)" : "rgba(148,163,184,0.1)", 
+                       color: f.isFlashDeal ? "#FF3008" : softText, 
+                       fontWeight: 900, fontSize: 11, cursor: "pointer" 
+                     }}>
+                       ⚡ {f.isFlashDeal ? "DEAL LIVE" : "DEAL"}
+                     </button>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, paddingTop: 16, borderTop: dark ? "1px solid rgba(255,255,255,0.05)" : "1px solid #f1f5f9" }}>
+                    <button onClick={() => { setDescModal(f); setAiIngredients(""); setAiResult(f.description || ""); }} 
+                      style={{ height: 40, width: 40, borderRadius: 12, border: "none", background: "linear-gradient(135deg, #a855f7, #ec4899)", color: "white", cursor: "pointer", display: "grid", placeItems: "center" }}
+                      title="AI Description"
+                    >✨</button>
+                    <button onClick={() => navigate(`/edit-food/${f._id}`)}
+                      style={{ flex: 1, height: 40, borderRadius: 12, border: dark ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e2e8f0", background: "transparent", color: textPrimary, cursor: "pointer", fontWeight: 800, fontSize: 13 }}
+                    >Edit</button>
+                    <button onClick={() => removeFood(f._id)}
+                      style={{ height: 40, width: 40, borderRadius: 12, border: "none", background: dark ? "rgba(239,68,68,0.1)" : "#fef2f2", color: "#ef4444", cursor: "pointer", display: "grid", placeItems: "center" }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -681,6 +737,66 @@ export default function Menu() {
         </div>
       )}
       
+      {/* ✨ AI Description Writer Modal */}
+      {descModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: dark ? "#111827" : "#fff", width: "100%", maxWidth: 500, borderRadius: 24, padding: 32, boxShadow: "0 24px 80px rgba(0,0,0,0.35)", position: "relative", border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "#eee"}` }}>
+            <button onClick={() => setDescModal(null)} style={{ position: "absolute", top: 18, right: 18, background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--muted)", lineHeight: 1 }}>✕</button>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg, #a855f7, #ec4899)", display: "grid", placeItems: "center", flexShrink: 0, color: "white", fontSize: 24 }}>✨</div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "var(--text)" }}>AI Description Writer</h3>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>{descModal.name} · AED {descModal.price}</p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Ingredients & Notes (Optional)</label>
+                <textarea 
+                  value={aiIngredients} 
+                  onChange={e => setAiIngredients(e.target.value)}
+                  placeholder="e.g. Sourdough, rich tomato sauce, fresh basil, double cheese..."
+                  style={{ width: "100%", padding: "14px", borderRadius: 12, border: "1px solid var(--border)", background: dark ? "rgba(255,255,255,0.04)" : "#f9fafb", color: "var(--text)", fontSize: 14, minHeight: 80, boxSizing: "border-box", outline: "none", resize: "none" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={generateDescription}
+                  disabled={aiLoading}
+                  style={{ flex: 1, padding: "14px", background: aiLoading ? "#9ca3af" : "linear-gradient(90deg, #9333ea, #db2777)", color: "white", border: "none", borderRadius: 14, fontWeight: 900, fontSize: 14, cursor: aiLoading ? "not-allowed" : "pointer" }}
+                >
+                  {aiLoading ? "Generating..." : aiResult ? "Regenerate" : "Generate Description"}
+                </button>
+              </div>
+
+              {aiResult && (
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 800, color: "#10b981", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Generated Result (Editable)</label>
+                  <textarea 
+                    value={aiResult} 
+                    onChange={e => setAiResult(e.target.value)}
+                    style={{ width: "100%", padding: "14px", borderRadius: 12, border: "2px solid #10b981", background: dark ? "rgba(16,185,129,0.1)" : "#ecfdf5", color: "var(--text)", fontSize: 14, minHeight: 100, boxSizing: "border-box", outline: "none", resize: "none" }}
+                  />
+                  <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                    <button onClick={() => { setDescModal(null); setAiResult(""); }} style={{ flex: 1, padding: "14px", background: "transparent", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 14, fontWeight: 800, cursor: "pointer" }}>Cancel</button>
+                    <button 
+                      onClick={saveGeneratedDescription} 
+                      disabled={savingDesc}
+                      style={{ flex: 1, padding: "14px", background: savingDesc ? "#9ca3af" : "#10b981", color: "white", border: "none", borderRadius: 14, fontWeight: 900, cursor: savingDesc ? "not-allowed" : "pointer" }}
+                    >
+                      {savingDesc ? "Saving..." : "Save to Menu"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <ConfirmationModal 
         isOpen={confirm.isOpen}
         onClose={() => setConfirm({ ...confirm, isOpen: false })}

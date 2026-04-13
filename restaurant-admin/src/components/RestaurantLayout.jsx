@@ -241,7 +241,7 @@ export default function RestaurantLayout({ children }) {
           {link("/coupons", "🏷️ AI Promo Lab")}
           {link("/ai-insights", "🧠 AI Insights")}
           {link("/ai-customer-segmentation", "👥 Customer Segmentation")}
-          {link("/email-campaign", "📧 Campaigns")}
+          {link("/email-campaign", "📧 AI Campaigns")}
           {link("/review-reply", "💬 Review Reply")}
 
 
