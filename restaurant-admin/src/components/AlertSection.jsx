@@ -1,50 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function AlertSection({ foods = [], inventory = [], pendingOrders = [], restaurantStatus = "open", dark = false }) {
-  const navigate = useNavigate();
-
-  const alerts = [];
-
-  // Logic for alerts (Reduced density/count where possible)
-  if (restaurantStatus !== "open") {
-    alerts.push({
-      id: "status", type: "danger", title: "Restaurant Offline",
-      desc: "Status is set to 'Closed'. No new orders can be received.",
-      cta: "Open Now", action: () => navigate("/settings"),
-      icon: "🏪"
-    });
-  }
-
-  const lowStock = inventory.filter(i => i.currentStock <= i.minimumStock && i.isActive);
-  if (lowStock.length > 0) {
-    alerts.push({
-      id: "stock", type: "warning", title: "Low Stock Alert",
-      desc: `${lowStock.length} items are below minimum threshold.`,
-      cta: "Restock", action: () => navigate("/inventory"),
-      icon: "📉"
-    });
-  }
-
-  if (pendingOrders.length > 10) {
-     alerts.push({
-      id: "orders", type: "danger", title: "Order Backlog",
-      desc: `${pendingOrders.length} pending orders. High pressure in kitchen.`,
-      cta: "Check Queue", action: () => navigate("/orders"),
-      icon: "🔥"
-    });
-  }
-
-  const missingImage = foods.filter(f => !f.image || f.image === "").length;
-  if (missingImage > 0) {
-     alerts.push({
-      id: "menu", type: "info", title: "Missing Photos",
-      desc: `${missingImage} dishes have no image. This hurts conversion.`,
-      cta: "Fix Menu", action: () => navigate("/menu"),
-      icon: "📸"
-    });
-  }
-
+export default function AlertSection({ alerts = [], dark = false }) {
   if (alerts.length === 0) return null;
 
   return (

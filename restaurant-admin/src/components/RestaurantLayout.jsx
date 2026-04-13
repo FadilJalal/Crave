@@ -233,13 +233,14 @@ export default function RestaurantLayout({ children }) {
           <div className="ra-nav-section">Business</div>
           {link("/orders",         "🧾 Orders")}
           {link("/revenue",        "💰 Revenue")}
+          {link("/coupons",        "🎟️ Coupons & Promos")}
           {link("/inventory",      "📦 Inventory")}
           {link("/inventory/analytics", "📊 Inventory Analytics")}
           {link("/customers",      "👥 Customers")}
           {link("/email-campaign", "📧 Campaigns")}
 
           <div className="ra-nav-section">AI Tools</div>
-          {link("/promos", "🏷️ AI Promo Generator")}
+          {link("/flash-deals", "🏷️ AI Promo Generator")}
           {link("/ai-insights", "🧠 AI Insights")}
           {link("/ai-customer-segmentation", "👥 Customer Segmentation")}
 

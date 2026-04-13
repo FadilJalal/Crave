@@ -10,6 +10,7 @@ import ActivityFeed from "../components/ActivityFeed";
 import MiniInsights from "../components/MiniInsights";
 import TopItems from "../components/TopItems";
 import ReviewsPreview from "../components/ReviewsPreview";
+import NotificationCenter from "../components/NotificationCenter";
 import "./Dashboard.css";
 
 const STATUS_COLOR = {
@@ -146,9 +147,29 @@ export default function Dashboard() {
   const goAddFoodOrBilling = () => { navigate("/add-food"); };
 
   const pageBg = dark ? "var(--bg)" : "#f8fafc";
-  const heroBg = dark ? "linear-gradient(135deg, #111827 0%, #172033 52%, #1f2937 100%)" : "linear-gradient(135deg, #1e293b 0%, #334155 42%, #ff5a1f 100%)";
+  const heroBg = dark ? "linear-gradient(135deg, #111827 0%, #172033 52%, #1f2937 100%)" : "linear-gradient(135deg, #1e293b 0%, #334155 42%, #e64a19 100%)";
   const heroText = "white";
   const heroSubText = "rgba(255,255,255,0.76)";
+
+  // --- Calculate Alerts Centrally ---
+  const calculatedAlerts = useMemo(() => {
+    const arr = [];
+    if (sub?.restaurantStatus !== "open") {
+      arr.push({ id: "status", type: "danger", title: "Restaurant Offline", desc: "No new orders can be received.", icon: "🏪", action: () => navigate("/settings"), cta: "Fix" });
+    }
+    const lowStock = inventory.filter(i => i.currentStock <= i.minimumStock && i.isActive);
+    if (lowStock.length > 0) {
+      arr.push({ id: "stock", type: "warning", title: "Low Stock Alert", desc: lowStock.length === 1 ? `"${lowStock[0].itemName}" low (${lowStock[0].currentStock} left)` : `${lowStock.length} items running low`, icon: "📉", action: () => navigate("/inventory"), cta: "Items" });
+    }
+    if (pendingOrders.length > 10) {
+      arr.push({ id: "orders", type: "danger", title: "Order Backlog", desc: `${pendingOrders.length} pending orders. High pressure.`, icon: "🔥", action: () => navigate("/orders"), cta: "Queue" });
+    }
+    const missingImage = foods.filter(f => !f.image || f.image === "").length;
+    if (missingImage > 0) {
+      arr.push({ id: "menu", type: "info", title: "Missing Photos", desc: `${missingImage} dishes have no image.`, icon: "📸", action: () => navigate("/menu"), cta: "Fix" });
+    }
+    return arr;
+  }, [sub, inventory, pendingOrders, foods, navigate]);
 
   return (
     <RestaurantLayout>
@@ -156,12 +177,29 @@ export default function Dashboard() {
 
         {/* Header Section Only */}
         <div style={{
-          position: "relative", overflow: "hidden", borderRadius: 32, padding: "32px 32px 28px",
+          position: "relative", borderRadius: 32, padding: "32px 32px 28px",
           background: heroBg, boxShadow: dark ? "0 24px 60px rgba(2,6,23,0.45)" : "0 18px 42px rgba(15,23,42,0.10)", border: dark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(226,232,240,0.8)",
+          /* overflow: visible allows the notification dropdown to escape */
         }}>
-          <div style={{ position: "absolute", top: -20, right: -20, width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,0.05)", filter: "blur(40px)", pointerEvents: "none" }} />
+          {/* Decorative container to clip blur circles */}
+          <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 32, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", top: -20, right: -20, width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,0.05)", filter: "blur(40px)" }} />
+          </div>
           
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 18, flexWrap: "wrap", position: "relative", zIndex: 1 }}>
+          <div style={{ position: "absolute", top: 32, right: 32, display: "flex", gap: 12, alignItems: "center", zIndex: 10 }}>
+            <NotificationCenter activities={activityData} alerts={calculatedAlerts} dark={dark} />
+            <button onClick={toggle} style={{ padding: "12px 18px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.1)", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(12px)" }}>
+              {dark ? "☀️ Light Mode" : "🌙 Dark Mode"}
+            </button>
+            <button onClick={() => navigate("/orders")} style={{ padding: "12px 18px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.1)", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(12px)" }}>
+              🧾 Orders
+            </button>
+            <button onClick={goAddFoodOrBilling} style={{ padding: "12px 20px", borderRadius: 16, border: "none", background: "var(--orange)", color: "white", fontSize: 13, fontWeight: 800, cursor: "pointer", boxShadow: "0 10px 25px rgba(230,74,25,0.3)" }}>
+              + Add Food
+            </button>
+          </div>
+
+          <div style={{ position: "relative", zIndex: 1 }}>
             <div style={{ maxWidth: 760 }}>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 12px", borderRadius: 999, background: "rgba(255,255,255,0.1)", color: heroText, border: "1px solid rgba(255,255,255,0.14)", fontSize: 12, fontWeight: 800, letterSpacing: "0.4px", marginBottom: 16, backdropFilter: "blur(12px)" }}>
                 <span>⚡</span> Restaurant Control Center
@@ -178,28 +216,17 @@ export default function Dashboard() {
                 {new Date().toLocaleDateString("en-AE", { weekday: "long", day: "numeric", month: "long" })} · {todayOrders.length} orders today · AED {todayRevenue} revenue so far
               </p>
             </div>
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <button onClick={toggle} style={{ padding: "12px 18px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.1)", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(12px)" }}>
-                {dark ? "☀️ Light Mode" : "🌙 Dark Mode"}
-              </button>
-              <button onClick={() => navigate("/orders")} style={{ padding: "12px 18px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.1)", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(12px)" }}>
-                🧾 Orders
-              </button>
-              <button onClick={goAddFoodOrBilling} style={{ padding: "12px 20px", borderRadius: 16, border: "none", background: "var(--orange)", color: "white", fontSize: 13, fontWeight: 800, cursor: "pointer", boxShadow: "0 10px 25px rgba(255,90,31,0.3)" }}>
-                + Add Food
-              </button>
-            </div>
           </div>
 
           <DashboardSummary 
-          stats={{ 
-            todayRevenue, 
-            pendingOrdersCount: pendingOrders.length, 
-            completionRate,
-            todayOrdersCount: todayOrders.length 
-          }} 
-          dark={dark} 
-        />
+            stats={{ 
+              todayRevenue, 
+              pendingOrdersCount: pendingOrders.length, 
+              completionRate,
+              todayOrdersCount: todayOrders.length 
+            }} 
+            dark={dark} 
+          />
         </div>
 
         {/* Full Width Quick Management Row */}
@@ -208,10 +235,7 @@ export default function Dashboard() {
         {/* Full Width Priorities Row */}
         <div style={{ marginTop: 32 }}>
           <AlertSection 
-            foods={foods} 
-            inventory={inventory} 
-            pendingOrders={pendingOrders} 
-            restaurantStatus={sub?.restaurantStatus || "open"} 
+            alerts={calculatedAlerts} 
             dark={dark} 
           />
         </div>

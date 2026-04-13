@@ -20,9 +20,9 @@
   --info: #06b6d4;
 
   /* Orange theme */
-  --orange: #ff4e2a;
-  --orange2: #ff6a3d;
-  --orangeSoft: rgba(255, 78, 42, 0.10);
+  --orange: #e64a19;
+  --orange2: #f4511e;
+  --orangeSoft: rgba(230, 74, 25, 0.10);
   --sidebar-bg: #0b1220;
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-text: #f9fafb;
@@ -167,7 +167,7 @@ a {
   height: 40px;
   border-radius: 12px;
   background: linear-gradient(135deg, var(--orange), var(--orange2));
-  box-shadow: 0 8px 20px rgba(255, 78, 42, 0.35);
+  box-shadow: 0 8px 20px rgba(230, 74, 25, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;

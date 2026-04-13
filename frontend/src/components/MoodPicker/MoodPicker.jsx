@@ -63,6 +63,30 @@ const MoodPicker = () => {
     setLoading(false);
   };
 
+  const renderedResults = useMemo(() => results.map((item) => (
+      <div key={item._id} className="mp-item-card">
+          <FoodItem
+              id={item._id}
+              name={item.name}
+              description={item.description}
+              price={item.price}
+              image={item.image}
+              restaurantId={item.restaurantId}
+              customizations={item.customizations || []}
+              avgRating={item.avgRating || 0}
+              ratingCount={item.ratingCount || 0}
+              inStock={item.inStock !== false}
+              restaurantOpen={isRestaurantOpen(mergeRestaurantFromDirectory(item, restaurantsById))}
+              restaurantActive={mergeRestaurantFromDirectory(item, restaurantsById)?.isActive !== false}
+          />
+          {item.aiReason && (
+              <div className="mp-match-reason">
+                  {item.aiReason}
+              </div>
+          )}
+      </div>
+  )), [results, restaurantsById]);
+
   return (
     <section className="mp-section" id="mood-discovery">
       <div className="mp-container">
@@ -130,29 +154,7 @@ const MoodPicker = () => {
                 </div>
                 
                 <div className="mp-grid-display">
-                    {useMemo(() => results.map((item) => (
-                        <div key={item._id} className="mp-item-card">
-                            <FoodItem
-                                id={item._id}
-                                name={item.name}
-                                description={item.description}
-                                price={item.price}
-                                image={item.image}
-                                restaurantId={item.restaurantId}
-                                customizations={item.customizations || []}
-                                avgRating={item.avgRating || 0}
-                                ratingCount={item.ratingCount || 0}
-                                inStock={item.inStock !== false}
-                                restaurantOpen={isRestaurantOpen(mergeRestaurantFromDirectory(item, restaurantsById))}
-                                restaurantActive={mergeRestaurantFromDirectory(item, restaurantsById)?.isActive !== false}
-                            />
-                            {item.aiReason && (
-                                <div className="mp-match-reason">
-                                    {item.aiReason}
-                                </div>
-                            )}
-                        </div>
-                    )), [results, restaurantsById])}
+                    {renderedResults}
                 </div>
             </div>
         )}
