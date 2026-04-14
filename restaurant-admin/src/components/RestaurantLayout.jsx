@@ -5,6 +5,9 @@ import { clearRestaurantSession, redirectToFrontend } from "../utils/session";
 import { hasFeatureAccess } from "../utils/featureAccess";
 import { useTheme } from "../ThemeContext";
 
+import { useNotifications } from "../context/NotificationContext";
+import NotificationCenter from "./NotificationCenter";
+
 export default function RestaurantLayout({ children }) {
   const sidebarRef = useRef(null);
   const sidebarScrollRef = useRef(0);
@@ -56,7 +59,6 @@ export default function RestaurantLayout({ children }) {
   const restaurantLogo = restaurantInfo?.logo ? `${BASE_URL}/images/${restaurantInfo.logo}` : "";
   const restaurantName = restaurantInfo?.name || "Restaurant";
   const logout = () => { clearRestaurantSession(); redirectToFrontend(); };
-  const { dark, toggle } = useTheme();
 
   // Keep one global sidebar scroll position across all pages and refreshes.
   const SIDEBAR_SCROLL_KEY = "sidebarScroll_global";
@@ -198,6 +200,38 @@ export default function RestaurantLayout({ children }) {
     );
   };
 
+  const [expandedSections, setExpandedSections] = useState(() => {
+    try {
+      const saved = localStorage.getItem("ra_sidebar_expanded");
+      if (saved) return JSON.parse(saved);
+    } catch { }
+    return { management: true, growth: false, finance: false, ops: false };
+  });
+
+  useEffect(() => {
+    localStorage.setItem("ra_sidebar_expanded", JSON.stringify(expandedSections));
+  }, [expandedSections]);
+
+  const toggleSection = (sec) => {
+    setExpandedSections(prev => ({ ...prev, [sec]: !prev[sec] }));
+  };
+
+  const navGroup = (id, icon, label, children) => {
+    const isExpanded = expandedSections[id];
+    return (
+      <div className={`nav-group ${isExpanded ? "expanded" : ""}`} key={id}>
+        <button className="nav-group-header" onClick={() => toggleSection(id)}>
+          <span className="nav-group-icon">{icon}</span>
+          <span className="nav-group-label">{label}</span>
+          <span className={`nav-group-arrow ${isExpanded ? "open" : ""}`}>›</span>
+        </button>
+        <div className="nav-group-content">
+          {children}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="ra-shell">
       {isMobile && sidebarOpen && <button className="ra-overlay" aria-label="Close menu" onClick={() => setSidebarOpen(false)} />}
@@ -218,38 +252,43 @@ export default function RestaurantLayout({ children }) {
           )}
           <div>
             <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>{restaurantName}</h1>
-            <p style={{ margin: 0, fontSize: 12, marginTop: 2 }}>Restaurant Control Panel</p>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--sidebar-muted)" }}>Restaurant Control Panel</p>
           </div>
         </div>
 
         <nav className="nav">
           {link("/dashboard",      "📊 Dashboard")}
 
-          <div className="ra-nav-section">Food</div>
-          {linkOrDisabled("/menu", "🍽️ Menu", canMenu, "Menu management is turned off for your subscription. Upgrade or contact support.")}
-          {linkOrDisabled("/add-food", "➕ Add Food", canMenu, "Menu management is turned off for your subscription.")}
-          {linkOrDisabled("/bulk-upload", "📦 Bulk Upload", canBulk, "Bulk upload is not included in your plan, or menu management is off.")}
+          {navGroup("management", "⚡", "Management", [
+              linkOrDisabled("/menu", "🍽️ Menu & Dishes", canMenu),
+              linkOrDisabled("/add-food", "➕ Add New Food", canMenu),
+              linkOrDisabled("/bulk-upload", "📦 Bulk Quick Upload", canBulk),
+              link("/orders",         "🧾 Active Orders"),
+              link("/inventory",      "📦 Inventory & Stock"),
+          ])}
+          
+          {navGroup("growth", "🚀", "Growth & AI", [
+              linkOrDisabled("/coupons", "🏷️ AI Promo Lab", canAiPromo),
+              link("/ai-coupon-strategist", "🎯 Coupon Strategist"),
+              link("/email-campaign", "📧 AI Campaigns"),
+              linkOrDisabled("/ai-insights", "🧠 AI Insights", canAiInsights),
+              linkOrDisabled("/ai-customer-segmentation", "👥 AI Segmentation", canAiSegmentation),
+              link("/review-reply", "💬 Review Reply AI"),
+          ])}
+          
+          {navGroup("finance", "💰", "Finance & Data", [
+              link("/revenue",        "💰 Revenue"),
+              link("/finance",        "🏦 Billing & Payouts"),
+              link("/customers",      "👥 Customers"),
+              link("/inventory/analytics", "📊 Stock Analytics"),
+          ])}
 
-          <div className="ra-nav-section">Business</div>
-          {link("/orders",         "🧾 Orders")}
-          {link("/revenue",        "💰 Revenue")}
-          {link("/inventory",      "📦 Inventory")}
-          {link("/inventory/analytics", "📊 Inventory Analytics")}
-          {link("/customers",      "👥 Customers")}
-
-          <div className="ra-nav-section">AI Tools</div>
-          {link("/coupons", "🏷️ AI Promo Lab")}
-          {link("/ai-insights", "🧠 AI Insights")}
-          {link("/ai-customer-segmentation", "👥 Customer Segmentation")}
-          {link("/email-campaign", "📧 AI Campaigns")}
-          {link("/review-reply", "💬 Review Reply")}
-
-
-          <div className="ra-nav-section">Account</div>
-          {link("/messages",       "💬 Messages")}
-          {link("/reviews",        "⭐ Reviews")}
-          {link("/settings",       "⚙️ Settings")}
-          {link("/subscription",   "💳 Subscription")}
+          {navGroup("ops", "⚙️", "Operations", [
+              link("/messages",       "💬 Messages"),
+              link("/reviews",        "⭐ Reviews"),
+              link("/settings",       "⚙️ Settings"),
+              link("/subscription",   "💳 Subscription"),
+          ])}
         </nav>
 
         <div style={{ padding: "12px 0 16px", flexShrink: 0, borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: 4 }}>
@@ -267,7 +306,7 @@ export default function RestaurantLayout({ children }) {
           </div>
         )}
 
-        <div className="container" style={{ padding: 0 }}>
+        <div className="container" style={{ paddingTop: 5 }}>
           {children}
         </div>
       </main>

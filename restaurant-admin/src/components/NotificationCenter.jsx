@@ -1,215 +1,248 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useNotifications } from "../context/NotificationContext";
 
-export default function NotificationCenter({ activities = [], alerts = [], dark = false }) {
+export default function NotificationCenter({ dark = false }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("All");
+  const [readIds, setReadIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("ra_read_notifications") || "[]"); } catch { return []; }
+  });
+  
   const containerRef = useRef(null);
+  const sidebarRef = useRef(null);
   const navigate = useNavigate();
+  const { activities, alerts, clearAll } = useNotifications();
 
-  const timeAgo = (dateStr) => {
-    if (!dateStr) return "";
-    const diff = Date.now() - new Date(dateStr).getTime();
-    if (isNaN(diff)) return "";
-    const mins = Math.floor(diff / 60000);
-    const hrs = Math.floor(mins / 60);
-    const days = Math.floor(hrs / 24);
-    if (mins < 1) return "Just now";
-    if (mins < 60) return `${mins}m ago`;
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${days}d ago`;
+  // Persist read status
+  useEffect(() => {
+    localStorage.setItem("ra_read_notifications", JSON.stringify(readIds));
+  }, [readIds]);
+
+  const allNotifications = useMemo(() => {
+    const list = [
+      ...alerts.map(a => ({ ...a, category: "System", type: "alert", realTime: Date.now() })),
+      ...activities.map(act => ({ ...act, category: act.type === "order" ? "Orders" : act.type === "review" ? "Reviews" : "System", realTime: new Date(act.time).getTime() }))
+    ].sort((a, b) => b.realTime - a.realTime);
+
+    if (activeTab === "All") return list;
+    return list.filter(n => n.category === activeTab);
+  }, [activities, alerts, activeTab]);
+
+  const hasUnreadGlobal = useMemo(() => {
+    const ids = [
+      ...alerts.map(a => `alert-${a.id}`),
+      ...activities.map(act => act.id)
+    ];
+    return ids.some(id => !readIds.includes(id));
+  }, [activities, alerts, readIds]);
+
+  const groupedNotifications = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const yesterday = today - 86400000;
+
+    const groups = { Today: [], Yesterday: [], Earlier: [] };
+
+    allNotifications.forEach(n => {
+      const t = n.realTime;
+      if (t >= today) groups.Today.push(n);
+      else if (t >= yesterday) groups.Yesterday.push(n);
+      else groups.Earlier.push(n);
+    });
+
+    return Object.entries(groups).filter(([_, items]) => items.length > 0);
+  }, [allNotifications]);
+
+  const markAllRead = () => {
+    const ids = allNotifications.map(n => n.id || `alert-${n.id}`);
+    setReadIds([...new Set([...readIds, ...ids])]);
   };
 
-  // Close when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const handleNotifyClick = (n) => {
+    const id = n.id || `alert-${n.id}`;
+    if (!readIds.includes(id)) setReadIds([...readIds, id]);
+    
+    if (n.action) n.action();
+    else if (n.type === "order" || n.id === "orders") navigate("/orders");
+    else if (n.type === "review") navigate("/reviews");
+    else if (n.id === "sub") navigate("/subscription");
+    else if (n.id === "status") navigate("/settings");
+    else if (n.id === "menu") navigate("/menu");
+    else if (n.id === "messages") navigate("/messages");
+    else if (n.id === "promo") navigate("/coupons");
+    else if (n.id === "stock" || n.id === "stock-critical") navigate("/inventory");
+    
+    setIsOpen(false);
+  };
 
-  const allNotifications = [
-    ...alerts.map(a => ({ ...a, category: "alert", id: `alert-${a.id}`, time: Date.now() })), // Alerts are "current"
-    ...activities.map(act => ({ ...act, category: "activity" }))
-  ].sort((a, b) => {
-    if (a.category === "alert" && b.category !== "alert") return -1;
-    if (a.category !== "alert" && b.category === "alert") return 1;
-    return new Date(b.time || 0) - new Date(a.time || 0);
-  });
-
-  const hasUnread = allNotifications.length > 0;
+  const timeLabel = (time) => {
+    const d = new Date(time);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
-    <div style={{ position: "relative" }} ref={containerRef}>
-      {/* Bell Button */}
+    <div ref={containerRef}>
+      {/* Trigger Bell */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen(true)}
         style={{
-          width: 46, height: 46,
-          borderRadius: 16,
-          border: isOpen ? "1px solid rgba(255,255,255,0.4)" : "1px solid rgba(255,255,255,0.18)",
-          background: isOpen ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.1)",
-          color: "white",
-          cursor: "pointer",
-          backdropFilter: "blur(12px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-          transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-          boxShadow: isOpen ? "0 8px 24px rgba(0,0,0,0.2)" : "none",
-          transform: isOpen ? "scale(1.05)" : "scale(1)"
+          width: 44, height: 44, borderRadius: 14,
+          border: "1px solid rgba(255,255,255,0.18)",
+          background: "rgba(255,255,255,0.1)",
+          color: "white", cursor: "pointer", backdropFilter: "blur(12px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          position: "relative", transition: "all 0.3s ease",
         }}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
           <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
         </svg>
-        {hasUnread && (
+        {hasUnreadGlobal && (
           <span style={{
-            position: "absolute",
-            top: 12,
-            right: 12,
-            width: 9,
-            height: 9,
-            background: "#ef4444",
-            borderRadius: "50%",
-            border: "2px solid #1e2029",
-            boxShadow: "0 0 12px rgba(239,68,68,0.6)",
-            animation: "nc-pulse 2s infinite"
+            position: "absolute", top: 10, right: 10, width: 8, height: 8,
+            background: "#ff4e2a", borderRadius: "50%", border: "2px solid #111827",
+            boxShadow: "0 0 10px rgba(255,78,42,0.5)", animation: "nc-pulse 2s infinite"
           }} />
         )}
       </button>
 
-      {/* Dropdown */}
+      {/* Sidebar Panel Overlay */}
       {isOpen && (
         <div style={{
-          position: "absolute",
-          top: "calc(100% + 16px)",
-          right: 0,
-          width: 360,
-          background: dark ? "rgba(15, 23, 42, 0.88)" : "rgba(255, 255, 255, 0.94)",
-          backdropFilter: "blur(24px) saturate(180%)",
-          borderRadius: 28,
-          boxShadow: "0 20px 60px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.08)",
-          zIndex: 1000,
-          overflow: "hidden",
-          animation: "nc-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1)"
-        }}>
-          {/* Top highlight bar */}
-          <div style={{ height: 3, background: "linear-gradient(90deg, #e64a19, #f4511e)", width: "100%" }} />
-
-          <div style={{
-            padding: "20px 24px 14px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end"
-          }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: dark ? "white" : "#0f172a", letterSpacing: "-0.5px" }}>Inbox</h3>
-              <p style={{ margin: "2px 0 0", fontSize: 11, fontWeight: 700, color: dark ? "rgba(255,255,255,0.4)" : "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                Latest Updates
-              </p>
-            </div>
-            <span style={{ 
-              fontSize: 10, fontWeight: 900, padding: "4px 10px", borderRadius: 8, 
-              background: dark ? "rgba(255,255,255,0.06)" : "#f1f5f9",
-              color: dark ? "white" : "#475569"
-            }}>
-              {allNotifications.length} ITEMS
-            </span>
-          </div>
-
-          <div style={{ maxHeight: 420, overflowY: "auto", padding: "0 12px 12px" }}>
-            {allNotifications.length === 0 ? (
-              <div style={{ padding: "60px 20px", textAlign: "center" }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>✨</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: dark ? "white" : "#1e293b" }}>You're all caught up</div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: dark ? "rgba(255,255,255,0.4)" : "#94a3b8", marginTop: 4 }}>Everything looks perfect right now.</div>
-              </div>
-            ) : (
-              allNotifications.map((n, i) => (
-                <div
-                  key={n.id || i}
-                  onClick={() => {
-                    if (n.action) n.action();
-                    else if (n.type === "order") navigate("/orders");
-                    else if (n.type === "review") navigate("/reviews");
-                    setIsOpen(false);
-                  }}
-                  style={{
-                    padding: "16px 16px",
-                    borderRadius: 20,
-                    cursor: "pointer",
-                    display: "flex",
-                    gap: 16,
-                    alignItems: "flex-start",
-                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                    marginBottom: 4,
-                    background: "transparent"
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = dark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)";
-                    e.currentTarget.style.transform = "translateX(4px)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.transform = "translateX(0)";
-                  }}
-                >
-                  <div style={{ 
-                    width: 44, height: 44, borderRadius: 14, 
-                    background: dark ? "rgba(255,255,255,0.05)" : "#f8fafc",
-                    border: `1px solid ${dark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 20, flexShrink: 0,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.02)"
-                  }}>
-                    {n.icon || "🔔"}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "white" : "#1e293b", letterSpacing: "-0.2px" }}>{n.title}</div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: dark ? "rgba(255,255,255,0.3)" : "#94a3b8" }}>{timeAgo(n.time)}</div>
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: dark ? "rgba(255,255,255,0.5)" : "#64748b", lineHeight: 1.4 }}>{n.desc}</div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div 
-            onClick={() => { navigate("/orders"); setIsOpen(false); }}
-            style={{
-              padding: "16px",
-              textAlign: "center",
-              background: dark ? "rgba(255,255,255,0.02)" : "#fcfdfe",
-              borderTop: `1px solid ${dark ? "rgba(255,255,255,0.04)" : "#f1f5f9"}`,
-              fontSize: 12,
-              fontWeight: 900,
-              color: "#e64a19",
-              cursor: "pointer",
-              letterSpacing: "0.2px"
-            }}
-          >
-            Manage All Messages →
-          </div>
-        </div>
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+          zIndex: 9998, animation: "fadeIn 0.3s ease"
+        }} onClick={() => setIsOpen(false)} />
       )}
 
+      {/* Sidebar Panel */}
+      <div 
+        ref={sidebarRef}
+        style={{
+          position: "fixed", top: 0, right: isOpen ? 0 : "-420px",
+          width: "min(400px, 90%)", height: "100%",
+          background: dark ? "#0f172a" : "#fff",
+          boxShadow: "-10px 0 50px rgba(0,0,0,0.1)",
+          zIndex: 9999, transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+          display: "flex", flexDirection: "column",
+          borderLeft: `1px solid ${dark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}`
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: "24px 28px", borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.05)" : "#f1f5f9"}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 24, fontWeight: 950, color: dark ? "#fff" : "#0f172a", letterSpacing: "-1px" }}>Notifications</h2>
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>Stay updated with your store activity</p>
+            </div>
+            <button 
+              onClick={() => setIsOpen(false)}
+              style={{ background: dark ? "#1e293b" : "#f1f5f9", border: "none", width: 32, height: 32, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div style={{ display: "flex", gap: 12 }}>
+            <button onClick={markAllRead} style={{ background: "transparent", border: "none", color: "var(--dash-p)", fontSize: 12, fontWeight: 800, cursor: "pointer", padding: 0 }}>Mark all as read</button>
+            <span style={{ color: "var(--muted)", opacity: 0.3 }}>•</span>
+            <button onClick={clearAll} style={{ background: "transparent", border: "none", color: "var(--muted)", fontSize: 12, fontWeight: 800, cursor: "pointer", padding: 0 }}>Clear all</button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ px: 28, display: "flex", gap: 8, padding: "16px 28px", background: dark ? "rgba(255,255,255,0.02)" : "#fcfdfe" }}>
+          {["All", "Orders", "Reviews", "System"].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: "8px 16px", borderRadius: 12, fontSize: 12, fontWeight: 800,
+                cursor: "pointer", transition: "all 0.2s",
+                background: activeTab === tab ? "#ff4e2a" : "transparent",
+                color: activeTab === tab ? "#fff" : "var(--muted)",
+                border: "none"
+              }}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
+          {allNotifications.length === 0 ? (
+            <div style={{ height: "60%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+              <div style={{ fontSize: 48, marginBottom: 20 }}>🎉</div>
+              <h3 style={{ fontSize: 18, fontWeight: 900, color: dark ? "#fff" : "#0f172a", margin: 0 }}>You're all caught up</h3>
+              <p style={{ fontSize: 14, color: "var(--muted)", marginTop: 8, maxWidth: 200 }}>Check back later for new updates from your restaurant.</p>
+            </div>
+          ) : (
+            groupedNotifications.map(([title, items]) => (
+              <div key={title} style={{ marginBottom: 28 }}>
+                <h4 style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "1px", color: "var(--muted)", marginBottom: 12, paddingLeft: 8 }}>{title}</h4>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {items.map((n, i) => {
+                    const isRead = readIds.includes(n.id || `alert-${n.id}`);
+                    return (
+                      <div
+                        key={n.id || i}
+                        onClick={() => handleNotifyClick(n)}
+                        style={{
+                          padding: "16px", borderRadius: 18, cursor: "pointer",
+                          display: "flex", gap: 16, transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                          background: isRead ? "transparent" : (dark ? "rgba(255,78,42,0.05)" : "rgba(255,78,42,0.03)"),
+                          border: `1px solid ${isRead ? (dark ? "rgba(255,255,255,0.04)" : "#f1f5f9") : "rgba(255,78,42,0.1)"}`,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "scale(1.02)";
+                          e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.05)";
+                          if (isRead) e.currentTarget.style.background = dark ? "rgba(255,255,255,0.05)" : "#f8fafc";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "scale(1)";
+                          e.currentTarget.style.boxShadow = "none";
+                          if (isRead) e.currentTarget.style.background = "transparent";
+                        }}
+                      >
+                        <div style={{ 
+                          width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+                          background: n.color ? `${n.color}15` : (dark ? "#1e293b" : "#f1f5f9"),
+                          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: n.color || "inherit"
+                        }}>
+                          {n.icon || "🔔"}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                            <span style={{ fontSize: 14, fontWeight: isRead ? 700 : 900, color: dark ? "#fff" : "#0f172a" }}>{n.title}</span>
+                            {!isRead && <span style={{ width: 8, height: 8, background: "#ff4e2a", borderRadius: "50%", marginTop: 4 }}></span>}
+                          </div>
+                          <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", fontWeight: 500, lineHeight: 1.4 }}>{n.desc}</p>
+                          <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: "var(--muted)", opacity: 0.6 }}>{timeLabel(n.realTime)}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {title !== "Earlier" && <div style={{ height: 1, background: dark ? "rgba(255,255,255,0.05)" : "#f1f5f9", marginTop: 24 }}></div>}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
       <style>{`
-        @keyframes nc-slide-in {
-          from { opacity: 0; transform: translateY(20px) scale(0.96) rotateX(-10deg); }
-          to { opacity: 1; transform: translateY(0) scale(1) rotateX(0deg); }
-        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes nc-pulse {
           0% { transform: scale(1); opacity: 1; }
           50% { transform: scale(1.4); opacity: 0.5; }
           100% { transform: scale(1); opacity: 1; }
         }
-        ::-webkit-scrollbar { width: 0px; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); borderRadius: 10px; }
+        [data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
       `}</style>
     </div>
   );

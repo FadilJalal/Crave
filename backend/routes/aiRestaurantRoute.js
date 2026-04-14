@@ -1021,4 +1021,156 @@ router.post("/generate-description", restaurantAuth, async (req, res) => {
   }
 });
 
+// ── 20. AI COUPON STRATEGIST ──────────────────────────────────────────────
+router.get("/coupon-data", restaurantAuth, async (req, res) => {
+  try {
+    const orders = await orderModel.find({ restaurantId: req.restaurantId, status: { $ne: "Cancelled" } }).lean();
+    
+    if (!orders.length) {
+      return res.json({
+        success: true,
+        data: {
+          totalCustomers: 0,
+          avgOrderValue: 0,
+          atRiskCount: 0,
+          mostOrderedCategory: "N/A"
+        }
+      });
+    }
+
+    const uniqueCustomers = new Set(orders.map(o => String(o.userId)));
+    const totalRev = orders.reduce((s, o) => s + (o.amount || 0), 0);
+    const avgOrderValue = Math.round(totalRev / orders.length);
+    
+    const now = new Date();
+    const customerLastOrder = {};
+    const categoryCount = {};
+
+    orders.forEach(o => {
+      const uid = String(o.userId);
+      const date = new Date(o.createdAt);
+      if (!customerLastOrder[uid] || date > customerLastOrder[uid]) {
+        customerLastOrder[uid] = date;
+      }
+      
+      (o.items || []).forEach(item => {
+        const cat = item.category || "General";
+        categoryCount[cat] = (categoryCount[cat] || 0) + (item.quantity || 1);
+      });
+    });
+
+    let atRiskCount = 0;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    Object.values(customerLastOrder).forEach(lastDate => {
+      if (lastDate < thirtyDaysAgo) atRiskCount++;
+    });
+
+    let mostOrderedCategory = "N/A";
+    let maxCount = 0;
+    Object.entries(categoryCount).forEach(([cat, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostOrderedCategory = cat;
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        totalCustomers: uniqueCustomers.size,
+        avgOrderValue,
+        atRiskCount,
+        mostOrderedCategory
+      }
+    });
+
+  } catch (err) {
+    console.error("[ai/coupon-data]", err);
+    res.json({ success: false, message: "Failed to fetch coupon data" });
+  }
+});
+
+router.post("/coupon-strategies", restaurantAuth, async (req, res) => {
+  try {
+    const orders = await orderModel.find({ restaurantId: req.restaurantId, status: { $ne: "Cancelled" } }).lean();
+    const apiKey = process.env.GROQ_API_KEY;
+
+    if (!apiKey) {
+      return res.status(503).json({ success: false, message: "Groq AI is not configured." });
+    }
+
+    const totalCustomers = new Set(orders.map(o => String(o.userId))).size;
+    const totalRev = orders.reduce((s,o)=>s+(o.amount || 0), 0);
+    const avgOrderValue = orders.length ? Math.round(totalRev/orders.length) : 0;
+    
+    const messages = [
+      {
+        role: "system",
+        content: "You are a restaurant marketing strategist. Based on this restaurant's order data, suggest 5 targeted coupon strategies. For each strategy return a JSON array where each object has: title, segment (one of: VIP, Loyal, Regular, At Risk, New, All), discount, bestTime, reason. Return ONLY valid JSON array, no explanation, no markdown."
+      },
+      {
+        role: "user",
+        content: `Restaurant Stats:\nTotal Customers: ${totalCustomers}\nAvg Order Value: AED ${avgOrderValue}\nTotal Orders: ${orders.length}`
+      }
+    ];
+
+    const resp = await fetch(GROQ_CHAT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: GROQ_MODEL, temperature: 0.8, messages })
+    });
+
+    const data = await resp.json();
+    const content = data?.choices?.[0]?.message?.content || "[]";
+    const strategies = parseFirstJsonObject(content) || [];
+
+    res.json({ success: true, strategies });
+  } catch (err) {
+    console.error("[ai/coupon-strategies]", err);
+    res.json({ success: false, message: "Failed to generate strategies" });
+  }
+});
+
+router.post("/custom-coupon-strategy", restaurantAuth, async (req, res) => {
+  try {
+    const { goal } = req.body;
+    const orders = await orderModel.find({ restaurantId: req.restaurantId, status: { $ne: "Cancelled" } }).lean();
+    const apiKey = process.env.GROQ_API_KEY;
+
+    if (!apiKey) {
+      return res.status(503).json({ success: false, message: "Groq AI is not configured." });
+    }
+
+    const totalCustomers = new Set(orders.map(o => String(o.userId))).size;
+    
+    const messages = [
+      {
+        role: "system",
+        content: "You are a restaurant marketing expert. The owner has described their goal. Suggest one targeted coupon strategy as a JSON object with fields: title, segment, discount, bestTime, reason. Return ONLY valid JSON, no markdown."
+      },
+      {
+        role: "user",
+        content: `Goal: ${goal}\nRestaurant Stats:\nTotal Customers: ${totalCustomers}\nTotal Orders: ${orders.length}`
+      }
+    ];
+
+    const resp = await fetch(GROQ_CHAT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: GROQ_MODEL, temperature: 0.8, messages })
+    });
+
+    const data = await resp.json();
+    const content = data?.choices?.[0]?.message?.content || "{}";
+    const strategy = parseFirstJsonObject(content) || {};
+
+    res.json({ success: true, strategy });
+  } catch (err) {
+    console.error("[ai/custom-coupon-strategy]", err);
+    res.json({ success: false, message: "Failed to build custom strategy" });
+  }
+});
+
 export default router;

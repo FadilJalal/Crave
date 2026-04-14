@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import OrderInsights from '../../components/OrderInsights/OrderInsights';
 import ReviewForm from '../../components/ReviewForm/ReviewForm';
 
-const STATUS_STEPS = ['Order Placed', 'Food Processing', 'Out for Delivery', 'Delivered'];
+const STATUS_STEPS = ['Order Placed', 'Waiting for Restaurant to Accept', 'Food Processing', 'Out for Delivery', 'Delivered'];
 
 const getOrderItemsSubtotal = (order) =>
   (order?.items || []).reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.quantity) || 0)), 0);
@@ -25,9 +25,10 @@ const getOrderDisplayTotal = (order) => {
 
 const statusIndex = (status) => {
   const s = (status || '').toLowerCase().trim();
-  if (s === 'food processing')  return 1;
-  if (s === 'out for delivery') return 2;
-  if (s === 'delivered')         return 3;
+  if (s === 'pending')          return 1; 
+  if (s === 'food processing')  return 2;
+  if (s === 'out for delivery') return 3;
+  if (s === 'delivered')        return 4;
   return 0;
 };
 
@@ -287,7 +288,7 @@ const MyOrders = () => {
                     <div className='mo-order-right'>
                       <p className='mo-order-amount'>{currency}{displayTotal.toFixed(2)}</p>
                       <span className={`mo-status-badge ${isDelivered ? 'mo-delivered' : isCancelled ? 'mo-cancelled' : 'mo-active'}`}>
-                        {isDelivered ? `✓ ${t("status_delivered")}` : isCancelled ? `🚫 ${t("status_cancelled")}` : '⏱ ' + (order.status || 'Processing')}
+                        {isDelivered ? `✓ ${t("status_delivered")}` : isCancelled ? `🚫 ${t("status_cancelled")}` : order.status === 'Pending' ? '⏰ Awaiting Acceptance' : '⏱ ' + (order.status || 'Food Processing')}
                       </span>
                     </div>
                   </div>
@@ -297,14 +298,15 @@ const MyOrders = () => {
                       {STATUS_STEPS.map((s, idx) => (
                         <React.Fragment key={s}>
                           <div className='mo-prog-step'>
-                            <div className={`mo-prog-dot ${idx <= step ? 'mo-prog-done' : ''} ${idx === step ? 'mo-prog-current' : ''}`}>
+                            <div className={`mo-prog-dot ${idx <= step ? 'mo-prog-done' : ''} ${idx === step ? 'mo-prog-current' : ''}`} style={{ width: 32, height: 32, fontSize: 12 }}>
                               {idx <= step ? '✓' : idx + 1}
                             </div>
-                            <p className={`mo-prog-label ${idx <= step ? 'mo-prog-label-done' : ''}`}>
-                              {s === 'Order Placed' ? t("my_orders_title").replace('طلباتي', 'تم الطلب').replace('My Orders', 'Order Placed') : 
-                               s === 'Food Processing' ? t("status_food_processing") : 
-                               s === 'Out for Delivery' ? t("status_out_for_delivery") : t("status_delivered")}
-                            </p>
+                            <p className={`mo-prog-label ${idx <= step ? 'mo-prog-label-done' : ''}`} style={{ fontSize: 10, fontWeight: 900, marginTop: 10, lineHeight: 1.1 }}>
+                               {s === 'Order Placed' ? "Order Placed" : 
+                                s === 'Waiting for Restaurant to Accept' ? "Waiting for Acceptance" :
+                                s === 'Food Processing' ? "Food Processing" : 
+                                s === 'Out for Delivery' ? "Out for Delivery" : "Delivered"}
+                             </p>
                           </div>
                           {idx < STATUS_STEPS.length - 1 && (
                             <div className={`mo-prog-line ${idx < step ? 'mo-prog-line-done' : ''}`}/>

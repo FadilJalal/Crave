@@ -24,6 +24,7 @@ import ProtectedFeature from "./components/ProtectedFeature";
 import Login from "./Pages/Login";
 import Finance from "./Pages/Finance";
 import ReviewReply from "./Pages/ReviewReply";
+import AICouponStrategist from "./Pages/AICouponStrategist";
 
 export default function App() {
   return (
@@ -39,7 +40,7 @@ export default function App() {
       <Route path="/bulk-upload" element={<ProtectedRoute><ProtectedFeature featureName="bulkUpload"><BulkUpload /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/edit-food/:id" element={<ProtectedRoute><ProtectedFeature featureName="menu"><EditFood /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-      <Route path="/analytics" element={<ProtectedRoute><Revenue /></ProtectedRoute>} />
+      <Route path="/revenue" element={<ProtectedRoute><Revenue /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
       <Route path="/email-campaign" element={<ProtectedRoute><EmailCampaign /></ProtectedRoute>} />
@@ -52,6 +53,7 @@ export default function App() {
       <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><AICustomerSegmentation /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/coupons" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><Promos /></ProtectedFeature></ProtectedRoute>} />
       <Route path="/review-reply" element={<ProtectedRoute><ReviewReply /></ProtectedRoute>} />
+      <Route path="/ai-coupon-strategist" element={<ProtectedRoute><AICouponStrategist /></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
 
       <Route path="/" element={<Navigate to="/login" replace />} />

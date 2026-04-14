@@ -343,7 +343,9 @@ const PlaceOrder = () => {
         if (res.data.success && res.data.paid) {
           toast.success('Payment successful! Order placed.');
           setCartItems({});
-          navigate('/myorders');
+          const newOrderId = res.data.order?._id || res.data.orderId;
+          if (newOrderId) navigate(`/order/track/${newOrderId}`);
+          else navigate('/myorders');
         } else if (res.data.success && res.data.session_url) {
           window.location.replace(res.data.session_url);
         } else if (res.data.outOfRange) {
@@ -361,7 +363,11 @@ const PlaceOrder = () => {
               address: { street: data.street, building: data.building, apartment: data.apartment, area: data.area, city: data.city, country: data.country, zipcode: data.zipcode }
             }, { headers: { token } });
           } catch {}
-          toast.success('Order placed successfully!'); setCartItems({}); navigate('/myorders');
+          toast.success('Order placed successfully!'); 
+          setCartItems({}); 
+          const newOrderId = res.data.order?._id || res.data.orderId;
+          if (newOrderId) navigate(`/order/track/${newOrderId}`);
+          else navigate('/myorders');
         }
         else if (res.data.outOfRange) toast.error('🚫 ' + res.data.message, { autoClose: 6000 });
         else toast.error(res.data.message || 'Something went wrong');

@@ -70,7 +70,7 @@ export const NotificationProvider = ({ children }) => {
 
       // Derive Alerts
       const alertsArr = [];
-      if (subData && subData.restaurantStatus === "closed") {
+      if (subData && subData.isActive === false) {
         alertsArr.push({ id: "status", type: "danger", title: "Restaurant Offline", desc: "Your store is currently hidden from customers.", icon: "🏪", cta: "Fix" });
       }
       const missingImage = foodsList.filter(f => !f.image || f.image === "").length;
@@ -166,7 +166,7 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     if (Notification.permission !== "granted") Notification.requestPermission();
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 25000);
+    const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
   }, []);
 

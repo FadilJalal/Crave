@@ -487,6 +487,8 @@ export default function Settings() {
     }
   };
 
+  const [activeTab, setActiveTab] = useState("profile");
+
   if (loading) return (
     <RestaurantLayout>
       <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
@@ -495,763 +497,316 @@ export default function Settings() {
     </RestaurantLayout>
   );
 
+  const tabs = [
+    { id: "profile", label: "Store Profile", icon: "🏢" },
+    { id: "operation", label: "Operations", icon: "⚙️" },
+    { id: "delivery", label: "Delivery Rules", icon: "🚚" },
+    { id: "matching", label: "Shared Matching", icon: "🤝" },
+  ];
+
   return (
     <RestaurantLayout>
-      <div className="settings-page">
-        {(() => {
-          const textPrimary = dark ? "#f9fafb" : "#111827";
-          const textMuted = dark ? "rgba(249,250,251,0.68)" : "var(--muted)";
-          const cardBg = dark ? "#111827" : "white";
-          const softBg = dark ? "#0f172a" : "#f9fafb";
-          const inputBg = dark ? "#0b1324" : "white";
-          const borderClr = dark ? "rgba(255,255,255,0.12)" : "var(--border)";
-
-          return (
-            <>
-        {/* Page header */}
-        <div className="settings-header">
+      <div style={{ width: "100%", maxWidth: 1040, margin: "0 auto", padding: "0 10px 40px" }}>
+        
+        {/* Header Section */}
+        <div style={{ 
+          display: "flex", alignItems: "center", justifyContent: "space-between", 
+          marginBottom: 32, flexWrap: "wrap", gap: 16 
+        }}>
           <div>
-            <h2 style={{ margin:0, fontSize:26, fontWeight:900, letterSpacing:"-0.5px" }}>Settings</h2>
-            <p style={{ margin:"4px 0 0", fontSize:13, color:"var(--muted)" }}>Manage your store profile, delivery rules, and opening hours</p>
+            <h2 style={{ margin: 0, fontSize: 32, fontWeight: 900, letterSpacing: "-1px" }}>Store Control</h2>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--muted)", fontWeight: 500 }}>
+              Master configuration for your digital storefront
+            </p>
           </div>
-          <div className="settings-actions">
-            <div style={{ display:"flex", alignItems:"center", gap:7, padding:"8px 14px", borderRadius:12,
-              background: openNow ? "#f0fdf4" : "#fef2f2",
-              border:`1px solid ${openNow ? "#86efac" : "#fecaca"}` }}>
-              <div style={{ width:8, height:8, borderRadius:"50%",
-                background: openNow ? "#22c55e" : "#ef4444",
-                boxShadow: openNow ? "0 0 0 3px #bbf7d0" : "0 0 0 3px #fecaca" }} />
-              <span style={{ fontSize:13, fontWeight:800, color: openNow ? "#16a34a" : "#dc2626" }}>
-                {openNow ? "Open Now" : "Closed Now"}
-              </span>
-            </div>
-            <button onClick={save} disabled={saving} style={{
-              padding:"10px 22px", borderRadius:12, border:"none",
-              background:"linear-gradient(135deg, #ff4e2a, #ff6a3d)",
-              color:"white", fontWeight:800, fontSize:14, cursor: saving ? "not-allowed":"pointer",
-              opacity: saving ? 0.7 : 1, boxShadow:"0 4px 14px rgba(255,78,42,0.3)",
-            }}>{saving ? "Saving…" : "Save Settings"}</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+             <div style={{ 
+               display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 12,
+               background: openNow ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
+               border: `1px solid ${openNow ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`
+             }}>
+               <div style={{ 
+                 width: 8, height: 8, borderRadius: "50%", 
+                 background: openNow ? "#22c55e" : "#ef4444",
+                 boxShadow: `0 0 10px ${openNow ? "#22c55e" : "#ef4444"}`
+               }} />
+               <span style={{ fontSize: 13, fontWeight: 800, color: openNow ? "#16a34a" : "#dc2626" }}>
+                 {openNow ? "WE ARE OPEN" : "WE ARE CLOSED"}
+               </span>
+             </div>
+             <button onClick={save} disabled={saving} style={{
+               padding: "12px 28px", borderRadius: 16, border: "none",
+               background: "linear-gradient(135deg, #ff4e2a, #ff6a3d)",
+               color: "white", fontWeight: 900, fontSize: 14, cursor: saving ? "not-allowed" : "pointer",
+               boxShadow: "0 8px 20px rgba(255,78,42,0.25)",
+             }}>
+               {saving ? "Deploying..." : "Save Changes"}
+             </button>
           </div>
         </div>
 
-        <div className="settings-card">
-          <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827", marginBottom:2 }}>🏷️ Restaurant Logo</div>
-          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14 }}>
-            Upload a square logo for your sidebar and restaurant card.
-          </div>
-
-          <div style={{
-            display:"grid",
-            gridTemplateColumns:"120px 1fr",
-            gap:16,
-            alignItems:"start",
+        <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 24, alignItems: "start" }}>
+          
+          {/* Sidebar Nav */}
+          <div style={{ 
+            background: dark ? "rgba(255,255,255,0.03)" : "white",
+            borderRadius: 24, padding: "8px", border: "1px solid var(--border)",
+            position: "sticky", top: 20, zIndex: 10
           }}>
-            <div style={{
-              width:120,
-              height:120,
-              borderRadius:18,
-              border:"1px solid var(--border)",
-              background: dark ? "#0f172a" : "#f8fafc",
-              display:"grid",
-              placeItems:"center",
-              overflow:"hidden",
-              boxShadow: dark ? "0 8px 18px rgba(0,0,0,0.22)" : "0 6px 16px rgba(15,23,42,0.08)",
-            }}>
-              {(logoPreview || logoFilename) ? (
-                <img
-                  src={logoPreview || `${BASE_URL}/images/${logoFilename}`}
-                  alt="Logo"
-                  style={{ width:"100%", height:"100%", objectFit:"cover" }}
-                  onError={(e) => { e.currentTarget.style.display = "none"; }}
-                />
-              ) : (
-                <span style={{ fontSize:12, color:"var(--muted)", fontWeight:800 }}>No logo</span>
-              )}
-            </div>
-
-            <div style={{ display:"flex", flexDirection:"column", gap:10, minWidth:260 }}>
-              <input
-                id="logo-upload-input"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-                style={{ display:"none" }}
-              />
-
-              <div style={{
-                display:"flex",
-                alignItems:"center",
-                gap:8,
-                flexWrap:"wrap",
-                padding:"10px",
-                borderRadius:12,
-                border:"1px dashed var(--border)",
-                background: dark ? "rgba(255,255,255,0.02)" : "#f8fafc",
-              }}>
-                <label
-                  htmlFor="logo-upload-input"
-                  style={{
-                    padding:"8px 14px",
-                    borderRadius:10,
-                    border:"1px solid var(--border)",
-                    background: dark ? "#0f172a" : "white",
-                    fontWeight:700,
-                    fontSize:13,
-                    cursor:"pointer",
-                    color: dark ? "#f9fafb" : "#1f2937",
-                  }}
-                >
-                  Choose File
-                </label>
-                <span style={{ fontSize:13, color:"var(--muted)", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%" }}>
-                  {logoFile?.name || (logoFilename ? `Current: ${logoFilename}` : "No file selected")}
-                </span>
-              </div>
-
-              <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-                <button
-                  onClick={uploadLogo}
-                  disabled={uploadingLogo || !logoFile}
-                  style={{
-                    padding:"9px 20px",
-                    borderRadius:12,
-                    border:"none",
-                    background:"linear-gradient(135deg, #ff4e2a, #ff6a3d)",
-                    color:"white",
-                    fontWeight:900,
-                    fontSize:14,
-                    cursor: (uploadingLogo || !logoFile) ? "not-allowed" : "pointer",
-                    opacity: (uploadingLogo || !logoFile) ? 0.65 : 1,
-                    boxShadow:"0 10px 24px rgba(255,78,42,0.26)",
-                  }}
-                >
-                  {uploadingLogo ? "Uploading…" : "Upload Logo"}
-                </button>
-                {logoFile && (
-                  <button
-                    onClick={() => setLogoFile(null)}
-                    style={{
-                      padding:"9px 14px",
-                      borderRadius:12,
-                      border:"1px solid var(--border)",
-                      background: dark ? "#0f172a" : "#f9fafb",
-                      color: dark ? "#e5e7eb" : "#374151",
-                      fontWeight:700,
-                      fontSize:13,
-                      cursor:"pointer"
-                    }}
-                  >
-                    Cancel
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Display Address */}
-        <div className="settings-card">
-          <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827", marginBottom:2 }}>📍 Display Address</div>
-          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
-            This is the address shown on your restaurant card on the homepage.
-          </div>
-          <input
-            value={address}
-            onChange={e => setAddress(e.target.value)}
-            placeholder="e.g. Al Gharb, Sharjah"
-            style={{ width:"100%", padding:"10px 14px", borderRadius:10,
-              border:"1.5px solid var(--border)", fontSize:14, fontWeight:600,
-              outline:"none", fontFamily:"inherit", color:"#111827",
-              boxSizing:"border-box", transition:"border 0.2s" }}
-            onFocus={e => e.target.style.borderColor = "#ff4e2a"}
-            onBlur={e => e.target.style.borderColor = "var(--border)"}
-          />
-        </div>
-
-        {/* Status + Prep time side by side */}
-        <div className="settings-grid-2">
-
-          {/* Active toggle */}
-          <div style={{ background:"white", borderRadius:16,
-            border:`1.5px solid ${isActive ? "#86efac" : "#fecaca"}`,
-            boxShadow:"0 2px 12px rgba(0,0,0,0.04)", padding:"18px 20px" }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: isActive ? 0 : 12 }}>
-              <div>
-                <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827" }}>Restaurant Active</div>
-                <div style={{ fontSize:12, color:"var(--muted)", marginTop:2 }}>
-                  {isActive ? "Customers can see & order" : "Hidden from customers"}
-                </div>
-              </div>
-              <div onClick={() => setIsActive(p => !p)} style={{
-                width:50, height:27, borderRadius:999, cursor:"pointer",
-                background: isActive ? "#22c55e" : "#d1d5db",
-                position:"relative", transition:"background 0.2s", flexShrink:0,
-              }}>
-                <div style={{
-                  position:"absolute", top:3, left: isActive ? 26 : 3,
-                  width:21, height:21, borderRadius:"50%", background:"white",
-                  boxShadow:"0 1px 4px rgba(0,0,0,0.2)", transition:"left 0.2s",
-                }} />
-              </div>
-            </div>
-            {!isActive && (
-              <div style={{ padding:"8px 12px", background:"#fef2f2", border:"1px solid #fecaca",
-                borderRadius:9, fontSize:12, color:"#dc2626", fontWeight:600 }}>
-                ⚠️ Customers cannot order right now
-              </div>
-            )}
-          </div>
-
-          {/* Prep time */}
-          <div className="settings-card" style={{ marginBottom:0 }}>
-            <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827", marginBottom:2 }}>Prep Time</div>
-            <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>Shown to customers as wait time</div>
-            <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-              {[15, 20, 30, 45, 60].map(t => (
-                <button key={t} onClick={() => setPrepTime(t)} style={{
-                  padding:"7px 13px", borderRadius:10,
-                  border:`1.5px solid ${prepTime === t ? "#ff4e2a" : "var(--border)"}`,
-                  background: dark ? "#000000" : (prepTime === t ? "#fff1ee" : "#f9fafb"),
-                  color: dark ? "#ffffff" : (prepTime === t ? "#ff4e2a" : "#6b7280"),
-                  fontWeight:800, fontSize:13, cursor:"pointer", transition:"all 0.15s",
-                }}>{t}m</button>
-              ))}
-              <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                <input type="number" min={5} max={120} value={prepTime}
-                  onChange={e => setPrepTime(Number(e.target.value))}
-                  style={{ width:54, padding:"7px 8px", borderRadius:10,
-                    border:"1.5px solid var(--border)", fontSize:13, fontWeight:800,
-                    background: dark ? "#000000" : undefined,
-                    color: dark ? "#ffffff" : undefined,
-                    textAlign:"center", outline:"none", fontFamily:"inherit" }} />
-                <span style={{ fontSize:12, color: dark ? "#ffffff" : "var(--muted)" }}>min</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Delivery Radius card */}
-        <div className="settings-card">
-          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
-            <div>
-              <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827", marginBottom:2 }}>🚴 Delivery Radius</div>
-              <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
-                Orders outside this range will be rejected. Set to <b>0</b> for unlimited delivery.
-              </div>
-            </div>
-            {deliveryRadius === 0 && (
-              <div style={{ padding:"4px 12px", borderRadius:999, background:"#f0fdf4",
-                border:"1px solid #86efac", fontSize:11, fontWeight:800, color:"#16a34a", whiteSpace:"nowrap" }}>
-                🌍 Unlimited
-              </div>
-            )}
-          </div>
-          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-            {[3, 5, 10, 15, 20].map(r => (
-              <button key={r} onClick={() => setDeliveryRadius(r)} style={{
-                padding:"7px 13px", borderRadius:10,
-                border:`1.5px solid ${deliveryRadius === r ? "#ff4e2a" : "var(--border)"}`,
-                background: dark ? "#000000" : (deliveryRadius === r ? "#fff1ee" : "#f9fafb"),
-                color: dark ? "#ffffff" : (deliveryRadius === r ? "#ff4e2a" : "#6b7280"),
-                fontWeight:800, fontSize:13, cursor:"pointer", transition:"all 0.15s",
-              }}>{r} km</button>
-            ))}
-            <button onClick={() => setDeliveryRadius(0)} style={{
-              padding:"7px 13px", borderRadius:10,
-              border:`1.5px solid ${deliveryRadius === 0 ? "#16a34a" : "var(--border)"}`,
-              background: dark ? "#000000" : (deliveryRadius === 0 ? "#f0fdf4" : "#f9fafb"),
-              color: dark ? "#ffffff" : (deliveryRadius === 0 ? "#16a34a" : "#6b7280"),
-              fontWeight:800, fontSize:13, cursor:"pointer", transition:"all 0.15s",
-            }}>∞ Unlimited</button>
-            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-              <input type="number" min={0} max={200} value={deliveryRadius}
-                onChange={e => setDeliveryRadius(Number(e.target.value))}
-                style={{ width:60, padding:"7px 8px", borderRadius:10,
-                  border:"1.5px solid var(--border)", fontSize:13, fontWeight:800,
-                  textAlign:"center", outline:"none", fontFamily:"inherit" }} />
-              <span style={{ fontSize:12, color:"var(--muted)" }}>km</span>
-            </div>
-          </div>
-          {deliveryRadius > 0 && (
-            <div style={{ marginTop:14, padding:"10px 14px", borderRadius:10,
-              background: dark ? "#000000" : "#fff7ed", border: dark ? "1px solid rgba(255,255,255,0.14)" : "1px solid #fed7aa", fontSize:12, color: dark ? "#ffffff" : "#92400e", fontWeight:600 }}>
-              🗺️ Customers more than <strong>{deliveryRadius} km</strong> from your restaurant will not be able to place an order.
-            </div>
-          )}
-        </div>
-
-        {/* Minimum Order card */}
-        <div className="settings-card">
-          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
-            <div>
-              <div style={{ fontWeight:900, fontSize:14, color: dark ? "white" : "#111827", marginBottom:2 }}>🛒 Minimum Order Amount</div>
-              <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12 }}>
-                Orders below this amount will be rejected. Set to <b>0</b> for no minimum.
-              </div>
-            </div>
-            {minimumOrder === 0 && (
-              <div style={{ padding:"4px 12px", borderRadius:999, background:"#f0fdf4",
-                border:"1px solid #86efac", fontSize:11, fontWeight:800, color:"#16a34a", whiteSpace:"nowrap" }}>
-                No Minimum
-              </div>
-            )}
-          </div>
-          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-            {[0, 20, 30, 50, 75, 100].map(v => (
-              <button key={v} onClick={() => setMinimumOrder(v)} style={{
-                padding:"7px 13px", borderRadius:10,
-                border:`1.5px solid ${minimumOrder === v ? "#ff4e2a" : "var(--border)"}`,
-                background: dark ? "#000000" : (minimumOrder === v ? "#fff1ee" : "#f9fafb"),
-                color: dark ? "#ffffff" : (minimumOrder === v ? "#ff4e2a" : "#6b7280"),
-                fontWeight:800, fontSize:13, cursor:"pointer", transition:"all 0.15s",
-              }}>{v === 0 ? "None" : `AED ${v}`}</button>
-            ))}
-            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-              <span style={{ fontSize:12, color:"var(--muted)" }}>AED</span>
-              <input type="number" min={0} max={500} value={minimumOrder}
-                onChange={e => setMinimumOrder(Number(e.target.value))}
-                style={{ width:70, padding:"7px 8px", borderRadius:10,
-                  border:"1.5px solid var(--border)", fontSize:13, fontWeight:800,
-                  textAlign:"center", outline:"none", fontFamily:"inherit" }} />
-            </div>
-          </div>
-          {minimumOrder > 0 && (
-            <div style={{ marginTop:14, padding:"10px 14px", borderRadius:10,
-              background: dark ? "#000000" : "#fff7ed", border: dark ? "1px solid rgba(255,255,255,0.14)" : "1px solid #fed7aa", fontSize:12, color: dark ? "#ffffff" : "#92400e", fontWeight:600 }}>
-              🛒 Customers must order at least <strong>AED {minimumOrder}</strong> to place an order.
-            </div>
-          )}
-        </div>
-
-        {/* Delivery Tiers card */}
-        <div className="settings-card">
-          <div style={{ fontWeight:900, fontSize:14, color:textPrimary, marginBottom:2 }}>🚚 Delivery Fee Tiers</div>
-          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14 }}>
-            Set fee per distance bracket. Use AED 0 for free delivery on any tier.
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {deliveryTiers.map((tier, i) => (
-              <div className="settings-tier-row" key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background: dark ? "#0f172a" : "#f9fafb", borderRadius:12, border:"1px solid var(--border)", transition:"box-shadow 0.2s ease" }}>
-                <div style={{ fontSize:13, color:textMuted, fontWeight:700, minWidth:20 }}>#{i+1}</div>
-                <div style={{ display:"flex", alignItems:"center", gap:6, flex:1 }}>
-                  <span style={{ fontSize:12, color:textMuted }}>Up to</span>
-                  {tier.upToKm === null ? (
-                    <span style={{ fontSize:13, fontWeight:800, color:textPrimary, padding:"5px 10px", background: dark ? "#111827" : "white", borderRadius:8, border:"1px solid var(--border)" }}>Beyond</span>
-                  ) : (
-                    <input type="number" min={1} max={100} value={tier.upToKm ?? ""}
-                      onChange={e => {
-                        const next = [...deliveryTiers];
-                        const raw = e.target.value;
-
-                        // Allow temporary empty state while typing; enforce min on blur.
-                        if (raw === "") {
-                          next[i] = { ...next[i], upToKm: "" };
-                        } else {
-                          const parsed = Number(raw);
-                          next[i] = { ...next[i], upToKm: Number.isFinite(parsed) ? parsed : 1 };
-                        }
-
-                        setDeliveryTiers(next);
-                      }}
-                      onBlur={() => {
-                        const next = [...deliveryTiers];
-                        const parsed = Number(next[i].upToKm);
-                        next[i] = { ...next[i], upToKm: Number.isFinite(parsed) && parsed >= 1 ? parsed : 1 };
-                        setDeliveryTiers(next);
-                      }}
-                      style={{ width:60, padding:"5px 8px", borderRadius:8, border:"1px solid var(--border)", background: dark ? "#111827" : "white", color: textPrimary, fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }} />
-                  )}
-                  <span style={{ fontSize:12, color:textMuted }}>km</span>
-                </div>
-                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ fontSize:12, color:textMuted }}>Fee</span>
-                  <span style={{ fontSize:12, color:textMuted }}>AED</span>
-                  <input type="number" min={0} max={200} value={tier.fee}
-                    onChange={e => {
-                      const next = [...deliveryTiers];
-                      next[i] = { ...next[i], fee: Number(e.target.value) };
-                      setDeliveryTiers(next);
-                    }}
-                    style={{ width:60, padding:"5px 8px", borderRadius:8, border:"1px solid var(--border)", background: dark ? "#111827" : "white", color: textPrimary, fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }} />
-                  {tier.fee === 0 && <span style={{ fontSize:11, fontWeight:800, color:"#16a34a", background: dark ? "rgba(34,197,94,0.18)" : "#f0fdf4", padding:"2px 8px", borderRadius:999 }}>FREE</span>}
-                </div>
-                {deliveryTiers.length > 1 && tier.upToKm !== null && (
-                  <button onClick={() => setDeliveryTiers(prev => prev.filter((_, j) => j !== i))}
-                    style={{ background: dark ? "rgba(220,38,38,0.18)" : "#fef2f2", border:"none", borderRadius:8, padding:"5px 8px", cursor:"pointer", fontSize:13, color:"#dc2626", fontWeight:700 }}>✕</button>
-                )}
-              </div>
-            ))}
-            <button
-              onClick={() => {
-                const last = deliveryTiers[deliveryTiers.length - 1];
-                const secondLast = deliveryTiers[deliveryTiers.length - 2];
-                const newUpTo = last.upToKm !== null ? last.upToKm + 5 : (secondLast?.upToKm ?? 5) + 5;
-                const updated = deliveryTiers.map((t, i) =>
-                  i === deliveryTiers.length - 1 ? { ...t, upToKm: newUpTo } : t
-                );
-                setDeliveryTiers([...updated, { upToKm: null, fee: 20 }]);
-              }}
-              style={{ padding:"8px 14px", borderRadius:10, border:"1.5px dashed var(--border)", background: dark ? "#0f172a" : "white", cursor:"pointer", fontSize:13, fontWeight:700, color:textMuted, fontFamily:"inherit", textAlign:"left" }}>
-              + Add tier
-            </button>
-          </div>
-          <div style={{ marginTop:12, padding:"10px 14px", borderRadius:10, background: dark ? "rgba(29,78,216,0.16)" : "#eff6ff", border: dark ? "1px solid rgba(96,165,250,0.35)" : "1px solid #bfdbfe", fontSize:12, color: dark ? "#93c5fd" : "#1d4ed8", fontWeight:600 }}>
-            💡 The last tier (Beyond) catches all distances beyond the previous bracket.
-          </div>
-        </div>
-
-        {/* Shared Delivery Matching card */}
-        <div className="settings-card">
-          <div style={{ fontWeight:900, fontSize:14, color:textPrimary, marginBottom:2 }}>🤝 Shared Delivery Matching</div>
-          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14 }}>
-            Control how far apart nearby orders can be to qualify for shared delivery.
-          </div>
-
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
-            <div style={{ padding:"10px 12px", border:"1px solid var(--border)", borderRadius:12, background: dark ? "#0f172a" : "#f9fafb" }}>
-              <div style={{ fontSize:12, color:textMuted, fontWeight:700, marginBottom:8 }}>Customer drop distance</div>
-              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                <input
-                  type="number"
-                  min={0.5}
-                  max={20}
-                  step={0.5}
-                  value={sharedDropKm}
-                  onChange={e => setSharedDropKm(Number(e.target.value))}
-                  style={{ width:70, padding:"6px 8px", borderRadius:8, border:"1px solid var(--border)", background: dark ? "#111827" : "white", color:textPrimary, fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }}
-                />
-                <span style={{ fontSize:12, color:textMuted }}>km</span>
-              </div>
-            </div>
-
-            <div style={{ padding:"10px 12px", border:"1px solid var(--border)", borderRadius:12, background: dark ? "#0f172a" : "#f9fafb" }}>
-              <div style={{ fontSize:12, color:textMuted, fontWeight:700, marginBottom:8 }}>Restaurant pickup distance</div>
-              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                <input
-                  type="number"
-                  min={0.5}
-                  max={20}
-                  step={0.5}
-                  value={sharedPickupKm}
-                  onChange={e => setSharedPickupKm(Number(e.target.value))}
-                  style={{ width:70, padding:"6px 8px", borderRadius:8, border:"1px solid var(--border)", background: dark ? "#111827" : "white", color:textPrimary, fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }}
-                />
-                <span style={{ fontSize:12, color:textMuted }}>km</span>
-              </div>
-            </div>
-
-            <div style={{ padding:"10px 12px", border:"1px solid var(--border)", borderRadius:12, background: dark ? "#0f172a" : "#f9fafb" }}>
-              <div style={{ fontSize:12, color:textMuted, fontWeight:700, marginBottom:8 }}>Match time window</div>
-              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                <input
-                  type="number"
-                  min={1}
-                  max={60}
-                  step={1}
-                  value={sharedWindowMin}
-                  onChange={e => setSharedWindowMin(Number(e.target.value))}
-                  style={{ width:70, padding:"6px 8px", borderRadius:8, border:"1px solid var(--border)", background: dark ? "#111827" : "white", color:textPrimary, fontSize:13, fontWeight:800, textAlign:"center", outline:"none", fontFamily:"inherit" }}
-                />
-                <span style={{ fontSize:12, color:textMuted }}>min</span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginTop:12, padding:"10px 14px", borderRadius:10, background: dark ? "rgba(29,78,216,0.16)" : "#eff6ff", border: dark ? "1px solid rgba(96,165,250,0.35)" : "1px solid #bfdbfe", fontSize:12, color: dark ? "#93c5fd" : "#1d4ed8", fontWeight:600 }}>
-            Shared delivery offers are shown to customers only when a nearby active route matches these limits.
-          </div>
-        </div>
-
-        {/* Location card — overflow visible so search dropdown is not clipped under the map */}
-        <div style={{ background:"white", borderRadius:16, border:"1px solid var(--border)",
-          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", overflow:"visible", marginBottom:14 }}>
-          <div style={{ padding:"18px 22px 16px", borderBottom:"1px solid var(--border)",
-            display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
-            <div>
-              <div style={{ fontWeight:900, fontSize:15, color:"#111827" }}>📍 Restaurant Location</div>
-              <div style={{ fontSize:12, color:"var(--muted)", marginTop:2 }}>
-                Click the map or drag the pin. <strong>Save Settings</strong> (top) saves your pin with other settings.
-                Use <strong>Save Location</strong> if you only want to update the map and auto-fill the display address from the pin.
-              </div>
-            </div>
-            <div className="settings-map-actions">
-              <button onClick={() => {
-                if (!navigator.geolocation) return toast.error("Geolocation not supported");
-                navigator.geolocation.getCurrentPosition(
-                  (pos) => {
-                    updateLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                    toast.success("GPS location detected!");
-                  },
-                  () => toast.error("Enable location permissions first")
-                );
-              }} style={{ padding:"8px 16px", borderRadius:10, border:"1px solid var(--border)",
-                background:"#f9fafb", color:"#374151", fontWeight:700, fontSize:13, cursor:"pointer",
-                display:"flex", alignItems:"center", gap:6 }}>
-                🎯 Use My GPS
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 12,
+                  padding: "14px 16px", borderRadius: 16, border: "none",
+                  background: activeTab === tab.id ? (dark ? "rgba(255,255,255,0.08)" : "#f8fafc") : "transparent",
+                  color: activeTab === tab.id ? "var(--orange)" : "var(--muted)",
+                  fontWeight: 800, fontSize: 14, cursor: "pointer", textAlign: "left",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                <span style={{ fontSize: 18 }}>{tab.icon}</span>
+                {tab.label}
               </button>
-              <button onClick={saveLocation} disabled={savingLoc} style={{
-                padding:"8px 22px", borderRadius:10, border:"none",
-                background:"linear-gradient(135deg, #ff4e2a, #ff6a3d)",
-                color:"white", fontWeight:800, fontSize:13,
-                cursor: savingLoc ? "not-allowed" : "pointer",
-                opacity: savingLoc ? 0.7 : 1,
-                boxShadow:"0 4px 14px rgba(255,78,42,0.3)",
-              }}>{savingLoc ? "Saving…" : "Save Location"}</button>
-            </div>
+            ))}
           </div>
-          <div style={{ padding:"0 0 0 0" }}>
-            <LocationMap location={location} onChange={updateLocation} dark={dark} />
-          </div>
-          <div style={{ padding:"10px 20px", background:"#f9fafb", borderTop:"1px solid var(--border)",
-            fontSize:12, color:"var(--muted)", display:"flex", gap:16 }}>
-            <span>📌 Lat: <b style={{ color:"#111827" }}>{location.lat.toFixed(5)}</b></span>
-            <span>📌 Lng: <b style={{ color:"#111827" }}>{location.lng.toFixed(5)}</b></span>
-          </div>
-        </div>
 
-        {/* Opening Hours card */}
-        <div style={{ background:cardBg, borderRadius:16, border:`1px solid ${borderClr}`,
-          boxShadow:"0 2px 12px rgba(0,0,0,0.04)", overflow:"hidden" }}>
-
-          {/* Card header */}
-          <div style={{ padding:"18px 22px 16px", borderBottom: is24_7 ? "none" : "1px solid var(--border)" }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
-              <div>
-                <div style={{ fontWeight:900, fontSize:15, color:textPrimary }}>Opening Hours</div>
-                <div style={{ fontSize:12, color:"var(--muted)", marginTop:2 }}>
-                  Click Open/Closed to toggle a day · Copy icon applies that day's hours to all
-                </div>
-              </div>
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
-
-                {/* 24/7 toggle */}
-                <button onClick={toggle24_7} style={{
-                  display:"flex", alignItems:"center", gap:7,
-                  padding:"8px 16px", borderRadius:10, cursor:"pointer",
-                  fontWeight:800, fontSize:13, border:"1.5px solid",
-                  borderColor: is24_7 ? "#ff4e2a" : "var(--border)",
-                  background:  is24_7 ? (dark ? "rgba(255,78,42,0.16)" : "#fff5f3") : (dark ? "#0f172a" : "#f9fafb"),
-                  color:       is24_7 ? "#ff4e2a" : "#374151",
-                  transition:"all 0.15s",
-                }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                  {is24_7 ? "24/7 ON" : "Set 24/7"}
-                </button>
-
-                <button onClick={() => applyToAll(todayKey)} disabled={is24_7} style={{
-                  display:"flex", alignItems:"center", gap:6,
-                  padding:"8px 14px", borderRadius:10, border:"1px solid var(--border)",
-                  background: dark ? "#0f172a" : "#f9fafb", color: is24_7 ? "#d1d5db" : (dark ? "#e5e7eb" : "#374151"),
-                  cursor: is24_7 ? "not-allowed" : "pointer",
-                  fontSize:12, fontWeight:700, opacity: is24_7 ? 0.5 : 1,
-                }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <rect x="9" y="9" width="13" height="13" rx="2"/>
-                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-                  </svg>
-                  Copy today to all
-                </button>
-                <button disabled={is24_7} onClick={() => {
-                  setHours(Object.fromEntries(DAYS.map(d => [d, { open:"09:00", close:"22:00", closed:false }])));
-                  setIs24_7(false);
-                  toast.success("Hours reset to defaults");
-                }} style={{
-                  display:"flex", alignItems:"center", gap:6,
-                  padding:"8px 14px", borderRadius:10, border:"1px solid #fecaca",
-                  background: dark ? "rgba(220,38,38,0.16)" : "#fef2f2", color: is24_7 ? "#fca5a5" : "#dc2626",
-                  cursor: is24_7 ? "not-allowed" : "pointer",
-                  fontSize:12, fontWeight:700, opacity: is24_7 ? 0.5 : 1,
-                }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
-                  </svg>
-                  Reset
-                </button>
-              </div>
-            </div>
-
-            {/* 24/7 active banner */}
-            {is24_7 && (
-              <div style={{ marginTop:14, padding:"12px 16px", borderRadius:12,
-                background: dark ? "linear-gradient(135deg, rgba(255,78,42,0.18), rgba(255,106,61,0.12))" : "linear-gradient(135deg, #fff5f3, #fff1ee)",
-                border:"1.5px solid #fca89a",
-                display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <div style={{ fontSize:22 }}>🕐</div>
-                  <div>
-                    <div style={{ fontWeight:900, fontSize:13, color:"#ff4e2a" }}>
-                      Open 24 hours, 7 days a week
+          {/* Tab Content */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            
+            {activeTab === "profile" && (
+              <>
+                <div className="settings-card" style={{ padding: 32, borderRadius: 28 }}>
+                  <h3 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 900 }}>🏷️ Store Branding</h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 24 }}>
+                    <div style={{
+                      width: 140, height: 140, borderRadius: 24, border: "1px solid var(--border)",
+                      background: dark ? "#0f172a" : "#f8fafc", display: "grid", placeItems: "center", overflow: "hidden"
+                    }}>
+                      {(logoPreview || logoFilename) ? (
+                        <img src={logoPreview || `${BASE_URL}/images/${logoFilename}`} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : <span style={{ fontSize: 13, color: "var(--muted)", fontWeight: 800 }}>No Logo</span>}
                     </div>
-                    <div style={{ fontSize:12, color: dark ? "rgba(255,255,255,0.72)" : "#9ca3af", marginTop:2 }}>
-                      All days set to 12:00 AM – 11:59 PM. Click "24/7 ON" to restore previous hours.
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
+                        Upload a distinct logo to represent your brand on the map and in customer orders.
+                      </p>
+                      <input id="logo-upload-input" type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} style={{ display: "none" }} />
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <label htmlFor="logo-upload-input" style={{
+                          padding: "10px 20px", borderRadius: 12, border: "1px solid var(--border)",
+                          background: dark ? "#0f172a" : "white", fontWeight: 800, fontSize: 13, cursor: "pointer"
+                        }}>Choose Image</label>
+                        <button onClick={uploadLogo} disabled={uploadingLogo || !logoFile} style={{
+                          padding: "10px 24px", borderRadius: 12, border: "none",
+                          background: "#111827", color: "white", fontWeight: 800, fontSize: 13,
+                          cursor: (uploadingLogo || !logoFile) ? "not-allowed" : "pointer"
+                        }}>Update Logo</button>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <button onClick={toggle24_7} style={{
-                  padding:"7px 14px", borderRadius:9, border:"1.5px solid #fca89a",
-                  background: dark ? "#0f172a" : "white", color:"#ff4e2a", fontWeight:800,
-                  fontSize:12, cursor:"pointer", whiteSpace:"nowrap",
-                }}>
-                  Turn off
-                </button>
+
+                <div className="settings-card" style={{ padding: 32, borderRadius: 28 }}>
+                  <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 900 }}>🗺️ Location & Address</h3>
+                  <p style={{ margin: "0 0 24px", fontSize: 13, color: "var(--muted)" }}>Set your precise location for the delivery map</p>
+                  
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ fontSize: 11, fontWeight: 900, color: "var(--muted)", textTransform: "uppercase", display: "block", marginBottom: 8 }}>Display Address</label>
+                    <input value={address} onChange={e => setAddress(e.target.value)} placeholder="e.g. Al Gharb, Sharjah" style={{ width: "100%", padding: "14px", borderRadius: 12, border: "1.5px solid var(--border)", fontSize: 14, fontWeight: 600, outline: "none" }} />
+                  </div>
+
+                  <div style={{ borderRadius: 20, border: "1.5px solid var(--border)", overflow: "hidden" }}>
+                    <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", background: dark ? "rgba(255,255,255,0.02)" : "#f8fafc" }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "var(--muted)" }}>PRECISE PIN DROP</span>
+                      <button onClick={() => {
+                        navigator.geolocation.getCurrentPosition(pos => updateLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }));
+                      }} style={{ background: "none", border: "none", color: "var(--orange)", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>🎯 Use My GPS</button>
+                    </div>
+                    <LocationMap location={location} onChange={updateLocation} dark={dark} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeTab === "operation" && (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                   <div className="settings-card" style={{ padding: 24, borderRadius: 24, border: `2px solid ${isActive ? "#22c55e" : "#ef4444"}` }}>
+                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                       <div>
+                         <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900 }}>Store Visibility</h3>
+                         <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>{isActive ? "Orders are active" : "Closed to public"}</p>
+                       </div>
+                       <button onClick={() => setIsActive(!isActive)} style={{
+                         padding: "8px 16px", borderRadius: 12, border: "none",
+                         background: isActive ? "#22c55e" : "#ef4444", color: "white", fontWeight: 900, fontSize: 12, cursor: "pointer"
+                       }}>{isActive ? "GO OFFLINE" : "GO ONLINE"}</button>
+                     </div>
+                   </div>
+
+                   <div className="settings-card" style={{ padding: 24, borderRadius: 24 }}>
+                     <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900 }}>Avg. Prep Time</h3>
+                     <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--muted)" }}>Wait time for customers</p>
+                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                       {[15, 30, 45, 60].map(t => (
+                         <button key={t} onClick={() => setPrepTime(t)} style={{
+                           flex: 1, padding: "8px", borderRadius: 10, border: `1.5px solid ${prepTime === t ? "var(--orange)" : "var(--border)"}`,
+                           background: prepTime === t ? "rgba(230,74,25,0.1)" : "transparent", color: prepTime === t ? "var(--orange)" : "var(--muted)",
+                           fontWeight: 800, fontSize: 12, cursor: "pointer"
+                         }}>{t}m</button>
+                       ))}
+                     </div>
+                   </div>
+                </div>
+
+                <div className="settings-card" style={{ padding: 0, borderRadius: 28, overflow: "hidden", overflowX: "auto" }}>
+                  <div style={{ padding: "24px 32px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>🕒 Operating Hours</h3>
+                      <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)" }}>Set your weekly schedule</p>
+                    </div>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <button onClick={() => applyToAll(todayKey)} style={{
+                        padding: "8px 16px", borderRadius: 10, border: "1px solid var(--border)",
+                        background: "transparent", color: "var(--muted)", fontWeight: 800, fontSize: 12, cursor: "pointer"
+                      }}>COPY TODAY TO ALL</button>
+                      <button onClick={toggle24_7} style={{
+                        padding: "8px 16px", borderRadius: 10, border: `1.5px solid ${is24_7 ? "var(--orange)" : "var(--border)"}`,
+                        background: is24_7 ? "rgba(230,74,25,0.05)" : "transparent", color: is24_7 ? "var(--orange)" : "var(--muted)", fontWeight: 800, fontSize: 12, cursor: "pointer"
+                      }}>24/7 OPEN</button>
+                    </div>
+                  </div>
+                  <div style={{ opacity: is24_7 ? 0.3 : 1, pointerEvents: is24_7 ? "none" : "auto" }}>
+                    {DAYS.map((day, idx) => (
+                      <div key={day} style={{ 
+                        display: "grid", gridTemplateColumns: "120px 1fr 120px 40px", gap: 20, alignItems: "center",
+                        padding: "16px 20px", borderBottom: idx === 6 ? "none" : "1px solid var(--border)",
+                        background: day === todayKey ? (dark ? "rgba(255,255,255,0.03)" : "#f8fafc") : "transparent"
+                      }}>
+                        <span style={{ fontWeight: 800, fontSize: 14 }}>{DAY_FULL[day]}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          {hours[day]?.closed ? <span style={{ color: "var(--muted)", fontStyle: "italic", fontSize: 13 }}>Closed on this day</span> : (
+                            <>
+                              <input type="time" value={hours[day].open} onChange={e => updateDay(day, "open", e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", fontWeight: 700 }} />
+                              <span style={{ color: "var(--muted)" }}>→</span>
+                              <input type="time" value={hours[day].close} onChange={e => updateDay(day, "close", e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", fontWeight: 700 }} />
+                              {(() => {
+                                const [oh, om] = hours[day].open.split(":").map(Number);
+                                const [ch, cm] = hours[day].close.split(":").map(Number);
+                                let dur = (ch * 60 + cm) - (oh * 60 + om);
+                                if (dur <= 0) dur += 24 * 60;
+                                return <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 900, background: dark ? "rgba(255,255,255,0.05)" : "#f1f5f9", padding: "4px 8px", borderRadius: 6 }}>{Math.floor(dur/60)}h {dur%60}m</span>;
+                              })()}
+                            </>
+                          )}
+                        </div>
+                        <button onClick={() => updateDay(day, "closed", !hours[day]?.closed)} style={{
+                          padding: "6px 12px", borderRadius: 8, border: "none",
+                          background: hours[day]?.closed ? "#fecaca" : "#dcfce7", color: hours[day]?.closed ? "#dc2626" : "#16a34a",
+                          fontWeight: 800, fontSize: 11, cursor: "pointer"
+                        }}>{hours[day]?.closed ? "CLOSED" : "OPEN"}</button>
+                        <button onClick={() => applyToAll(day)} title="Copy to all" style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.5 }}>📂</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeTab === "delivery" && (
+              <>
+                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                   <div className="settings-card" style={{ padding: 24, borderRadius: 24 }}>
+                     <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900 }}>Delivery Radius</h3>
+                     <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--muted)" }}>Max km from restaurant</p>
+                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                       <input type="number" value={deliveryRadius} onChange={e => setDeliveryRadius(Number(e.target.value))} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
+                       <span style={{ fontWeight: 800, color: "var(--muted)" }}>KM</span>
+                     </div>
+                   </div>
+
+                   <div className="settings-card" style={{ padding: 24, borderRadius: 24 }}>
+                     <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900 }}>Min. Order Amount</h3>
+                     <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--muted)" }}>Required checkout total</p>
+                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                       <input type="number" value={minimumOrder} onChange={e => setMinimumOrder(Number(e.target.value))} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
+                       <span style={{ fontWeight: 800, color: "var(--muted)" }}>AED</span>
+                     </div>
+                   </div>
+                 </div>
+
+                 <div className="settings-card" style={{ padding: 32, borderRadius: 28 }}>
+                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>🚚 Delivery Fee Tiers</h3>
+                     <button onClick={() => setDeliveryTiers([...deliveryTiers.filter(t => t.upToKm !== null), { upToKm: deliveryTiers.length * 5, fee: 15 }, { upToKm: null, fee: 20 }])} style={{ background: "none", border: "none", color: "var(--orange)", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>+ ADD TIER</button>
+                   </div>
+                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                     {deliveryTiers.map((tier, i) => (
+                       <div key={i} style={{ 
+                         display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 16, alignItems: "center",
+                         padding: "12px 20px", background: dark ? "rgba(255,255,255,0.02)" : "#f8fafc", borderRadius: 16, border: "1px solid var(--border)"
+                       }}>
+                         <div>
+                           <span style={{ fontSize: 11, fontWeight: 900, color: "var(--muted)", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Distance Limit</span>
+                           <span style={{ fontWeight: 800 }}>{tier.upToKm === null ? "Beyond Brackets" : `Up to ${tier.upToKm} km`}</span>
+                         </div>
+                         <div>
+                           <span style={{ fontSize: 11, fontWeight: 900, color: "var(--muted)", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Delivery Fee</span>
+                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                             <input type="number" value={tier.fee} onChange={e => {
+                               const next = [...deliveryTiers];
+                               next[i].fee = Number(e.target.value);
+                               setDeliveryTiers(next);
+                             }} style={{ width: 60, padding: "4px 8px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", fontWeight: 800 }} />
+                             <span style={{ fontWeight: 700, fontSize: 12 }}>AED</span>
+                           </div>
+                         </div>
+                         {deliveryTiers.length > 1 && tier.upToKm !== null && (
+                            <button onClick={() => setDeliveryTiers(deliveryTiers.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#ef4444", fontWeight: 800, cursor: "pointer" }}>✕</button>
+                         )}
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+              </>
+            )}
+
+            {activeTab === "matching" && (
+              <div className="settings-card" style={{ padding: 32, borderRadius: 28 }}>
+                <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 900 }}>🤝 Shared Delivery Logic</h3>
+                <p style={{ margin: "0 0 32px", fontSize: 13, color: "var(--muted)" }}>Optimize your dual-stop delivery efficiency</p>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 32 }}>
+                    <div>
+                      <h4 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 900 }}>Customer Drop Radius</h4>
+                      <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>Max distance between two customers to allow sharing</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input type="number" value={sharedDropKm} onChange={e => setSharedDropKm(Number(e.target.value))} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
+                      <span style={{ fontWeight: 800, color: "var(--muted)" }}>KM</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 32 }}>
+                    <div>
+                      <h4 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 900 }}>Pickup Window</h4>
+                      <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>Max time gap between orders to bundle together</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input type="number" value={sharedWindowMin} onChange={e => setSharedWindowMin(Number(e.target.value))} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
+                      <span style={{ fontWeight: 800, color: "var(--muted)" }}>MIN</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
+            
           </div>
 
-          {/* Day rows */}
-          <div style={{ opacity: is24_7 ? 0.4 : 1, pointerEvents: is24_7 ? "none" : "auto",
-            borderTop: is24_7 ? "none" : "1px solid var(--border)" }}>
-          {DAYS.map((day, i) => {
-            const d = hours[day] || { open:"09:00", close:"22:00", closed:false };
-            const isToday = day === todayKey;
-            const isLast  = i === DAYS.length - 1;
-
-            // Compute duration label
-            let durLabel = null;
-            if (!d.closed) {
-              const [oh,om] = d.open.split(":").map(Number);
-              const [ch,cm] = d.close.split(":").map(Number);
-              let dur = (ch*60+cm) - (oh*60+om);
-              // Handle overnight: close time is next day (e.g. 09:00 AM → 03:00 AM)
-              if (dur <= 0) dur += 24 * 60;
-              const hrs  = Math.floor(dur/60);
-              const mins = dur % 60;
-              durLabel = `${hrs > 0 ? hrs+"h" : ""}${mins > 0 ? " "+mins+"m" : ""}`.trim();
-            }
-
-            return (
-              <div key={day} style={{
-                display:"flex", alignItems:"center",
-                borderBottom: isLast ? "none" : "1px solid var(--border)",
-                background: isToday ? (dark ? "rgba(34,197,94,0.14)" : "#f0fdf4") : cardBg,
-              }}>
-
-                {/* Day name col */}
-                <div style={{ width:130, padding:"13px 12px 13px 20px", flexShrink:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-                    {isToday && (
-                      <div style={{ width:7, height:7, borderRadius:"50%", background:"#22c55e",
-                        flexShrink:0, boxShadow:"0 0 0 2px #bbf7d0" }} />
-                    )}
-                    <span style={{ fontWeight:800, fontSize:14,
-                      color: d.closed ? (dark ? "rgba(255,255,255,0.45)" : "#9ca3af") : textPrimary }}>
-                      {DAY_FULL[day]}
-                    </span>
-                  </div>
-                  {isToday && (
-                    <span style={{ fontSize:10, fontWeight:700, color:"#16a34a",
-                      marginLeft:14, display:"block", marginTop:2 }}>Today</span>
-                  )}
-                </div>
-
-                {/* Time range col */}
-                <div style={{ flex:1, padding:"10px 8px", display:"flex", alignItems:"center", gap:8 }}>
-                  {d.closed ? (
-                    <span style={{ fontSize:13, color:"#9ca3af", fontWeight:600, fontStyle:"italic" }}>
-                      Closed all day
-                    </span>
-                  ) : (
-                    <>
-                      <div style={{ display:"flex", alignItems:"center", gap:7, flex:1 }}>
-                        <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)",
-                          textTransform:"uppercase", letterSpacing:"0.4px", flexShrink:0, width:28 }}>
-                          From
-                        </span>
-                        <input type="time" value={d.open}
-                          onChange={e => updateDay(day, "open", e.target.value)}
-                          style={{ flex:1, minWidth:0, padding:"8px 10px", borderRadius:10,
-                            border:"1.5px solid var(--border)", fontSize:14, fontWeight:700,
-                            outline:"none", fontFamily:"inherit", color:textPrimary,
-                            background:inputBg, cursor:"pointer" }} />
-                      </div>
-                      <span style={{ color:"#d1d5db", fontSize:18 }}>→</span>
-                      <div style={{ display:"flex", alignItems:"center", gap:7, flex:1 }}>
-                        <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)",
-                          textTransform:"uppercase", letterSpacing:"0.4px", flexShrink:0, width:12 }}>
-                          To
-                        </span>
-                        <input type="time" value={d.close}
-                          onChange={e => updateDay(day, "close", e.target.value)}
-                          style={{ flex:1, minWidth:0, padding:"8px 10px", borderRadius:10,
-                            border:"1.5px solid var(--border)", fontSize:14, fontWeight:700,
-                            outline:"none", fontFamily:"inherit", color:textPrimary,
-                            background:inputBg, cursor:"pointer" }} />
-                      </div>
-                      {durLabel && (
-                        <span style={{ fontSize:11, color:"var(--muted)", fontWeight:600,
-                          flexShrink:0, background: dark ? "rgba(255,255,255,0.1)" : "#f3f4f6", borderRadius:7,
-                          padding:"3px 9px", whiteSpace:"nowrap" }}>
-                          {durLabel}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Actions col */}
-                <div style={{ display:"flex", alignItems:"center", gap:8,
-                  padding:"10px 18px 10px 8px", flexShrink:0 }}>
-                  <button onClick={() => updateDay(day, "closed", !d.closed)} style={{
-                    padding:"6px 16px", borderRadius:999, border:"none", cursor:"pointer",
-                    fontWeight:800, fontSize:12, transition:"all 0.15s", minWidth:72,
-                    background: d.closed ? "#fee2e2" : "#f0fdf4",
-                    color:       d.closed ? "#dc2626" : "#16a34a",
-                  }}>
-                    {d.closed ? "Closed" : "Open"}
-                  </button>
-                  <button onClick={() => applyToAll(day)}
-                    title={`Copy ${DAY_FULL[day]} to all days`}
-                    style={{ width:32, height:32, borderRadius:9,
-                      border:"1px solid var(--border)", background:inputBg,
-                      color:"var(--muted)", cursor:"pointer",
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                      flexShrink:0 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <rect x="9" y="9" width="13" height="13" rx="2"/>
-                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-          </div>
-
-          {/* Week summary footer */}
-          <div style={{ padding:"14px 20px", background:softBg,
-            borderTop:"1px solid var(--border)", display:"flex", gap:6, flexWrap:"wrap" }}>
-            {DAYS.map(day => {
-              const d = hours[day] || {};
-              const isToday = day === todayKey;
-              return (
-                <div key={day} style={{ flex:"1 0 70px", display:"flex", flexDirection:"column",
-                  alignItems:"center", padding:"7px 6px", borderRadius:10,
-                  background: isToday ? (dark ? "rgba(34,197,94,0.2)" : "#dcfce7") : d.closed ? (dark ? "#0b1324" : "#fafafa") : inputBg,
-                  border:`1px solid ${isToday ? "#86efac" : "var(--border)"}` }}>
-                  <span style={{ fontSize:10, fontWeight:800, color:"var(--muted)",
-                    textTransform:"uppercase", letterSpacing:"0.4px" }}>
-                    {DAY_SHORT[day]}
-                  </span>
-                  {d.closed ? (
-                    <span style={{ fontSize:11, fontWeight:700, color:"#ef4444", marginTop:3 }}>—</span>
-                  ) : (
-                    <span style={{ fontSize:10, fontWeight:700, color: dark ? "rgba(249,250,251,0.78)" : "#374151", marginTop:3,
-                      whiteSpace:"nowrap", textAlign:"center" }}>
-                      {fmt12(d.open)}<br />{fmt12(d.close)}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </div>
-
-            </>
-          );
-        })()}
-
       </div>
     </RestaurantLayout>
   );

@@ -4,51 +4,38 @@ import { api } from "../utils/api";
 import { toast } from "react-toastify";
 import { useTheme } from "../ThemeContext";
 
-const InventoryAnalytics = () => {
+const TABS = [
+  { id: "inventory", label: "Stock Value", icon: "💰" },
+  { id: "turnover", label: "Turnover", icon: "🔄" },
+  { id: "suppliers", label: "Suppliers", icon: "🏢" },
+  { id: "costs", label: "Cost Analysis", icon: "📉" }
+];
+
+export default function InventoryAnalytics() {
   const { dark } = useTheme();
   const [timeframe, setTimeframe] = useState("30d");
   const [loading, setLoading] = useState(true);
-  const [analyticsData, setAnalyticsData] = useState(null);
-  const [turnoverData, setTurnoverData] = useState(null);
-  const [supplierData, setSupplierData] = useState(null);
-  const [costData, setCostData] = useState(null);
-  const [tab, setTab] = useState("inventory"); // inventory, turnover, suppliers, costs
+  const [data, setData] = useState({ inv: null, turn: null, supp: null, cost: null });
+  const [tab, setTab] = useState("inventory");
 
   const loadAnalytics = async () => {
     setLoading(true);
     try {
       const [inv, turn, supp, cost] = await Promise.all([
-        api.get(`/api/inventory/analytics/inventory?timeframe=${timeframe}`).catch(err => {
-          console.error("Failed to load inventory analytics:", err);
-          return { data: { success: false } };
-        }),
-        api.get(`/api/inventory/analytics/turnover?timeframe=${timeframe}`).catch(err => {
-          console.error("Failed to load turnover analytics:", err);
-          return { data: { success: false } };
-        }),
-        api.get(`/api/inventory/analytics/suppliers`).catch(err => {
-          console.error("Failed to load supplier analytics:", err);
-          return { data: { success: false } };
-        }),
-        api.get(`/api/inventory/analytics/costs`).catch(err => {
-          console.error("Failed to load cost analytics:", err);
-          return { data: { success: false } };
-        })
+        api.get(`/api/inventory/analytics/inventory?timeframe=${timeframe}`).catch(() => ({ data: { success: false } })),
+        api.get(`/api/inventory/analytics/turnover?timeframe=${timeframe}`).catch(() => ({ data: { success: false } })),
+        api.get(`/api/inventory/analytics/suppliers`).catch(() => ({ data: { success: false } })),
+        api.get(`/api/inventory/analytics/costs`).catch(() => ({ data: { success: false } }))
       ]);
 
-      if (inv.data?.success) setAnalyticsData(inv.data.data);
-      if (turn.data?.success) setTurnoverData(turn.data.data);
-      if (supp.data?.success) setSupplierData(supp.data.data);
-      if (cost.data?.success) setCostData(cost.data.data);
-
-      // Show warning if any failed silently
-      const failedLoads = [inv, turn, supp, cost].filter(r => !r.data?.success).length;
-      if (failedLoads > 0) {
-        console.warn(`${failedLoads} analytics endpoints failed to load`);
-      }
+      setData({
+        inv: inv.data?.success ? inv.data.data : null,
+        turn: turn.data?.success ? turn.data.data : null,
+        supp: supp.data?.success ? supp.data.data : null,
+        cost: cost.data?.success ? cost.data.data : null
+      });
     } catch (err) {
-      console.error("Failed to load analytics:", err);
-      toast.error("Failed to load analytics. Please try again.");
+      toast.error("Failed to sync analytics");
     } finally {
       setLoading(false);
     }
@@ -58,429 +45,228 @@ const InventoryAnalytics = () => {
     loadAnalytics();
   }, [timeframe]);
 
-  // Styles
-  const safeAnalyticsData = analyticsData || {
-    current: { totalValue: 0, totalItems: 0, totalUnits: 0, byCategory: [] },
-    summary: { timeframe, avgDailyUsage: 0, totalDaysTracked: 0, projectedMonthlyUsage: 0 }
-  };
-
-  const categoryRows = safeAnalyticsData.current.byCategory || [];
-  const cardBg = dark ? "#0f172a" : "#ffffff";
-  const subCardBg = dark ? "#111827" : "#f9fafb";
-  const border = dark ? "#334155" : "var(--border)";
-  const textPrimary = dark ? "#f3f4f6" : "var(--text)";
-  const textSecondary = dark ? "#cbd5e1" : "var(--muted)";
-  const tableHeadBg = dark ? "#1f2937" : "#f9fafb";
-  const rowBorder = dark ? "#334155" : "#f3f4f6";
-
-  const s = {
-    wrap: { maxWidth: 1200, margin: "0 auto", padding: "0 20px" },
-    hdr: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20, marginBottom: 24, flexWrap: "wrap" },
-    hdrLeft: { flex: 1 },
-    title: { fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: -0.6, color: textPrimary },
-    sub: { fontSize: 13, color: textSecondary, margin: "4px 0 0", fontWeight: 500 },
-    tabs: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20, borderBottom: "1px solid var(--border)", paddingBottom: 12 },
-    tab: (active) => ({
-      padding: "8px 16px",
-      borderRadius: 8,
-      border: active ? "2px solid var(--orange)" : "1px solid transparent",
-      background: active ? "var(--orangeSoft)" : "transparent",
-      color: active ? "var(--orange)" : textPrimary,
-      fontWeight: 700,
-      fontSize: 13,
-      cursor: "pointer",
-      fontFamily: "inherit"
-    }),
-    select: { padding: "8px 12px", borderRadius: 8, border: `1px solid ${border}`, background: subCardBg, color: textPrimary, fontFamily: "inherit", cursor: "pointer", fontSize: 12 },
-    grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16, marginBottom: 24 },
-    card: {
-      background: cardBg,
-      border: `1px solid ${border}`,
-      borderRadius: 12,
-      padding: 16,
-      boxShadow: dark ? "0 6px 22px rgba(0,0,0,0.3)" : "0 2px 10px rgba(0,0,0,0.04)"
-    },
-    cardTitle: { fontSize: 12, color: textSecondary, fontWeight: 700, margin: "0 0 8px", textTransform: "uppercase" },
-    cardValue: { fontSize: 28, fontWeight: 900, margin: 0, color: textPrimary, letterSpacing: -0.6 },
-    cardSub: { fontSize: 11, color: textSecondary, fontWeight: 600, margin: "4px 0 0" },
-    largCard: { gridColumn: "1 / -1" },
-    table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
-    th: { padding: "12px 14px", textAlign: "left", fontWeight: 800, borderBottom: `2px solid ${border}`, background: tableHeadBg, color: textPrimary },
-    td: { padding: "12px 14px", borderBottom: `1px solid ${rowBorder}`, color: textPrimary },
-    badge: (color) => ({
-      display: "inline-block",
-      padding: "4px 8px",
-      borderRadius: 6,
-      fontSize: 11,
-      fontWeight: 700,
-      background: color === "high" ? "#dcfce7" : color === "medium" ? "#fef3c7" : "#fee2e2",
-      color: color === "high" ? "#166534" : color === "medium" ? "#92400e" : "#991b1b"
-    }),
-    section: { marginBottom: 24 },
-    sectionTitle: { fontSize: 18, fontWeight: 900, margin: "0 0 16px", color: textPrimary },
-    bar: { height: 6, borderRadius: 50, background: dark ? "#1f2937" : "#f3f4f6", overflow: "hidden" },
-    barFill: (color) => ({ height: "100%", background: color, borderRadius: 50 }),
-    chartContainer: { background: cardBg, border: `1px solid ${border}`, borderRadius: 12, padding: 16, marginBottom: 24 }
-  };
-
-  if (loading) {
-    return (
-      <RestaurantLayout>
-        <div style={s.wrap}>
-          <div style={s.hdr}><h1 style={s.title}>📊 Inventory Analytics</h1></div>
-          <div style={s.grid}>
-            {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 100, borderRadius: 12 }} />)}
-          </div>
-          <div style={s.grid}>
-            {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 300, borderRadius: 12 }} />)}
-          </div>
-        </div>
-      </RestaurantLayout>
-    );
-  }
-
-  const hasData = analyticsData || turnoverData || supplierData || costData;
-  const isError = !loading && !hasData;
-
-  if (isError) {
-    return (
-      <RestaurantLayout>
-        <div style={s.wrap}>
-          <div style={s.hdr}><h1 style={s.title}>📊 Inventory Analytics</h1></div>
-          <div style={{ 
-            textAlign: "center", 
-            padding: "60px 20px", 
-            background: cardBg, 
-            borderRadius: 12, 
-            border: `1px solid ${border}` 
-          }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
-            <p style={{ fontSize: 18, fontWeight: 900, margin: "0 0 8px", color: textPrimary }}>Failed to Load Analytics</p>
-            <p style={{ fontSize: 13, color: textSecondary, margin: "0 0 24px" }}>We couldn't load your inventory analytics. Please try again.</p>
-            <button className="btn" onClick={loadAnalytics} style={{ fontSize: 13 }}>↻ Retry</button>
-          </div>
-        </div>
-      </RestaurantLayout>
-    );
-  }
+  if (loading) return <RestaurantLayout><div style={{ padding: 60, textAlign: 'center' }}>Crunching Inventory Big Data...</div></RestaurantLayout>;
 
   return (
     <RestaurantLayout>
-      <div style={s.wrap}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 60px" }}>
+        
         {/* Header */}
-        <div style={s.hdr}>
-          <div style={s.hdrLeft}>
-            <h1 style={s.title}>📊 Inventory Analytics</h1>
-            <p style={s.sub}>Track stock value, turnover, suppliers, and costs</p>
+        <div style={{ padding: "40px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <div>
+            <h4 style={{ fontSize: 13, fontWeight: 900, color: "#F43F5E", textTransform: "uppercase", letterSpacing: 2, margin: "0 0 8px" }}>Supply Chain Intelligence</h4>
+            <h1 style={{ fontSize: 40, fontWeight: 950, margin: 0, letterSpacing: "-1.5px" }}>Inventory Analytics</h1>
           </div>
-          <select style={s.select} value={timeframe} onChange={e => setTimeframe(e.target.value)}>
+          <select 
+            value={timeframe} 
+            onChange={e => setTimeframe(e.target.value)}
+            style={{
+              padding: "10px 20px", borderRadius: 12, border: "1px solid var(--border)",
+              background: dark ? "#1e293b" : "#fff", color: "inherit", fontWeight: 800,
+              fontSize: 13, cursor: "pointer", outline: "none"
+            }}
+          >
             <option value="7d">Last 7 Days</option>
             <option value="30d">Last 30 Days</option>
-            <option value="60d">Last 60 Days</option>
             <option value="90d">Last 90 Days</option>
-            <option value="1y">Last Year</option>
           </select>
         </div>
 
-        {/* Tabs */}
-        <div style={s.tabs}>
-          <button style={s.tab(tab === "inventory")} onClick={() => setTab("inventory")}>📦 Inventory Value</button>
-          <button style={s.tab(tab === "turnover")} onClick={() => setTab("turnover")}>🔄 Stock Turnover</button>
-          <button style={s.tab(tab === "suppliers")} onClick={() => setTab("suppliers")}>🏢 Suppliers</button>
-          <button style={s.tab(tab === "costs")} onClick={() => setTab("costs")}>💰 Cost Analysis</button>
+        {/* Custom Tab Switcher */}
+        <div style={{ 
+          display: "flex", gap: 12, marginBottom: 32, padding: 8, 
+          background: dark ? "rgba(255,255,255,0.03)" : "#f1f5f9", borderRadius: 20, width: "fit-content" 
+        }}>
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                padding: "12px 24px", borderRadius: 14, border: "none",
+                background: tab === t.id ? (dark ? "#fff" : "#000") : "transparent",
+                color: tab === t.id ? (dark ? "#000" : "#fff") : "var(--muted)",
+                fontWeight: 800, fontSize: 13, cursor: "pointer", transition: "all 0.2s",
+                display: "flex", alignItems: "center", gap: 8
+              }}
+            >
+              <span>{t.icon}</span> {t.label}
+            </button>
+          ))}
         </div>
 
-        {/* INVENTORY VALUE TAB */}
-        {tab === "inventory" && analyticsData && (
-          <div>
-            {/* Current Snapshot */}
-            <div style={s.grid}>
-              <div style={s.card}>
-                <p style={s.cardTitle}>Total Inventory Value</p>
-                <p style={s.cardValue}>AED {safeAnalyticsData.current.totalValue.toLocaleString()}</p>
-                <p style={s.cardSub}>{safeAnalyticsData.current.totalItems} items in stock</p>
-              </div>
-              <div style={s.card}>
-                <p style={s.cardTitle}>Total Units</p>
-                <p style={s.cardValue}>{safeAnalyticsData.current.totalUnits.toLocaleString()}</p>
-                <p style={s.cardSub}>Across all categories</p>
-              </div>
-              <div style={s.card}>
-                <p style={s.cardTitle}>Avg Daily Usage</p>
-                <p style={s.cardValue}>AED {analyticsData.summary.avgDailyUsage.toLocaleString()}</p>
-                <p style={s.cardSub}>Based on {analyticsData.summary.totalDaysTracked} days</p>
-              </div>
-              <div style={s.card}>
-                <p style={s.cardTitle}>Projected Monthly</p>
-                <p style={s.cardValue}>AED {analyticsData.summary.projectedMonthlyUsage.toLocaleString()}</p>
-                <p style={s.cardSub}>Estimated usage</p>
-              </div>
-            </div>
-
-            {/* Category Breakdown */}
-            <div style={s.section}>
-              <h2 style={s.sectionTitle}>By Category</h2>
-              <div style={s.chartContainer}>
-                <table style={s.table}>
-                  <thead>
-                    <tr>
-                      <th style={s.th}>Category</th>
-                      <th style={s.th}>Items</th>
-                      <th style={s.th}>Units</th>
-                      <th style={s.th}>Total Value</th>
-                      <th style={s.th}>Percentage</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {categoryRows.map((cat, idx) => (
-                      <tr key={idx}>
-                        <td style={s.td}>
-                          <strong>{cat.category.replace(/_/g, " ").toUpperCase()}</strong>
-                        </td>
-                        <td style={s.td}>{cat.items}</td>
-                        <td style={s.td}>{cat.units.toLocaleString()}</td>
-                        <td style={s.td}>
-                          <strong>AED {cat.value.toLocaleString()}</strong>
-                        </td>
-                        <td style={s.td}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <div style={{ ...s.bar, width: 60 }}>
-                              <div style={s.barFill((cat.percentage / 100) * 360)} />
-                            </div>
-                            <strong>{cat.percentage}%</strong>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+        {/* Content Area */}
+        {tab === "inventory" && (
+           <div style={{ display: "grid", gap: 24 }}>
+             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+                <AnalyticMetric title="Total Value" value={`AED ${(data.inv?.current?.totalValue || 0).toLocaleString()}`} sub={`${data.inv?.current?.totalItems || 0} trackable items`} dark={dark} />
+                <AnalyticMetric title="Avg Daily Burn" value={`AED ${(data.inv?.summary?.avgDailyUsage || 0).toLocaleString()}`} sub="Current pace" dark={dark} />
+                <AnalyticMetric title="Monthly Projection" value={`AED ${(data.inv?.summary?.projectedMonthlyUsage || 0).toLocaleString()}`} sub="Estimated replenishment" dark={dark} />
+             </div>
+             <SectionBox title="Category Concentration" dark={dark}>
+                <div style={{ display: "grid", gap: 16 }}>
+                  {(data.inv?.current?.byCategory || []).map((cat, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 14, fontWeight: 800 }}>
+                          <span>{cat.category.replace(/_/g, ' ').toUpperCase()}</span>
+                          <span>AED {cat.value.toLocaleString()} ({cat.percentage}%)</span>
+                        </div>
+                        <div style={{ height: 8, background: dark ? "#1e293b" : "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
+                          <div style={{ width: `${cat.percentage}%`, height: "100%", background: "#F43F5E", borderRadius: 99 }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+             </SectionBox>
+           </div>
         )}
 
-        {/* TURNOVER TAB */}
-        {tab === "turnover" && turnoverData && (
-          <div>
-            {turnoverData.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted)" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
-                <p style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>No usage data yet</p>
-                <p style={{ fontSize: 13, margin: "4px 0 0" }}>Complete some orders to see turnover analytics</p>
-              </div>
-            ) : (
-              turnoverData.map((cat, idx) => (
-                <div key={idx} style={s.section}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                    <h2 style={{ ...s.sectionTitle, margin: 0 }}>
-                      {cat.category.replace(/_/g, " ").toUpperCase()}
-                    </h2>
-                    <div
-                      style={{
-                        ...s.badge(cat.avgTurnover > 70 ? "high" : cat.avgTurnover > 40 ? "medium" : "low"),
-                        marginLeft: "auto"
-                      }}
-                    >
-                      Avg Turnover: {cat.avgTurnover}%
-                    </div>
-                  </div>
-
-                  <div style={s.chartContainer}>
-                    <table style={s.table}>
-                      <thead>
-                        <tr>
-                          <th style={s.th}>Item</th>
-                          <th style={s.th}>Used</th>
-                          <th style={s.th}>Turnover</th>
-                          <th style={s.th}>Efficiency</th>
-                          <th style={s.th}>Current Stock</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {cat.items.map((item, i) => (
-                          <tr key={i}>
-                            <td style={s.td}>{item.name}</td>
-                            <td style={s.td}>AED {item.usedValue.toLocaleString()}</td>
-                            <td style={s.td}>
-                              <strong>{item.turnoverRate}%</strong>
-                            </td>
-                            <td style={s.td}>
-                              <span style={s.badge(item.efficiency)}>
-                                {item.efficiency.toUpperCase()}
-                              </span>
-                            </td>
-                            <td style={s.td}>{item.currentStock}</td>
+        {tab === "turnover" && (
+           <div style={{ display: "grid", gap: 24 }}>
+             {(data.turn || []).length === 0 ? (
+               <EmptyState msg="No turnover data recorded yet. Processing orders will trigger velocity tracking." icon="🔄" dark={dark} />
+             ) : (
+               (data.turn || []).map((cat, idx) => (
+                 <SectionBox key={idx} title={cat.category.replace(/_/g, ' ')} badge={`Avg Turnover: ${cat.avgTurnover}%`} dark={dark}>
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ textAlign: "left", fontSize: 12, color: "var(--muted)", textTransform: "uppercase" }}>
+                            <th style={{ padding: "12px 0" }}>Item Name</th>
+                            <th>Value Used</th>
+                            <th>Turnover</th>
+                            <th>Efficiency</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                        </thead>
+                        <tbody>
+                          {cat.items.map((item, i) => (
+                            <tr key={i} style={{ borderTop: "1px solid var(--border)", fontSize: 14 }}>
+                              <td style={{ padding: "16px 0", fontWeight: 800 }}>{item.name}</td>
+                              <td>AED {item.usedValue.toLocaleString()}</td>
+                              <td style={{ fontWeight: 900, color: "#F43F5E" }}>{item.turnoverRate}%</td>
+                              <td>
+                                <span style={{ padding: "4px 10px", borderRadius: 8, background: item.efficiency === "high" ? "#F0FDF4" : "#FEF2F2", color: item.efficiency === "high" ? "#10B981" : "#EF4444", fontWeight: 900, fontSize: 11 }}>
+                                  {item.efficiency.toUpperCase()}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                 </SectionBox>
+               ))
+             )}
+           </div>
         )}
 
-        {/* SUPPLIERS TAB */}
-        {tab === "suppliers" && supplierData && (
-          <div>
-            {supplierData.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted)" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🏢</div>
-                <p style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>No suppliers yet</p>
-                <p style={{ fontSize: 13, margin: "4px 0 0" }}>Add suppliers to your inventory items to see analytics</p>
-              </div>
-            ) : (
-              supplierData.map((supplier, idx) => (
-                <div key={idx} style={s.section}>
-                  <div style={{ ...s.chartContainer, marginBottom: 16 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 16 }}>
-                      <div>
-                        <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900 }}>{supplier.name || "Unknown Supplier"}</h3>
-                        {supplier.contact && <p style={{ margin: "0 0 2px", fontSize: 12, color: "var(--muted)" }}>📞 {supplier.contact}</p>}
-                        {supplier.email && <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>📧 {supplier.email}</p>}
+        {tab === "suppliers" && (
+           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 }}>
+             {(data.supp || []).length === 0 ? (
+               <div style={{ gridColumn: "1 / -1" }}>
+                 <EmptyState msg="Assign suppliers to your inventory to unlock relationship analytics." icon="🏢" dark={dark} />
+               </div>
+             ) : (
+               (data.supp || []).map((sup, idx) => (
+                 <SectionBox key={idx} title={sup.name || "Unknown"} dark={dark}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                      <div style={{ textAlign: 'center', background: dark ? "#1e293b" : "#f1f5f9", padding: "12px 20px", borderRadius: 16 }}>
+                        <p style={{ margin: 0, fontSize: 10, fontWeight: 900, color: "var(--muted)" }}>QUALITY SCORE</p>
+                        <p style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 950, color: "#10B981" }}>{sup.qualityScore}%</p>
                       </div>
-                      <div style={{ display: "flex", gap: 12 }}>
-                        <div style={{ textAlign: "right" }}>
-                          <p style={{ ...s.cardTitle, margin: 0 }}>Quality Score</p>
-                          <p style={{ fontSize: 20, fontWeight: 900, margin: "4px 0 0" }}>{supplier.qualityScore}/100</p>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <p style={{ ...s.cardTitle, margin: 0 }}>Total Value</p>
-                          <p style={{ fontSize: 20, fontWeight: 900, margin: "4px 0 0", color: "#2563eb" }}>AED {supplier.totalValue.toLocaleString()}</p>
-                        </div>
+                      <div style={{ textAlign: 'center', background: dark ? "#1e293b" : "#f1f5f9", padding: "12px 20px", borderRadius: 16 }}>
+                        <p style={{ margin: 0, fontSize: 10, fontWeight: 900, color: "var(--muted)" }}>TOTAL VOLUME</p>
+                        <p style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 950 }}>AED {sup.totalValue.toLocaleString()}</p>
                       </div>
                     </div>
-
-                    <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-                      <p style={{ ...s.cardTitle, marginBottom: 12 }}>Items Supplied ({supplier.itemCount})</p>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
-                        {supplier.items.map((item, i) => (
-                              <div key={i} style={{ padding: 12, background: subCardBg, borderRadius: 8, border: `1px solid ${rowBorder}` }}>
-                                <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 13, color: textPrimary }}>{item.name}</p>
-                                <p style={{ margin: "0 0 4px", fontSize: 11, color: textSecondary }}>Value: AED {item.value.toLocaleString()}</p>
-                                <p style={{ margin: "0 0 4px", fontSize: 11, color: textSecondary }}>Stock: {item.stock}</p>
-                            {item.expiryDate && (
-                                  <p style={{ margin: 0, fontSize: 11, color: new Date(item.expiryDate) < new Date() ? "#dc2626" : textSecondary }}>
-                                Expires: {new Date(item.expiryDate).toLocaleDateString()}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                    <div style={{ display: "grid", gap: 10 }}>
+                       {sup.items.slice(0, 3).map((item, i) => (
+                         <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700 }}>
+                           <span>{item.name}</span>
+                           <span style={{ color: "var(--muted)" }}>AED {item.value.toLocaleString()}</span>
+                         </div>
+                       ))}
                     </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                 </SectionBox>
+               ))
+             )}
+           </div>
         )}
 
-        {/* COSTS TAB */}
-        {tab === "costs" && costData && (
-          <div>
-            {/* Current Investment */}
-            <div style={s.grid}>
-              <div style={s.card}>
-                <p style={s.cardTitle}>Total Capital Invested</p>
-                <p style={s.cardValue}>AED {costData.current.totalCapitalInvested.toLocaleString()}</p>
-                <p style={s.cardSub}>Current inventory value</p>
-              </div>
-              <div style={s.card}>
-                <p style={s.cardTitle}>Average Unit Cost</p>
-                <p style={s.cardValue}>AED {costData.current.averageUnitCost.toFixed(2)}</p>
-                <p style={s.cardSub}>Across all items</p>
-              </div>
-              <div style={s.card}>
-                <p style={s.cardTitle}>Total Cost Used</p>
-                <p style={s.cardValue}>AED {costData.usage.totalCostUsed.toLocaleString()}</p>
-                <p style={s.cardSub}>From orders</p>
-              </div>
-            </div>
-
-            {/* Highest Cost Items */}
-            <div style={s.section}>
-              <h2 style={s.sectionTitle}>💎 Most Expensive Items</h2>
-              <div style={s.chartContainer}>
-                <table style={s.table}>
-                  <thead>
-                    <tr>
-                      <th style={s.th}>Item</th>
-                      <th style={s.th}>Unit Cost (AED)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {costData.current.highestCostItems.slice(0, 10).map((item, idx) => (
-                      <tr key={idx}>
-                        <td style={s.td}>{item.name}</td>
-                        <td style={s.td}>
-                          <strong>AED {item.cost.toFixed(2)}</strong>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Lowest Cost Items */}
-            <div style={s.section}>
-              <h2 style={s.sectionTitle}>💸 Budget-Friendly Items</h2>
-              <div style={s.chartContainer}>
-                <table style={s.table}>
-                  <thead>
-                    <tr>
-                      <th style={s.th}>Item</th>
-                      <th style={s.th}>Unit Cost (AED)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {costData.current.lowestCostItems.slice(0, 10).map((item, idx) => (
-                      <tr key={idx}>
-                        <td style={s.td}>{item.name}</td>
-                        <td style={s.td}>
-                          <strong>AED {item.cost.toFixed(2)}</strong>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Cost by Category */}
-            <div style={s.section}>
-              <h2 style={s.sectionTitle}>By Category</h2>
-              <div style={s.chartContainer}>
-                <table style={s.table}>
-                  <thead>
-                    <tr>
-                      <th style={s.th}>Category</th>
-                      <th style={s.th}>Items</th>
-                      <th style={s.th}>Total Value</th>
-                      <th style={s.th}>Avg Unit Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {costData.usage.costByCategory.map((cat, idx) => (
-                      <tr key={idx}>
-                        <td style={s.td}>
-                          <strong>{cat.category.replace(/_/g, " ").toUpperCase()}</strong>
-                        </td>
-                        <td style={s.td}>{cat.items}</td>
-                        <td style={s.td}>AED {cat.totalValue.toLocaleString()}</td>
-                        <td style={s.td}>AED {cat.avgUnitCost.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+        {tab === "costs" && data.cost && (
+           <div style={{ display: "grid", gap: 24 }}>
+             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+                <AnalyticMetric title="Capital Invested" value={`AED ${data.cost.current.totalCapitalInvested.toLocaleString()}`} sub="Frozen assets" dark={dark} />
+                <AnalyticMetric title="Avg Unit Cost" value={`AED ${data.cost.current.averageUnitCost.toFixed(2)}`} sub="Base price" dark={dark} />
+                <AnalyticMetric title="Cost Used" value={`AED ${data.cost.usage.totalCostUsed.toLocaleString()}`} sub="Burned value" dark={dark} />
+             </div>
+             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                <SectionBox title="💎 High Cost Assets" dark={dark}>
+                   <div style={{ display: "grid", gap: 12 }}>
+                      {data.cost.current.highestCostItems.slice(0, 5).map((item, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
+                          <span>{item.name}</span>
+                          <span style={{ color: "#F43F5E" }}>AED {item.cost.toFixed(2)}</span>
+                        </div>
+                      ))}
+                   </div>
+                </SectionBox>
+                <SectionBox title="💰 Low Cost Items" dark={dark}>
+                   <div style={{ display: "grid", gap: 12 }}>
+                      {data.cost.current.lowestCostItems.slice(0, 5).map((item, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
+                          <span>{item.name}</span>
+                          <span style={{ color: "#10B981" }}>AED {item.cost.toFixed(2)}</span>
+                        </div>
+                      ))}
+                   </div>
+                </SectionBox>
+             </div>
+           </div>
         )}
+
       </div>
     </RestaurantLayout>
   );
-};
+}
 
-export default InventoryAnalytics;
+function AnalyticMetric({ title, value, sub, dark }) {
+  return (
+    <div style={{
+      background: dark ? "rgba(255,255,255,0.03)" : "white",
+      borderRadius: 24, padding: "24px", border: "1px solid var(--border)"
+    }}>
+      <p style={{ margin: 0, fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "var(--muted)", letterSpacing: 1 }}>{title}</p>
+      <h3 style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 950 }}>{value}</h3>
+      <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{sub}</p>
+    </div>
+  );
+}
+
+function SectionBox({ title, badge, children, dark }) {
+  return (
+    <div style={{
+      background: dark ? "rgba(255,255,255,0.03)" : "white",
+      borderRadius: 28, padding: 32, border: "1px solid var(--border)"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <h3 style={{ fontSize: 20, fontWeight: 900, margin: 0 }}>{title}</h3>
+        {badge && <span style={{ padding: "6px 14px", borderRadius: 10, background: "#f1f5f9", color: "#64748b", fontWeight: 800, fontSize: 12 }}>{badge}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function EmptyState({ msg, icon, dark }) {
+  return (
+    <div style={{ 
+      padding: 60, textAlign: 'center', background: dark ? "rgba(255,255,255,0.02)" : "#f9fafb", 
+      borderRadius: 28, border: "1px dashed var(--border)" 
+    }}>
+      <div style={{ fontSize: 40, marginBottom: 16 }}>{icon}</div>
+      <p style={{ fontWeight: 800, color: "var(--muted)", maxWidth: 300, margin: "0 auto" }}>{msg}</p>
+    </div>
+  );
+}

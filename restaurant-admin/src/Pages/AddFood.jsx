@@ -280,14 +280,20 @@ function ItemEditor({
               </div>
 
               {item.ingredients.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
                   {item.ingredients.map((ing) => (
-                    <span key={ing.inventoryId} style={{ fontSize: 11, background: dark ? "rgba(21,128,61,0.2)" : "#dcfce7", color: dark ? "#bbf7d0" : "#166534", borderRadius: 999, padding: "4px 8px", display: "inline-flex", gap: 6, alignItems: "center" }}>
-                      {ing.itemName} x {ing.quantityPerOrder} {ing.unit}
-                      <button type="button" onClick={() => onRemoveIngredient(item.id, ing.inventoryId)} style={{ border: "none", background: "none", color: "#ef4444", fontWeight: 900, cursor: "pointer", padding: 0 }}>
-                        ✕
+                    <div key={ing.inventoryId} style={{ fontSize: 12, background: dark ? "rgba(21, 128, 61, 0.15)" : "#f0fdf4", color: dark ? "#86efac" : "#166534", borderRadius: 10, padding: "6px 10px", display: "inline-flex", gap: 10, alignItems: "center", border: `1px solid ${dark ? "rgba(134,239,172,0.2)" : "#bbf7d0"}` }}>
+                      <span style={{ fontWeight: 800 }}>{ing.itemName}</span>
+                      <span style={{ opacity: 0.7 }}>{ing.quantityPerOrder} {ing.unit}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => onRemoveIngredient(item.id, ing.inventoryId)} 
+                        style={{ border: "none", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", borderRadius: 6, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14, fontWeight: 900 }}
+                        title="Remove Ingredient"
+                      >
+                        🗑️
                       </button>
-                    </span>
+                    </div>
                   ))}
                 </div>
               )}
@@ -606,11 +612,18 @@ export default function AddFood() {
     }
 
     setSubmitting(false);
+    // Note: step 2 (success view) is handled automatically by checking all items status
   };
 
   const successCount = items.filter((it) => it.status === "success").length;
   const errorCount = items.filter((it) => it.status === "error").length;
   const pendingCount = items.filter((it) => it.status === "idle").length;
+
+  useEffect(() => {
+    if (step === 1 && items.length > 0 && items.every(it => it.status === 'success')) {
+       setStep(2);
+    }
+  }, [items, step]);
 
   const textMain = dark ? "#f8fafc" : "#111827";
   const textMuted = dark ? "#94a3b8" : "#6b7280";
@@ -619,134 +632,157 @@ export default function AddFood() {
 
   return (
     <RestaurantLayout>
-      <div style={{ marginBottom: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: "-0.5px", color: textMain }}>Add Food</h2>
-        <p style={{ margin: "4px 0 0", fontSize: 13, color: textMuted }}>
-          Add food first, then review and upload.
-        </p>
-      </div>
+      <div style={{ maxWidth: 1000, margin: "0 auto", paddingBottom: 40 }}>
+        {/* Title Section */}
+        <div style={{ marginBottom: 8 }}>
+          <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: "-0.5px", color: textMain }}>Add Food</h2>
+          <p style={{ margin: "4px 0 0", fontSize: 13, color: textMuted }}>
+            Add food first, then review and upload.
+          </p>
+        </div>
 
-      <div style={{ marginTop: 18 }}>
-        <Stepper step={step} dark={dark} />
+        {/* Content Section */}
+        <div style={{ marginTop: 18 }}>
+          <Stepper step={step} dark={dark} />
 
-        {step === 0 && (
-          <div>
+          {step === 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {items.map((item) => (
                 <ItemEditor
-                  key={item.id}
-                  item={item}
-                  dark={dark}
-                  categoryOptions={categoryOptions}
-                  inventoryItems={inventoryItems}
-                  onUpdate={updateItem}
-                  onRemove={removeItem}
-                  onAddGroup={addGroup}
-                  onRemoveGroup={removeGroup}
-                  onUpdateGroup={updateGroup}
-                  onAddOption={addOption}
-                  onRemoveOption={removeOption}
-                  onUpdateOption={updateOption}
-                  onAddIngredient={addIngredient}
-                  onRemoveIngredient={removeIngredient}
+                   key={item.id}
+                   item={item}
+                   dark={dark}
+                   categoryOptions={categoryOptions}
+                   inventoryItems={inventoryItems}
+                   onUpdate={updateItem}
+                   onRemove={removeItem}
+                   onAddGroup={addGroup}
+                   onRemoveGroup={removeGroup}
+                   onUpdateGroup={updateGroup}
+                   onAddOption={addOption}
+                   onRemoveOption={removeOption}
+                   onUpdateOption={updateOption}
+                   onAddIngredient={addIngredient}
+                   onRemoveIngredient={removeIngredient}
                 />
               ))}
-            </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={addItem}
-                style={{ border: `1px dashed ${dark ? "#475569" : "#cbd5e1"}`, borderRadius: 12, background: surface, color: textMain, padding: "11px 18px", fontWeight: 800, cursor: "pointer" }}
-              >
-                + Add Another Food
-              </button>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={addItem}
+                  style={{ border: `1px dashed ${dark ? "#475569" : "#cbd5e1"}`, borderRadius: 12, background: surface, color: textMain, padding: "11px 18px", fontWeight: 800, cursor: "pointer" }}
+                >
+                  + Add Another Food
+                </button>
 
-              <button
-                type="button"
-                onClick={moveToReview}
-                disabled={validCount === 0}
-                style={{ border: "none", borderRadius: 12, background: validCount === 0 ? (dark ? "#334155" : "#e5e7eb") : "linear-gradient(135deg,#ff4e2a,#ff6a3d)", color: validCount === 0 ? (dark ? "#94a3b8" : "#6b7280") : "#fff", padding: "11px 24px", fontWeight: 900, cursor: validCount === 0 ? "not-allowed" : "pointer" }}
-              >
-                Review {validCount} Item{validCount !== 1 ? "s" : ""} →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 10, marginBottom: 14 }}>
-              <div style={{ background: dark ? "#1e293b" : "#f9fafb", border: `1px solid ${border}`, borderRadius: 12, padding: 12 }}>
-                <div style={{ fontSize: 24, fontWeight: 900, color: textMain }}>{pendingCount}</div>
-                <div style={{ fontSize: 12, color: textMuted, fontWeight: 700 }}>Pending</div>
-              </div>
-              <div style={{ background: dark ? "rgba(22,163,74,0.2)" : "#f0fdf4", border: `1px solid ${dark ? "rgba(134,239,172,0.4)" : "#bbf7d0"}`, borderRadius: 12, padding: 12 }}>
-                <div style={{ fontSize: 24, fontWeight: 900, color: dark ? "#bbf7d0" : "#166534" }}>{successCount}</div>
-                <div style={{ fontSize: 12, color: dark ? "#bbf7d0" : "#166534", fontWeight: 700 }}>Uploaded</div>
-              </div>
-              <div style={{ background: dark ? "rgba(127,29,29,0.2)" : "#fef2f2", border: `1px solid ${dark ? "rgba(252,165,165,0.4)" : "#fecaca"}`, borderRadius: 12, padding: 12 }}>
-                <div style={{ fontSize: 24, fontWeight: 900, color: dark ? "#fca5a5" : "#991b1b" }}>{errorCount}</div>
-                <div style={{ fontSize: 12, color: dark ? "#fca5a5" : "#991b1b", fontWeight: 700 }}>Failed</div>
+                <button
+                  type="button"
+                  onClick={moveToReview}
+                  disabled={validCount === 0}
+                  style={{ border: "none", borderRadius: 12, background: validCount === 0 ? (dark ? "#334155" : "#e5e7eb") : "linear-gradient(135deg,#ff4e2a,#ff6a3d)", color: validCount === 0 ? (dark ? "#94a3b8" : "#6b7280") : "#fff", padding: "11px 24px", fontWeight: 900, cursor: validCount === 0 ? "not-allowed" : "pointer" }}
+                >
+                  Review {validCount} Item{validCount !== 1 ? "s" : ""} →
+                </button>
               </div>
             </div>
+          )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-              {items.map((item) => {
-                const statusColor =
-                  item.status === "success"
-                    ? (dark ? "#86efac" : "#166534")
-                    : item.status === "error"
-                    ? (dark ? "#fca5a5" : "#991b1b")
-                    : item.status === "uploading"
-                    ? (dark ? "#93c5fd" : "#1d4ed8")
-                    : textMuted;
+          {step === 1 && (
+            <div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 10, marginBottom: 14 }}>
+                <div style={{ background: dark ? "#1e293b" : "#f9fafb", border: `1px solid ${border}`, borderRadius: 12, padding: 12 }}>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: textMain }}>{pendingCount}</div>
+                  <div style={{ fontSize: 12, color: textMuted, fontWeight: 700 }}>Pending</div>
+                </div>
+                <div style={{ background: dark ? "rgba(22,163,74,0.2)" : "#f0fdf4", border: `1px solid ${dark ? "rgba(134,239,172,0.4)" : "#bbf7d0"}`, borderRadius: 12, padding: 12 }}>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: dark ? "#bbf7d0" : "#166534" }}>{successCount}</div>
+                  <div style={{ fontSize: 12, color: dark ? "#bbf7d0" : "#166534", fontWeight: 700 }}>Uploaded</div>
+                </div>
+                <div style={{ background: dark ? "rgba(127,29,29,0.2)" : "#fef2f2", border: `1px solid ${dark ? "rgba(252,165,165,0.4)" : "#fecaca"}`, borderRadius: 12, padding: 12 }}>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: dark ? "#fca5a5" : "#991b1b" }}>{errorCount}</div>
+                  <div style={{ fontSize: 12, color: dark ? "#fca5a5" : "#991b1b", fontWeight: 700 }}>Failed</div>
+                </div>
+              </div>
 
-                return (
-                  <div key={item.id} style={{ background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
-                    {item.image ? (
-                      <img src={URL.createObjectURL(item.image)} alt="" style={{ width: 44, height: 40, borderRadius: 8, objectFit: "cover" }} />
-                    ) : (
-                      <div style={{ width: 44, height: 40, borderRadius: 8, background: dark ? "#334155" : "#f3f4f6", display: "grid", placeItems: "center" }}>📷</div>
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 14, color: textMain }}>{item.name || "Untitled"}</div>
-                      <div style={{ fontSize: 12, color: textMuted }}>
-                        {item.category || "No category"} · AED {item.price || "0"}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+                {items.map((item) => {
+                  const statusColor =
+                    item.status === "success"
+                      ? (dark ? "#86efac" : "#166534")
+                      : item.status === "error"
+                      ? (dark ? "#fca5a5" : "#991b1b")
+                      : item.status === "uploading"
+                      ? (dark ? "#93c5fd" : "#1d4ed8")
+                      : textMuted;
+
+                  return (
+                    <div key={item.id} style={{ background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
+                      {item.image ? (
+                        <img src={URL.createObjectURL(item.image)} alt="" style={{ width: 44, height: 40, borderRadius: 8, objectFit: "cover" }} />
+                      ) : (
+                        <div style={{ width: 44, height: 40, borderRadius: 8, background: dark ? "#334155" : "#f3f4f6", display: "grid", placeItems: "center" }}>📷</div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: textMain }}>{item.name || "Untitled"}</div>
+                        <div style={{ fontSize: 12, color: textMuted }}>
+                          {item.category || "No category"} · AED {item.price || "0"}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: statusColor }}>
+                        {item.status === "idle" && "Pending"}
+                        {item.status === "uploading" && "Uploading..."}
+                        {item.status === "success" && "Done"}
+                        {item.status === "error" && `Error: ${item.error || "Upload failed"}`}
                       </div>
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: statusColor }}>
-                      {item.status === "idle" && "Pending"}
-                      {item.status === "uploading" && "Uploading..."}
-                      {item.status === "success" && "Done"}
-                      {item.status === "error" && `Error: ${item.error || "Upload failed"}`}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => setStep(0)}
-                disabled={submitting}
-                style={{ border: `1px solid ${border}`, borderRadius: 12, background: surface, color: textMain, padding: "11px 18px", fontWeight: 800, cursor: submitting ? "not-allowed" : "pointer" }}
-              >
-                ← Back to Edit
-              </button>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setStep(0)}
+                  disabled={submitting}
+                  style={{ border: `1px solid ${border}`, borderRadius: 12, background: surface, color: textMain, padding: "11px 18px", fontWeight: 800, cursor: submitting ? "not-allowed" : "pointer" }}
+                >
+                  ← Back to Edit
+                </button>
 
-              <button
-                type="button"
-                onClick={uploadAll}
-                disabled={submitting || items.length === 0}
-                style={{ border: "none", borderRadius: 12, background: submitting || items.length === 0 ? (dark ? "#334155" : "#9ca3af") : "linear-gradient(135deg,#ff4e2a,#ff6a3d)", color: "#fff", padding: "11px 24px", fontWeight: 900, cursor: submitting || items.length === 0 ? "not-allowed" : "pointer" }}
-              >
-                {submitting ? "Uploading..." : `Upload ${items.length} Item${items.length !== 1 ? "s" : ""}`}
-              </button>
+                <button
+                  type="button"
+                  onClick={uploadAll}
+                  disabled={submitting || items.length === 0}
+                  style={{ border: "none", borderRadius: 12, background: submitting || items.length === 0 ? (dark ? "#334155" : "#9ca3af") : "linear-gradient(135deg,#ff4e2a,#ff6a3d)", color: "#fff", padding: "11px 24px", fontWeight: 900, cursor: submitting || items.length === 0 ? "not-allowed" : "pointer" }}
+                >
+                  {submitting ? "Uploading..." : `Upload ${items.length} Item${items.length !== 1 ? "s" : ""}`}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {step === 2 && (
+            <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 24, padding: 60, textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize: 72, marginBottom: 20 }}>🎉</div>
+              <h2 style={{ fontSize: 32, fontWeight: 950, color: textMain, marginBottom: 12 }}>Items Saved Successfully!</h2>
+              <p style={{ fontSize: 16, color: textMuted, marginBottom: 40, maxWidth: 450, margin: "0 auto 40px" }}>
+                Your {successCount} new menu items have been added and are now live on your storefront.
+              </p>
+              <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
+                <button 
+                  onClick={() => { setStep(0); setItems([makeItem()]); }}
+                  style={{ padding: "14px 28px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#ff4e2a,#ff6a3d)", color: "#fff", fontWeight: 900, cursor: "pointer", boxShadow: "0 10px 20px rgba(255,78,42,0.2)" }}
+                >
+                  + Add More Food
+                </button>
+                <a href="/menu" style={{ padding: "14px 28px", borderRadius: 12, border: `1.5px solid ${border}`, background: surface, color: textMain, fontWeight: 900, textDecoration: "none", display: "flex", alignItems: "center" }}>
+                  View Menu →
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </RestaurantLayout>
   );

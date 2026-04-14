@@ -11,7 +11,8 @@ export default function QuickActions({ dark = false }) {
     { id: 5, title: "Flash Deals", sub: "Active promotions", icon: "⚡", route: "/flash-deals" },
     { id: 6, title: "Reviews", sub: "Customer feedback", icon: "💬", route: "/reviews" },
     { id: 7, title: "Coupons", sub: "Discounts & promos", icon: "🎟️", route: "/coupons" },
-    { id: 8, title: "Finance", sub: "Earnings & payouts", icon: "💰", route: "/finance" }
+    { id: 8, title: "Finance", sub: "Earnings & payouts", icon: "💰", route: "/finance" },
+    { id: 9, title: "Settings", sub: "Store configurations", icon: "⚙️", route: "/settings" }
   ];
 
   const cardShadow = dark ? "0 10px 30px rgba(0,0,0,0.3)" : "0 10px 30px rgba(0,0,0,0.03)";
@@ -22,7 +23,7 @@ export default function QuickActions({ dark = false }) {
         {`
           .qa-grid-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 16px;
             width: 100%;
           }
@@ -33,7 +34,7 @@ export default function QuickActions({ dark = false }) {
         <h3 style={{ margin: 0, fontSize: 13, fontWeight: 950, color: dark ? "rgba(255,255,255,0.4)" : "#64748b", textTransform: "uppercase", letterSpacing: "1px" }}>
           Quick Management
         </h3>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--orange)", opacity: 0.8 }}>8 Rapid Actions Available</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--orange)", opacity: 0.8 }}>9 Rapid Actions Available</span>
       </div>
       
       <div className="qa-grid-container">
@@ -45,15 +46,15 @@ export default function QuickActions({ dark = false }) {
               background: dark ? "rgba(255,255,255,0.03)" : "#ffffff",
               border: `1px solid ${dark ? "rgba(255,255,255,0.08)" : "#f1f5f9"}`,
               borderRadius: 22,
-              padding: "24px 28px",
+              padding: "16px 20px",
               cursor: "pointer",
               transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               display: "flex",
               flexDirection: "row",
               alignItems: "center",
-              gap: 20,
+              gap: 16,
               boxShadow: cardShadow,
-              minHeight: "125px",
+              minHeight: "90px",
               width: "100%",
               boxSizing: "border-box"
             }}
@@ -69,8 +70,8 @@ export default function QuickActions({ dark = false }) {
             }}
           >
             <div style={{ 
-                fontSize: 32, 
-                width: 54, height: 54, borderRadius: 14,
+                fontSize: 24, 
+                width: 44, height: 44, borderRadius: 12,
                 background: dark ? "rgba(255,255,255,0.05)" : "#f8fafc",
                 display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
             }}>
@@ -79,7 +80,7 @@ export default function QuickActions({ dark = false }) {
             
             <div style={{ textAlign: "left", minWidth: 0, flex: 1 }}>
               <div style={{ 
-                fontSize: 16, 
+                fontSize: 14, 
                 fontWeight: 950, 
                 color: dark ? "white" : "#1e293b",
                 letterSpacing: "-0.5px",

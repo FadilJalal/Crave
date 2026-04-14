@@ -4,20 +4,23 @@ import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { StoreContext } from '../../Context/StoreContext';
 import LiveDeliveryMap from '../../components/LiveDeliveryMap/LiveDeliveryMap';
+import { toast } from 'react-toastify';
 import './OrderTracking.css';
 
 const STEPS = (t) => [
-  { key: 'Order Placed',    label: t("my_orders_title").replace('طلباتي', 'تم الطلب').replace('My Orders', 'Order Placed'), icon: '🧾', desc: t("order_placed_desc"),              eta: null },
-  { key: 'Food Processing', label: t("preparing"),    icon: '👨‍🍳', desc: t("preparing_desc"),    eta: '15–25 min' },
-  { key: 'Out for Delivery',label: t("on_the_way"),   icon: '🛵', desc: t("on_the_way_desc"),           eta: '10–20 min' },
-  { key: 'Delivered',       label: t("status_delivered"),    icon: '✅', desc: t("enjoy_meal"),                          eta: null },
+  { key: 'Placed',      label: "Order Placed",       icon: '🧾', desc: "Your order has been received", eta: null },
+  { key: 'Pending',     label: "Waiting for Restaurant to Accept", icon: '⏳', desc: "Waiting for restaurant to confirm", eta: null },
+  { key: 'Food Processing', label: "Food Processing", icon: '🍳', desc: "Chef is cooking your meal", eta: '15–25 min' },
+  { key: 'Out for Delivery',label: "Out for Delivery", icon: '🛵', desc: "Courier is on the way", eta: '10–20 min' },
+  { key: 'Delivered',   label: "Delivered",          icon: '🏁', desc: "Enjoy your meal!", eta: null },
 ];
 
 const stepIndex = (status) => {
   const s = (status || '').toLowerCase().trim();
-  if (s === 'food processing')  return 1;
-  if (s === 'out for delivery') return 2;
-  if (s === 'delivered')        return 3;
+  if (s === 'pending')          return 1;
+  if (s === 'food processing')  return 2;
+  if (s === 'out for delivery') return 3;
+  if (s === 'delivered')        return 4;
   return 0;
 };
 
@@ -49,12 +52,28 @@ const OrderTracking = () => {
   const [pulsing, setPulsing]       = useState(false);
   const pollRef = useRef(null);
 
+  const prevStatusRef = useRef(null);
+
   const fetchOrder = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const res = await axios.get(`${url}/api/order/track/${orderId}`, { headers: { token } });
       if (res.data.success) {
-        setOrder(res.data.data);
+        const newOrder = res.data.data;
+        
+        // Notify user if status changed
+        if (prevStatusRef.current && prevStatusRef.current !== newOrder.status) {
+          const statusMap = {
+            'Food Processing': '🍳 The restaurant has accepted and started preparing your food!',
+            'Out for Delivery': '🛵 Your order is on the way!',
+            'Delivered': '🏁 Enjoy your meal! Order delivered.',
+          };
+          const msg = statusMap[newOrder.status];
+          if (msg) toast.success(msg, { icon: '🔔', autoClose: 5000 });
+        }
+        prevStatusRef.current = newOrder.status;
+
+        setOrder(newOrder);
         setLastUpdated(new Date());
         setError(false);
         if (silent) { setPulsing(true); setTimeout(() => setPulsing(false), 600); }
@@ -78,9 +97,9 @@ const OrderTracking = () => {
     return () => clearInterval(pollRef.current);
   }, [token, orderId]);
 
-  const step        = order ? stepIndex(order.status) : 0;
-  const currentStep = STEPS(t)[step];
-  const isDelivered = step === 3;
+  const step         = order ? stepIndex(order.status) : 0;
+  const isDelivered  = step === 4;
+  const currentStep  = STEPS(t)[step];
   const displayTotal = order ? getOrderDisplayTotal(order) : 0;
   const splitCashDue = order?.paymentMethod === 'split' ? Math.max(0, Number(order?.amount || 0)) : 0;
 
@@ -114,6 +133,57 @@ const OrderTracking = () => {
         <p className="ot-empty-title">{t("order_not_found")}</p>
         <p className="ot-empty-sub">{t("order_removed_desc")}</p>
         <button className="ot-btn" onClick={() => navigate('/myorders')}>{t("back_to_orders")}</button>
+      </div>
+    </div>
+  );
+
+  // --- WAITING SCREEN LOGIC ---
+  const isPending = (order?.status || '').toLowerCase().trim() === 'pending';
+  
+  if (isPending) return (
+    <div className="ot-page ot-waiting-page">
+      <div className="app-container">
+        <div className="ot-waiting-container">
+          <div className="ot-waiting-card">
+            <div className="ot-waiting-visual">
+              <div className="ot-waiting-pulse" />
+              <div className="ot-waiting-icon">🥣</div>
+            </div>
+            
+            <h1 className="ot-waiting-title">{t("Waiting for Restaurant...")}</h1>
+            <p className="ot-waiting-desc">
+              Your order has been received! We've notified the restaurant, 
+              and we're just waiting for them to start preparing your delicious meal.
+            </p>
+            
+            <div className="ot-waiting-status-chip">
+              <span className="ot-live-dot" /> {t("Live: Awaiting Confirmation")}
+            </div>
+          </div>
+
+          <div className="ot-card ot-waiting-summary">
+            <div className="ot-summary-header">
+              <span className="ot-summary-label">Order Details</span>
+              <span className="ot-summary-id">#{String(order._id).slice(-6).toUpperCase()}</span>
+            </div>
+            <div className="ot-divider" />
+            <ul className="ot-items">
+              {(order.items || []).map((item, i) => (
+                <li key={i} className="ot-item">
+                  <span className="ot-item-name">{item.name}</span>
+                  <span className="ot-item-qty">×{item.quantity}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="ot-divider" />
+            <div className="ot-total-row ot-total-bold">
+              <span>{t("total")}</span>
+              <span>{currency}{displayTotal.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <p className="ot-waiting-tip">💡 Tip: Hang tight! Most restaurants accept within 2-3 minutes.</p>
+        </div>
       </div>
     </div>
   );
@@ -155,11 +225,11 @@ const OrderTracking = () => {
                 const lineActive = idx < step;
                 return (
                   <React.Fragment key={s.key}>
-                    <div className="ot-step">
-                      <div className={`ot-dot ${done ? 'ot-dot-done' : ''} ${active ? 'ot-dot-current' : ''}`}>
+                    <div className="ot-step" style={{ minWidth: 80 }}>
+                      <div className={`ot-dot ${done ? 'ot-dot-done' : ''} ${active ? 'ot-dot-current' : ''}`} style={{ width: 42, height: 42, fontSize: 18 }}>
                         {done ? (active ? s.icon : '✓') : <span className="ot-dot-num">{idx + 1}</span>}
                       </div>
-                      <p className={`ot-step-label ${done ? 'ot-label-done' : ''}`}>{s.label}</p>
+                      <p className={`ot-step-label ${done ? 'ot-label-done' : ''}`} style={{ fontSize: 13, fontWeight: 900, marginTop: 12 }}>{s.label}</p>
                     </div>
                     {idx < STEPS(t).length - 1 && (
                       <div className={`ot-line ${lineActive ? 'ot-line-active' : ''}`}>

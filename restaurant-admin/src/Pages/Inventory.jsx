@@ -3,300 +3,70 @@ import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { toast } from "react-toastify";
 import { useTheme } from "../ThemeContext";
-import ConfirmationModal from "../components/ConfirmationModal";
+
+let _XLSX = null;
+const loadXLSX = () =>
+  new Promise((res, rej) => {
+    if (_XLSX) return res(_XLSX);
+    if (window.XLSX) { _XLSX = window.XLSX; return res(_XLSX); }
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload = () => { _XLSX = window.XLSX; res(_XLSX); };
+    s.onerror = () => rej(new Error("Failed to load SheetJS"));
+    document.head.appendChild(s);
+  });
 
 const CATEGORIES = [
-  { value: "all", label: "All", emoji: "📋" },
-  { value: "food_ingredient", label: "Ingredients", emoji: "🍎" },
-  { value: "beverage", label: "Beverages", emoji: "🥤" },
-  { value: "packaging", label: "Packaging", emoji: "📦" },
-  { value: "equipment", label: "Equipment", emoji: "🔧" },
-  { value: "other", label: "Other", emoji: "📝" }
+  { value: "all", label: "Overview", emoji: "💎" },
+  { value: "food_ingredient", label: "Ingredients", emoji: "🥦" },
+  { value: "beverage", label: "Bar & Drinks", emoji: "🍹" },
+  { value: "packaging", label: "Packaging", emoji: "🛍️" },
+  { value: "equipment", label: "Kitchen Tools", emoji: "🔪" },
+  { value: "other", label: "Misc", emoji: "🏷️" }
 ];
 
-const UNITS = ["kg", "g", "l", "ml", "pieces", "boxes", "bottles", "cans", "packets"];
+const UNITS = ["kg", "g", "l", "ml", "pcs", "box", "btl", "can", "pkt"];
 
-const SORT_OPTIONS = [
-  { value: "urgency", label: "Urgency" },
-  { value: "name", label: "Name" },
-  { value: "stock_low", label: "Stock: Low → High" },
-  { value: "stock_high", label: "Stock: High → Low" },
-  { value: "value", label: "Value" },
-  { value: "expiry", label: "Expiry Date" },
-];
-
-// ── Stock bar color helper ──
-function stockColor(current, min, max) {
-  if (current <= 0) return "#dc2626";
-  if (current <= min * 0.5) return "#dc2626";
-  if (current <= min) return "#f59e0b";
-  if (current >= max) return "#3b82f6";
-  return "#16a34a";
-}
-
-function stockPct(current, max) {
-  if (max <= 0) return 0;
-  return Math.min(100, Math.round((current / max) * 100));
-}
-
-function timeAgo(date) {
-  if (!date) return "Never";
-  const d = (Date.now() - new Date(date).getTime()) / 864e5;
-  if (d < 1) return "Today";
-  if (d < 2) return "Yesterday";
-  if (d < 7) return `${Math.floor(d)}d ago`;
-  if (d < 30) return `${Math.floor(d / 7)}w ago`;
-  return `${Math.floor(d / 30)}mo ago`;
-}
-
-function resolveLinkedMenuItem(link) {
-  const food = link?.foodId && typeof link.foodId === "object" ? link.foodId : null;
-  const resolvedFoodId = link?.resolvedFoodId || (food?._id ? String(food._id) : (link?.foodId ? String(link.foodId) : ""));
-  const resolvedFoodName = link?.resolvedFoodName || food?.name || (link?.isMissingFood ? "Deleted menu item" : "Unknown menu item");
-
-  return {
-    ...link,
-    resolvedFoodId,
-    resolvedFoodName,
-    isMissingFood: Boolean(link?.isMissingFood || !food),
-  };
-}
-
-const getInventoryThemeVars = (dark) => ({
-  "--inv-panel": dark ? "#0f172a" : "#ffffff",
-  "--inv-soft": dark ? "#111827" : "#f9fafb",
-  "--inv-soft-2": dark ? "#1f2937" : "#f3f4f6",
-  "--inv-border": dark ? "#334155" : "var(--border)",
-  "--inv-muted": dark ? "#cbd5e1" : "var(--muted)",
-  "--inv-text": dark ? "#f3f4f6" : "var(--text)",
-  "--inv-link-bg": dark ? "rgba(16,185,129,0.16)" : "#f0fdf4",
-  "--inv-link-border": dark ? "rgba(110,231,183,0.35)" : "#bbf7d0",
-  "--inv-link-text": dark ? "#a7f3d0" : "#166534",
-  "--inv-warn-bg": dark ? "rgba(245,158,11,0.18)" : "#fffbeb",
-  "--inv-warn-border": dark ? "rgba(245,158,11,0.35)" : "#fde68a",
-  "--inv-warn-text": dark ? "#fcd34d" : "#92400e",
-  "--inv-danger-bg": dark ? "rgba(239,68,68,0.18)" : "#fef2f2",
-  "--inv-danger-border": dark ? "rgba(239,68,68,0.35)" : "#fecaca",
-  "--inv-danger-text": dark ? "#fca5a5" : "#dc2626",
-  "--inv-info-bg": dark ? "rgba(59,130,246,0.18)" : "#eff6ff",
-  "--inv-info-border": dark ? "rgba(96,165,250,0.35)" : "#bfdbfe",
-  "--inv-info-text": dark ? "#93c5fd" : "#1e40af",
-  "--inv-modal-shadow": dark ? "0 24px 60px rgba(0,0,0,0.45)" : "0 24px 60px rgba(0,0,0,0.2)",
-});
-
-const InventoryCard = memo(({ item, ai, isSelected, catEmoji, onToggleSelect, onQuickAdjust, onStockUpdate, onEdit, onDelete, onLink }) => {
-  const urgency = ai?.urgency || 0;
-  const pct = stockPct(item.currentStock, item.maximumStock);
-  const color = stockColor(item.currentStock, item.minimumStock, item.maximumStock);
-
+// Reusable HeroChip component from Dashboard for theme consistency
+function MetricChip({ icon, label, value, sub, dark, badge }) {
   return (
-    <div key={item._id} style={{ ...s.card(urgency), outline: isSelected ? "2px solid #dc2626" : "none", outlineOffset: -1 }}>
-      <div style={s.cardTop}>
-        <input type="checkbox" checked={isSelected} onChange={() => onToggleSelect(item._id)}
-          style={{ width: 16, height: 16, accentColor: "#dc2626", cursor: "pointer", flexShrink: 0, marginTop: 2 }} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={s.cardName}>{item.itemName}</p>
-          <p style={s.cardMeta}>{item.unit} · {item.supplier?.name || "No supplier"} · Restocked {timeAgo(item.lastRestocked)}</p>
+    <div style={{
+      padding: "16px 20px", borderRadius: 24,
+      background: dark ? "rgba(255,255,255,0.04)" : "#fff",
+      border: dark ? "1px solid rgba(255,255,255,0.08)" : "1px solid var(--border)",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.02)",
+      transition: "all .3s ease", position: "relative"
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>{icon}</span>
+          <span style={{ fontSize: 10, fontWeight: 900, color: dark ? "rgba(255,255,255,0.5)" : "#64748b", textTransform: "uppercase", letterSpacing: "1px" }}>{label}</span>
         </div>
-        <span style={s.catBadge}>{catEmoji(item.category)} {CATEGORIES.find(c => c.value === item.category)?.label || item.category}</span>
-      </div>
-
-      <div>
-        <div style={s.barWrap}><div style={s.bar(pct, color)} /></div>
-        <div style={s.barLabel}><span>{item.currentStock} {item.unit}</span><span>Min {item.minimumStock} · Max {item.maximumStock}</span></div>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={s.adjRow}>
-          <button style={s.adjBtn} onClick={() => onQuickAdjust(item._id, -5)} title="-5">−5</button>
-          <button style={s.adjBtn} onClick={() => onQuickAdjust(item._id, -1)} title="-1">−</button>
-          <input
-            style={s.adjInput}
-            type="number" min="0" step="0.1"
-            value={item.currentStock}
-            onChange={e => onStockUpdate(item._id, e.target.value)}
-          />
-          <button style={s.adjBtn} onClick={() => onQuickAdjust(item._id, 1)} title="+1">+</button>
-          <button style={s.adjBtn} onClick={() => onQuickAdjust(item._id, 5)} title="+5">+5</button>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--inv-text)" }}>AED {(item.currentStock * item.unitCost).toFixed(2)}</div>
-          <div style={{ fontSize: 10, color: "var(--inv-muted)", fontWeight: 600 }}>@ AED {item.unitCost.toFixed(2)}/{item.unit}</div>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {item.status === "low" && <span style={s.statusChip("warn")}>📉 Low Stock</span>}
-        {item.status === "high" && <span style={s.statusChip("info")}>📈 Overstock</span>}
-        {item.expiryStatus === "expired" && <span style={s.statusChip("danger")}>⏰ Expired</span>}
-        {item.expiryStatus === "expiring_soon" && <span style={s.statusChip("warn")}>⏰ Expires Soon</span>}
-        {item.expiryDate && item.expiryStatus !== "expired" && item.expiryStatus !== "expiring_soon" && (
-          <span style={{ fontSize: 10, color: "var(--inv-muted)", fontWeight: 600 }}>Exp: {new Date(item.expiryDate).toLocaleDateString()}</span>
+        {badge && (
+          <span style={{ fontSize: 9, fontWeight: 900, padding: "3px 8px", borderRadius: 6, background: badge.positive ? "#10B981" : "#EF4444", color: "white" }}>
+            {badge.text}
+          </span>
         )}
       </div>
-
-      <div style={s.cardActions}>
-        {item.linkedMenuItems?.length > 0 && (
-          <div style={{ fontSize: 10, color: "#16a34a", fontWeight: 700, marginBottom: 8, width: "100%" }}>
-            <div>🔗 {item.linkedMenuItems.length} menu item{item.linkedMenuItems.length !== 1 ? "s" : ""} linked</div>
-          </div>
-        )}
-        <button style={s.actBtn(false)} onClick={() => onEdit(item)}>✏️ Edit</button>
-        <button style={s.actBtn(false)} onClick={() => onLink(item)}>🔗 Link</button>
-        <button style={s.actBtn(true)} onClick={() => onDelete(item._id)}>🗑️ Remove</button>
-      </div>
+      <div style={{ fontSize: 24, fontWeight: 950, color: dark ? "#fff" : "#111827", letterSpacing: "-0.8px" }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: dark ? "rgba(255,255,255,0.4)" : "#94a3b8", fontWeight: 700, marginTop: 6 }}>{sub}</div>}
     </div>
   );
-});
-
-// ── Styles ─────────────────────────────────────────────────────
-const s = {
-  wrap: { maxWidth: 1100 },
-  hdr: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14, marginBottom: 20 },
-  hdrLeft: { flex: 1 },
-  title: { fontSize: 28, fontWeight: 900, letterSpacing: -0.6, margin: 0, display: "flex", alignItems: "center", gap: 10 },
-  sub: { fontSize: 13, color: "var(--inv-muted)", margin: "4px 0 0", fontWeight: 500 },
-  hdrBtns: { display: "flex", gap: 8, flexWrap: "wrap" },
-
-  // Health score ring
-  ring: (score) => ({
-    width: 52, height: 52, borderRadius: "50%",
-    background: `conic-gradient(${score >= 70 ? "#16a34a" : score >= 40 ? "#f59e0b" : "#dc2626"} ${score * 3.6}deg, #f3f4f6 0deg)`,
-    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-  }),
-  ringInner: { width: 40, height: 40, borderRadius: "50%", background: "var(--inv-panel)", color: "var(--inv-text)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900 },
-
-  // Stats row
-  statsRow: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 18 },
-  stat: (accent) => ({
-    padding: "14px 16px", borderRadius: 14, background: "var(--inv-panel)", border: "1px solid var(--inv-border)",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
-  }),
-  statVal: (color) => ({ fontSize: 24, fontWeight: 900, color: color || "var(--inv-text)", letterSpacing: -0.5, margin: 0 }),
-  statLbl: { fontSize: 11, fontWeight: 700, color: "var(--inv-muted)", margin: "2px 0 0", textTransform: "uppercase", letterSpacing: 0.4 },
-
-  // Tips
-  tipWrap: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 },
-  tip: (type) => {
-    const m = { danger: { bg: "#fef2f2", border: "#fecaca", color: "#991b1b", icon: "🚨" }, warning: { bg: "#fffbeb", border: "#fde68a", color: "#92400e", icon: "⚠️" }, success: { bg: "#f0fdf4", border: "#bbf7d0", color: "#166534", icon: "✅" }, info: { bg: "#eff6ff", border: "#bfdbfe", color: "#1e40af", icon: "💡" } };
-    const c = m[type] || m.info;
-    return { padding: "10px 14px", borderRadius: 12, background: c.bg, border: `1px solid ${c.border}`, color: c.color, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, icon: c.icon };
-  },
-
-  // Toolbar
-  toolbar: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 14 },
-  search: { flex: "1 1 220px", padding: "9px 14px 9px 36px", borderRadius: 10, border: "1px solid var(--inv-border)", background: "var(--inv-soft)", color: "var(--inv-text)", fontSize: 13, fontFamily: "inherit", outline: "none", minWidth: 180 },
-  searchWrap: { position: "relative", flex: "1 1 220px" },
-  searchIcon: { position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--inv-muted)", pointerEvents: "none" },
-  select: { padding: "9px 12px", borderRadius: 10, border: "1px solid var(--inv-border)", background: "var(--inv-soft)", color: "var(--inv-text)", fontSize: 13, fontFamily: "inherit", cursor: "pointer" },
-
-  // Category pills
-  pills: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 },
-  pill: (active) => ({
-    padding: "7px 14px", borderRadius: 50, border: active ? "2px solid var(--orange)" : "1.5px solid var(--border)",
-    background: active ? "var(--orangeSoft)" : "var(--inv-panel)", fontWeight: 700, fontSize: 12,
-    color: active ? "var(--orange)" : "var(--inv-muted)", cursor: "pointer", fontFamily: "inherit",
-    display: "inline-flex", alignItems: "center", gap: 5, transition: "all .15s",
-  }),
-
-  // Cards grid
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: 14 },
-
-  // Individual card
-  card: (urgency) => ({
-    background: "var(--inv-panel)", borderRadius: 16, border: `1px solid ${urgency >= 70 ? "#fecaca" : urgency >= 50 ? "#fde68a" : "var(--inv-border)"}`,
-    boxShadow: urgency >= 70 ? "0 4px 18px rgba(220,38,38,0.08)" : "0 2px 10px rgba(0,0,0,0.04)",
-    padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10, transition: "all .15s",
-  }),
-  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 },
-  cardName: { fontSize: 15, fontWeight: 800, margin: 0, color: "var(--inv-text)", lineHeight: 1.3 },
-  cardMeta: { fontSize: 11, color: "var(--inv-muted)", fontWeight: 600, margin: "2px 0 0" },
-  catBadge: { fontSize: 11, padding: "3px 8px", borderRadius: 50, background: "var(--inv-soft-2)", fontWeight: 700, color: "var(--inv-muted)", whiteSpace: "nowrap" },
-
-  // Stock bar
-  barWrap: { height: 8, borderRadius: 50, background: "var(--inv-soft-2)", overflow: "hidden", position: "relative" },
-  bar: (pct, color) => ({ height: "100%", width: `${Math.min(100, pct)}%`, borderRadius: 50, background: color, transition: "width .4s ease" }),
-  barLabel: { display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "var(--inv-muted)", margin: "4px 0 0" },
-
-  // Quick adjust
-  adjRow: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 },
-  adjBtn: { width: 28, height: 28, borderRadius: 8, border: "1px solid var(--inv-border)", background: "var(--inv-soft)", color: "var(--inv-text)", cursor: "pointer", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit", transition: "all .12s" },
-  adjInput: { width: 56, textAlign: "center", padding: "4px 6px", borderRadius: 8, border: "1px solid var(--inv-border)", background: "var(--inv-panel)", color: "var(--inv-text)", fontSize: 13, fontWeight: 700, fontFamily: "inherit" },
-
-  // AI insight row
-  aiRow: { padding: "8px 10px", borderRadius: 10, background: "#faf5ff", border: "1px solid #e9d5ff", fontSize: 11, fontWeight: 600, color: "#6b21a8", display: "flex", alignItems: "flex-start", gap: 6 },
-
-  // Card actions
-  cardActions: { display: "flex", gap: 6, marginTop: "auto", paddingTop: 4 },
-  statusChip: (tone) => {
-    const map = {
-      warn: { bg: "var(--inv-warn-bg)", border: "var(--inv-warn-border)", color: "var(--inv-warn-text)" },
-      danger: { bg: "var(--inv-danger-bg)", border: "var(--inv-danger-border)", color: "var(--inv-danger-text)" },
-      info: { bg: "var(--inv-info-bg)", border: "var(--inv-info-border)", color: "var(--inv-info-text)" },
-    };
-    const t = map[tone] || map.info;
-    return { fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: t.bg, border: `1px solid ${t.border}`, color: t.color, display: "inline-flex", alignItems: "center", gap: 4 };
-  },
-  actBtn: (danger) => ({
-    flex: 1, minHeight: 34, padding: "7px 10px", borderRadius: 8, border: `1px solid ${danger ? "var(--inv-danger-border)" : "var(--inv-border)"}`,
-    background: danger ? "var(--inv-danger-bg)" : "var(--inv-panel)", cursor: "pointer", fontWeight: 700, fontSize: 11,
-    color: danger ? "var(--inv-danger-text)" : "var(--inv-text)", fontFamily: "inherit", textAlign: "center", transition: "all .12s",
-    display: "inline-flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap",
-  }),
-
-  // Modal overlay
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 },
-  modal: { background: "var(--inv-panel)", borderRadius: 20, padding: "24px 28px", maxWidth: 560, width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--inv-modal-shadow)", color: "var(--inv-text)" },
-  modalTitle: { fontSize: 20, fontWeight: 900, margin: "0 0 16px", color: "var(--inv-text)" },
-  formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
-  field: { display: "flex", flexDirection: "column", gap: 4 },
-  label: { fontSize: 12, fontWeight: 700, color: "var(--inv-muted)" },
-  input: { padding: "9px 12px", borderRadius: 10, border: "1px solid var(--inv-border)", background: "var(--inv-soft)", color: "var(--inv-text)", fontSize: 13, fontFamily: "inherit", outline: "none", transition: "border .15s" },
-  formBtns: { display: "flex", gap: 10, marginTop: 16 },
-
-  // Empty state
-  empty: { textAlign: "center", padding: "60px 20px", color: "var(--inv-muted)" },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: 800, color: "var(--inv-text)", margin: "0 0 6px" },
-  emptyDesc: { fontSize: 13, maxWidth: 360, margin: "0 auto" },
-
-  // AI panel
-  aiPanel: { background: "linear-gradient(135deg, #faf5ff, #eff6ff)", borderRadius: 16, border: "1px solid #e9d5ff", padding: "18px 20px", marginBottom: 18 },
-  aiPanelHdr: { display: "flex", alignItems: "center", gap: 10, marginBottom: 12 },
-  aiPanelTitle: { fontSize: 16, fontWeight: 900, margin: 0, color: "#6b21a8" },
-  aiPanelSub: { fontSize: 11, color: "#7c3aed", fontWeight: 600, margin: "2px 0 0" },
-  aiLoadBtn: { padding: "7px 14px", borderRadius: 10, border: "1.5px solid #c4b5fd", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 12, color: "#7c3aed", fontFamily: "inherit", marginLeft: "auto" },
-};
+}
 
 export default function Inventory() {
   const { dark } = useTheme();
   const [inventory, setInventory] = useState([]);
-  const [alerts, setAlerts] = useState({});
-  const [summary, setSummary] = useState({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
-  const [bulkUpdateField, setBulkUpdateField] = useState("");
-  const [bulkUpdateValue, setBulkUpdateValue] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("urgency");
-  const [aiData, setAiData] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [linkingItem, setLinkingItem] = useState(null);
-  const [menuFoods, setMenuFoods] = useState([]);
-  const [linkQty, setLinkQty] = useState(1);
-  const [linkFoodId, setLinkFoodId] = useState("");
-  const [logItem, setLogItem] = useState(null);
-  const [logData, setLogData] = useState([]);
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  const [importing, setImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState("");
-  const [showImportPreview, setShowImportPreview] = useState(false);
-  const [previewData, setPreviewData] = useState([]);
-  const importRef = useRef(null);
+  const [showModal, setShowModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [importPreview, setImportPreview] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectMode, setSelectMode] = useState(false);
+  const fileRef = useRef();
 
   const [formData, setFormData] = useState({
     itemName: "", category: "food_ingredient", unit: "kg",
@@ -304,263 +74,116 @@ export default function Inventory() {
     supplier: { name: "", contact: "", email: "" }, expiryDate: "", notes: ""
   });
 
-  const [confirm, setConfirm] = useState({ isOpen: false, title: "", message: "", onConfirm: () => {}, type: "danger" });
+  const colors = {
+    accent: "#ff4e2a",
+    danger: "#ef4444",
+    success: "#22c55e",
+    warning: "#eab308",
+    background: dark ? "#0a0a0c" : "#f8fafc",
+    cardBg: dark ? "#111827" : "#ffffff",
+    border: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)"
+  };
 
-  const loadInventory = useCallback(async () => {
+  useEffect(() => { loadInventory(); }, []);
+
+  const loadInventory = async () => {
     try {
       setLoading(true);
-      const timestamp = new Date().getTime();
-      const [invRes, alertsRes] = await Promise.all([
-        api.get("/api/inventory?t=" + timestamp),
-        api.get("/api/inventory/alerts?t=" + timestamp)
-      ]);
-      console.log("[Inventory] Raw inventory response:", invRes.data?.data);
-      if (invRes.data?.success) { 
-        console.log("[Inventory] Setting inventory with linked items:", invRes.data.data.map(item => ({
-          name: item.itemName,
-          linkedMenuItems: item.linkedMenuItems,
-          linkedCount: item.linkedMenuItems?.length || 0
-        })));
-        setInventory(invRes.data.data); 
-        setSummary(invRes.data.summary); 
-      }
-      if (alertsRes.data?.success) setAlerts(alertsRes.data.data);
-    } catch (err) {
-      console.error("Failed to load inventory", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      const res = await api.get("/api/inventory");
+      if (res.data?.success) setInventory(res.data.data);
+    } catch (err) { toast.error("Sync error"); }
+    finally { setLoading(false); setSelectedIds([]); }
+  };
 
-  useEffect(() => {
-    loadInventory();
-  }, [loadInventory]);
-
-  const loadAI = async () => {
-    setAiLoading(true);
+  const handleBulkDelete = async (ids = selectedIds) => {
+    if (!ids.length) return;
+    if (!window.confirm(`Delete ${ids.length} items permanently?`)) return;
+    setSaving(true);
     try {
-      const res = await api.get("/api/inventory/ai-insights");
-      if (res.data?.success) setAiData(res.data.data);
-    } catch { /* silent */ }
-    setAiLoading(false);
+      await api.post("/api/inventory/bulk-delete", { ids });
+      toast.success("Inventory Updated");
+      setSelectMode(false);
+      loadInventory();
+    } catch (err) { toast.error("Action failed"); }
+    finally { setSaving(false); }
   };
 
-  const downloadInventoryTemplate = () => {
-    const rows = [
-      ["Item Name","Category","Unit","Current Stock","Unit Cost (AED)","Minimum Stock","Maximum Stock","Expiry Date","Supplier Name","Supplier Contact","Notes"],
-      ["Coleslaw Small","food_ingredient","pieces","0","0","10","100","mm/dd/yyyy","Name","Phone",""],
-      ["Cooking Oil","food_ingredient","liters","50","15","5","100","12/31/2026","Oil Supplier","123-456-7890","Vegetable oil"],
-      ["Cheese","food_ingredient","kg","25","30","10","50","01/15/2027","Dairy Farm","987-654-3210","Fresh cheese"],
-      ["Flour","food_ingredient","kg","100","2","20","200","06/30/2026","Flour Mill","555-123-4567","All-purpose flour"]
-    ];
-
-    const csvContent = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "inventory-template.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const loadXLSX = async () => {
-    if (window.XLSX) return window.XLSX;
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-      script.onload = () => resolve(window.XLSX);
-      script.onerror = () => reject(new Error("Failed to load XLSX"));
-      document.head.appendChild(script);
-    });
-  };
-
-  const parseInventorySpreadsheet = async (file) => {
-    const XLSX = await loadXLSX();
-    const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: "array" });
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    return XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-  };
-
-  const mapCategoryValue = (categoryInput) => {
-    if (!categoryInput) return "food_ingredient";
-    const input = String(categoryInput).toLowerCase().trim();
-    
-    // Map both labels and values to correct enum values
-    const categoryMap = {
-      "ingredients": "food_ingredient",
-      "food_ingredient": "food_ingredient",
-      "food ingredient": "food_ingredient",
-      "beverages": "beverage",
-      "beverage": "beverage",
-      "packaging": "packaging",
-      "equipment": "equipment",
-      "other": "other"
-    };
-    
-    return categoryMap[input] || "food_ingredient";
-  };
-
-  const handleImportInventory = async (event) => {
-    const file = event.target.files?.[0];
+  const handleImport = async (e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-
-    setImporting(true);
-    setImportStatus("Parsing spreadsheet...");
-
+    setSaving(true);
     try {
-      const rows = await parseInventorySpreadsheet(file);
-      console.log("[Import] Parsed rows:", rows);
-      const previewItems = [];
+      const XLSX = await loadXLSX();
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws);
+      if (!raw.length) return toast.info("Vault file empty");
+      
+      const findVal = (row, keys) => {
+        const entry = Object.entries(row).find(([k]) => 
+          keys.some(key => k.toLowerCase().replace(/ /g, '') === key.toLowerCase().replace(/ /g, ''))
+        );
+        return entry ? entry[1] : undefined;
+      };
 
-      rows.forEach(row => {
-        console.log("[Import] Processing row:", row);
-        const name = String(row["Item Name"] || row.itemName || row.name || "").trim();
-        if (!name) return;
-
-        const match = inventory.find(item => item.itemName.toLowerCase() === name.toLowerCase());
-        
-        if (match) {
-          // Preview update
-          const updatePreview = {
-            type: "update",
-            itemName: name,
-            existingItem: match,
-            changes: {}
-          };
-          
-          if (row["Current Stock"] !== undefined && row["Current Stock"] !== "") updatePreview.changes.currentStock = Number(row["Current Stock"]);
-          if (row["Minimum Stock"] !== undefined && row["Minimum Stock"] !== "") updatePreview.changes.minimumStock = Number(row["Minimum Stock"]);
-          if (row["Maximum Stock"] !== undefined && row["Maximum Stock"] !== "") updatePreview.changes.maximumStock = Number(row["Maximum Stock"]);
-          if (row["Unit Cost (AED)"] !== undefined && row["Unit Cost (AED)"] !== "") updatePreview.changes.unitCost = Number(row["Unit Cost (AED)"]);
-          if (row["Unit"] !== undefined && row["Unit"] !== "") updatePreview.changes.unit = String(row["Unit"]).trim();
-          if (row["Category"] !== undefined && row["Category"] !== "") updatePreview.changes.category = mapCategoryValue(row["Category"]);
-          if (row["Expiry Date"] !== undefined && row["Expiry Date"] !== "") updatePreview.changes.expiryDate = String(row["Expiry Date"]).trim();
-          if (row["Notes"] !== undefined && row["Notes"] !== "") updatePreview.changes.notes = String(row["Notes"]).trim();
-          if (row["Supplier Name"] || row["Supplier Contact"]) {
-            const supplierName = String(row["Supplier Name"] || "").trim();
-            const supplierContact = String(row["Supplier Contact"] || "").trim();
-            updatePreview.changes.supplier = { name: supplierName, contact: supplierContact, email: "" };
-          }
-
-          if (Object.keys(updatePreview.changes).length > 0) previewItems.push(updatePreview);
-        } else {
-          // Preview create
-          const createPreview = {
-            type: "create",
-            itemName: name,
-            newItem: {
-              category: mapCategoryValue(row["Category"]),
-              unit: row["Unit"] || "pieces",
-              currentStock: row["Current Stock"] ? Number(row["Current Stock"]) : 0,
-              minimumStock: row["Minimum Stock"] ? Number(row["Minimum Stock"]) : 10,
-              maximumStock: row["Maximum Stock"] ? Number(row["Maximum Stock"]) : 100,
-              unitCost: row["Unit Cost (AED)"] ? Number(row["Unit Cost (AED)"]) : 0,
-              supplier: row["Supplier Name"] || row["Supplier Contact"] ? 
-                { 
-                  name: String(row["Supplier Name"] || "").trim(), 
-                  contact: String(row["Supplier Contact"] || "").trim(), 
-                  email: "" 
-                } 
-                : { name: "", contact: "", email: "" },
-              expiryDate: row["Expiry Date"] || "",
-              notes: row["Notes"] || ""
-            }
-          };
-          previewItems.push(createPreview);
-        }
-      });
-
-      if (previewItems.length === 0) {
-        setImportStatus("No inventory items found to update or create.");
-        setImporting(false);
-        return;
+      const parsed = raw.map(row => {
+        const itemName = String(findVal(row, ["itemName", "name", "item", "product"]) || "");
+        return {
+          itemName,
+          category: String(findVal(row, ["category", "type"]) || "food_ingredient").toLowerCase().replace(/ /g, '_'),
+          unit: String(findVal(row, ["unit", "measurement"]) || "kg"),
+          currentStock: Number(findVal(row, ["currentStock", "stock", "qty", "quantity"]) || 0),
+          minimumStock: Number(findVal(row, ["minimumStock", "min", "alert"]) || 10),
+          maximumStock: Number(findVal(row, ["maximumStock", "max", "capacity"]) || 100),
+          unitCost: Number(findVal(row, ["unitCost", "cost", "price"]) || 0),
+          supplier: { name: String(findVal(row, ["supplier", "vendor"]) || "") },
+          notes: String(findVal(row, ["notes", "remark"]) || "")
+        };
+      }).filter(x => x.itemName);
+      
+      if (parsed.length > 0) {
+        await handleConfirmImport(parsed);
       }
-
-      // Show preview modal
-      console.log("[Import] Preview items:", previewItems);
-      setPreviewData(previewItems);
-      setShowImportPreview(true);
-      setImportStatus("");
-    } catch (error) {
-      console.error(error);
-      setImportStatus("Import failed: " + (error.message || "Unknown error"));
-    } finally {
-      setImporting(false);
-      event.target.value = "";
-    }
+    } catch (err) { toast.error("Instant sync failed"); }
+    finally { if (fileRef.current) fileRef.current.value = ""; setSaving(false); }
   };
 
-  const confirmImport = async () => {
-    setImporting(true);
-    setImportStatus("Processing import...");
-
+  const handleConfirmImport = async (dataToImport) => {
     try {
-      const toUpdate = [];
-      const toCreate = [];
+      let successCount = 0;
+      let skippedCount = 0;
+      const menuRes = await api.get("/api/restaurantadmin/foods");
+      const menu = menuRes.data?.data || [];
+      const existingNames = new Set(inventory.map(i => i.itemName.toLowerCase().trim()));
 
-      previewData.forEach(item => {
-        if (item.type === "update") {
-          const updates = { id: item.existingItem._id, ...item.changes };
-          toUpdate.push(updates);
-        } else {
-          const newItem = { itemName: item.itemName, ...item.newItem };
-          toCreate.push(newItem);
-        }
-      });
-
-      // Update existing items
-      if (toUpdate.length > 0) {
-        setImportStatus(`Updating ${toUpdate.length} existing items...`);
+      for (const item of dataToImport) {
+        const normalizedName = item.itemName.toLowerCase().trim();
+        if (existingNames.has(normalizedName)) { skippedCount++; continue; }
         try {
-          const res = await api.post("/api/inventory/bulk-update", { updates: toUpdate });
-          console.log("[Import] Bulk update response:", res.data);
-        } catch (err) {
-          console.error("[Import] Bulk update failed:", err.response?.data || err);
-          throw new Error(`Update failed: ${err.response?.data?.message || err.message}`);
-        }
-      }
-
-      // Create new items
-      let createdCount = 0;
-      if (toCreate.length > 0) {
-        setImportStatus(`Creating ${toCreate.length} new items...`);
-        for (const item of toCreate) {
-          try {
-            const payload = { ...item, supplier: JSON.stringify(item.supplier) };
-            console.log("[Import] Creating item payload:", JSON.stringify(payload));
-            const res = await api.post("/api/inventory/add", payload);
-            console.log("[Import] Item created:", res.data);
-            createdCount++;
-          } catch (err) {
-            const errorMsg = err.response?.data?.message || err.message || "Unknown error";
-            console.error("[Import] Failed to create item:", item.itemName);
-            console.error("[Import] Error details:", errorMsg);
-            console.error("[Import] Full error:", err.response?.data);
+          const res = await api.post("/api/inventory/add", { ...item, supplier: JSON.stringify(item.supplier) });
+          if (res.data?.success) {
+            successCount++;
+            const newInvId = res.data.data?._id;
+            const matchingFood = menu.find(f => {
+              const menuName = f.name.toLowerCase().trim();
+              const invName = item.itemName.toLowerCase().trim();
+              return menuName === invName || menuName.includes(invName) || invName.includes(menuName);
+            });
+            if (matchingFood && newInvId) {
+              await api.post(`/api/inventory/${newInvId}/link`, { foodId: matchingFood._id, quantityPerOrder: 1 });
+            }
           }
-        }
-        if (createdCount === 0 && toCreate.length > 0) {
-          throw new Error(`Failed to create any items. Check console for details.`);
-        }
+        } catch (e) {}
       }
-
-      await loadInventory();
-      setImportStatus(`✅ Updated ${toUpdate.length} items and created ${createdCount} new items successfully.`);
-      setShowImportPreview(false);
-      setPreviewData([]);
-    } catch (error) {
-      console.error("[Import] Error:", error);
-      setImportStatus("❌ " + (error.message || "Unknown error"));
-    } finally {
-      setImporting(false);
-    }
+      toast.success(`Synced ${successCount} assets. ${skippedCount > 0 ? `Skipped ${skippedCount} repeats.` : ''}`);
+      loadInventory();
+    } catch (err) { toast.error("Sync failed"); }
   };
 
-  const resetForm = () => {
-    setFormData({ itemName: "", category: "food_ingredient", unit: "kg", currentStock: 0, minimumStock: 10, maximumStock: 100, unitCost: 0, supplier: { name: "", contact: "", email: "" }, expiryDate: "", notes: "" });
-    setEditingItem(null);
-    setShowModal(false);
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filtered.length) { setSelectedIds([]); }
+    else { setSelectedIds(filtered.map(i => i._id)); }
   };
 
   const handleSubmit = async (e) => {
@@ -568,914 +191,258 @@ export default function Inventory() {
     setSaving(true);
     try {
       const payload = { ...formData, supplier: JSON.stringify(formData.supplier) };
-      if (editingItem) {
-        const res = await api.put(`/api/inventory/${editingItem._id}`, payload);
-        if (res.data?.success) {
-          setInventory(prev => prev.map(item => item._id === editingItem._id ? res.data.data : item));
-        }
-      } else {
-        const res = await api.post("/api/inventory/add", payload);
-        if (res.data?.success) {
-          setInventory(prev => [res.data.data, ...prev]);
-        }
-      }
-      resetForm();
-    } catch (err) { alert(err?.response?.data?.message || "Failed to save"); }
-    setSaving(false);
-  };
-
-  const handleEdit = useCallback((item) => {
-    setFormData({
-      itemName: item.itemName, category: item.category, unit: item.unit,
-      currentStock: item.currentStock, minimumStock: item.minimumStock, maximumStock: item.maximumStock,
-      unitCost: item.unitCost, supplier: item.supplier || { name: "", contact: "", email: "" },
-      expiryDate: item.expiryDate ? item.expiryDate.split("T")[0] : "", notes: item.notes || ""
-    });
-    setEditingItem(item);
-    setShowModal(true);
-  }, []);
-
-  const handleDelete = useCallback(async (id) => {
-    setConfirm({
-      isOpen: true,
-      title: "Remove from inventory?",
-      message: "This item will be permanently deleted from your inventory tracking.",
-      type: "danger",
-      onConfirm: async () => {
-        try {
-          console.log("[Inventory] Deleting item:", id);
-          const res = await api.delete(`/api/inventory/${id}`);
-          if (res.data?.success) {
-            toast.success(res.data?.message || "Item removed successfully");
-            await loadInventory();
-          } else {
-            toast.error(res.data?.message || "Failed to remove item");
-          }
-        } catch (err) { 
-          toast.error(err?.response?.data?.message || "Failed to remove item"); 
-        }
-      }
-    });
-  }, [loadInventory]);
-
-  const toggleSelect = useCallback((id) => setSelectedIds(prev => {
-    const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
-    return next;
-  }), []);
-
-  const handleBulkUpdate = async () => {
-    if (selectedIds.size === 0 || !bulkUpdateField) return;
-    
-    setConfirm({
-      isOpen: true,
-      title: "Bulk Update",
-      message: `Apply ${bulkUpdateField} to ${selectedIds.size} selected items?`,
-      type: "info",
-      onConfirm: async () => {
-        const updates = [...selectedIds].map(id => ({
-          id,
-          [bulkUpdateField]: bulkUpdateValue
-        }));
-
-        try {
-          const res = await api.post("/api/inventory/bulk-update", { updates });
-          if (res.data?.success && Array.isArray(res.data.data)) {
-            setInventory(prev => prev.map(item => {
-              const changed = res.data.data.find(u => u._id === item._id);
-              return changed ? changed : item;
-            }));
-          } else {
-            setInventory(prev => prev.map(item => selectedIds.has(item._id) ? { ...item, [bulkUpdateField]: bulkUpdateField === 'supplier' ? JSON.parse(bulkUpdateValue || '{}') : bulkUpdateField === 'currentStock' || bulkUpdateField === 'minimumStock' || bulkUpdateField === 'maximumStock' || bulkUpdateField === 'unitCost' ? Number(bulkUpdateValue) : bulkUpdateValue } : item));
-          }
-
-          setSelectedIds(new Set());
-          setShowBulkUpdateModal(false);
-          setBulkUpdateField("");
-          setBulkUpdateValue("");
-        } catch (err) { alert(err?.response?.data?.message || "Failed to update"); }
-      }
-    });
-  };
-
-  const handleQuickAdjust = useCallback(async (id, adjustment) => {
-    try {
-      // Optimistic update - update local state immediately
-      setInventory(prev => prev.map(item => 
-        item._id === id 
-          ? { ...item, currentStock: Math.max(0, item.currentStock + adjustment) }
-          : item
-      ));
-      
-      // Make API call in background
-      await api.patch(`/api/inventory/${id}/stock`, { adjustment });
-      
-      // Silently reload in background without showing loading state
-      const timestamp = new Date().getTime();
-      const [invRes, alertsRes] = await Promise.all([
-        api.get("/api/inventory?t=" + timestamp),
-        api.get("/api/inventory/alerts?t=" + timestamp)
-      ]);
-      if (invRes.data?.success) { 
-        setInventory(invRes.data.data); 
-        setSummary(invRes.data.summary); 
-      }
-      if (alertsRes.data?.success) setAlerts(alertsRes.data.data);
-    } catch (err) { 
-      // Reload on error to sync state
-      await loadInventory();
-      alert(err?.response?.data?.message || "Failed to adjust stock"); 
-    }
-  }, [loadInventory]);
-
-  const handleStockUpdate = useCallback(async (id, newStock) => {
-    const numStock = Number(newStock);
-    if (isNaN(numStock) || numStock < 0) return;
-    
-    try {
-      // Optimistic update - update local state immediately
-      setInventory(prev => prev.map(item => 
-        item._id === id 
-          ? { ...item, currentStock: numStock }
-          : item
-      ));
-      
-      // Make API call in background
-      await api.patch(`/api/inventory/${id}/stock`, { newStock: numStock });
-      
-      // Silently reload in background without showing loading state
-      const timestamp = new Date().getTime();
-      const [invRes, alertsRes] = await Promise.all([
-        api.get("/api/inventory?t=" + timestamp),
-        api.get("/api/inventory/alerts?t=" + timestamp)
-      ]);
-      if (invRes.data?.success) { 
-        setInventory(invRes.data.data); 
-        setSummary(invRes.data.summary); 
-      }
-      if (alertsRes.data?.success) setAlerts(alertsRes.data.data);
-    } catch (err) { 
-      // Reload on error to sync state
-      await loadInventory();
-      alert(err?.response?.data?.message || "Failed to update"); 
-    }
-  }, [loadInventory]);
-
-  const openLinkModal = useCallback(async (item) => {
-    setLinkingItem(item);
-    setLinkFoodId("");
-    setLinkQty(1);
-    if (menuFoods.length === 0) {
-      try {
-        const res = await api.get("/api/inventory/foods");
-        if (res.data?.success) setMenuFoods(res.data.data);
-      } catch { /* silent */ }
-    }
-  }, [menuFoods]);
-
-  const handleLink = async () => {
-    if (!linkFoodId || linkQty <= 0) return;
-    try {
-      const res = await api.post(`/api/inventory/${linkingItem._id}/link`, { foodId: linkFoodId, quantityPerOrder: Number(linkQty) });
-      if (res.data?.success) {
-        // Update linkingItem with fresh data so modal stays in sync
-        setLinkingItem(res.data.data);
-        setLinkFoodId("");
-        setLinkQty(1);
-        loadInventory();
-      }
-    } catch (err) { alert(err?.response?.data?.message || "Failed to link"); }
-  };
-
-  const handleUnlink = async (inventoryId, foodId) => {
-    try {
-      await api.post(`/api/inventory/${inventoryId}/unlink`, { foodId });
+      if (editingItem) await api.put(`/api/inventory/${editingItem._id}`, payload);
+      else await api.post("/api/inventory/add", payload);
+      setShowModal(false);
       loadInventory();
-    } catch (err) { alert(err?.response?.data?.message || "Failed to unlink"); }
+      toast.success("Inventory Vault Updated");
+    } catch (err) { toast.error("Save failed"); }
+    finally { setSaving(false); }
   };
-
-  const openLog = async (item) => {
-    setLogItem(item);
-    setLogData([]);
-    try {
-      const res = await api.get(`/api/inventory/${item._id}/log`);
-      if (res.data?.success) setLogData(res.data.data.log || []);
-    } catch { /* silent */ }
-  };
-
-
-  const aiMap = useMemo(() => {
-    const map = new Map();
-    (aiData?.items || []).forEach(i => { if (i?._id) map.set(i._id, i); });
-    return map;
-  }, [aiData?.items]);
 
   const filtered = useMemo(() => {
-    const filteredItems = inventory
-      .filter(item => {
-        if (catFilter !== "all" && item.category !== catFilter) return false;
-        if (search && !item.itemName.toLowerCase().includes(search.toLowerCase())) return false;
-        return true;
-      });
-
-    return [...filteredItems].sort((a, b) => {
-      const aiA = aiMap.get(a._id);
-      const aiB = aiMap.get(b._id);
-      switch (sortBy) {
-        case "urgency": return (aiB?.urgency || 0) - (aiA?.urgency || 0);
-        case "name": return a.itemName.localeCompare(b.itemName);
-        case "stock_low": return a.currentStock - b.currentStock;
-        case "stock_high": return b.currentStock - a.currentStock;
-        case "value": return (b.currentStock * b.unitCost) - (a.currentStock * a.unitCost);
-        case "expiry": {
-          const ea = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity;
-          const eb = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity;
-          return ea - eb;
-        }
-        default: return 0;
-      }
+    return inventory.filter(i => {
+      const matchCat = catFilter === "all" || i.category === catFilter;
+      const matchSearch = (i.itemName || "").toLowerCase().includes(search.toLowerCase());
+      return matchCat && matchSearch;
     });
-  }, [inventory, catFilter, search, sortBy, aiMap]);
+  }, [inventory, catFilter, search]);
 
-  const selectAllFiltered = useCallback(() => {
-    setSelectedIds(prevSelected => {
-      const allFilteredIds = new Set(filtered.map(i => i._id));
-      // If all are selected, deselect all; otherwise select all filtered
-      const shouldSelectAll = prevSelected.size !== allFilteredIds.size;
-      console.log("[Inventory] selectAllFiltered called. shouldSelectAll:", shouldSelectAll, "filtered.length:", filtered.length);
-      return shouldSelectAll ? allFilteredIds : new Set();
-    });
-  }, [filtered]);
-
-  const handleBulkDelete = useCallback(async () => {
-    if (selectedIds.size === 0) {
-      toast.warning("Please select items to delete");
-      return;
-    }
-    
-    setConfirm({
-      isOpen: true,
-      title: "Bulk Delete",
-      message: `Remove ${selectedIds.size} selected items from inventory? This cannot be undone.`,
-      type: "danger",
-      onConfirm: async () => {
-        try {
-          const res = await api.post("/api/inventory/bulk-delete", { ids: [...selectedIds] });
-          if (res.data?.success) {
-            setSelectedIds(new Set());
-            toast.success(res.data?.message || `${res.data?.count || 0} items removed successfully`);
-            await loadInventory();
-          } else {
-            toast.error(res.data?.message || "Failed to delete items");
-          }
-        } catch (err) { 
-          toast.error(err?.response?.data?.message || "Failed to delete items"); 
-        }
-      }
-    });
-  }, [selectedIds, loadInventory]);
-
-  const categoryCounts = useMemo(() => {
-    const counts = { all: inventory.length, food_ingredient: 0, beverage: 0, packaging: 0, equipment: 0, other: 0 };
-    inventory.forEach(item => {
-      if (counts[item.category] !== undefined) counts[item.category]++;
-    });
-    return counts;
+  const stats = useMemo(() => {
+    const totalValue = inventory.reduce((s, i) => s + (i.currentStock * (i.unitCost || 0)), 0);
+    const lowStockCount = inventory.filter(i => i.currentStock <= i.minimumStock).length;
+    const health = inventory.length ? Math.round(((inventory.length - lowStockCount) / inventory.length) * 100) : 100;
+    return { totalValue, lowStockCount, total: inventory.length, health };
   }, [inventory]);
 
-  const healthScore = aiData?.summary?.healthScore ?? 100;
-  const catEmoji = useCallback((cat) => CATEGORIES.find(c => c.value === cat)?.emoji || "📝", []);
-
-  const renderedCards = useMemo(() => {
-    return filtered.map(item => {
-      const ai = aiMap.get(item._id);
-      return (
-        <InventoryCard
-          key={item._id}
-          item={item}
-          ai={ai}
-          isSelected={selectedIds.has(item._id)}
-          catEmoji={catEmoji}
-          onToggleSelect={toggleSelect}
-          onQuickAdjust={handleQuickAdjust}
-          onStockUpdate={handleStockUpdate}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onLink={openLinkModal}
-        />
-      );
-    });
-  }, [filtered, aiMap, selectedIds, handleQuickAdjust, handleStockUpdate, handleEdit, handleDelete, openLinkModal]);
-
-  if (loading) {
-    return (
-      <RestaurantLayout>
-        <div style={{ ...s.wrap, ...getInventoryThemeVars(dark) }}>
-          <div style={s.hdr}><h1 style={s.title}>📦 Inventory</h1></div>
-          <div style={s.statsRow}>
-            {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 76, borderRadius: 14 }} />)}
-          </div>
-          <div style={s.grid}>
-            {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton" style={{ height: 200, borderRadius: 16 }} />)}
-          </div>
-        </div>
-        <ConfirmationModal 
-          isOpen={confirm.isOpen}
-          onClose={() => setConfirm({ ...confirm, isOpen: false })}
-          onConfirm={confirm.onConfirm}
-          title={confirm.title}
-          message={confirm.message}
-          type={confirm.type}
-        />
-      </RestaurantLayout>
-    );
-  }
+  if (loading) return <RestaurantLayout><div style={{ padding: 100, textAlign: "center", color: colors.accent, fontWeight: 950 }}>LOADING VAULT...</div></RestaurantLayout>;
 
   return (
     <RestaurantLayout>
-      <div style={getInventoryThemeVars(dark)}>
-      <div style={{ ...s.wrap }}>
-        {/* ── Header ── */}
-        <div style={s.hdr}>
-          <div style={s.hdrLeft}>
-            <h1 style={s.title}>
-              📦 Inventory
-              {aiData && (
-                <div style={s.ring(healthScore)} title={`Health: ${healthScore}%`}>
-                  <div style={s.ringInner}>{healthScore}</div>
-                </div>
-              )}
-            </h1>
-            <p style={s.sub}>
-              {summary.totalItems || 0} items tracked
-              {aiData?.summary?.ordersLast30 ? ` · ${aiData.summary.ordersLast30} orders last 30d` : ""}
-            </p>
-            {importStatus && <p style={{ ...s.sub, fontSize: 12, color: importing ? "#1d4ed8" : "#16a34a", marginTop: 4 }}>{importStatus}</p>}
-          </div>
-          <div style={s.hdrBtns}>
-            <button className="btn btn-outline" onClick={() => window.location.href = '/inventory/analytics'} style={{ fontSize: 13, padding: "9px 14px" }}>
-              📊 View Analytics
-            </button>
-            <button className="btn btn-outline" onClick={loadAI} disabled={aiLoading} style={{ fontSize: 13, padding: "9px 14px" }}>
-              {aiLoading ? "Analyzing..." : "🤖 Refresh AI"}
-            </button>
-            <button className="btn btn-outline" onClick={downloadInventoryTemplate} style={{ fontSize: 13, padding: "9px 14px" }}>
-              ⬇️ Download Template
-            </button>
-            <input type="file" accept=".xlsx,.xls,.csv" ref={importRef} style={{ display: "none" }} onChange={handleImportInventory} />
-            <button className="btn btn-outline" onClick={() => importRef.current?.click()} disabled={importing} style={{ fontSize: 13, padding: "9px 14px" }}>
-              {importing ? "Importing..." : "📥 Import Stock"}
-            </button>
-            <button className="btn" onClick={() => { resetForm(); setShowModal(true); }} style={{ fontSize: 13, padding: "9px 16px" }}>
-              + Add Item
-            </button>
-          </div>
-        </div>
-
-        {/* ── Stats Row ── */}
-        <div style={s.statsRow}>
-          <div style={s.stat()}>
-            <p style={s.statVal()}>{summary.totalItems || 0}</p>
-            <p style={s.statLbl}>Total Items</p>
-          </div>
-          <div style={s.stat()}>
-            <p style={s.statVal("#dc2626")}>{alerts.lowStock?.length || 0}</p>
-            <p style={s.statLbl}>Low Stock</p>
-          </div>
-          <div style={s.stat()}>
-            <p style={s.statVal("#f59e0b")}>{alerts.expiringSoon?.length || 0}</p>
-            <p style={s.statLbl}>Expiring Soon</p>
-          </div>
-          <div style={s.stat()}>
-            <p style={s.statVal("#dc2626")}>{alerts.expired?.length || 0}</p>
-            <p style={s.statLbl}>Expired</p>
-          </div>
-          <div style={s.stat()}>
-            <p style={s.statVal("#2563eb")}>AED {(summary.totalValue || 0).toFixed(0)}</p>
-            <p style={s.statLbl}>Total Value</p>
-          </div>
-          {aiData?.summary?.totalReorderCost > 0 && (
-            <div style={s.stat()}>
-              <p style={s.statVal("#7c3aed")}>AED {aiData.summary.totalReorderCost.toFixed(0)}</p>
-              <p style={s.statLbl}>Reorder Cost</p>
+      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", maxWidth: 1100, margin: "0 auto", padding: "24px 20px 60px", background: colors.background, minHeight: "100vh" }}>
+        
+        {/* Dashboard-Style Header Header */}
+        <div style={{ position: "relative", borderRadius: 32, padding: "32px 40px", background: "linear-gradient(135deg, #111827 0%, #0f172a 100%)", boxShadow: "0 10px 30px rgba(0,0,0,0.04)", border: "1px solid rgba(255,255,255,0.05)", marginBottom: 32 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 999, background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.14)", fontSize: 11, fontWeight: 800, letterSpacing: "0.4px", marginBottom: 12 }}><span>📦</span> Stock Center</div>
+              <h1 style={{ margin: 0, fontSize: 36, fontWeight: 900, letterSpacing: "-1.5px", color: "white" }}>Inventory Vault</h1>
+              <p style={{ margin: "10px 0 0", fontSize: 14, color: "rgba(255,255,255,0.6)", fontWeight: 500 }}>Managing {inventory.length} total SKUs across all categories</p>
             </div>
-          )}
+            <div style={{ display: "flex", gap: 12 }}>
+               <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: "none" }} onChange={handleImport} />
+               <button onClick={() => setSelectMode(!selectMode)} style={{ padding: "10px 18px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: selectMode ? colors.danger : "rgba(255,255,255,0.05)", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  {selectMode ? "Cancel Clear" : "Select & Wipe"}
+               </button>
+               {selectMode ? (
+                 <>
+                   <button onClick={toggleSelectAll} style={{ padding: "10px 18px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                     {selectedIds.length === filtered.length ? "Deselect All" : "Select All"}
+                   </button>
+                   <button onClick={() => handleBulkDelete()} style={{ padding: "10px 20px", borderRadius: 12, border: "none", background: colors.danger, color: "white", fontSize: 12, fontWeight: 800, cursor: "pointer", boxShadow: "0 10px 25px rgba(239,68,68,0.3)" }}>
+                      🗑️ Wipe {selectedIds.length} Items
+                   </button>
+                 </>
+               ) : (
+                 <>
+                   <button onClick={() => fileRef.current?.click()} style={{ padding: "10px 18px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Bulk Import</button>
+                   <button onClick={() => { setEditingItem(null); setFormData({ itemName: "", category: "food_ingredient", unit: "kg", currentStock: 0, minimumStock: 10, maximumStock: 100, unitCost: 0, supplier: { name: "" } }); setShowModal(true); }} style={{ padding: "10px 20px", borderRadius: 12, border: "none", background: colors.accent, color: "white", fontSize: 12, fontWeight: 800, cursor: "pointer", boxShadow: `0 10px 25px ${colors.accent}44` }}>+ Add Asset</button>
+                 </>
+               )}
+            </div>
+          </div>
+          
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginTop: 32 }}>
+            <MetricChip icon="💎" label="VAULT HEALTH" value={`${stats.health}%`} sub="Overall performance" dark={true} badge={stats.health > 90 ? { text: "Peak", positive: true } : null} />
+            <MetricChip icon="💰" label="ASSET VALUE" value={`AED ${stats.totalValue.toLocaleString()}`} sub="Capital in vault" dark={true} />
+            <MetricChip icon="📉" label="LOW STOCK" value={`${stats.lowStockCount} Items`} sub="Pending restock" dark={true} badge={stats.lowStockCount > 0 ? { text: "Alert", positive: false } : null} />
+            <MetricChip icon="📦" label="TOTAL SKUS" value={`${inventory.length}`} sub="Active signatures" dark={true} />
+          </div>
         </div>
 
-        {/* ── AI Tips ── */}
-        {aiData?.tips?.length > 0 && (
-          <div style={s.tipWrap}>
-            {aiData.tips.map((tip, i) => {
-              const ts = s.tip(tip.type);
-              return (
-                <div key={i} style={ts}>
-                  <span>{ts.icon}</span>
-                  <span>{tip.text}</span>
-                </div>
-              );
-            })}
+        {/* Filter Reel */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 24, alignItems: "center" }}>
+          <div style={{ position: "relative", flex: 1, maxWidth: 400 }}>
+             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets..." style={{ width: "100%", padding: "12px 16px 12px 40px", borderRadius: 14, border: "1px solid var(--border)", background: colors.cardBg, color: "inherit", fontWeight: 700, outline: "none" }} />
+             <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", opacity: 0.5 }}>🔍</span>
           </div>
-        )}
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "4px 0" }}>
+            {CATEGORIES.map(c => (
+              <button key={c.value} onClick={() => setCatFilter(c.value)} style={{ padding: "10px 18px", borderRadius: 14, border: `1px solid ${catFilter === c.value ? colors.accent : "var(--border)"}`, background: catFilter === c.value ? colors.accent : colors.cardBg, color: catFilter === c.value ? "#fff" : "inherit", fontWeight: 800, fontSize: 11, textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                {c.emoji} {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {/* ── Category Tabs ── */}
-        <div style={s.pills}>
-          {CATEGORIES.map(cat => (
-            <button key={cat.value} style={s.pill(catFilter === cat.value)} onClick={() => setCatFilter(cat.value)}>
-              <span>{cat.emoji}</span> {cat.label}
-              {cat.value !== "all" && (
-                <span style={{ marginLeft: 2, opacity: 0.5 }}>
-                  ({categoryCounts[cat.value] || 0})
-                </span>
-              )}
-            </button>
+        {/* Assets Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 20 }}>
+          {filtered.map(item => (
+            <AssetCard 
+              key={item._id} 
+              item={item} 
+              dark={dark} 
+              colors={colors}
+              isSelected={selectedIds.includes(item._id)}
+              selectMode={selectMode}
+              onSelect={() => setSelectedIds(prev => prev.includes(item._id) ? prev.filter(id => id !== item._id) : [...prev, item._id])}
+              onEdit={() => { setEditingItem(item); setFormData({ ...item, supplier: item.supplier || { name: "" } }); setShowModal(true); }} 
+              onDelete={() => handleBulkDelete([item._id])} 
+            />
           ))}
-        </div>
-
-        {/* ── Toolbar ── */}
-        <div style={s.toolbar}>
-          <div style={s.searchWrap}>
-            <span style={s.searchIcon}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            </span>
-            <input style={s.search} placeholder="Search items..." value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-          <select style={s.select} value={sortBy} onChange={e => setSortBy(e.target.value)}>
-            {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <span style={{ fontSize: 12, color: "var(--inv-muted)", fontWeight: 600 }}>
-            {filtered.length} item{filtered.length !== 1 ? "s" : ""}
-          </span>
-          {filtered.length > 0 && (
-            <button onClick={selectAllFiltered}
-              style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--inv-border)", background: selectedIds.size === filtered.length ? "#111" : "var(--inv-soft)", color: selectedIds.size === filtered.length ? "#fff" : "var(--inv-text)", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-              {selectedIds.size === filtered.length ? "Deselect All" : "Select All"}
-            </button>
-          )}
-          {selectedIds.size > 0 && (
-            <>
-              <button onClick={() => setShowBulkUpdateModal(true)}
-                style={{ padding: "7px 16px", borderRadius: 8, border: "1px solid #bfdbfe", background: "#eff6ff", color: "#1e40af", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
-                ✏️ Update {selectedIds.size} selected
-              </button>
-              <button onClick={handleBulkDelete}
-                style={{ padding: "7px 16px", borderRadius: 8, border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
-                🗑️ Delete {selectedIds.size} selected
-              </button>
-            </>
+          {filtered.length === 0 && (
+            <div style={{ gridColumn: "1 / -1", padding: "100px 40px", textAlign: "center", background: colors.cardBg, borderRadius: 32, border: "1px dashed var(--border)" }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
+              <h3 style={{ margin: 0, fontWeight: 900 }}>No assets match.</h3>
+              <p style={{ color: "var(--muted)", fontWeight: 500 }}>Adjust your filters or add a new item.</p>
+            </div>
           )}
         </div>
 
-        {/* ── Cards Grid ── */}
-        {filtered.length === 0 ? (
-          <div style={s.empty}>
-            <div style={s.emptyIcon}>📦</div>
-            <p style={s.emptyTitle}>{inventory.length === 0 ? "No inventory yet" : "No items match"}</p>
-            <p style={s.emptyDesc}>
-              {inventory.length === 0
-                ? "Add your first inventory item to start tracking stock levels, costs, and get AI-powered insights."
-                : "Try adjusting your search or category filter."}
-            </p>
-            {inventory.length === 0 && (
-              <button className="btn" onClick={() => { resetForm(); setShowModal(true); }} style={{ marginTop: 16, fontSize: 13 }}>
-                + Add First Item
-              </button>
-            )}
-          </div>
-        ) : (
-          <div style={s.grid}>
-            {renderedCards}
+        {/* Modals synced with Dashboard style */}
+        {showModal && (
+          <div style={s.overlay}>
+            <div style={s.box(dark, colors)}>
+              <h3 style={{ margin: "0 0 24px", fontSize: 22, fontWeight: 950, color: dark ? "#fff" : "#111827" }}>{editingItem ? "Refine Asset" : "Register New Asset"}</h3>
+              <form onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                 <div style={{ gridColumn: "1 / -1" }}>
+                   <label style={s.label}>Asset Identity</label>
+                   <input style={s.input(dark, colors)} value={formData.itemName} onChange={e => setFormData({ ...formData, itemName: e.target.value })} required placeholder="e.g. Wagyu Beef" />
+                 </div>
+                 <div>
+                   <label style={s.label}>Category</label>
+                   <select style={s.input(dark, colors)} value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                     {CATEGORIES.filter(c => c.value !== "all").map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                   </select>
+                 </div>
+                 <div>
+                   <label style={s.label}>Metric</label>
+                   <select style={s.input(dark, colors)} value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })}>
+                     {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                   </select>
+                 </div>
+                 <div>
+                   <label style={s.label}>Cost/Unit (AED)</label>
+                   <input type="number" step="0.01" style={s.input(dark, colors)} value={formData.unitCost} onChange={e => setFormData({ ...formData, unitCost: Number(e.target.value) })} />
+                 </div>
+                 <div>
+                   <label style={s.label}>Live Stock</label>
+                   <input type="number" style={s.input(dark, colors)} value={formData.currentStock} onChange={e => setFormData({ ...formData, currentStock: Number(e.target.value) })} />
+                 </div>
+                 <div>
+                   <label style={s.label}>Alert Threshold</label>
+                   <input type="number" style={s.input(dark, colors)} value={formData.minimumStock} onChange={e => setFormData({ ...formData, minimumStock: Number(e.target.value) })} />
+                 </div>
+                 <div>
+                   <label style={s.label}>Max Capacity</label>
+                   <input type="number" style={s.input(dark, colors)} value={formData.maximumStock} onChange={e => setFormData({ ...formData, maximumStock: Number(e.target.value) })} />
+                 </div>
+                 <div style={{ gridColumn: "1 / -1", display: "flex", gap: 12, marginTop: 12 }}>
+                   <button type="submit" disabled={saving} style={{ flex: 1, padding: "14px", borderRadius: 14, border: "none", background: colors.accent, color: "white", fontWeight: 900, cursor: "pointer" }}>{saving ? "Saving..." : "Verify & Save"}</button>
+                   <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, padding: "14px", borderRadius: 14, border: "1px solid var(--border)", background: "transparent", color: "var(--text)", fontWeight: 800, cursor: "pointer" }}>Discard</button>
+                 </div>
+              </form>
+            </div>
           </div>
         )}
-      </div>
 
-      {showModal && (
-        <div style={s.overlay} onClick={() => resetForm()}>
-          <div style={s.modal} onClick={e => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>{editingItem ? "✏️ Edit Item" : "📦 Add Item"}</h2>
-            <form onSubmit={handleSubmit}>
-              <div style={s.formGrid}>
-                <div style={{ ...s.field, gridColumn: "1 / -1" }}>
-                  <label style={s.label}>Item Name *</label>
-                  <input style={s.input} type="text" value={formData.itemName} onChange={e => setFormData({ ...formData, itemName: e.target.value })} required placeholder="e.g. Chicken Breast" />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Category *</label>
-                  <select style={s.input} value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
-                    {CATEGORIES.filter(c => c.value !== "all").map(c => <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>)}
-                  </select>
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Unit *</label>
-                  <select style={s.input} value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })}>
-                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Current Stock *</label>
-                  <input style={s.input} type="number" min="0" step="0.1" value={formData.currentStock} onChange={e => setFormData({ ...formData, currentStock: e.target.value })} required />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Unit Cost (AED)</label>
-                  <input style={s.input} type="number" min="0" step="0.01" value={formData.unitCost} onChange={e => setFormData({ ...formData, unitCost: e.target.value })} />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Minimum Stock</label>
-                  <input style={s.input} type="number" min="0" step="0.1" value={formData.minimumStock} onChange={e => setFormData({ ...formData, minimumStock: e.target.value })} />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Maximum Stock</label>
-                  <input style={s.input} type="number" min="0" step="0.1" value={formData.maximumStock} onChange={e => setFormData({ ...formData, maximumStock: e.target.value })} />
-                </div>
-                <div style={{ ...s.field, gridColumn: "1 / -1" }}>
-                  <label style={s.label}>Expiry Date</label>
-                  <input style={s.input} type="date" value={formData.expiryDate} onChange={e => setFormData({ ...formData, expiryDate: e.target.value })} />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Supplier Name</label>
-                  <input style={s.input} type="text" placeholder="Name" value={formData.supplier.name} onChange={e => setFormData({ ...formData, supplier: { ...formData.supplier, name: e.target.value } })} />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Supplier Contact</label>
-                  <input style={s.input} type="text" placeholder="Phone" value={formData.supplier.contact} onChange={e => setFormData({ ...formData, supplier: { ...formData.supplier, contact: e.target.value } })} />
-                </div>
-                <div style={{ ...s.field, gridColumn: "1 / -1" }}>
-                  <label style={s.label}>Notes</label>
-                  <textarea style={{ ...s.input, minHeight: 60, resize: "vertical" }} value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Optional notes..." />
-                </div>
-              </div>
-              <div style={s.formBtns}>
-                <button type="submit" className="btn" disabled={saving} style={{ flex: 1 }}>
-                  {saving ? "Saving..." : editingItem ? "Update Item" : "Add Item"}
-                </button>
-                <button type="button" className="btn btn-outline" onClick={resetForm} style={{ flex: 1 }}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal: Link Menu Items ── */}
-      {linkingItem && (
-        <div style={s.overlay} onClick={() => setLinkingItem(null)}>
-          <div style={s.modal} onClick={e => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>🔗 Link Menu Items to "{linkingItem.itemName}"</h2>
-            <p style={{ fontSize: 12, color: "var(--inv-muted)", margin: "0 0 14px", fontWeight: 500 }}>
-              When a customer orders a linked menu item, <strong>{linkingItem.itemName}</strong> stock will automatically decrease by the quantity you set.
-            </p>
-
-            {/* Already linked */}
-            {linkingItem.linkedMenuItems?.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: "var(--inv-text)", margin: "0 0 8px" }}>Currently Linked Menu Items</p>
-                {linkingItem.linkedMenuItems.map((rawLink, li) => {
-                  const link = resolveLinkedMenuItem(rawLink);
-                  const foodId = link.resolvedFoodId;
-                  return (
-                    <div key={`${foodId || "missing"}-${li}`} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "10px 12px", background: link.isMissingFood ? "var(--inv-warn-bg)" : "var(--inv-link-bg)", borderRadius: 10, marginBottom: 6, border: `1px solid ${link.isMissingFood ? "var(--inv-warn-border)" : "var(--inv-link-border)"}` }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: link.isMissingFood ? "var(--inv-warn-text)" : "var(--inv-text)", overflowWrap: "anywhere" }}>
-                          {link.resolvedFoodName}
-                        </div>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: link.isMissingFood ? "var(--inv-warn-text)" : "var(--inv-muted)", marginTop: 3 }}>
-                          Deducts {link.quantityPerOrder} {linkingItem.unit} each time this menu item is ordered.
-                        </div>
-                        {link.isMissingFood && (
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--inv-warn-text)", marginTop: 5 }}>
-                            This menu item no longer exists. Remove this broken link.
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (!foodId) return;
-                          handleUnlink(linkingItem._id, foodId);
-                          setLinkingItem(prev => ({
-                            ...prev,
-                            linkedMenuItems: prev.linkedMenuItems.filter(l => resolveLinkedMenuItem(l).resolvedFoodId !== foodId)
-                          }));
-                        }}
-                        disabled={!foodId}
-                        style={{ background: "none", border: "none", color: "#dc2626", cursor: foodId ? "pointer" : "not-allowed", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", opacity: foodId ? 1 : 0.5 }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Add new link */}
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
-              <div style={{ ...s.field, flex: "2 1 180px" }}>
-                <label style={s.label}>Menu Item</label>
-                <select style={s.input} value={linkFoodId} onChange={e => setLinkFoodId(e.target.value)}>
-                  <option value="">Select a menu item...</option>
-                  {menuFoods
-                    .filter(f => !linkingItem.linkedMenuItems?.some(l => resolveLinkedMenuItem(l).resolvedFoodId === f._id))
-                    .map(f => <option key={f._id} value={f._id}>{f.name} ({f.category}) — AED {f.price}</option>)}
-                </select>
-              </div>
-              <div style={{ ...s.field, flex: "0 0 100px" }}>
-                <label style={s.label}>Qty per order ({linkingItem.unit})</label>
-                <input style={s.input} type="number" min="0.01" step="0.01" value={linkQty} onChange={e => setLinkQty(e.target.value)} />
-              </div>
-              <button className="btn" onClick={handleLink} disabled={!linkFoodId || linkQty <= 0} style={{ fontSize: 12, padding: "9px 16px", height: "fit-content" }}>
-                + Link
-              </button>
-            </div>
-
-            {menuFoods.length === 0 && (
-              <p style={{ fontSize: 12, color: "#f59e0b", fontWeight: 600, marginTop: 10 }}>No menu items found for this restaurant. Add food items first.</p>
-            )}
-
-            <div style={{ ...s.formBtns, marginTop: 18 }}>
-              <button type="button" className="btn btn-outline" onClick={() => setLinkingItem(null)} style={{ flex: 1 }}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal: Deduction Log ── */}
-      {logItem && (
-        <div style={s.overlay} onClick={() => setLogItem(null)}>
-          <div style={s.modal} onClick={e => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>📋 Deduction Log — {logItem.itemName}</h2>
-            <p style={{ fontSize: 12, color: "var(--inv-muted)", margin: "0 0 14px", fontWeight: 500 }}>
-              Shows automatic stock deductions from customer orders (most recent first).
-            </p>
-
-            {logData.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "30px 10px", color: "var(--muted)" }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
-                <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>No deductions yet</p>
-                <p style={{ fontSize: 12, margin: "4px 0 0" }}>Stock will be automatically deducted when linked menu items are ordered.</p>
-              </div>
-            ) : (
-              <div style={{ maxHeight: 400, overflowY: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "2px solid var(--border)", textAlign: "left" }}>
-                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "var(--inv-text)" }}>Date</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "var(--inv-text)" }}>Menu Item</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "var(--inv-text)", textAlign: "right" }}>Ordered</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "var(--inv-text)", textAlign: "right" }}>Deducted</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 800, color: "var(--inv-text)", textAlign: "right" }}>Stock After</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logData.map((entry, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid var(--inv-border)" }}>
-                        <td style={{ padding: "6px 8px", color: "var(--inv-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>
-                          {new Date(entry.date).toLocaleDateString()} {new Date(entry.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </td>
-                        <td style={{ padding: "6px 8px", fontWeight: 600 }}>{entry.foodName || "—"}</td>
-                        <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 600 }}>{entry.qtyOrdered}</td>
-                        <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: "#dc2626" }}>-{entry.qtyDeducted} {logItem.unit}</td>
-                        <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700 }}>{entry.stockAfter} {logItem.unit}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <div style={{ ...s.formBtns, marginTop: 14 }}>
-              <button type="button" className="btn btn-outline" onClick={() => setLogItem(null)} style={{ flex: 1 }}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal: Bulk Update ── */}
-      {showBulkUpdateModal && (
-        <div style={s.overlay} onClick={() => setShowBulkUpdateModal(false)}>
-          <div style={s.modal} onClick={e => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>✏️ Bulk Update {selectedIds.size} Items</h2>
-            <p style={{ fontSize: 12, color: "var(--inv-muted)", margin: "0 0 14px", fontWeight: 500 }}>
-              Apply the same change to all selected inventory items.
-            </p>
-
-            <div style={s.formGrid}>
-              <div style={s.field}>
-                <label style={s.label}>Field to Update</label>
-                <select style={s.input} value={bulkUpdateField} onChange={e => setBulkUpdateField(e.target.value)}>
-                  <option value="">Select field...</option>
-                  <option value="category">Category</option>
-                  <option value="unit">Unit</option>
-                  <option value="currentStock">Current Stock</option>
-                  <option value="minimumStock">Minimum Stock</option>
-                  <option value="maximumStock">Maximum Stock</option>
-                  <option value="unitCost">Unit Cost (AED)</option>
-                  <option value="supplier">Supplier (JSON)</option>
-                  <option value="notes">Notes</option>
-                </select>
-              </div>
-              <div style={s.field}>
-                <label style={s.label}>New Value</label>
-                {bulkUpdateField === 'category' ? (
-                  <select style={s.input} value={bulkUpdateValue} onChange={e => setBulkUpdateValue(e.target.value)}>
-                    <option value="">Select category...</option>
-                    {CATEGORIES.filter(c => c.value !== "all").map(c => <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>)}
-                  </select>
-                ) : bulkUpdateField === 'unit' ? (
-                  <select style={s.input} value={bulkUpdateValue} onChange={e => setBulkUpdateValue(e.target.value)}>
-                    <option value="">Select unit...</option>
-                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                ) : bulkUpdateField === 'supplier' ? (
-                  <textarea style={{ ...s.input, minHeight: 60 }} value={bulkUpdateValue} onChange={e => setBulkUpdateValue(e.target.value)} placeholder='{"name": "Supplier Name", "contact": "Phone", "email": "email@example.com"}' />
-                ) : (
-                  <input style={s.input} type={['currentStock', 'minimumStock', 'maximumStock', 'unitCost'].includes(bulkUpdateField) ? 'number' : 'text'} value={bulkUpdateValue} onChange={e => setBulkUpdateValue(e.target.value)} />
-                )}
-              </div>
-            </div>
-
-            <div style={s.formBtns}>
-              <button type="button" className="btn" onClick={handleBulkUpdate} disabled={!bulkUpdateField || !bulkUpdateValue} style={{ flex: 1 }}>
-                Update {selectedIds.size} Items
-              </button>
-              <button type="button" className="btn btn-outline" onClick={() => { setShowBulkUpdateModal(false); setBulkUpdateField(""); setBulkUpdateValue(""); }} style={{ flex: 1 }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal: Import Preview ── */}
-      {showImportPreview && (
-        <div style={s.overlay} onClick={() => setShowImportPreview(false)}>
-          <div style={{ ...s.modal, maxWidth: 800, maxHeight: "85vh" }} onClick={e => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>📋 Import Preview - {previewData.length} Items</h2>
-            <p style={{ fontSize: 12, color: "var(--inv-muted)", margin: "0 0 14px", fontWeight: 500 }}>
-              Review the changes before confirming. Items will be updated or created as shown below.
-            </p>
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-              <span style={{
-                fontSize: 11,
-                fontWeight: 800,
-                padding: "4px 10px",
-                borderRadius: 999,
-                background: "var(--inv-soft-2)",
-                border: "1px solid var(--inv-border)",
-                color: "var(--inv-text)"
-              }}>
-                {previewData.filter(x => x.type === "create").length} create
-              </span>
-              <span style={{
-                fontSize: 11,
-                fontWeight: 800,
-                padding: "4px 10px",
-                borderRadius: 999,
-                background: "var(--inv-soft-2)",
-                border: "1px solid var(--inv-border)",
-                color: "var(--inv-text)"
-              }}>
-                {previewData.filter(x => x.type === "update").length} update
-              </span>
-            </div>
-
-            <div style={{ maxHeight: 400, overflowY: "auto", border: "1px solid var(--inv-border)", borderRadius: 12, marginBottom: 16, background: "var(--inv-soft)" }}>
-              {previewData.map((item, idx) => (
-                <div key={idx} style={{ 
-                  margin: "10px",
-                  padding: "12px 14px",
-                  borderRadius: 12,
-                  border: `1px solid ${item.type === "create" ? "var(--inv-link-border)" : "var(--inv-info-border)"}`,
-                  background: item.type === "create" ? "var(--inv-link-bg)" : "var(--inv-info-bg)",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.06)"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
-                    <strong style={{ fontSize: 15, color: "var(--inv-text)", lineHeight: 1.2 }}>{item.itemName}</strong>
-                    <span style={{ 
-                      fontSize: 11,
-                      padding: "4px 8px",
-                      borderRadius: 999,
-                      background: item.type === "create" ? "#16a34a" : "#2563eb",
-                      color: "white",
-                      fontWeight: 700 
-                    }}>
-                      {item.type === "create" ? "CREATE NEW" : "UPDATE"}
-                    </span>
-                  </div>
-
-                  {item.type === "update" ? (
-                    <div style={{ fontSize: 12, color: "var(--inv-text)", display: "grid", gap: 8 }}>
-                      <div style={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "var(--inv-text)",
-                        background: "var(--inv-panel)",
-                        border: "1px solid var(--inv-border)",
-                        borderRadius: 8,
-                        padding: "7px 10px"
-                      }}>
-                        Current: {item.existingItem.currentStock} {item.existingItem.unit} @ AED {item.existingItem.unitCost}
-                      </div>
-                      {Object.keys(item.changes).length > 0 && (
-                        <div style={{
-                          background: "var(--inv-panel)",
-                          border: "1px solid var(--inv-border)",
-                          borderRadius: 8,
-                          padding: "8px 10px"
-                        }}>
-                          <div style={{ color: "var(--inv-muted)", fontWeight: 700, marginBottom: 6 }}>Changes</div>
-                          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 4 }}>
-                            {item.changes.currentStock !== undefined && (
-                              <li><strong>Stock:</strong> {item.existingItem.currentStock} → {item.changes.currentStock}</li>
-                            )}
-                            {item.changes.unitCost !== undefined && (
-                              <li><strong>Cost:</strong> AED {item.existingItem.unitCost} → AED {item.changes.unitCost}</li>
-                            )}
-                            {item.changes.unit && (
-                              <li><strong>Unit:</strong> {item.existingItem.unit} → {item.changes.unit}</li>
-                            )}
-                            {item.changes.category && (
-                              <li><strong>Category:</strong> {item.existingItem.category} → {item.changes.category}</li>
-                            )}
-                            {item.changes.minimumStock !== undefined && (
-                              <li><strong>Min Stock:</strong> {item.existingItem.minimumStock} → {item.changes.minimumStock}</li>
-                            )}
-                            {item.changes.maximumStock !== undefined && (
-                              <li><strong>Max Stock:</strong> {item.existingItem.maximumStock} → {item.changes.maximumStock}</li>
-                            )}
-                            {item.changes.expiryDate && (
-                              <li><strong>Expiry:</strong> {item.existingItem.expiryDate || "none"} → {item.changes.expiryDate}</li>
-                            )}
-                            {item.changes.supplier && (
-                              <li><strong>Supplier:</strong> {item.changes.supplier.name || "none"} ({item.changes.supplier.contact || "no contact"})</li>
-                            )}
-                            {item.changes.notes && (
-                              <li><strong>Notes:</strong> {item.changes.notes}</li>
-                            )}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: 12, color: "var(--inv-text)", display: "grid", gap: 8 }}>
-                      <div style={{
-                        color: "var(--inv-muted)",
-                        fontWeight: 700,
-                        fontSize: 12
-                      }}>
-                        New item details
-                      </div>
-                      <ul style={{ margin: 0, padding: "8px 10px", listStyle: "none", background: "var(--inv-panel)", border: "1px solid var(--inv-border)", borderRadius: 8, display: "grid", gap: 4 }}>
-                        <li><strong>Category:</strong> {item.newItem.category}</li>
-                        <li><strong>Stock:</strong> {item.newItem.currentStock} {item.newItem.unit}</li>
-                        <li><strong>Cost:</strong> AED {item.newItem.unitCost}</li>
-                        <li><strong>Min/Max:</strong> {item.newItem.minimumStock}/{item.newItem.maximumStock}</li>
-                        {item.newItem.expiryDate && <li><strong>Expiry:</strong> {item.newItem.expiryDate}</li>}
-                        {item.newItem.supplier.name && (
-                          <li><strong>Supplier:</strong> {item.newItem.supplier.name} ({item.newItem.supplier.contact})</li>
-                        )}
-                        {item.newItem.notes && <li><strong>Notes:</strong> {item.newItem.notes}</li>}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {importStatus && (
-              <div style={{ 
-                padding: "8px 12px", 
-                borderRadius: 8, 
-                background: "var(--inv-soft-2)", 
-                fontSize: 12, 
-                fontWeight: 600, 
-                color: "var(--inv-text)",
-                marginBottom: 16 
-              }}>
-                {importStatus}
-              </div>
-            )}
-
-            <div style={{ ...s.formBtns, position: "sticky", bottom: 0, background: "var(--inv-panel)", paddingTop: 10 }}>
-              <button 
-                type="button" 
-                className="btn" 
-                onClick={confirmImport} 
-                disabled={importing}
-                style={{ flex: 1, minHeight: 42, borderRadius: 12, fontWeight: 800 }}
-              >
-                {importing ? "Processing..." : `Confirm Import (${previewData.length} items)`}
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-outline" 
-                onClick={() => setShowImportPreview(false)} 
-                disabled={importing}
-                style={{ flex: 1, minHeight: 42, borderRadius: 12, fontWeight: 800 }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       </div>
     </RestaurantLayout>
   );
 }
+
+function AssetCard({ item, dark, colors, selectMode, isSelected, onSelect, onEdit, onDelete }) {
+  const stockPct = Math.min(100, (item.currentStock / (item.maximumStock || 1)) * 100);
+  const isCritical = item.currentStock <= item.minimumStock;
+  const isOver = item.currentStock >= item.maximumStock && item.maximumStock > 0;
+  const statusColor = isCritical ? colors.danger : isOver ? colors.accent : colors.success;
+
+  return (
+    <div 
+      style={{ 
+        background: colors.cardBg, borderRadius: 24, padding: "20px", border: `1.5px solid ${isSelected ? colors.danger : "var(--border)"}`,
+        boxShadow: isSelected ? `0 8px 24px rgba(239, 68, 68, 0.1)` : "0 4px 12px rgba(0,0,0,0.01)",
+        display: "flex", flexDirection: "column", minHeight: 280, transition: "all 0.2s", cursor: selectMode ? "pointer" : "default" 
+      }}
+      onClick={() => selectMode && onSelect()}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 12 }}>
+           {selectMode ? (
+             <div style={{ width: 22, height: 22, borderRadius: 7, border: `2px solid ${isSelected ? colors.danger : "var(--border)"}`, background: isSelected ? colors.danger : "transparent", display: "grid", placeItems: "center", flexShrink: 0 }}>
+               {isSelected && <span style={{ color: "white", fontSize: 13 }}>✓</span>}
+             </div>
+           ) : (
+             <div style={{ width: 44, height: 44, borderRadius: 14, background: dark ? "rgba(255,255,255,0.03)" : "#f8fafc", display: "grid", placeItems: "center", fontSize: 20 }}>
+               {CATEGORIES.find(c => c.value === item.category)?.emoji || "📦"}
+             </div>
+           )}
+           <div>
+             <span style={{ fontSize: 9, fontWeight: 900, textTransform: "uppercase", padding: "3px 8px", borderRadius: 6, background: isCritical ? "rgba(239,68,68,0.1)" : "rgba(0,0,0,0.05)", color: isCritical ? colors.danger : "var(--muted)", letterSpacing: 0.5 }}>{item.category.replace('_',' ')}</span>
+             <h4 style={{ fontSize: 16, fontWeight: 900, margin: "6px 0 2px", color: dark ? "#fff" : "#111827" }}>{item.itemName}</h4>
+             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>AED {item.unitCost} / {item.unit}</div>
+           </div>
+        </div>
+        {!selectMode && (
+          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{ width: 32, height: 32, borderRadius: 10, border: "1px solid var(--border)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center", fontSize: 14 }}>✏️</button>
+        )}
+      </div>
+
+      <div style={{ marginTop: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+           <span style={{ fontSize: 12, fontWeight: 900, color: statusColor }}>{item.currentStock} {item.unit.toUpperCase()}</span>
+           <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", opacity: 0.6 }}>LIMIT {item.maximumStock}</span>
+        </div>
+        <div style={{ height: 6, background: dark ? "rgba(255,255,255,0.05)" : "#f1f5f9", borderRadius: 10, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${stockPct}%`, background: statusColor, transition: "width 0.8s" }} />
+        </div>
+      </div>
+
+      <div style={{ marginTop: 16, padding: "12px", background: dark ? "rgba(255,255,255,0.02)" : "#f8fafc", borderRadius: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <div style={{ fontSize: 9, fontWeight: 950, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>Recipe Connections</div>
+          {!selectMode && (item.category === 'packaging' || item.category === 'beverage' || item.category === 'other') && (
+            <button 
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!window.confirm(`Auto-Connect '${item.itemName}' to ALL menu items?`)) return;
+                try {
+                  const menuRes = await api.get("/api/restaurantadmin/foods");
+                  const menu = menuRes.data?.data || [];
+                  for (const f of menu) {
+                    await api.post(`/api/inventory/${item._id}/link`, { foodId: f._id, quantityPerOrder: 1 });
+                  }
+                  toast.success(`Connected to ${menu.length} items!`);
+                  loadInventory();
+                } catch (err) { toast.error("Global Link failed"); }
+              }}
+              style={{ padding: "2px 8px", borderRadius: 6, border: "none", background: colors.success, color: "white", fontSize: 8, fontWeight: 900, cursor: "pointer" }}
+            >
+              Link to All
+            </button>
+          )}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+          {item.linkedMenuItems?.length > 0 ? (
+            item.linkedMenuItems.map((l, i) => <span key={i} style={{ padding: "3px 8px", fontSize: 10, fontWeight: 800, background: dark ? "#111827" : "#fff", border: "1px solid var(--border)", borderRadius: 6 }}>{l.resolvedFoodName || l.foodId?.name || "Dish"}</span>)
+          ) : (
+            <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.4 }}>No active menu links</span>
+          )}
+        </div>
+      </div>
+
+      {!selectMode && (
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ marginTop: 12, width: "100%", padding: "8px", borderRadius: 10, border: "none", background: "rgba(239,68,68,0.08)", color: colors.danger, fontWeight: 800, fontSize: 11, cursor: "pointer" }}>
+          Remove from Vault
+        </button>
+      )}
+    </div>
+  );
+}
+
+const s = {
+  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(12px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 },
+  box: (dark, colors) => ({ background: colors.cardBg, borderRadius: 32, padding: 32, width: "100%", maxWidth: 540, border: "1px solid var(--border)", boxShadow: "0 24px 60px rgba(0,0,0,0.3)" }),
+  label: { fontSize: 10, fontWeight: 950, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8 },
+  input: (dark, colors) => ({ width: "100%", padding: "12px 16px", borderRadius: 14, border: "1.5px solid var(--border)", background: dark ? "#0a0a0c" : "#f9fafb", color: "inherit", fontWeight: 700, outline: "none" })
+};
