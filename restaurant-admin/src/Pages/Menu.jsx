@@ -15,6 +15,7 @@ const SORT_OPTIONS = [
 
 export default function Menu() {
   const [foods,    setFoods]    = useState([]);
+  const [inventory, setInventory] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [toggling, setToggling] = useState({});
   const navigate = useNavigate();
@@ -96,20 +97,19 @@ export default function Menu() {
   const loadFoods = async () => {
     try {
       setLoading(true);
-      console.log("[LOAD FOODS] Starting to fetch menu items...");
-      const res = await api.get("/api/restaurantadmin/foods");
-      console.log("[LOAD FOODS RESPONSE]", res.data);
-      if (res.data?.success) {
-        const foods = res.data.data || [];
-        console.log(`[LOAD FOODS SUCCESS] Loaded ${foods.length} items`);
-        setFoods(foods);
-      } else {
-        const errorMsg = res.data?.message || "Failed to load menu";
-        toast.error(errorMsg);
+      const [foodRes, invRes] = await Promise.all([
+        api.get("/api/restaurantadmin/foods"),
+        api.get("/api/inventory")
+      ]);
+      
+      if (foodRes.data?.success) {
+        setFoods(foodRes.data.data || []);
+      }
+      if (invRes.data?.success) {
+        setInventory(invRes.data.data || []);
       }
     } catch (err) {
-      const errorMsg = err?.response?.data?.message || err?.message || "Failed to load menu";
-      toast.error(errorMsg);
+      toast.error("Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -405,6 +405,15 @@ export default function Menu() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
           {filtered.map(f => {
             const isOut = !(f.inStock ?? true);
+            
+            // Check linked ingredients status
+            const linkedIngs = inventory.filter(i => 
+              i.linkedMenuItems?.some(m => String(m.foodId) === String(f._id))
+            );
+            const isIngOut = linkedIngs.some(i => i.currentStock <= 0);
+            const isIngLow = linkedIngs.some(i => i.currentStock <= i.minimumStock);
+            const outIngCount = linkedIngs.filter(i => i.currentStock <= 0).length;
+
             return (
               <div key={f._id} style={{ 
                 background: rowBg, 
@@ -426,6 +435,16 @@ export default function Menu() {
                     <div style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", color: "white", padding: "6px 12px", borderRadius: 10, fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>
                       {f.category}
                     </div>
+                    {isIngOut && (
+                      <div style={{ background: "#ef4444", color: "white", padding: "6px 12px", borderRadius: 10, fontSize: 10, fontWeight: 900, boxShadow: "0 4px 12px rgba(239,68,68,0.3)" }}>
+                        ⚠️ {outIngCount} ING OUT
+                      </div>
+                    )}
+                    {!isIngOut && isIngLow && (
+                      <div style={{ background: "#f59e0b", color: "white", padding: "6px 12px", borderRadius: 10, fontSize: 10, fontWeight: 900, boxShadow: "0 4px 12px rgba(245,158,11,0.3)" }}>
+                        ⚠️ LOW STOCK
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ position: "absolute", bottom: 12, right: 12 }}>

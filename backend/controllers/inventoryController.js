@@ -241,6 +241,26 @@ const updateInventoryItem = async (req, res) => {
             updates.lastRestocked = new Date();
         }
 
+        // Auto-link: Attempt to find menu item if currently unlinked and no manual links provided
+        if ((!item.linkedMenuItems || item.linkedMenuItems.length === 0) && !updates.linkedMenuItems) {
+            try {
+                const foodModel = (await import("../models/foodModel.js")).default;
+                const itemNameClean = (updates.itemName || item.itemName).trim();
+                const matchingFood = await foodModel.findOne({
+                    restaurantId: req.restaurantId,
+                    name: new RegExp(`^${itemNameClean}$`, 'i')
+                });
+                if (matchingFood) {
+                    updates.linkedMenuItems = [{
+                        foodId: matchingFood._id,
+                        quantityPerOrder: 1
+                    }];
+                }
+            } catch (e) {
+                console.error("Auto-linking failed during item update:", e);
+            }
+        }
+
         const updatedItem = await inventoryModel.findByIdAndUpdate(
             id,
             updates,
@@ -392,6 +412,108 @@ const bulkUpdateInventoryItems = async (req, res) => {
     } catch (error) {
         console.error("Error bulk updating inventory items:", error);
         res.status(500).json({ success: false, message: "Failed to update items" });
+    }
+};
+
+// ── Bulk import inventory items ───────────────────────────────────────────
+const bulkImportInventory = async (req, res) => {
+    try {
+        const { items } = req.body;
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ success: false, message: "Please provide an array of items" });
+        }
+
+        const foodModel = (await import("../models/foodModel.js")).default;
+        const menuFoods = await foodModel.find({ restaurantId: req.restaurantId }).select("name").lean();
+
+        let createdCount = 0;
+        let updatedCount = 0;
+        let linkedCount = 0;
+
+        for (const itemData of items) {
+            let { itemName, category, unit, currentStock, minimumStock, maximumStock, unitCost, supplier, notes } = itemData;
+            
+            if (!itemName) continue;
+
+            // Robust supplier handling
+            if (supplier && typeof supplier === 'string') {
+                try { supplier = JSON.parse(supplier); } catch (e) {}
+            }
+
+            // Check if item already exists
+            const existingItem = await inventoryModel.findOne({
+                restaurantId: req.restaurantId,
+                itemName: new RegExp(`^${itemName.trim()}$`, 'i'),
+                isActive: true
+            });
+
+            if (existingItem) {
+                 // Update existing item
+                 const updates = {
+                     category: category || existingItem.category,
+                     unit: unit || existingItem.unit,
+                     currentStock: currentStock !== undefined ? Number(currentStock) : existingItem.currentStock,
+                     minimumStock: minimumStock !== undefined ? Number(minimumStock) : existingItem.minimumStock,
+                     maximumStock: maximumStock !== undefined ? Number(maximumStock) : existingItem.maximumStock,
+                     unitCost: unitCost !== undefined ? Number(unitCost) : existingItem.unitCost,
+                     supplier: supplier || existingItem.supplier,
+                     notes: notes || existingItem.notes,
+                     lastRestocked: (currentStock !== undefined && Number(currentStock) > existingItem.currentStock) ? new Date() : existingItem.lastRestocked
+                 };
+                 await inventoryModel.findByIdAndUpdate(existingItem._id, updates);
+                 updatedCount++;
+            } else {
+                // Create new item
+                let linkedMenuItems = [];
+                
+                // Auto-link logic: Try to find a menu item that matches or contains the inventory name
+                const itemNameClean = itemName.trim().toLowerCase();
+                // Remove common units from name for better matching
+                const searchName = itemNameClean.replace(/[0-9]|ml|kg|l|g|btl|can|pieces|pcs|bottle|box|pkt|packets/g, "").trim();
+
+                if (searchName.length > 2) {
+                    const match = menuFoods.find(f => {
+                        const fName = f.name.toLowerCase().trim();
+                        return fName === itemNameClean || fName.includes(searchName) || itemNameClean.includes(fName);
+                    });
+
+                    if (match) {
+                        linkedMenuItems.push({
+                            foodId: match._id,
+                            quantityPerOrder: 1
+                        });
+                        linkedCount++;
+                    }
+                }
+
+                const newItem = new inventoryModel({
+                    restaurantId: req.restaurantId,
+                    itemName,
+                    category: category || "other",
+                    unit: unit || "pieces",
+                    currentStock: Number(currentStock) || 0,
+                    minimumStock: Number(minimumStock) || 10,
+                    maximumStock: Number(maximumStock) || 100,
+                    unitCost: Number(unitCost) || 0,
+                    supplier: supplier || {},
+                    notes: notes || "",
+                    isActive: true,
+                    linkedMenuItems,
+                    lastRestocked: new Date()
+                });
+                await newItem.save();
+                createdCount++;
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Import complete: ${createdCount} created, ${updatedCount} updated, ${linkedCount} auto-linked.`,
+            stats: { created: createdCount, updated: updatedCount, linked: linkedCount }
+        });
+    } catch (error) {
+        console.error("Error bulk importing inventory:", error);
+        res.status(500).json({ success: false, message: "Failed to import items" });
     }
 };
 
@@ -851,6 +973,17 @@ const deductInventoryForOrder = async (restaurantId, orderItems, orderId) => {
         }
 
         console.log(`[inventory] Deducted ${deductionResults.length} entries for order ${orderId || "?"}`);
+        
+        // Mark order as deducted
+        if (orderId && orderId !== "unknown") {
+            try {
+                const orderModel = (await import("../models/orderModel.js")).default;
+                await orderModel.findByIdAndUpdate(orderId, { inventoryDeducted: true });
+            } catch (e) {
+                console.error("[inventory] Failed to update order inventoryDeducted flag:", e);
+            }
+        }
+
         return { success: true, message: "Inventory deduction completed", deductions: deductionResults };
     } catch (error) {
         console.error("Error deducting inventory:", error);
@@ -961,6 +1094,17 @@ const restoreInventoryForCancelledOrder = async (restaurantId, orderItems, order
         }
 
         console.log(`[inventory] Restored ${restorationResults.length} entries for cancelled order ${orderId || "?"}`);
+        
+        // Mark order as NOT deducted
+        if (orderId && orderId !== "unknown") {
+            try {
+                const orderModel = (await import("../models/orderModel.js")).default;
+                await orderModel.findByIdAndUpdate(orderId, { inventoryDeducted: false });
+            } catch (e) {
+                console.error("[inventory] Failed to update order inventoryDeducted flag:", e);
+            }
+        }
+
         return { 
             success: true, 
             message: "Inventory restoration completed", 
@@ -1447,6 +1591,38 @@ const getCostAnalysis = async (req, res) => {
     }
 };
 
+// ── Get all deduction logs for the restaurant ──────────────────────────────
+const getAllDeductionLogs = async (req, res) => {
+    try {
+        const inventoryItems = await inventoryModel.find({ restaurantId: req.restaurantId }).select("itemName deductionLog unit").lean();
+        
+        const allLogs = [];
+        inventoryItems.forEach(item => {
+            if (item.deductionLog && item.deductionLog.length > 0) {
+                item.deductionLog.forEach(log => {
+                    allLogs.push({
+                        ...log,
+                        itemName: item.itemName,
+                        unit: item.unit,
+                        itemId: item._id
+                    });
+                });
+            }
+        });
+
+        // Sort by date descending
+        allLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        res.json({
+            success: true,
+            data: allLogs.slice(0, 50) // Return last 50 logs
+        });
+    } catch (error) {
+        console.error("Error getting all deduction logs:", error);
+        res.status(500).json({ success: false, message: "Failed to get deduction logs" });
+    }
+};
+
 export {
     getInventory,
     addInventoryItem,
@@ -1454,6 +1630,7 @@ export {
     deleteInventoryItem,
     bulkDeleteInventoryItems,
     bulkUpdateInventoryItems,
+    bulkImportInventory,
     updateStockLevel,
     getInventoryAlerts,
     getAIInsights,
@@ -1463,6 +1640,7 @@ export {
     unlinkMenuItem,
     getRestaurantFoods,
     getDeductionLog,
+    getAllDeductionLogs,
     previewInventoryDeduction,
     getInventoryAnalytics,
     getStockTurnoverAnalytics,

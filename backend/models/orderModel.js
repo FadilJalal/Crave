@@ -94,6 +94,7 @@ const orderSchema = new mongoose.Schema(
     splitCardCount: { type: Number, default: 0 },   // number of cards used
 
     stripeSessionId: { type: String, default: null },
+    inventoryDeducted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

@@ -184,13 +184,14 @@ export default function RestaurantLayout({ children }) {
   const canAiSegmentation = !subForFeatures || hasFeatureAccess(subForFeatures, "aiCustomerSegmentation");
 
   const link = (to, label) => (
-    <NavLink to={to} end className={({ isActive }) => isActive ? "active" : ""}>{label}</NavLink>
+    <NavLink key={to} to={to} end className={({ isActive }) => isActive ? "active" : ""}>{label}</NavLink>
   );
 
   const linkOrDisabled = (to, label, allowed, reason) => {
     if (allowed) return link(to, label);
     return (
       <span
+        key={to}
         className="nav-link-disabled"
         title={reason || "Not available on your current plan"}
         aria-disabled="true"

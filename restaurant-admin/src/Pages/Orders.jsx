@@ -37,8 +37,9 @@ function isInDateRange(dateStr, preset) {
 
 export default function Orders() {
   const { dark } = useTheme();
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [orders,    setOrders]    = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [loading,  setLoading]  = useState(true);
   const [expanded, setExpanded] = useState({});
 
   // ── New: sound + auto-refresh state ──
@@ -95,12 +96,15 @@ export default function Orders() {
   const loadOrders = useCallback(async (isBackground = false) => {
     try {
       if (!isBackground) setLoading(true);
-      const res = await api.get("/api/order/restaurant/list");
-      if (res.data?.success) {
-        const incoming = res.data.data || [];
-
+      const [orderRes, invRes] = await Promise.all([
+        api.get("/api/order/restaurant/list"),
+        api.get("/api/inventory")
+      ]);
+      
+      if (orderRes.data?.success) {
+        const incoming = orderRes.data.data || [];
+        
         if (knownIdsRef.current === null) {
-          // Very first load — just record IDs, no alert
           knownIdsRef.current = new Set(incoming.map(o => o._id));
         } else {
           const brandNew = incoming.filter(o => !knownIdsRef.current.has(o._id));
@@ -120,11 +124,12 @@ export default function Orders() {
 
         setOrders(incoming);
         setLastRefresh(new Date());
-      } else {
-        if (!isBackground) alert(res.data?.message || "Failed to load orders");
+      }
+      if (invRes.data?.success) {
+        setInventory(invRes.data.data || []);
       }
     } catch (err) {
-      if (!isBackground) alert(err?.response?.data?.message || "Failed to load orders");
+      if (!isBackground) toast.error("Failed to load orders");
     } finally {
       if (!isBackground) setLoading(false);
     }
@@ -517,6 +522,21 @@ export default function Orders() {
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {order.items?.map((it, i) => (
                             <div key={i} style={{ padding: "12px 14px", background: surface, borderRadius: 12, border: "1px solid var(--border)" }}>
+                              {/* Unified Operations: Stock Check */}
+                              {(() => {
+                                const linkedIngs = inventory.filter(ing => 
+                                  ing.linkedMenuItems?.some(m => String(m.foodId) === String(it._id))
+                                );
+                                const isOut = linkedIngs.some(ing => ing.currentStock <= 0);
+                                if (isOut && order.status !== "Delivered" && order.status !== "Cancelled") {
+                                  return (
+                                    <div style={{ marginBottom: 10, padding: "8px 12px", background: "#fef2f2", color: "#ef4444", borderRadius: 8, fontSize: 11, fontWeight: 800, border: "1px solid #fecaca", display: "flex", alignItems: "center", gap: 6 }}>
+                                      <span>⚠️</span> STOCK ALERT: Linked ingredients for this item are out of stock!
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                                 <div>
                                   <div style={{ fontWeight: 900, fontSize: 14 }}>{it.name}</div>

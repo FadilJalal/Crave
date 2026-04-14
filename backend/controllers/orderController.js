@@ -362,11 +362,6 @@ const placeOrder = async (req, res) => {
         newOrder.payment = true;
         newOrder.stripeSessionId = paymentIntent.id;
         await newOrder.save();
-        // Deduct inventory
-        const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
-        if (DEBUG_ORDER_LOGS) {
-          console.log("[placeOrder] Inventory deduction result:", inventoryDeduction);
-        }
         return res.json({ success: true, paid: true, orderId: newOrder._id });
       } else {
         return res.json({ success: false, message: 'Card payment failed', paymentIntentStatus: paymentIntent.status });
@@ -381,11 +376,6 @@ const placeOrder = async (req, res) => {
       });
       newOrder.stripeSessionId = session.id;
       await newOrder.save();
-      // Deduct inventory
-      const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
-      if (DEBUG_ORDER_LOGS) {
-        console.log("[placeOrder] Inventory deduction result:", inventoryDeduction);
-      }
       return res.json({ success: true, session_url: session.url });
     }
   } catch (error) {
@@ -478,15 +468,6 @@ const placeOrderCod = async (req, res) => {
 
     await newOrder.save();
     await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
-
-    // ── Automatically deduct inventory for ordered items ──────────────────
-    const inventoryDeduction = await deductInventoryForOrder(restaurantId, req.body.items, String(newOrder._id));
-    if (DEBUG_ORDER_LOGS) {
-      console.log("[placeOrderCod] Inventory deduction result:", inventoryDeduction);
-    }
-    if (!inventoryDeduction.success) {
-      console.warn("[placeOrderCod] Inventory deduction failed but order already placed. Manual review needed.", inventoryDeduction);
-    }
 
     // ── ⚡ Bug 3: Increment Flash Deal Claimed Counter ────────────────────
     try {
@@ -860,6 +841,19 @@ const restaurantUpdateStatus = async (req, res) => {
 
     if (String(order.restaurantId) !== String(restaurantId)) {
       return res.status(403).json({ success: false, message: "Not your order" });
+    }
+
+    // ── Unified Operations: Deduct inventory when accepted ──
+    if (status === "Food Processing" && !order.inventoryDeducted) {
+        // Optional: Check stock before accepting
+        // const preview = await previewInventoryDeductionInternal(restaurantId, order.items);
+        // if (some_item_out_of_stock) return res.json({ success: false, message: "Out of stock items..." });
+
+        const inventoryResult = await deductInventoryForOrder(restaurantId, order.items, String(order._id));
+        if (!inventoryResult.success) {
+            console.error("[restaurantUpdateStatus] Inventory deduction failed:", inventoryResult.message);
+            // We still allow status update but maybe log it
+        }
     }
 
     order.status = status;

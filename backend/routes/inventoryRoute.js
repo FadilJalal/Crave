@@ -7,6 +7,7 @@ import {
     deleteInventoryItem,
     bulkDeleteInventoryItems,
     bulkUpdateInventoryItems,
+    bulkImportInventory,
     updateStockLevel,
     getInventoryAlerts,
     getAIInsights,
@@ -14,6 +15,7 @@ import {
     unlinkMenuItem,
     getRestaurantFoods,
     getDeductionLog,
+    getAllDeductionLogs,
     previewInventoryDeduction,
     getInventoryAnalytics,
     getStockTurnoverAnalytics,
@@ -55,8 +57,14 @@ router.post("/bulk-delete", restaurantAuth, bulkDeleteInventoryItems);
 // ── Bulk update inventory items ─────────────────────────────────────────────
 router.post("/bulk-update", restaurantAuth, bulkUpdateInventoryItems);
 
+// ── Bulk import inventory items ─────────────────────────────────────────────
+router.post("/bulk-import", restaurantAuth, bulkImportInventory);
+
 // ── Preview deduction for a candidate order (no data change) ────────────────
 router.post("/deduction-preview", restaurantAuth, previewInventoryDeduction);
+
+// ── Get all deduction logs for the restaurant ──────────────────────────────
+router.get("/logs/all", restaurantAuth, getAllDeductionLogs);
 
 // ── PARAMETERIZED ROUTES (:id routes must come last) ─────────────────────
 // ── Get deduction log for an inventory item ─────────────────────────────────
