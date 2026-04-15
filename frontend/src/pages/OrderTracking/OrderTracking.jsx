@@ -9,22 +9,39 @@ import './OrderTracking.css';
 
 const STEPS = (t) => [
   { key: 'Placed',      label: "Order Placed",       icon: '🧾', desc: "Your order has been received", eta: null },
-  { key: 'Pending',     label: "Waiting for Restaurant to Accept", icon: '⏳', desc: "Waiting for restaurant to confirm", eta: null },
+  { key: 'Accepted',    label: "Order Accepted",     icon: '✅', desc: "Restaurant has confirmed your order", eta: null },
   { key: 'Food Processing', label: "Food Processing", icon: '🍳', desc: "Chef is cooking your meal", eta: '15–25 min' },
   { key: 'Out for Delivery',label: "Out for Delivery", icon: '🛵', desc: "Courier is on the way", eta: '10–20 min' },
   { key: 'Delivered',   label: "Delivered",          icon: '🏁', desc: "Enjoy your meal!", eta: null },
 ];
 
+const playNotificationSound = () => {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
+    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+  } catch (e) { console.error('Audio failed', e); }
+};
+
 const stepIndex = (status) => {
   const s = (status || '').toLowerCase().trim();
-  if (s === 'pending')          return 1;
+  if (s === 'order accepted' || s === 'accepted') return 1;
   if (s === 'food processing')  return 2;
   if (s === 'out for delivery') return 3;
   if (s === 'delivered')        return 4;
   return 0;
 };
 
-const POLL_INTERVAL = 5000; // 5 seconds
+const POLL_INTERVAL = 1000; // 1 second for near-instant updates
 
 const getOrderItemsSubtotal = (order) =>
   (order?.items || []).reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.quantity) || 0)), 0);
@@ -57,19 +74,26 @@ const OrderTracking = () => {
   const fetchOrder = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await axios.get(`${url}/api/order/track/${orderId}`, { headers: { token } });
+      const res = await axios.get(`${url}/api/order/track/${orderId}?t=${Date.now()}`, { headers: { token } });
       if (res.data.success) {
         const newOrder = res.data.data;
         
         // Notify user if status changed
         if (prevStatusRef.current && prevStatusRef.current !== newOrder.status) {
           const statusMap = {
-            'Food Processing': '🍳 The restaurant has accepted and started preparing your food!',
+            'Order Accepted': '✅ Your order has been accepted by the restaurant!',
+            'Food Processing': '🍳 The chef has started preparing your food!',
             'Out for Delivery': '🛵 Your order is on the way!',
             'Delivered': '🏁 Enjoy your meal! Order delivered.',
           };
-          const msg = statusMap[newOrder.status];
-          if (msg) toast.success(msg, { icon: '🔔', autoClose: 5000 });
+          
+          const matchedKey = Object.keys(statusMap).find(k => k.toLowerCase() === newOrder.status?.toLowerCase());
+          const msg = statusMap[matchedKey];
+          
+          if (msg) {
+            playNotificationSound();
+            toast.success(msg, { icon: '🔔', autoClose: 5000 });
+          }
         }
         prevStatusRef.current = newOrder.status;
 
@@ -138,7 +162,8 @@ const OrderTracking = () => {
   );
 
   // --- WAITING SCREEN LOGIC ---
-  const isPending = (order?.status || '').toLowerCase().trim() === 'pending';
+  // Show waiting screen for "Order Placed" or "Waiting for acceptance"
+  const isPending = ['order placed', 'waiting for acceptance', 'pending'].includes((order?.status || '').toLowerCase().trim());
   
   if (isPending) return (
     <div className="ot-page ot-waiting-page">

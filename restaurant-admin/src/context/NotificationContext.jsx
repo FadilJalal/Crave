@@ -90,9 +90,9 @@ export const NotificationProvider = ({ children }) => {
         }
       }
 
-      const pendingCount = ordersList.filter(ord => ord.status === "Food Processing").length;
-      if (pendingCount > 10) {
-        alertsArr.push({ id: "orders", type: "danger", title: "Order Backlog", desc: `${pendingCount} pending orders.`, icon: "🔥", cta: "Queue" });
+      const pendingCount = ordersList.filter(ord => ord.status === "Order Placed").length;
+      if (pendingCount > 0) {
+        alertsArr.push({ id: "orders", type: "danger", title: "New Orders", desc: `${pendingCount} order${pendingCount > 1 ? 's' : ''} waiting to be accepted.`, icon: "🛎️", cta: "Accept" });
       }
 
       const promoList = p.data?.success ? (p.data.promos || p.data.data || []) : [];
@@ -150,9 +150,9 @@ export const NotificationProvider = ({ children }) => {
 
       // Browser Notification for new orders
       const latestOrder = ordersList[0];
-      if (latestOrder && latestOrder.status === "Food Processing" && new Date(latestOrder.createdAt) > new Date(Date.now() - 30000)) {
+      if (latestOrder && latestOrder.status === "Order Placed" && new Date(latestOrder.createdAt) > new Date(Date.now() - 30000)) {
         if (Notification.permission === "granted") {
-          new Notification("New Order Received", { body: `Order #${latestOrder._id.slice(-6).toUpperCase()} is waiting.` });
+          new Notification("New Order Received", { body: `Order #${latestOrder._id.slice(-6).toUpperCase()} is waiting for acceptance.` });
         }
       }
 

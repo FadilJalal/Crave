@@ -136,26 +136,24 @@ const addInventoryItem = async (req, res) => {
         }
 
         let linkedMenuItems = [];
-
         try {
-            // Auto-link: Attempt to find a menu item with the exact same name
             const foodModel = (await import("../models/foodModel.js")).default;
+            const cleanName = itemName.trim().toLowerCase();
             
-            // Look for matching names, considering simple pluralization/singularization
-            const itemNameClean = itemName.trim();
-            const matchingFood = await foodModel.findOne({ 
+            // Search for best matching food item to auto-link
+            const match = await foodModel.findOne({
                 restaurantId: req.restaurantId,
-                name: new RegExp(`^${itemNameClean}$`, 'i') // Case-insensitive exact match
+                $or: [
+                    { name: new RegExp(`^${cleanName}$`, 'i') },
+                    { name: new RegExp(cleanName, 'i') }
+                ]
             });
-            
-            if (matchingFood) {
-                linkedMenuItems.push({
-                    foodId: matchingFood._id,
-                    quantityPerOrder: 1
-                });
+
+            if (match) {
+                linkedMenuItems.push({ foodId: match._id, quantityPerOrder: 1 });
             }
-        } catch (e) {
-            console.error("Auto-linking failed during item creation:", e);
+        } catch (linkErr) {
+            console.error("Auto-link fallback error:", linkErr);
         }
 
         const newItem = new inventoryModel({
@@ -241,25 +239,7 @@ const updateInventoryItem = async (req, res) => {
             updates.lastRestocked = new Date();
         }
 
-        // Auto-link: Attempt to find menu item if currently unlinked and no manual links provided
-        if ((!item.linkedMenuItems || item.linkedMenuItems.length === 0) && !updates.linkedMenuItems) {
-            try {
-                const foodModel = (await import("../models/foodModel.js")).default;
-                const itemNameClean = (updates.itemName || item.itemName).trim();
-                const matchingFood = await foodModel.findOne({
-                    restaurantId: req.restaurantId,
-                    name: new RegExp(`^${itemNameClean}$`, 'i')
-                });
-                if (matchingFood) {
-                    updates.linkedMenuItems = [{
-                        foodId: matchingFood._id,
-                        quantityPerOrder: 1
-                    }];
-                }
-            } catch (e) {
-                console.error("Auto-linking failed during item update:", e);
-            }
-        }
+        // Auto-link logic removed as per requirement for explicit linking only.
 
         const updatedItem = await inventoryModel.findByIdAndUpdate(
             id,
@@ -460,28 +440,41 @@ const bulkImportInventory = async (req, res) => {
                      notes: notes || existingItem.notes,
                      lastRestocked: (currentStock !== undefined && Number(currentStock) > existingItem.currentStock) ? new Date() : existingItem.lastRestocked
                  };
+                 
+                 // Smart linking logic: if no links provided or empty, try to find a match
+                 if (itemData.linkedMenuItems && Array.isArray(itemData.linkedMenuItems) && itemData.linkedMenuItems.length > 0) {
+                     updates.linkedMenuItems = itemData.linkedMenuItems;
+                 } else if (!existingItem.linkedMenuItems || existingItem.linkedMenuItems.length === 0) {
+                     const cleanName = itemName.toLowerCase().trim();
+                     const match = menuFoods.find(f => 
+                        f.name.toLowerCase().trim() === cleanName || 
+                        f.name.toLowerCase().includes(cleanName) ||
+                        cleanName.includes(f.name.toLowerCase())
+                     );
+                     if (match) {
+                         updates.linkedMenuItems = [{ foodId: match._id, quantityPerOrder: 1 }];
+                         linkedCount++;
+                     }
+                 }
+                 
                  await inventoryModel.findByIdAndUpdate(existingItem._id, updates);
                  updatedCount++;
             } else {
                 // Create new item
                 let linkedMenuItems = [];
-                
-                // Auto-link logic: Try to find a menu item that matches or contains the inventory name
-                const itemNameClean = itemName.trim().toLowerCase();
-                // Remove common units from name for better matching
-                const searchName = itemNameClean.replace(/[0-9]|ml|kg|l|g|btl|can|pieces|pcs|bottle|box|pkt|packets/g, "").trim();
-
-                if (searchName.length > 2) {
-                    const match = menuFoods.find(f => {
-                        const fName = f.name.toLowerCase().trim();
-                        return fName === itemNameClean || fName.includes(searchName) || itemNameClean.includes(fName);
-                    });
-
+                if (itemData.linkedMenuItems && Array.isArray(itemData.linkedMenuItems) && itemData.linkedMenuItems.length > 0) {
+                    linkedMenuItems = itemData.linkedMenuItems;
+                    linkedCount++;
+                } else {
+                    // Internal auto-link for NEW items
+                    const cleanName = itemName.toLowerCase().trim();
+                    const match = menuFoods.find(f => 
+                        f.name.toLowerCase().trim() === cleanName || 
+                        f.name.toLowerCase().includes(cleanName) ||
+                        cleanName.includes(f.name.toLowerCase())
+                    );
                     if (match) {
-                        linkedMenuItems.push({
-                            foodId: match._id,
-                            quantityPerOrder: 1
-                        });
+                        linkedMenuItems = [{ foodId: match._id, quantityPerOrder: 1 }];
                         linkedCount++;
                     }
                 }
@@ -497,8 +490,8 @@ const bulkImportInventory = async (req, res) => {
                     unitCost: Number(unitCost) || 0,
                     supplier: supplier || {},
                     notes: notes || "",
-                    isActive: true,
                     linkedMenuItems,
+                    isActive: true,
                     lastRestocked: new Date()
                 });
                 await newItem.save();
@@ -861,6 +854,69 @@ const linkMenuItem = async (req, res) => {
     }
 };
 
+// ── Sync ingredients for a menu item (called from Add/Edit Menu) ──────────
+const syncFoodIngredients = async (req, res) => {
+    try {
+        const { foodId, ingredients } = req.body; // ingredients: [{ inventoryId, quantityPerOrder }]
+        const restaurantId = req.restaurantId;
+
+        if (!foodId || !Array.isArray(ingredients)) {
+            return res.status(400).json({ success: false, message: "foodId and ingredients array required" });
+        }
+
+        // 1. Remove this foodId from ALL inventory items for this restaurant
+        await inventoryModel.updateMany(
+            { restaurantId, "linkedMenuItems.foodId": foodId },
+            { $pull: { linkedMenuItems: { foodId: foodId } } }
+        );
+
+        // 2. Add the new links to the specified inventory items
+        for (const ing of ingredients) {
+            if (!ing.inventoryId || !ing.quantityPerOrder) continue;
+            
+            await inventoryModel.updateOne(
+                { _id: ing.inventoryId, restaurantId },
+                { $push: { linkedMenuItems: { foodId: foodId, quantityPerOrder: Number(ing.quantityPerOrder) } } }
+            );
+        }
+
+        res.json({ success: true, message: "Ingredients synchronized with menu item" });
+    } catch (error) {
+        console.error("Error syncing food ingredients:", error);
+        res.status(500).json({ success: false, message: "Failed to sync ingredients" });
+    }
+};
+
+// ── Get ingredients linked to a specific food item ──────────────────────────
+const getFoodIngredients = async (req, res) => {
+    try {
+        const { foodId } = req.params;
+        const restaurantId = req.restaurantId;
+
+        const inventoryItems = await inventoryModel.find({
+            restaurantId,
+            isActive: true,
+            "linkedMenuItems.foodId": foodId
+        }).select("itemName unit currentStock linkedMenuItems");
+
+        const ingredients = inventoryItems.map(item => {
+            const link = item.linkedMenuItems.find(l => String(l.foodId) === String(foodId));
+            return {
+                inventoryId: item._id,
+                itemName: item.itemName,
+                unit: item.unit,
+                currentStock: item.currentStock,
+                quantityPerOrder: link?.quantityPerOrder || 0
+            };
+        });
+
+        res.json({ success: true, data: ingredients });
+    } catch (error) {
+        console.error("Error fetching food ingredients:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch ingredients" });
+    }
+};
+
 // ── Unlink a menu item from an inventory item ─────────────────────────────
 const unlinkMenuItem = async (req, res) => {
     try {
@@ -928,7 +984,7 @@ const deductInventoryForOrder = async (restaurantId, orderItems, orderId) => {
             let invCurrentStock = Number(inv.currentStock) || 0;
 
             for (const link of inv.linkedMenuItems) {
-                const foodKey = String(link.foodId);
+                const foodKey = String(link.foodId?._id || link.foodId || "");
                 const qtyOrdered = Number(orderedMap[foodKey] || 0);
                 if (!qtyOrdered || Number(link.quantityPerOrder) <= 0) continue;
 
@@ -1638,6 +1694,8 @@ export {
     restoreInventoryForCancelledOrder,
     linkMenuItem,
     unlinkMenuItem,
+    syncFoodIngredients,
+    getFoodIngredients,
     getRestaurantFoods,
     getDeductionLog,
     getAllDeductionLogs,

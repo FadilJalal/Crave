@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import OrderInsights from '../../components/OrderInsights/OrderInsights';
 import ReviewForm from '../../components/ReviewForm/ReviewForm';
 
-const STATUS_STEPS = ['Order Placed', 'Waiting for Restaurant to Accept', 'Food Processing', 'Out for Delivery', 'Delivered'];
+const STATUS_STEPS = ['Order Placed', 'Order Accepted', 'Food Processing', 'Out for Delivery', 'Delivered'];
 
 const getOrderItemsSubtotal = (order) =>
   (order?.items || []).reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.quantity) || 0)), 0);
@@ -25,14 +25,14 @@ const getOrderDisplayTotal = (order) => {
 
 const statusIndex = (status) => {
   const s = (status || '').toLowerCase().trim();
-  if (s === 'pending')          return 1; 
+  if (s === 'order accepted' || s === 'accepted') return 1; 
   if (s === 'food processing')  return 2;
   if (s === 'out for delivery') return 3;
   if (s === 'delivered')        return 4;
   return 0;
 };
 
-const POLL_INTERVAL = 10000;
+const POLL_INTERVAL = 1000; // 1 second
 
 const DATE_FILTERS = [
   { label: 'All time', value: 'all' },
@@ -103,15 +103,60 @@ const MyOrders = () => {
     }
   };
 
+  const playNotificationSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+    } catch (e) { console.error('Audio failed', e); }
+  };
+
   const pollRef = useRef(null);
+  const prevStatusesRef = useRef({}); // { orderId: status }
 
   const fetchOrders = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
       setFetchError(false);
-      const res = await axios.post(url + '/api/order/userorders', {}, { headers: { token } });
+      const res = await axios.post(`${url}/api/order/userorders?t=${Date.now()}`, {}, { headers: { token } });
       if (res.data.success) {
         const newOrders = res.data.data || [];
+        
+        // --- NOTIFICATION LOGIC ---
+        if (silent && Object.keys(prevStatusesRef.current).length > 0) {
+          newOrders.forEach(order => {
+            const oldStatus = prevStatusesRef.current[order._id];
+            if (oldStatus && oldStatus !== order.status) {
+              const statusMap = {
+                'Order Accepted': '✅ Your order has been accepted!',
+                'Food Processing': '🍳 The chef is preparing your food!',
+                'Out for Delivery': '🛵 Your order is on the way!',
+                'Delivered': '🏁 Your order has been delivered! Enjoy.',
+              };
+              
+              const matchedKey = Object.keys(statusMap).find(k => k.toLowerCase() === order.status?.toLowerCase());
+              const msg = statusMap[matchedKey];
+              if (msg) {
+                playNotificationSound();
+                toast.success(`Order #${order._id.slice(-6).toUpperCase()}: ${msg}`, { icon: '🔔', autoClose: 5000 });
+              }
+            }
+          });
+        }
+        // Update Ref
+        const statusMap = {};
+        newOrders.forEach(o => statusMap[o._id] = o.status);
+        prevStatusesRef.current = statusMap;
+
         setOrders(newOrders);
         if (newOrders.length > 0 && newOrders.every(o => (o.status || '').toLowerCase().trim() === 'delivered')) {
           clearInterval(pollRef.current);
@@ -288,7 +333,7 @@ const MyOrders = () => {
                     <div className='mo-order-right'>
                       <p className='mo-order-amount'>{currency}{displayTotal.toFixed(2)}</p>
                       <span className={`mo-status-badge ${isDelivered ? 'mo-delivered' : isCancelled ? 'mo-cancelled' : 'mo-active'}`}>
-                        {isDelivered ? `✓ ${t("status_delivered")}` : isCancelled ? `🚫 ${t("status_cancelled")}` : order.status === 'Pending' ? '⏰ Awaiting Acceptance' : '⏱ ' + (order.status || 'Food Processing')}
+                        {isDelivered ? `✓ ${t("status_delivered")}` : isCancelled ? `🚫 ${t("status_cancelled")}` : order.status === 'Order Placed' ? '⏰ Awaiting Acceptance' : '⏱ ' + (order.status || 'Food Processing')}
                       </span>
                     </div>
                   </div>
@@ -302,10 +347,7 @@ const MyOrders = () => {
                               {idx <= step ? '✓' : idx + 1}
                             </div>
                             <p className={`mo-prog-label ${idx <= step ? 'mo-prog-label-done' : ''}`} style={{ fontSize: 10, fontWeight: 900, marginTop: 10, lineHeight: 1.1 }}>
-                               {s === 'Order Placed' ? "Order Placed" : 
-                                s === 'Waiting for Restaurant to Accept' ? "Waiting for Acceptance" :
-                                s === 'Food Processing' ? "Food Processing" : 
-                                s === 'Out for Delivery' ? "Out for Delivery" : "Delivered"}
+                               {s}
                              </p>
                           </div>
                           {idx < STATUS_STEPS.length - 1 && (

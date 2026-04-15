@@ -79,31 +79,27 @@ export default function EditFood() {
     };
     loadCategories();
 
-    const loadInventory = async () => {
+    const loadIngredients = async () => {
       try {
-        const res = await api.get("/api/inventory");
+        const res = await api.get(`/api/inventory/food-ingredients/${id}`);
         if (res.data?.success) {
-          setInventoryItems(res.data.data);
-          // Find inventory items that are linked to this food
-          const linked = [];
-          for (const inv of res.data.data) {
-            const match = inv.linkedMenuItems?.find(
-              (l) => (typeof l.foodId === "object" ? l.foodId?._id : l.foodId) === id
-            );
-            if (match) {
-              linked.push({
-                inventoryId: inv._id,
-                itemName: inv.itemName,
-                unit: inv.unit,
-                quantityPerOrder: match.quantityPerOrder,
-              });
-            }
-          }
-          setIngredients(linked);
+          setIngredients(res.data.data);
         }
-      } catch { }
+      } catch (err) {
+        console.error("Failed to load linked ingredients", err);
+      }
     };
-    loadInventory();
+    loadIngredients();
+
+    const loadInventoryData = async () => {
+        try {
+            const res = await api.get("/api/inventory");
+            if (res.data?.success) {
+                setInventoryItems(res.data.data);
+            }
+        } catch {}
+    };
+    loadInventoryData();
   }, [id, navigate]);
 
   // ── Customization helpers ────────────────────────────────────────────────
@@ -207,17 +203,14 @@ export default function EditFood() {
         return;
       }
 
-      // ── Sync inventory ingredient links ──
-      // Unlink removed ingredients
-      for (const orig of originalIngredients) {
-        if (!ingredients.some((i) => i.inventoryId === orig.inventoryId)) {
-          try { await api.post(`/api/inventory/${orig.inventoryId}/unlink`, { foodId: id }); } catch { }
-        }
-      }
-      // Link new or updated ingredients
-      for (const ing of ingredients) {
-        try { await api.post(`/api/inventory/${ing.inventoryId}/link`, { foodId: id, quantityPerOrder: ing.quantityPerOrder }); } catch { }
-      }
+      // ── Sync inventory ingredient links atomically ──
+      await api.post("/api/inventory/link-sync", {
+        foodId: id,
+        ingredients: ingredients.map(ing => ({
+          inventoryId: ing.inventoryId,
+          quantityPerOrder: ing.quantityPerOrder
+        }))
+      });
 
       alert("✅ Food updated");
       navigate("/menu");

@@ -156,10 +156,22 @@ const uploadRow = async (row) => {
 
 const parseIngredientString = (str) => {
   if (!str || !str.trim()) return [];
-  return str.split(",").map(s => {
-    const [name, qty] = s.trim().split(":");
-    return { name: (name || "").trim(), qty: parseFloat(qty) || 1 };
-  }).filter(i => i.name);
+  
+  // Remove any surrounding container characters like ( ) [ ] { }
+  const cleanStr = str.trim()
+    .replace(/^[\(\{\[]+/, "")
+    .replace(/[\)\}\]]+$/, "");
+
+  return cleanStr.split(",").map(s => {
+    const parts = s.trim().split(":");
+    // Handle Case where name might have a colon itself (unlikely but safe)
+    if (parts.length < 2) return null;
+    
+    const name = parts[0].trim().replace(/^[\(\{\[]+/, "").replace(/[\)\}\]]+$/, "");
+    const qty = parseFloat(parts[1]) || 1;
+    
+    return { name, qty };
+  }).filter(i => i && i.name);
 };
 
 const guessCategory = (name) => {
@@ -182,28 +194,41 @@ const guessUnit = (name) => {
 
 const linkIngredientsForFood = async (foodId, parsedIngredients, inventoryItems, createdCache, pendingCreations) => {
   for (const ing of parsedIngredients) {
-    const lowerName = ing.name.toLowerCase();
-    let match = inventoryItems.find(inv => inv.itemName.toLowerCase() === lowerName)
-             || createdCache.find(inv => inv.itemName.toLowerCase() === lowerName);
+    const lowerName = ing.name.toLowerCase().trim();
+    let match = inventoryItems.find(inv => inv.itemName.toLowerCase().trim() === lowerName)
+             || createdCache.find(inv => inv.itemName.toLowerCase().trim() === lowerName);
+    
     if (!match) {
-      // If another concurrent task is already creating this item, wait for it
       if (pendingCreations.has(lowerName)) {
         match = await pendingCreations.get(lowerName);
       } else {
-        // Create and store the promise so concurrent tasks can await it
         const createPromise = api.post("/api/inventory/add", {
-          itemName: ing.name,
+          itemName: ing.name.trim(),
           category: guessCategory(ing.name),
-          unit: guessUnit(ing.name),
-          currentStock: 0, minimumStock: 10, maximumStock: 100, unitCost: 0,
+          unit: guessUnit(ing.name) || "pieces",
+          currentStock: 0, 
+          minimumStock: 5, 
+          maximumStock: 500, 
+          unitCost: 0,
+          notes: `Auto-created during menu import for "${ing.name}"`
         }).then(r => r.data?.success ? r.data.data : null).catch(() => null);
+        
         pendingCreations.set(lowerName, createPromise);
         match = await createPromise;
         if (match) createdCache.push(match);
       }
     }
-    if (match) {
-      try { await api.post(`/api/inventory/${match._id}/link`, { foodId, quantityPerOrder: ing.qty }); } catch { }
+
+    if (match && match._id) {
+      try {
+        await api.post(`/api/inventory/${match._id}/link`, { 
+          foodId, 
+          quantityPerOrder: Number(ing.qty) || 1 
+        });
+        console.log(`Successfully linked ${match.itemName} to food ${foodId}`);
+      } catch (err) {
+        console.error("Link failed for:", match.itemName, err);
+      }
     }
   }
 };

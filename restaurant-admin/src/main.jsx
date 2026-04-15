@@ -5,14 +5,17 @@ import App from "./App";
 import "./index.css";
 import { ThemeProvider } from "./ThemeContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import { LanguageProvider } from "./context/LanguageContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <ThemeProvider>
-        <NotificationProvider>
-          <App />
-        </NotificationProvider>
+        <LanguageProvider>
+          <NotificationProvider>
+            <App />
+          </NotificationProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>

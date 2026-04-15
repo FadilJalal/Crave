@@ -13,6 +13,8 @@ import {
     getAIInsights,
     linkMenuItem,
     unlinkMenuItem,
+    syncFoodIngredients,
+    getFoodIngredients,
     getRestaurantFoods,
     getDeductionLog,
     getAllDeductionLogs,
@@ -47,6 +49,10 @@ router.get("/analytics/costs", restaurantAuth, getCostAnalysis);
 
 // ── Get restaurant menu items (for linking UI) ──────────────────────────────
 router.get("/foods", restaurantAuth, getRestaurantFoods);
+
+// ── Link/Sync a food item's ingredients (called from menu add/edit) ──────
+router.post("/link-sync", restaurantAuth, syncFoodIngredients);
+router.get("/food-ingredients/:foodId", restaurantAuth, getFoodIngredients);
 
 // ── Add new inventory item ──────────────────────────────────────────────────
 router.post("/add", restaurantAuth, addInventoryItem);

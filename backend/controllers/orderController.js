@@ -843,16 +843,13 @@ const restaurantUpdateStatus = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not your order" });
     }
 
-    // ── Unified Operations: Deduct inventory when accepted ──
-    if (status === "Food Processing" && !order.inventoryDeducted) {
-        // Optional: Check stock before accepting
-        // const preview = await previewInventoryDeductionInternal(restaurantId, order.items);
-        // if (some_item_out_of_stock) return res.json({ success: false, message: "Out of stock items..." });
-
+    // ── Unified Operations: Deduct inventory when accepted or started ──
+    if ((status === "Order Accepted" || status === "Food Processing") && !order.inventoryDeducted) {
         const inventoryResult = await deductInventoryForOrder(restaurantId, order.items, String(order._id));
-        if (!inventoryResult.success) {
+        if (inventoryResult.success) {
+            order.inventoryDeducted = true; // Update local object so .save() persists it
+        } else {
             console.error("[restaurantUpdateStatus] Inventory deduction failed:", inventoryResult.message);
-            // We still allow status update but maybe log it
         }
     }
 

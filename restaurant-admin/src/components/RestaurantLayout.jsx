@@ -12,6 +12,7 @@ export default function RestaurantLayout({ children }) {
   const sidebarRef = useRef(null);
   const sidebarScrollRef = useRef(0);
   const location = useLocation();
+  const { orders } = useNotifications();
   const [sub, setSub] = useState(null);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 980);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -183,9 +184,28 @@ export default function RestaurantLayout({ children }) {
   const canAiInsights = !subForFeatures || hasFeatureAccess(subForFeatures, "aiInsights");
   const canAiSegmentation = !subForFeatures || hasFeatureAccess(subForFeatures, "aiCustomerSegmentation");
 
-  const link = (to, label) => (
-    <NavLink key={to} to={to} end className={({ isActive }) => isActive ? "active" : ""}>{label}</NavLink>
-  );
+  const link = (to, label) => {
+    const isOrders = to === "/orders";
+    const newCount = isOrders ? orders.filter(o => o.status === "Order Placed").length : 0;
+
+    return (
+      <NavLink key={to} to={to} end className={({ isActive }) => isActive ? "active" : ""}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+          <span>{label}</span>
+          {newCount > 0 && (
+            <span style={{ 
+              background: "#ef4444", color: "white", fontSize: 10, fontWeight: 900,
+              minWidth: 18, height: 18, borderRadius: 9, display: "flex", 
+              alignItems: "center", justifyContent: "center", padding: "0 5px",
+              boxShadow: "0 0 10px rgba(239, 68, 68, 0.4)"
+            }}>
+              {newCount}
+            </span>
+          )}
+        </div>
+      </NavLink>
+    );
+  };
 
   const linkOrDisabled = (to, label, allowed, reason) => {
     if (allowed) return link(to, label);
@@ -298,6 +318,60 @@ export default function RestaurantLayout({ children }) {
       </aside>
 
       <main className="ra-main">
+        {/* Desktop Topbar */}
+        {!isMobile && (
+          <header style={{
+            height: 80, padding: "0 40px", display: "flex", alignItems: "center", 
+            justifyContent: "space-between", background: "var(--bg)", 
+            borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 100
+          }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 950, letterSpacing: "-0.8px" }}>
+                {location.pathname === "/dashboard" ? "Dashboard Overview" : 
+                 location.pathname === "/orders" ? "Active Orders" :
+                 location.pathname === "/inventory" ? "Inventory Management" : "Restaurant Admin"}
+              </h2>
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>
+                {new Date().toLocaleDateString("en-AE", { weekday: "long", day: "numeric", month: "long" })}
+              </p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
+              <button 
+                onClick={useTheme().toggle}
+                style={{
+                  width: 44, height: 44, borderRadius: 14,
+                  border: `1px solid ${useTheme().dark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.08)"}`,
+                  background: useTheme().dark ? "rgba(255,255,255,0.1)" : "#f8fafc",
+                  color: useTheme().dark ? "white" : "#1e293b",
+                  cursor: "pointer", backdropFilter: "blur(12px)",
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+                  transition: "all 0.3s ease",
+                  boxShadow: useTheme().dark ? "none" : "0 2px 8px rgba(0,0,0,0.04)"
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+              >
+                {useTheme().dark ? "☀️" : "🌙"}
+              </button>
+              <NotificationCenter dark={useTheme().dark} />
+              <div style={{ width: 1, height: 24, background: "var(--border)" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 13, fontWeight: 900 }}>{restaurantName}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>Restaurant Admin</div>
+                </div>
+                {restaurantLogo ? (
+                   <img src={restaurantLogo} alt="Logo" style={{ width: 38, height: 38, borderRadius: 12, objectFit: "cover" }} />
+                ) : (
+                  <div style={{ width: 38, height: 38, borderRadius: 12, background: "var(--sidebar-p)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>
+                    {restaurantName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </header>
+        )}
+
         {isMobile && (
           <div className="ra-mobile-topbar">
             <button className="ra-menu-btn" type="button" onClick={() => setSidebarOpen(true)}>

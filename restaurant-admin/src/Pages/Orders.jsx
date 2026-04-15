@@ -4,13 +4,13 @@ import { api } from "../utils/api";
 import { toast } from "react-toastify";
 import { useTheme } from "../ThemeContext";
 
-const STATUS_OPTIONS = ["Order Placed", "Waiting for acceptance", "Food Processing", "Out for delivery", "Delivered", "Cancelled"];
+const STATUS_OPTIONS = ["Order Placed", "Order Accepted", "Food Processing", "Out for delivery", "Delivered", "Cancelled"];
 
 const STATUS_COLORS = {
   "Order Placed": { bg: "#fef2f2", color: "#b91c1c", border: "#fecaca" },
-  "Waiting for acceptance": { bg: "#fffbeb", color: "#d97706", border: "#fef3c7" },
+  "Order Accepted": { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" },
   "Food Processing": { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
-  "Out for delivery": { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
+  "Out for Delivery": { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
   "Delivered": { bg: "#f8fafc", color: "#475569", border: "#e2e8f0" },
   "Cancelled": { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" },
 };
@@ -645,24 +645,43 @@ export default function Orders() {
                           {order.status === "Cancelled" ? (
                             <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, padding: "8px 0" }}>🚫 This order was cancelled by the customer.</div>
                           ) : (
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
-                            {STATUS_OPTIONS.filter(s => s !== "Cancelled").map((s) => {
-                              const st = STATUS_COLORS[s];
-                              const active = order.status === s;
-                              return (
-                                <button key={s} onClick={(e) => { e.stopPropagation(); updateStatus(order._id, s); }} style={{
-                                  padding: "14px 18px", borderRadius: 12, fontSize: 13, fontWeight: 900, cursor: "pointer",
-                                  border: `2.5px solid ${active ? st.color : "var(--border)"}`,
-                                  background: active ? st.bg : surface,
-                                  color: active ? st.color : "var(--muted)",
-                                  boxShadow: active ? `0 4px 12px ${st.color}22` : "none",
-                                  transition: "all 0.2s"
-                                }}>
-                                  {active ? "✓ " : ""}{s}
-                                </button>
+                          <div style={{ display: "grid", gridTemplateColumns: order.status === "Order Placed" ? "1fr" : "repeat(2, 1fr)", gap: 10 }}>
+                            {/* If order is brand new, only show the "Accept" action */}
+                            {order.status === "Order Placed" ? (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); updateStatus(order._id, "Order Accepted"); }} 
+                                style={{
+                                  padding: "16px 20px", borderRadius: 12, fontSize: 14, fontWeight: 900, cursor: "pointer",
+                                  border: "2.5px solid #059669",
+                                  background: "#ecfdf5",
+                                  color: "#059669",
+                                  boxShadow: "0 4px 12px rgba(5,150,105,0.15)",
+                                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+                                }}
+                              >
+                                ✅ Accept Order
+                              </button>
+                            ) : (
+                              /* Once accepted, show the full production/delivery workflow */
+                              ["Order Accepted", "Food Processing", "Out for Delivery", "Delivered"].map((s) => {
+                                const st = STATUS_COLORS[s];
+                                const active = order.status === s;
+
+                                return (
+                                  <button key={s} onClick={(e) => { e.stopPropagation(); updateStatus(order._id, s); }} style={{
+                                    padding: "14px 18px", borderRadius: 12, fontSize: 13, fontWeight: 900, cursor: "pointer",
+                                    border: `2.5px solid ${active ? st.color : "var(--border)"}`,
+                                    background: active ? st.bg : surface,
+                                    color: active ? st.color : "var(--muted)",
+                                    boxShadow: active ? `0 4px 12px ${st.color}22` : "none",
+                                    transition: "all 0.2s"
+                                  }}>
+                                    {active ? "✓ " : ""}{s}
+                                  </button>
                                 );
-                              })}
-                            </div>
+                              })
+                            )}
+                          </div>
                           )}
                         </div>
                       </div>

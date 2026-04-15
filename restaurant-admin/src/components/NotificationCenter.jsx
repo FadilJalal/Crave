@@ -21,9 +21,11 @@ export default function NotificationCenter({ dark = false }) {
 
   const allNotifications = useMemo(() => {
     const list = [
-      ...alerts.map(a => ({ ...a, category: "System", type: "alert", realTime: Date.now() })),
+      ...alerts.map(a => ({ ...a, id: `alert-${a.id}`, category: "System", type: "alert", realTime: Date.now() })),
       ...activities.map(act => ({ ...act, category: act.type === "order" ? "Orders" : act.type === "review" ? "Reviews" : "System", realTime: new Date(act.time).getTime() }))
-    ].sort((a, b) => b.realTime - a.realTime);
+    ]
+    .filter(n => !readIds.includes(n.id))
+    .sort((a, b) => b.realTime - a.realTime);
 
     if (activeTab === "All") return list;
     return list.filter(n => n.category === activeTab);
@@ -60,8 +62,10 @@ export default function NotificationCenter({ dark = false }) {
   };
 
   const handleNotifyClick = (n) => {
-    const id = n.id || `alert-${n.id}`;
-    if (!readIds.includes(id)) setReadIds([...readIds, id]);
+    const id = n.id;
+    if (!readIds.includes(id)) {
+      setReadIds(prev => [...prev, id]);
+    }
     
     if (n.action) n.action();
     else if (n.type === "order" || n.id === "orders") navigate("/orders");
@@ -88,11 +92,21 @@ export default function NotificationCenter({ dark = false }) {
         onClick={() => setIsOpen(true)}
         style={{
           width: 44, height: 44, borderRadius: 14,
-          border: "1px solid rgba(255,255,255,0.18)",
-          background: "rgba(255,255,255,0.1)",
-          color: "white", cursor: "pointer", backdropFilter: "blur(12px)",
+          border: `1px solid ${dark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.08)"}`,
+          background: dark ? "rgba(255,255,255,0.1)" : "#f8fafc",
+          color: dark ? "white" : "#1e293b",
+          cursor: "pointer", backdropFilter: "blur(12px)",
           display: "flex", alignItems: "center", justifyContent: "center",
           position: "relative", transition: "all 0.3s ease",
+          boxShadow: dark ? "none" : "0 2px 8px rgba(0,0,0,0.04)"
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = "translateY(-1px)";
+          if (!dark) e.currentTarget.style.background = "#fff";
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = "translateY(0)";
+          if (!dark) e.currentTarget.style.background = "#f8fafc";
         }}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
@@ -214,9 +228,21 @@ export default function NotificationCenter({ dark = false }) {
                           {n.icon || "🔔"}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                            <span style={{ fontSize: 14, fontWeight: isRead ? 700 : 900, color: dark ? "#fff" : "#0f172a" }}>{n.title}</span>
-                            {!isRead && <span style={{ width: 8, height: 8, background: "#ff4e2a", borderRadius: "50%", marginTop: 4 }}></span>}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 }}>
+                            <span style={{ fontSize: 14, fontWeight: 900, color: dark ? "#fff" : "#0f172a", pr: 20 }}>{n.title}</span>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReadIds(prev => [...prev, n.id]);
+                              }}
+                              style={{ 
+                                background: "none", border: "none", color: "var(--muted)", 
+                                fontSize: 14, cursor: "pointer", opacity: 0.5, padding: "0 0 5px 5px",
+                                marginTop: -2
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                              onMouseLeave={e => e.currentTarget.style.opacity = 0.5}
+                            >✕</button>
                           </div>
                           <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", fontWeight: 500, lineHeight: 1.4 }}>{n.desc}</p>
                           <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: "var(--muted)", opacity: 0.6 }}>{timeLabel(n.realTime)}</div>

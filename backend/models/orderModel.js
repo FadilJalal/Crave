@@ -54,7 +54,7 @@ const orderSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      default: "Food Processing",
+      default: "Order Placed",
     },
 
     // 🔥 Batching fields

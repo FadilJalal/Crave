@@ -592,15 +592,17 @@ export default function AddFood() {
 
         const foodId = res.data?.data?._id;
         if (foodId && item.ingredients.length > 0) {
-          for (const ing of item.ingredients) {
-            try {
-              await api.post(`/api/inventory/${ing.inventoryId}/link`, {
-                foodId,
-                quantityPerOrder: ing.quantityPerOrder,
-              });
-            } catch {
-              // Keep food upload success even if one ingredient link fails.
-            }
+          try {
+            await api.post("/api/inventory/link-sync", {
+              foodId,
+              ingredients: item.ingredients.map(ing => ({
+                inventoryId: ing.inventoryId,
+                quantityPerOrder: ing.quantityPerOrder
+              }))
+            });
+          } catch (syncErr) {
+            console.error("Ingredient sync failed for item:", item.name, syncErr);
+            // We still consider the food upload a success, but log the sync error
           }
         }
 

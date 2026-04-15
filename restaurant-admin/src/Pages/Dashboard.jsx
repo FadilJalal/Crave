@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
@@ -14,9 +14,10 @@ import { toast } from "react-toastify";
 import "./Dashboard.css";
 
 const STATUS_CONFIG = {
-  "Pending": { color: "#64748b", bg: "#f1f5f9", label: "Waiting" },
+  "Order Placed": { color: "#EF4444", bg: "#fef2f2", label: "New Order" },
+  "Order Accepted": { color: "#059669", bg: "#ecfdf5", label: "Accepted" },
   "Food Processing": { color: "#EAB308", bg: "#FEFCE8", label: "Preparing" },
-  "Out for delivery": { color: "#3B82F6", bg: "#EFF6FF", label: "On the way" },
+  "Out for Delivery": { color: "#3B82F6", bg: "#EFF6FF", label: "On the way" },
   "Delivered": { color: "#22C55E", bg: "#F0FDF4", label: "Delivered" },
 };
 
@@ -43,10 +44,14 @@ const QuickOrderStatus = ({ orders, onUpdate, dark }) => {
 
   const getActionButton = (order) => {
     const status = order.status;
-    if (status === "Pending") return { label: "Accept Order", next: "Food Processing", color: "#22c55e", icon: "✅" };
-    if (status === "Food Processing") return { label: "Start Delivery", next: "Out for delivery", color: "#3b82f6", icon: "🛵" };
-    if (status === "Out for delivery") return { label: "Complete Order", next: "Delivered", color: "#10b981", icon: "🏁" };
+  const getActionButton = (order) => {
+    const status = order.status;
+    if (status === "Order Placed") return { label: "Accept Order", next: "Order Accepted", color: "#059669", icon: "✅" };
+    if (status === "Order Accepted") return { label: "Start Prep", next: "Food Processing", color: "#EAB308", icon: "🍳" };
+    if (status === "Food Processing") return { label: "Start Delivery", next: "Out for Delivery", color: "#3b82f6", icon: "🛵" };
+    if (status === "Out for Delivery") return { label: "Complete Order", next: "Delivered", color: "#10b981", icon: "🏁" };
     return null;
+  };
   };
 
   return (
@@ -197,14 +202,17 @@ function HeroChip({ icon, label, value, sub, dark, badge }) {
   );
 }
 
-const DashboardSummary = ({ stats, dark }) => (
-  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginTop: 28, position: "relative", zIndex: 1 }}>
-    <HeroChip icon="📦" label="TODAY'S ORDERS" value={`${stats.todayOrdersCount}`} sub="orders placed today" dark={dark} />
-    <HeroChip icon="⏳" label="PENDING" value={`${stats.pendingOrdersCount}`} sub={stats.pendingOrdersCount === 0 ? "all clear right now" : "awaiting preparation"} dark={dark} badge={stats.pendingOrdersCount === 0 ? { text: "Clear", positive: true } : null} />
-    <HeroChip icon="💰" label="REVENUE" value={`AED ${stats.todayRevenue}`} sub="Real-time today" dark={dark} />
-    <HeroChip icon="✅" label="COMPLETION" value={`${stats.completionRate}%`} sub="Processed today" dark={dark} />
-  </div>
-);
+const DashboardSummary = ({ stats, orders, dark }) => {
+  const pendingCount = orders.filter(o => o.status === "Order Placed").length;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginTop: 28, position: "relative", zIndex: 1 }}>
+      <HeroChip icon="📦" label="TODAY'S ORDERS" value={`${stats.todayOrdersCount}`} sub="orders placed today" dark={dark} />
+      <HeroChip icon="⏳" label="PENDING" value={`${pendingCount}`} sub={pendingCount === 0 ? "all clear right now" : "awaiting acceptance"} dark={dark} badge={pendingCount === 0 ? { text: "Clear", positive: true } : null} />
+      <HeroChip icon="💰" label="REVENUE" value={`AED ${stats.todayRevenue}`} sub="Real-time today" dark={dark} />
+      <HeroChip icon="✅" label="COMPLETION" value={`${stats.completionRate}%`} sub="Processed today" dark={dark} />
+    </div>
+  );
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -216,6 +224,33 @@ export default function Dashboard() {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sub, setSub] = useState(null);
+  const knownIdsRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const intervalRef = useRef(null);
+
+  const playAlert = useCallback(() => {
+    try {
+      if (!audioCtxRef.current)
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audioCtxRef.current;
+      const beep = (freq, start, dur) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0, ctx.currentTime + start);
+        gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + start + 0.02);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + start + dur);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + dur + 0.05);
+      };
+      beep(880, 0, 0.12);
+      beep(1100, 0.15, 0.12);
+      beep(1320, 0.30, 0.18);
+    } catch { }
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -228,7 +263,20 @@ export default function Dashboard() {
       ]);
       if (f.data?.success) setFoods(f.data.data || []);
       if (i.data?.success) setInventory(i.data.data || []);
-      if (o.data?.success) setOrders(o.data.data || []);
+      if (o.data?.success) {
+        const incoming = o.data.data || [];
+        if (knownIdsRef.current === null) {
+          knownIdsRef.current = new Set(incoming.map(ord => ord._id));
+        } else {
+          const brandNew = incoming.filter(ord => !knownIdsRef.current.has(ord._id));
+          if (brandNew.length > 0) {
+            knownIdsRef.current = new Set(incoming.map(ord => ord._id));
+            playAlert();
+            toast.success(`🛎️ New order arrived!`, { autoClose: 6000 });
+          }
+        }
+        setOrders(incoming || []);
+      }
       if (s.data?.success) setSub(s.data.data);
       if (r.data?.success) setReviews({
         data: r.data.data || [],
@@ -240,6 +288,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadData();
+    intervalRef.current = setInterval(() => loadData(), 10000); // 10s auto-sync
+
     const loadAnalytics = async () => {
       try {
         const res = await api.get("/api/restaurantadmin/analytics");
@@ -247,6 +297,7 @@ export default function Dashboard() {
       } catch (err) { console.error(err); }
     };
     loadAnalytics();
+    return () => clearInterval(intervalRef.current);
   }, [loadData]);
 
   const updateStatus = async (orderId, status) => {
@@ -308,8 +359,6 @@ export default function Dashboard() {
         <div style={{ position: "relative", borderRadius: 32, padding: "20px 40px 32px", background: "radial-gradient(circle at top right, rgba(255, 78, 42, 0.15), transparent 60%), linear-gradient(135deg, #111827 0%, #0f172a 100%)", boxShadow: dark ? "0 24px 60px rgba(0,0,0,0.4)" : "0 10px 30px rgba(0,0,0,0.05)", border: dark ? "1px solid rgba(255,255,255,0.05)" : "1px solid rgba(0,0,0,0.04)", overflow: "visible", zIndex: 50 }}>
           {dark && <div style={{ position: "absolute", top: -80, right: -80, width: 300, height: 300, background: "rgba(255, 78, 42, 0.1)", filter: "blur(70px)", borderRadius: "50%", pointerEvents: "none" }} />}
           <div style={{ position: "absolute", top: 32, right: 32, display: "flex", gap: 10, alignItems: "center", zIndex: 10 }}>
-            <NotificationCenter dark={dark} />
-            <button onClick={toggle} style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(12px)" }}>{dark ? "🌙 Dark" : "☀️ Light"}</button>
             <button onClick={() => navigate("/orders")} style={{ 
               position: "relative",
               padding: "10px 16px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", 
@@ -338,7 +387,7 @@ export default function Dashboard() {
               <p style={{ margin: "10px 0 0", fontSize: 14, color: "rgba(255,255,255,0.7)", fontWeight: 500, maxWidth: 640 }}>{new Date().toLocaleDateString("en-AE", { weekday: "long", day: "numeric", month: "long" })} · {todayOrders.length} orders today · AED {todayRevenue} revenue so far</p>
             </div>
           </div>
-          <DashboardSummary stats={{ todayRevenue, pendingOrdersCount: pendingOrders.length, completionRate, todayOrdersCount: todayOrders.length }} dark={dark} />
+          <DashboardSummary stats={{ todayRevenue, todayOrdersCount: todayOrders.length, completionRate }} orders={orders} dark={dark} />
         </div>
 
         <QuickActions dark={dark} />
