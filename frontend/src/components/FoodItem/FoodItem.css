@@ -113,7 +113,21 @@
   margin-bottom: 16px; flex: 1;
   display: -webkit-box; -webkit-line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden;
+  transition: all 0.3s ease;
 }
+.fi-desc-full {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+.fi-more-btn {
+  display: inline;
+  background: none; border: none;
+  font-size: 11.5px; font-weight: 800; color: var(--brand);
+  cursor: pointer; padding: 0; margin-left: 6px;
+  text-decoration: none;
+}
+.fi-more-btn:hover { text-decoration: underline; }
 
 .fi-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: auto; }
 .fi-price  { font-size: 16px; font-weight: 800; color: var(--text); font-family: var(--font-display); }

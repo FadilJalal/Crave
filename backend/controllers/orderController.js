@@ -361,6 +361,15 @@ const placeOrder = async (req, res) => {
       if (paymentIntent.status === 'succeeded') {
         newOrder.payment = true;
         newOrder.stripeSessionId = paymentIntent.id;
+        
+        // ── ⚡ Inventory Deduction (Real-time for saved card) ─────────────
+        try {
+          const invRes = await deductInventoryForOrder(restaurantId, verifiedItems, String(newOrder._id));
+          if (invRes.success) newOrder.inventoryDeducted = true;
+        } catch (invErr) {
+          console.error("[placeOrder][savedCard] Inventory deduction failed:", invErr.message);
+        }
+
         await newOrder.save();
         return res.json({ success: true, paid: true, orderId: newOrder._id });
       } else {
@@ -469,7 +478,16 @@ const placeOrderCod = async (req, res) => {
     await newOrder.save();
     await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
 
-    // ── ⚡ Bug 3: Increment Flash Deal Claimed Counter ────────────────────
+    // ── ⚡ Inventory Deduction (Real-time on Order) ──────────────────────
+    try {
+      const inventoryResult = await deductInventoryForOrder(restaurantId, verifiedItems, String(newOrder._id));
+      if (inventoryResult.success) {
+        newOrder.inventoryDeducted = true;
+        await newOrder.save();
+      }
+    } catch (invErr) {
+      console.error("[placeOrderCod] Inventory deduction failed:", invErr.message);
+    }
     try {
       for (const item of verifiedItems) {
         if (item.isFlashDeal) {
@@ -758,11 +776,27 @@ const userOrders = async (req, res) => {
 // =====================================
 const updateStatus = async (req, res) => {
   try {
+    const { orderId, status } = req.body;
     if (req.admin?.role && req.admin.role !== "superadmin") {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
-    await orderModel.findByIdAndUpdate(req.body.orderId, { status: req.body.status });
+    const order = await orderModel.findById(orderId);
+    if (!order) return res.json({ success: false, message: "Order not found" });
+
+    // ── Handle Inventory Restoration if status becomes Cancelled ──
+    if (status === "Cancelled" && order.inventoryDeducted) {
+        try {
+            await restoreInventoryForCancelledOrder(order.restaurantId, order.items, String(order._id));
+            order.inventoryDeducted = false;
+        } catch (invErr) {
+            console.error("[super/updateStatus] Inventory restoration failed:", invErr.message);
+        }
+    }
+
+    order.status = status;
+    await order.save();
+
     res.json({ success: true, message: "Status Updated" });
   } catch (error) {
     res.json({ success: false, message: "Error updating status" });
@@ -778,7 +812,19 @@ const verifyOrder = async (req, res) => {
     if (success === "true") {
       const order = await orderModel.findById(orderId);
       if (order && !order.payment) {
-        // Increment flash deal claimed (Bug 3)
+        // ── ⚡ Inventory Deduction (Real-time on Order) ──────────────────────
+        if (!order.inventoryDeducted) {
+          try {
+            const inventoryResult = await deductInventoryForOrder(order.restaurantId, order.items, String(order._id));
+            if (inventoryResult.success) {
+              order.inventoryDeducted = true;
+            }
+          } catch (invErr) {
+            console.error("[verifyOrder] Inventory deduction failed:", invErr.message);
+          }
+        }
+
+        // ── ⚡ Bug 3: Increment Flash Deal Claimed Counter ────────────────────
         try {
           for (const item of order.items) {
             if (item.isFlashDeal) {
@@ -788,7 +834,8 @@ const verifyOrder = async (req, res) => {
         } catch (e) {
           console.error("[verifyOrder] Flash deal claiming failed:", e);
         }
-        await orderModel.findByIdAndUpdate(orderId, { payment: true });
+
+        await orderModel.findByIdAndUpdate(orderId, { payment: true, inventoryDeducted: order.inventoryDeducted });
       }
       res.json({ success: true, message: "Payment Successful" });
     } else {
@@ -844,13 +891,24 @@ const restaurantUpdateStatus = async (req, res) => {
     }
 
     // ── Unified Operations: Deduct inventory when accepted or started ──
+    // ── Unified Operations: Deduct inventory ──
     if ((status === "Order Accepted" || status === "Food Processing") && !order.inventoryDeducted) {
-        const inventoryResult = await deductInventoryForOrder(restaurantId, order.items, String(order._id));
-        if (inventoryResult.success) {
-            order.inventoryDeducted = true; // Update local object so .save() persists it
-        } else {
-            console.error("[restaurantUpdateStatus] Inventory deduction failed:", inventoryResult.message);
-        }
+      try {
+        const res = await deductInventoryForOrder(restaurantId, order.items, String(order._id));
+        if (res.success) order.inventoryDeducted = true;
+      } catch (e) {
+        console.error("[restaurantUpdateStatus] Deduction error:", e);
+      }
+    }
+
+    // ── Handle Restoration ──
+    if (status === "Cancelled" && order.inventoryDeducted) {
+      try {
+        await restoreInventoryForCancelledOrder(restaurantId, order.items, String(order._id));
+        order.inventoryDeducted = false;
+      } catch (e) {
+        console.error("[restaurantUpdateStatus] Restoration error:", e);
+      }
     }
 
     order.status = status;

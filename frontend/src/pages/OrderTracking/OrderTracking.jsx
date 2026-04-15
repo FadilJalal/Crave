@@ -41,7 +41,7 @@ const stepIndex = (status) => {
   return 0;
 };
 
-const POLL_INTERVAL = 1000; // 1 second for near-instant updates
+const POLL_INTERVAL = 10000; // 10 seconds (status-based tracking doesn't need 1s polling)
 
 const getOrderItemsSubtotal = (order) =>
   (order?.items || []).reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.quantity) || 0)), 0);
@@ -163,7 +163,7 @@ const OrderTracking = () => {
 
   // --- WAITING SCREEN LOGIC ---
   // Show waiting screen for "Order Placed" or "Waiting for acceptance"
-  const isPending = ['order placed', 'waiting for acceptance', 'pending'].includes((order?.status || '').toLowerCase().trim());
+  const isPending = ['order placed', 'waiting for acceptance', 'awaiting acceptance', 'pending'].includes((order?.status || '').toLowerCase().trim());
   
   if (isPending) return (
     <div className="ot-page ot-waiting-page">
@@ -208,6 +208,27 @@ const OrderTracking = () => {
           </div>
 
           <p className="ot-waiting-tip">💡 Tip: Hang tight! Most restaurants accept within 2-3 minutes.</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const isCancelled = (order?.status || '').toLowerCase().trim() === 'cancelled';
+  if (isCancelled) return (
+    <div className="ot-page">
+      <div className="app-container">
+        <div className="ot-empty">
+          <div className="ot-empty-icon">🚫</div>
+          <h1 className="ot-empty-title" style={{ fontSize: 24, marginBottom: 8 }}>{t("Order Cancelled")}</h1>
+          <p className="ot-empty-sub" style={{ maxWidth: 400, margin: '0 auto 24px', lineHeight: 1.6 }}>
+            {t("Order #{{id}} was not accepted by the restaurant or has been cancelled.", { id: String(order._id).slice(-6).toUpperCase() })}
+            <br />
+            {t("Any payments made will be refunded to your account.")}
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+             <button className="ot-btn-outline" onClick={() => navigate('/myorders')}>{t("back_to_orders")}</button>
+             <button className="ot-btn" onClick={() => navigate('/')}>{t("browse_other_restaurants")}</button>
+          </div>
         </div>
       </div>
     </div>

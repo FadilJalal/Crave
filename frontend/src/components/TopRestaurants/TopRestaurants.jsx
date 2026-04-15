@@ -1,6 +1,6 @@
-// frontend/src/components/TopRestaurants/TopRestaurants.jsx
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { StoreContext } from '../../Context/StoreContext';
 import { isRestaurantOpen } from '../../utils/restaurantHours';
 import './TopRestaurants.css';
@@ -14,6 +14,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 }
 
 const TopRestaurants = () => {
+    const { t } = useTranslation();
     const { url, restaurantsById } = useContext(StoreContext);
     const [restaurants, setRestaurants] = useState([]);
     const navigate = useNavigate();
@@ -49,11 +50,11 @@ const TopRestaurants = () => {
             <div className="tr-container">
                 <div className="tr-header">
                     <div className="tr-title-wrap">
-                        <span className="tr-badge">Local Favorites</span>
-                        <h2 className="tr-title">Top Restaurants <span style={{ color: '#FF3008' }}>near you</span></h2>
+                        <span className="tr-badge">{t('local_favorites')}</span>
+                        <h2 className="tr-title">{t('top_picks_near_you')}</h2>
                     </div>
                     <Link to="/restaurants" className="tr-view-all">
-                        <span>View All</span>
+                        <span>{t('view_all')}</span>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path d="M5 12h14M12 5l7 7-7 7" />
                         </svg>
@@ -71,7 +72,7 @@ const TopRestaurants = () => {
                             >
                                 <div className="tr-card-media">
                                     <div className={`tr-status-badge ${isOpen ? 'open' : 'closed'}`}>
-                                        {isOpen ? 'Open Now' : 'Closed'}
+                                        {isOpen ? t('open_now') : t('closed')}
                                     </div>
                                     {fmtDist(r.distance) && (
                                         <div className="tr-distance-badge">
@@ -99,11 +100,11 @@ const TopRestaurants = () => {
                                     <div className="tr-card-footer">
                                         <div className="tr-stat">
                                             <div className="tr-stat-icon">🕒</div>
-                                            <span>20-30 min</span>
+                                            <span>20-30 {t('min')}</span>
                                         </div>
                                         <div className="tr-stat">
                                             <div className="tr-stat-icon">🚲</div>
-                                            <span>Free Delivery</span>
+                                            <span>{t('free_delivery')}</span>
                                         </div>
                                     </div>
                                 </div>

@@ -131,7 +131,7 @@ function makeEmojiIcon(L, emoji, borderColor) {
 function makePulseIcon(L, emoji, borderColor) {
   return L.divIcon({
     className: '',
-    html: `<div class=".ldm-map-container { position:relative; height:520px; background:var(--bg); }display:flex;align-items:center;justify-content:center;">
+    html: `<div style="display:flex;align-items:center;justify-content:center;position:relative;width:44px;height:44px;">
       <div style="
         position:absolute;width:44px;height:44px;border-radius:50%;
         background:${borderColor};opacity:0.2;
@@ -165,6 +165,12 @@ export default function LiveDeliveryMap({ order }) {
   const routeRef    = useRef(null); // full road route points
   const firstStopProgressRef = useRef(null);
   const firstStopNotifiedRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const statusInfo       = getStatusConfig(order?.status, t);
   const displayAddress   = buildDisplayAddress(order?.address);
@@ -180,7 +186,10 @@ export default function LiveDeliveryMap({ order }) {
     return null;
   };
 
-  // Geocode
+  // Geocode address only if the actual address fields change
+  const addressKey = JSON.stringify(order?.address || {});
+  const firstAddressKey = JSON.stringify(firstOrderAddress || {});
+
   useEffect(() => {
     if (!order?.address) { setError(true); setLoading(false); return; }
     setLoading(true); setError(false); setCustomerCoords(null); setFirstOrderCoords(null);
@@ -189,13 +198,17 @@ export default function LiveDeliveryMap({ order }) {
       const fromPayload = extractCoordsFromAddress(address);
       if (fromPayload) return fromPayload;
 
-      const resp = await fetch(`${url}/api/geocode`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address }),
-      });
-      const data = await resp.json();
-      return data?.success ? [data.lat, data.lon] : null;
+      try {
+        const resp = await fetch(`${url}/api/geocode`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address }),
+        });
+        const data = await resp.json();
+        return data?.success ? [data.lat, data.lon] : null;
+      } catch (e) {
+        return null;
+      }
     };
 
     (async () => {
@@ -217,7 +230,7 @@ export default function LiveDeliveryMap({ order }) {
         setLoading(false);
       }
     })();
-  }, [order?.address, order?.isSharedDelivery, order?.sharedMatchedOrderId?._id, url]);
+  }, [addressKey, firstAddressKey, url]);
 
   // Handle window resizing to prevent map clipping
   useEffect(() => {
@@ -256,15 +269,19 @@ export default function LiveDeliveryMap({ order }) {
       const center = [(Math.min(...lats)+Math.max(...lats))/2, (Math.min(...lons)+Math.max(...lons))/2];
 
       const map = L.map(mapDivRef.current, { zoomControl: true, scrollWheelZoom: true }).setView(center, 13);
+      if (!mountedRef.current) { map.remove(); return; }
       mapRef.current = map;
 
       // Force map to recalculate its size after mounting in a flex/grid container
-      const invalidate = () => { if (map) map.invalidateSize(); };
+      const invalidate = () => {
+        if (mountedRef.current && mapRef.current) {
+          try { mapRef.current.invalidateSize(); } catch(e) {}
+        }
+      };
       invalidate();
       setTimeout(invalidate, 100);
       setTimeout(invalidate, 500);
       setTimeout(invalidate, 1000); 
-
 
       L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?language=en', {
         attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
@@ -273,12 +290,14 @@ export default function LiveDeliveryMap({ order }) {
 
       // Fit bounds to show all points — tighter padding so it zooms in on the route
       const fitAll = () => {
-        if (!map) return;
-        const bounds = L.latLngBounds(allPoints);
-        if (routeRef.current && routeRef.current.length > 1) {
-          bounds.extend(routeRef.current);
-        }
-        map.fitBounds(bounds.pad(0.15), { animate: true });
+        if (!mountedRef.current || !mapRef.current || !mapRef.current._container) return;
+        try {
+          const bounds = L.latLngBounds(allPoints);
+          if (routeRef.current && routeRef.current.length > 1) {
+            bounds.extend(routeRef.current);
+          }
+          mapRef.current.fitBounds(bounds.pad(0.15), { animate: false });
+        } catch (e) {}
       };
 
       if (allPoints.length > 1) {
@@ -302,15 +321,14 @@ export default function LiveDeliveryMap({ order }) {
         } catch (e) {
           console.warn('OSRM routing failed, falling back to straight line:', e);
         }
+        if (!mountedRef.current) return;
         routeRef.current = routePoints;
 
         if (routePoints && routePoints.length > 1) {
           // Draw full road route as a solid red line
           lineRef.current = L.polyline(routePoints, {
             color: '#e53935', weight: 5, opacity: 0.85,
-          }).addTo(map);
-
-          // Line logic remains, fit handled by fitAll above
+          }).addTo(mapRef.current);
 
           // Rider position along the actual road
           const riderPos = interpolateAlongRoute(routePoints, statusInfo.progress);
@@ -319,10 +337,9 @@ export default function LiveDeliveryMap({ order }) {
           markersRef.current.rider = L.marker(riderPos || routePoints[0], {
             icon: makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color),
             zIndexOffset: 200,
-          }).addTo(map).bindPopup(`<b>${statusInfo.label}</b>`);
+          }).addTo(mapRef.current).bindPopup(`<b>${statusInfo.label}</b>`);
 
         } else {
-          // Fallback: straight line if OSRM failed
           // Fallback: straight line if OSRM failed
           const fallbackPoints = firstOrderCoords
             ? [restaurantCoords, firstOrderCoords, customerCoords]
@@ -342,9 +359,11 @@ export default function LiveDeliveryMap({ order }) {
             firstStopProgressRef.current = null;
           }
 
+          if (!mountedRef.current || !mapRef.current) return;
+
           lineRef.current = L.polyline(fallbackPoints, {
             color: '#e53935', weight: 5, opacity: 0.85,
-          }).addTo(map);
+          }).addTo(mapRef.current);
 
           const riderPos = [
             restaurantCoords[0] + (customerCoords[0] - restaurantCoords[0]) * statusInfo.progress,
@@ -354,41 +373,47 @@ export default function LiveDeliveryMap({ order }) {
           markersRef.current.rider = L.marker(riderPos, {
             icon: makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color),
             zIndexOffset: 200,
-          }).addTo(map).bindPopup(`<b>${statusInfo.label}</b>`);
+          }).addTo(mapRef.current).bindPopup(`<b>${statusInfo.label}</b>`);
         }
 
         // Restaurant marker
-        // Restaurant marker — show actual logo
         const logoUrl = order?.restaurantId?.logo
           ? `${url}/images/${order.restaurantId.logo}`
           : null;
-        markersRef.current.restaurant = L.marker(restaurantCoords, {
-          icon: logoUrl
-            ? makeLogoIcon(L, logoUrl, '#f59e0b')
-            : makeEmojiIcon(L, '🏪', '#f59e0b'),
-          zIndexOffset: 100,
-        }).addTo(map).bindPopup(`<b>${order?.restaurantId?.name || 'Restaurant'}</b>`);
+        
+        if (mountedRef.current && mapRef.current) {
+          markersRef.current.restaurant = L.marker(restaurantCoords, {
+            icon: logoUrl
+              ? makeLogoIcon(L, logoUrl, '#f59e0b')
+              : makeEmojiIcon(L, '🏪', '#f59e0b'),
+            zIndexOffset: 100,
+          }).addTo(mapRef.current).bindPopup(`<b>${order?.restaurantId?.name || 'Restaurant'}</b>`);
+        }
 
       } else {
         // No restaurant coords — just show rider at customer location
-        markersRef.current.rider = L.marker(customerCoords, {
-          icon: makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color),
-          zIndexOffset: 200,
-        }).addTo(map).bindPopup(`<b>${statusInfo.label}</b>`);
+        if (mountedRef.current && mapRef.current) {
+          markersRef.current.rider = L.marker(customerCoords, {
+            icon: makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color),
+            zIndexOffset: 200,
+          }).addTo(mapRef.current).bindPopup(`<b>${statusInfo.label}</b>`);
+        }
       }
 
       // Customer / delivery marker (always shown)
-      markersRef.current.customer = L.marker(customerCoords, {
-        icon: makeEmojiIcon(L, '🏠', '#22c55e'),
-        zIndexOffset: 100,
-      }).addTo(map).bindPopup(`<b>${t("your_delivery_address")}</b>`);
+      if (mountedRef.current && mapRef.current) {
+        markersRef.current.customer = L.marker(customerCoords, {
+          icon: makeEmojiIcon(L, '🏠', '#22c55e'),
+          zIndexOffset: 100,
+        }).addTo(mapRef.current).bindPopup(`<b>${t("your_delivery_address")}</b>`);
 
-      // Shared first-order drop marker
-      if (firstOrderCoords) {
-        markersRef.current.firstOrder = L.marker(firstOrderCoords, {
-          icon: makeEmojiIcon(L, '📦', '#8b5cf6'),
-          zIndexOffset: 110,
-        }).addTo(map).bindPopup(`<b>${t("first_order_drop")}</b>`);
+        // Shared first-order drop marker
+        if (firstOrderCoords) {
+          markersRef.current.firstOrder = L.marker(firstOrderCoords, {
+            icon: makeEmojiIcon(L, '📦', '#8b5cf6'),
+            zIndexOffset: 110,
+          }).addTo(mapRef.current).bindPopup(`<b>${t("first_order_drop")}</b>`);
+        }
       }
     });
 
@@ -445,7 +470,9 @@ export default function LiveDeliveryMap({ order }) {
       }
 
       markersRef.current.rider.setLatLng(riderPos);
-      markersRef.current.rider.setIcon(makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color));
+      if (mountedRef.current) {
+        markersRef.current.rider.setIcon(makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color));
+      }
 
       if (doneLineRef.current) {
         doneLineRef.current.setLatLngs(donePortion.length > 1 ? donePortion : [riderPos, riderPos]);

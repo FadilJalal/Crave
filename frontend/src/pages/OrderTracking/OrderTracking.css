@@ -7,12 +7,14 @@
 /* Hero */
 .ot-hero { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 20px; margin-bottom: 12px; animation: fadeUp 0.3s ease; transition: box-shadow 0.2s; }
 .ot-hero:hover { box-shadow: var(--shadow-md); }
-.ot-hero-done { border-color: #86efac; background: #f0fdf4; }
+.ot-hero-done { border-color: #22c55e; background: #dcfce7; color: #166534; }
+.ot-hero-done .ot-hero-title { color: #166534 !important; }
+.ot-hero-done .ot-hero-desc { color: #15803d !important; }
 .ot-pulse { animation: ot-pulse-anim 0.6s ease; }
 @keyframes ot-pulse-anim { 0%,100%{opacity:1} 50%{opacity:0.6} }
 .ot-hero-icon { font-size: 34px; flex-shrink: 0; }
 .ot-hero-text { flex: 1; }
-.ot-hero-title { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+.ot-hero-title { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 0px; }
 .ot-hero-desc { font-size: 13px; color: var(--text-3); }
 .ot-eta { display: inline-block; margin-top: 5px; padding: 3px 10px; background: var(--brand-soft); color: var(--brand); border-radius: 50px; font-size: 11px; font-weight: 700; }
 .ot-order-id-badge { flex-shrink: 0; padding: 5px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 50px; font-size: 12px; font-weight: 800; color: var(--text-2); font-family: monospace; }
@@ -43,7 +45,7 @@
 }
 
 .ot-left {
-  flex: 0 0 400px;
+  flex: 0 0 420px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -111,23 +113,33 @@
 }
 
 /* Waiting Screen Styles */
-.ot-waiting-page { background: var(--bg-soft); display: flex; align-items: center; justify-content: center; }
-.ot-waiting-container { max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; text-align: center; padding: 40px 0; }
+.ot-waiting-page { background: var(--bg-soft); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding-top: 40px; }
+.ot-waiting-container { max-width: 580px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; text-align: center; padding: 40px 20px 80px; }
 .ot-waiting-card { background: var(--card); border: 1px solid var(--border); border-radius: 32px; padding: 48px 32px; box-shadow: var(--shadow-lg); position: relative; overflow: hidden; }
 .ot-waiting-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--brand), transparent, var(--brand)); opacity: 0.3; }
 
-.ot-waiting-visual { position: relative; width: 100px; height: 100px; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
-.ot-waiting-icon { font-size: 48px; position: relative; z-index: 2; }
+.ot-waiting-visual { position: relative; width: 100px; height: 100px; margin: 0 auto 28px; display: flex; align-items: center; justify-content: center; }
+.ot-waiting-icon { font-size: 54px; position: relative; z-index: 2; }
 .ot-waiting-pulse { position: absolute; inset: 0; background: var(--brand); border-radius: 50%; opacity: 0.15; animation: ot-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
-@keyframes ot-ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+@keyframes ot-ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }
 
-.ot-waiting-title { font-family: var(--font-display); font-size: 26px; font-weight: 800; color: var(--text); margin-bottom: 12px; letter-spacing: -0.5px; }
-.ot-waiting-desc { font-size: 15px; color: var(--text-3); line-height: 1.6; margin-bottom: 24px; padding: 0 10px; }
-.ot-waiting-status-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; background: var(--bg-soft); border-radius: 50px; font-size: 13px; font-weight: 700; color: var(--text-2); }
+.ot-waiting-title { 
+  font-family: var(--font-display); 
+  font-size: clamp(24px, 7vw, 36px); 
+  line-height: 1.3;
+  font-weight: 800; 
+  color: var(--text); 
+  margin-bottom: 20px; 
+  letter-spacing: -0.02em; 
+  word-wrap: break-word;
+  max-width: 100%;
+}
+.ot-waiting-desc { font-size: 15px; color: var(--text-3); line-height: 1.65; margin-bottom: 28px; padding: 0 5%; }
+.ot-waiting-status-chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: var(--bg-soft); border-radius: 50px; font-size: 13px; font-weight: 700; color: var(--text-2); }
 
-.ot-waiting-summary { text-align: left; padding: 24px 28px; border-radius: 24px; }
-.ot-summary-header { display: flex; justify-content: space-between; align-items: center; }
-.ot-summary-label { font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--text-3); letter-spacing: 0.5px; }
-.ot-summary-id { font-family: monospace; font-weight: 800; color: var(--brand); }
+.ot-waiting-summary { text-align: left; padding: 28px 32px; border-radius: 28px; }
+.ot-summary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.ot-summary-label { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--text-3); letter-spacing: 1px; }
+.ot-summary-id { font-family: monospace; font-weight: 900; color: var(--brand); font-size: 15px; }
 
-.ot-waiting-tip { font-size: 13px; color: var(--text-3); font-style: italic; opacity: 0.7; }
+.ot-waiting-tip { font-size: 13px; color: var(--text-3); font-style: italic; opacity: 0.7; font-weight: 500; }

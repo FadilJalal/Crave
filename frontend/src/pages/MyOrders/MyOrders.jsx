@@ -32,7 +32,7 @@ const statusIndex = (status) => {
   return 0;
 };
 
-const POLL_INTERVAL = 1000; // 1 second
+const POLL_INTERVAL = 30000; // 30 seconds for list view to prevent flickering
 
 const DATE_FILTERS = [
   { label: 'All time', value: 'all' },

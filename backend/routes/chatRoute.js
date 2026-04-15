@@ -3,8 +3,6 @@ import foodModel from "../models/foodModel.js";
 import restaurantModel from "../models/restaurantModel.js";
 const router = express.Router();
 
-const GOOGLE_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-const GOOGLE_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
 const GROQ_KEY = process.env.GROQ_MOOD_API_KEY;
 
@@ -18,11 +16,21 @@ function tokenize(text = "") {
 
 function extractBudget(question = "") {
   const q = String(question).toLowerCase();
-  if (!/under\s*aed\s*\d+|under\s*\d+\s*aed|under\s*\d+|below\s*\d+|less than\s*\d+/i.test(q)) {
-    return null;
+  const match = q.match(/(?:under|below|less than|max|budget of)\s*(?:aed\s*)?(\d+)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function getMostRecentBudget(history = [], currentQuestion = "") {
+  // Check current question first
+  const currentBudget = extractBudget(currentQuestion);
+  if (currentBudget) return currentBudget;
+
+  // Scan history backwards for the latest budget mention
+  for (let i = history.length - 1; i >= 0; i--) {
+    const budget = extractBudget(history[i].content);
+    if (budget) return budget;
   }
-  const n = Number(q.match(/(\d+)/)?.[1] || 0);
-  return n > 0 ? n : null;
+  return null;
 }
 
 function buildStrictBudgetReply(question = "", items = []) {
@@ -200,58 +208,6 @@ async function buildPublicContext() {
   };
 }
 
-async function askGemini({ question, history, context }) {
-  const historyText = (history || [])
-    .slice(-20)
-    .map((m) => `${m.role === "assistant" ? "Assistant" : "User"}: ${String(m.content || "")}`)
-    .join("\n");
-
-  const prompt = [
-    "You are Crave AI, a conversational customer assistant for food ordering.",
-    "Chat naturally like Gemini/ChatGPT, but stay grounded in provided data.",
-    "Use ONLY the provided PUBLIC context data.",
-    "Never mention or infer private data such as passwords, tokens, emails, phone numbers, payment details, internal IDs.",
-    "If answer is not in context, clearly say you do not have that info and suggest next best action.",
-    "Keep responses concise, friendly, practical, and personalized to the user request.",
-    "If user asks for recommendations, return 3-6 relevant items with prices.",
-    "If user gives a budget (under AED X), strictly honor it. If none match, say so and provide closest alternatives.",
-    "If user asks follow-up questions, use conversation history to maintain context.",
-    "Include AED prices where relevant.",
-    "Use short, clean responses with line breaks; avoid long dense paragraphs.",
-    "For recommendations, prefer 3-5 bullet points or numbered lines.",
-    "Avoid repeating the same sentence or item names unnecessarily.",
-    "Output plain text only. Do not use markdown symbols like **, __, #, or code blocks.",
-    "",
-    `Conversation history:\n${historyText || "(no history)"}`,
-    "",
-    `User question: ${question}`,
-    "",
-    `Public data context (JSON):\n${JSON.stringify(context)}`,
-  ].join("\n");
-
-  const modelPath = GOOGLE_MODEL.startsWith("models/") ? GOOGLE_MODEL : `models/${GOOGLE_MODEL}`;
-  const url = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${GOOGLE_KEY}`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.35,
-        maxOutputTokens: 400,
-      },
-    }),
-  });
-
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("\n")?.trim();
-  if (!response.ok || !text) {
-    const msg = data?.error?.message || "Gemini API request failed";
-    throw new Error(msg);
-  }
-
-  return formatAssistantReply(text);
-}
 
 async function askGroq({ question, history, context }) {
   const systemPrompt = [
@@ -262,7 +218,7 @@ async function askGroq({ question, history, context }) {
     "If answer is not in context, clearly say you do not have that info and suggest next best action.",
     "Keep responses concise, friendly, practical, and personalized to the user request.",
     "If user asks for recommendations, return 3-6 relevant items with prices.",
-    "If user gives a budget (under AED X), strictly honor it. If none match, say so and provide closest alternatives.",
+    context.activeBudget ? `CRITICAL: The user has a strict budget of AED ${context.activeBudget}. You MUST NOT recommend anything above this price. If no items fit, recommend the closest cheaper alternatives.` : "If user gives a budget (under AED X), strictly honor it.",
     "If user asks follow-up questions, use conversation history to maintain context.",
     "Include AED prices where relevant.",
     "Use short, clean responses with line breaks; avoid long dense paragraphs.",
@@ -309,10 +265,9 @@ async function askGroq({ question, history, context }) {
   return formatAssistantReply(text);
 }
 
-function buildScopedContext(question, fullContext, menuItems) {
+function buildScopedContext(question, fullContext, menuItems, activeBudget) {
   const qTokens = tokenize(question);
-  const hasBudget = /under\s*aed\s*\d+|under\s*\d+|below\s*\d+|less than\s*\d+/i.test(question);
-  const budget = Number(question.match(/(\d+)/)?.[1] || 0);
+  const budget = activeBudget || 0;
 
   const allFoods = menuItems.length ? menuItems : fullContext.foods;
   const allRestaurants = fullContext.restaurants || [];
@@ -322,12 +277,19 @@ function buildScopedContext(question, fullContext, menuItems) {
       const hay = tokenize(`${f.name} ${f.category} ${f.description || ""} ${f.restaurant || ""}`);
       let score = 0;
       for (const t of qTokens) if (hay.includes(t)) score += 2;
-      if (hasBudget && budget > 0 && f.price > 0 && f.price <= budget) score += 5;
+      
+      // Aggressive budget scoring
+      if (budget > 0) {
+        if (f.price > 0 && f.price <= budget) score += 10;
+        else if (f.price > budget) score -= 50; // Heavily penalize over-budget items
+      }
+      
       if (/recommend|best|popular|top/i.test(question)) score += Number(f.rating || 0);
       return { ...f, _score: score };
     })
     .sort((a, b) => b._score - a._score || (a.price || 0) - (b.price || 0));
 
+  // If budget exists, prioritize showing ONLY compliant items in the top slice
   const foods = scoredFoods.slice(0, 120).map(({ _score, ...rest }) => rest);
 
   const scoredRestaurants = allRestaurants
@@ -345,6 +307,7 @@ function buildScopedContext(question, fullContext, menuItems) {
     stats: fullContext.stats,
     restaurants,
     foods,
+    activeBudget: budget > 0 ? budget : null
   };
 }
 
@@ -358,12 +321,18 @@ router.post("/", async (req, res) => {
     const dbContext = await buildPublicContext();
     const menuItems = parseMenuContext(menuContext);
     const workingItems = menuItems.length ? menuItems : dbContext.foods;
-    const scopedContext = buildScopedContext(q, dbContext, menuItems);
+    
+    // Persistent budget detection
+    const activeBudget = getMostRecentBudget(history, q);
+    const scopedContext = buildScopedContext(q, dbContext, menuItems, activeBudget);
 
-    // Strict budget guard: never return items above budget for "under AED X" queries.
-    const budgetReply = buildStrictBudgetReply(q, workingItems);
-    if (budgetReply) {
-      return res.json({ success: true, reply: formatAssistantReply(budgetReply) });
+    // Strict budget guard for CURRENT query to keep it lightning fast if possible
+    const currentBudget = extractBudget(q);
+    if (currentBudget) {
+      const budgetReply = buildStrictBudgetReply(q, workingItems);
+      if (budgetReply) {
+        return res.json({ success: true, reply: formatAssistantReply(budgetReply) });
+      }
     }
 
     const mergedContext = {
@@ -371,22 +340,13 @@ router.post("/", async (req, res) => {
       frontendMenuSnapshot: menuItems.slice(0, 200),
     };
 
-    // Provider order: Groq (if available) -> Gemini -> deterministic fallback.
+    // Provider: Groq only.
     if (GROQ_KEY) {
       try {
         const reply = await askGroq({ question: q, history, context: mergedContext });
         return res.json({ success: true, reply });
       } catch (groqErr) {
         console.error("[chat][groq]", groqErr.message);
-      }
-    }
-
-    if (GOOGLE_KEY) {
-      try {
-        const reply = await askGemini({ question: q, history, context: mergedContext });
-        return res.json({ success: true, reply });
-      } catch (geminiErr) {
-        console.error("[chat][gemini]", geminiErr.message);
       }
     }
 

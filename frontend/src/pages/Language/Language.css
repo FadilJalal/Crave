@@ -5,16 +5,21 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  font-family: "Poppins", sans-serif;
+  font-family: var(--font-body);
   padding: 40px 0;
+}
+
+/* Apply Cairo font globally for Arabic */
+body.is-rtl, .language-page-main[dir="rtl"] {
+  font-family: var(--font-ar);
 }
 
 .language-card {
   background: var(--card);
   box-shadow: var(--shadow-md);
-  border-radius: 18px;
+  border-radius: 24px;
   padding: 48px 40px 40px 40px;
-  min-width: 340px;
+  min-width: 380px;
   max-width: 95vw;
   display: flex;
   flex-direction: column;
@@ -28,51 +33,60 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-
 .language-title {
   font-size: 2.2rem;
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 10px;
   color: var(--text);
   letter-spacing: -1px;
 }
 
+[dir="rtl"] .language-title {
+  letter-spacing: 0;
+}
 
 .language-desc {
   color: var(--text-3);
-  margin-bottom: 28px;
+  margin-bottom: 32px;
   font-size: 1.08rem;
   text-align: center;
+  font-weight: 500;
 }
-
 
 .language-buttons {
   display: flex;
-  gap: 18px;
-  margin-top: 18px;
+  gap: 16px;
+  margin-top: 10px;
+  width: 100%;
 }
 
-
 .language-buttons button {
-  padding: 12px 28px;
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(90deg, #ff4e2a 60%, #ff8c42 100%);
-  color: #fff;
+  flex: 1;
+  padding: 16px 24px;
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--text-2);
   cursor: pointer;
-  font-weight: 600;
-  font-size: 1.08rem;
-  box-shadow: 0 2px 8px rgba(255,78,42,0.08);
-  transition: 0.2s;
+  font-weight: 700;
+  font-size: 1.1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
 }
 
-.language-buttons button:active {
-  transform: scale(0.97);
+.language-buttons button.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(255, 90, 31, 0.25);
 }
 
+.language-buttons button:not(.active):hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--brand-soft);
+}
 
-.language-buttons button:hover {
-  filter: brightness(1.08);
-  box-shadow: 0 4px 16px rgba(255,140,66,0.13);
+.language-buttons button:active {
+  transform: scale(0.96);
 }

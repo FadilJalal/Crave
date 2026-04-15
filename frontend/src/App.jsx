@@ -41,9 +41,13 @@ const App = () => {
   const { dark } = useTheme();
 
   useEffect(() => {
-    document.documentElement.dir = 'ltr';
+    // Keep layout LTR even in Arabic as per user request
+    document.documentElement.dir = "ltr";
     document.documentElement.lang = i18n.language;
+    document.body.classList.toggle("is-rtl", i18n.language === "ar");
   }, [i18n.language]);
+
+  const appFont = i18n.language === "ar" ? "'Cairo', sans-serif" : "'DM Sans', sans-serif";
 
   return (
     <Elements stripe={stripePromise}>
@@ -57,8 +61,8 @@ const App = () => {
         pauseOnHover
         draggable
         theme={dark ? "dark" : "light"}
-        toastStyle={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 14 }}
-        style={{ zIndex: 99999 }}
+        toastStyle={{ fontFamily: appFont, fontWeight: 600, fontSize: 14 }}
+        style={{ zIndex: 99999, fontFamily: appFont }}
       />
       <ScrollToTop />
       {showLogin ? <LoginPopup setShowLogin={setShowLogin} /> : <></>}

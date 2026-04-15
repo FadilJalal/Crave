@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Syne:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Syne:wght@700;800&family=Cairo:wght@400;600;700;900&display=swap');
 
 :root {
   --brand: #ff5a1f; 
@@ -20,6 +20,7 @@
   --navbar-h: 88px;
   --font-display: 'Syne', sans-serif;
   --font-body: 'DM Sans', sans-serif;
+  --font-ar: 'Cairo', sans-serif;
   --neon-lime: #BFFF00;
   --neon-pink: #FF00E5;
   --neon-cyan: #00F0FF;

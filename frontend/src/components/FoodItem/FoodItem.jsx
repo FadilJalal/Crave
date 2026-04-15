@@ -57,6 +57,7 @@ const FoodItem = (props) => {
   const dietTags = useMemo(() => getDietTags(displayName, displayDesc, category), [displayName, displayDesc, category]);
 
   const [showCustomize, setShowCustomize] = useState(false);
+  const [showFullDesc, setShowFullDesc] = useState(false);
   const [selections, setSelections] = useState({});
 
   const handleSelect = (groupIndex, optionLabel, multiSelect) => {
@@ -80,7 +81,9 @@ const FoodItem = (props) => {
       const sel = selections[gi];
       group.options.forEach((opt) => {
         const selected = Array.isArray(sel) ? sel.includes(opt.label) : sel === opt.label;
-        if (selected) extra += opt.extraPrice || 0;
+        if (selected) {
+          extra += Number(opt.extraPrice || 0);
+        }
       });
     });
     return extra;
@@ -116,7 +119,7 @@ const FoodItem = (props) => {
   };
 
   const extraPrice = getExtraPrice();
-  const totalPrice = price + extraPrice;
+  const totalPrice = Number(price || 0) + extraPrice;
   const modalSurface = dark ? '#111827' : '#fff';
   const modalBorder = dark ? 'rgba(255,255,255,0.10)' : '#f3f4f6';
   const modalText = dark ? '#f8fafc' : '#111827';
@@ -274,7 +277,22 @@ const FoodItem = (props) => {
               {ratingCount > 0 && <span style={{fontSize:10, opacity:0.6}}>({ratingCount})</span>}
             </div>
           </div>
-          <p className='fi-desc'>{displayDesc}</p>
+          <p className={`fi-desc ${showFullDesc ? 'fi-desc-full' : ''}`}>
+            {displayDesc}
+            {(displayDesc || '').length > 70 && (
+              <button 
+                type="button" 
+                className='fi-more-btn'
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowFullDesc(!showFullDesc);
+                }}
+              >
+                {showFullDesc ? t('show_less') : t('more')}
+              </button>
+            )}
+          </p>
           {dietTags.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '2px 0 6px' }}>
               {dietTags.map(t => (
@@ -343,18 +361,16 @@ const FoodItem = (props) => {
             </div>
 
             <div style={{ padding: '0 24px 24px', position: 'sticky', bottom: 0, background: modalSurface }}>
-              {extraPrice > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: `1px solid ${modalBorder}`, marginBottom: 12, fontSize: 14, fontWeight: 700, color: modalText }}>
-                  <span>Total</span>
-                  <span>{currency}{totalPrice.toFixed(2)}</span>
-                </div>
-              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: `1px solid ${modalBorder}`, marginBottom: 12, fontSize: 14, fontWeight: 700, color: modalText }}>
+                <span>Total</span>
+                <span>{currency}{totalPrice.toFixed(2)}</span>
+              </div>
               <button onClick={handleAddToCart}
                 style={{ width: '100%', padding: '14px', borderRadius: 50, background: 'linear-gradient(135deg, #ff4e2a, #ff6a3d)', color: '#fff', border: 'none', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 8px 20px rgba(255,78,42,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                   <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
-                ADD TO CART{extraPrice > 0 ? ` · ${currency}${totalPrice.toFixed(2)}` : ''}
+                {t('add_to_cart_btn')} · {currency}{totalPrice.toFixed(2)}
               </button>
             </div>
           </div>

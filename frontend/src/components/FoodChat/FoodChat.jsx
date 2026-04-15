@@ -19,13 +19,24 @@ const FoodChat = () => {
 
   const buildMenuContext = () => {
     if (!food_list.length) return "Menu is loading...";
-    return food_list.slice(0, 60).map(f =>
+    // Send more items to the AI and prioritize diverse categories
+    return food_list.slice(0, 150).map(f =>
       `- ${f.name} | ${f.category} | ${currency}${f.price} | "${f.description?.slice(0, 60)}"`
     ).join("\n");
   };
 
-  const findFoodsFromResponse = (text) =>
-    food_list.filter(f => text.toLowerCase().includes(f.name.toLowerCase())).slice(0, 3);
+  const findFoodsFromResponse = (text) => {
+    // Detect active budget from the text reply to ensure cards match the context
+    const budgetMatch = text.match(/(?:under|below|budget|aed)\s*(\d+)/i);
+    const budget = budgetMatch ? Number(budgetMatch[1]) : 10000;
+
+    return food_list
+      .filter(f => 
+        text.toLowerCase().includes(f.name.toLowerCase()) && 
+        Number(f.price) <= budget
+      )
+      .slice(0, 3);
+  };
 
   const sendMessage = async () => {
     const q = input.trim();

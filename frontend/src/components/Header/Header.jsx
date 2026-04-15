@@ -127,32 +127,32 @@ const Header = () => {
                 <div className="hero-content">
                     <div className="hero-badge">
                         <span className="badge-dot" />
-                        <span>Delivery in {locationLabel}</span>
+                        <span>{t('delivery_in')} {locationLabel}</span>
                     </div>
 
                     <h1 className="hero-title">
-                        <span className="title-line-1">Crave</span>
+                        <span className="title-line-1">{t('crave')}</span>
                         <span className="title-line-2">
-                            <em className="accent-text">Excellence.</em>
+                            <em className="accent-text">{t('excellence')}</em>
                         </span>
                     </h1>
 
                     <div className="hero-stats">
                         <div className="hero-stat">
                             <span className="hero-stat__num">{countRestaurants}<sup>+</sup></span>
-                            <span className="hero-stat__lbl">Restaurants</span>
+                            <span className="hero-stat__lbl">{t('restaurants')}</span>
                         </div>
                         <div className="hero-stat__sep" />
                         <div className="hero-stat">
                             <span className="hero-stat__num hero-stat__num--accent">{countOpen}</span>
-                            <span className="hero-stat__lbl">Open Now</span>
+                            <span className="hero-stat__lbl">{t('open_now')}</span>
                         </div>
                         <div className="hero-stat__sep" />
                         <div className="hero-stat">
                             <span className="hero-stat__num">
-                                20<small>min</small>
+                                20<small>{t('min')}</small>
                             </span>
-                            <span className="hero-stat__lbl">Avg. Delivery</span>
+                            <span className="hero-stat__lbl">{t('avg_delivery_label')}</span>
                         </div>
                     </div>
 

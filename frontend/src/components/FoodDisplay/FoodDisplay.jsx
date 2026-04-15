@@ -6,7 +6,7 @@ import FoodItem from '../FoodItem/FoodItem';
 import { StoreContext } from '../../Context/StoreContext';
 import { isRestaurantOpen, mergeRestaurantFromDirectory } from '../../utils/restaurantHours';
 
-const computeTags = (food_list) => {
+const computeTags = (food_list, t) => {
   const tags = {};
   const byCategory = {};
   food_list.forEach(f => {
@@ -16,23 +16,23 @@ const computeTags = (food_list) => {
   Object.entries(byCategory).forEach(([cat, items]) => {
     if (items.length < 2) return;
     const sorted = [...items].sort((a, b) => a.price - b.price);
-    tags[sorted[0]._id] = { label: '💰 Budget Pick', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' };
+    tags[sorted[0]._id] = { label: `💰 ${t('budget_pick')}`, color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' };
     const top = sorted[sorted.length - 1];
     if (top.price > sorted[0].price * 1.5)
-      tags[top._id] = { label: '⭐ Premium', color: '#92400e', bg: '#fefce8', border: '#fde68a' };
+      tags[top._id] = { label: `⭐ ${t('premium_tag')}`, color: '#92400e', bg: '#fefce8', border: '#fde68a' };
   });
   const allSorted = [...food_list].sort((a, b) => a.price - b.price);
   const cheapest = allSorted.find(f => !tags[f._id]);
-  if (cheapest) tags[cheapest._id] = { label: '🏷️ Best Value', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' };
+  if (cheapest) tags[cheapest._id] = { label: `🏷️ ${t('best_value')}`, color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' };
   const newest = [...food_list].sort((a, b) => String(b._id).localeCompare(String(a._id))).slice(0, 2);
-  newest.forEach(f => { if (!tags[f._id]) tags[f._id] = { label: '🆕 Just Added', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' }; });
+  newest.forEach(f => { if (!tags[f._id]) tags[f._id] = { label: `🆕 ${t('just_added')}`, color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' }; });
   return tags;
 };
 
 const FoodDisplay = ({ category }) => {
   const { t } = useTranslation();
   const { food_list = [], restaurantsById = {} } = useContext(StoreContext);
-  const dealTags = useMemo(() => computeTags(food_list), [food_list]);
+  const dealTags = useMemo(() => computeTags(food_list, t), [food_list, t]);
   const filtered = food_list.filter(item => category === 'All' || item.category === category);
 
   const shuffledFiltered = useMemo(() => {
@@ -44,16 +44,16 @@ const FoodDisplay = ({ category }) => {
       <div className='fd-container'>
         <div className='fd-header'>
           <div className='fd-title-wrap'>
-            <span className='fd-badge'>Curated Selection</span>
+            <span className='fd-badge'>{t('curated_selection')}</span>
             <h2 className='fd-title'>
               {category === 'All' ? (
-                <>Top Picks <span style={{ color: '#FF3008' }}>near you</span></>
+                t('top_picks_near_you')
               ) : category}
             </h2>
             <p className='fd-count'>{shuffledFiltered.length} {t("items_available")}</p>
           </div>
           <Link to="/restaurants" className="fd-view-all">
-            <span>Explore All</span>
+            <span>{t('explore_all')}</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>

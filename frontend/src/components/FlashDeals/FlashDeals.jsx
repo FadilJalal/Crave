@@ -60,7 +60,7 @@ const FlashDeals = () => {
       <section className="ld-section">
         <div className="ld-container">
           <div className="ld-header">
-            <h2 className="ld-title">Flash Deals <span style={{ color: '#FF3008' }}>near you</span></h2>
+            <h2 className="ld-title">{t('flash_deals_title')} <span style={{ color: '#FF3008' }}>{t('top_picks_near_you')}</span></h2>
           </div>
           <div className="ld-grid">
             {[1, 2, 3, 4].map((i) => (
@@ -83,7 +83,7 @@ const FlashDeals = () => {
         <div className="ld-header">
           <div className="ld-title-wrap">
             <h2 className="ld-title">
-              Flash Deals <span style={{ color: '#FF3008' }}>near you</span>
+              {t('flash_deals_title')} <span style={{ color: '#FF3008' }}>{t('top_picks_near_you')}</span>
             </h2>
           </div>
         </div>
@@ -113,7 +113,7 @@ const FlashDeals = () => {
               <div key={item._id} className="ld-card">
                 <div className="ld-img-wrap">
                   <img src={`${url}/images/${item.image}`} alt={item.name} className="ld-img" />
-                  <div className="ld-badge-left">FLASH DEAL</div>
+                  <div className="ld-badge-left">{t('flash_deal_badge')}</div>
                   {dist && <div className="ld-badge-right">{dist} km</div>}
                   {discount > 0 && <div className="ld-badge-score">-{discount}%</div>}
                 </div>
@@ -130,21 +130,21 @@ const FlashDeals = () => {
                     <div className="ld-meta-col">
                       <div className="ld-meta-icon-wrap">⏱</div>
                       <div className="ld-meta-text">
-                        <span className="ld-meta-label">Time Left</span>
+                        <span className="ld-meta-label">{t('time_left_label')}</span>
                         <span className="ld-meta-val">
-                          {timeLeft ? (timeLeft.expired ? 'Expired' : `${format(timeLeft.h)}:${format(timeLeft.m)}`) : '24h+'}
+                          {timeLeft ? (timeLeft.expired ? t('status_unavailable') : `${format(timeLeft.h)}:${format(timeLeft.m)}`) : '24h+'}
                         </span>
                       </div>
                     </div>
                     <div className="ld-meta-col">
                       <div className="ld-meta-icon-wrap" style={{ background: '#fff3f0' }}>🔥</div>
                       <div className="ld-meta-text">
-                        <span className="ld-meta-label">Stock</span>
-                        <span className="ld-meta-val">{stockLeft !== null ? `${stockLeft} Left` : 'In Stock'}</span>
+                        <span className="ld-meta-label">{t('stock_label')}</span>
+                        <span className="ld-meta-val">{stockLeft !== null ? `${stockLeft} ${t('left_label')}` : t('in_stock_label')}</span>
                       </div>
                     </div>
                   </div>
-                  <button className="ld-add-btn-v2" onClick={() => addToCart(item._id)}>ADD TO CART</button>
+                  <button className="ld-add-btn-v2" onClick={() => addToCart(item._id)}>{t('add_to_cart_caps')}</button>
                 </div>
               </div>
             );

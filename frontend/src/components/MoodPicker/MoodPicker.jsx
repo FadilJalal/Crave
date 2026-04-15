@@ -1,4 +1,5 @@
 import { useState, useContext, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { StoreContext } from "../../Context/StoreContext";
 import FoodItem from "../FoodItem/FoodItem";
@@ -6,18 +7,19 @@ import { isRestaurantOpen, mergeRestaurantFromDirectory } from "../../utils/rest
 import "./MoodPicker.css";
 
 const MOODS = [
-  { key: "celebrating", emoji: "🎉", label: "Celebration", color: "#ec4899" },
-  { key: "comfort", emoji: "🛋️", label: "Comfort", color: "#f59e0b" },
-  { key: "healthy", emoji: "🥗", label: "Healthy", color: "#10b981" },
-  { key: "adventurous", emoji: "🌶️", label: "Adventurous", color: "#ef4444" },
-  { key: "quick", emoji: "⚡", label: "Quick", color: "#3b82f6" },
-  { key: "sweet", emoji: "🍰", label: "Sweet", color: "#d946ef" },
-  { key: "budget", emoji: "💰", label: "Budget", color: "#8b5cf6" },
-  { key: "postworkout", emoji: "💪", label: "Gym", color: "#06b6d4" },
-  { key: "sharing", emoji: "👨‍👩‍👧‍👦", label: "Sharing", color: "#f43f5e" },
+  { key: "celebrating", emoji: "🎉", labelKey: "celebration", color: "#ec4899" },
+  { key: "comfort", emoji: "🛋️", labelKey: "comfort", color: "#f59e0b" },
+  { key: "healthy", emoji: "🥗", labelKey: "healthy", color: "#10b981" },
+  { key: "adventurous", emoji: "🌶️", labelKey: "adventurous", color: "#ef4444" },
+  { key: "quick", emoji: "⚡", labelKey: "quick_bite", color: "#3b82f6" },
+  { key: "sweet", emoji: "🍰", labelKey: "sweet_tooth", color: "#d946ef" },
+  { key: "budget", emoji: "💰", labelKey: "budget", color: "#8b5cf6" },
+  { key: "postworkout", emoji: "💪", labelKey: "gym", color: "#06b6d4" },
+  { key: "sharing", emoji: "👨‍👩‍👧‍👦", labelKey: "sharing", color: "#f43f5e" },
 ];
 
 const MoodPicker = () => {
+  const { t } = useTranslation();
   const { url, restaurantsById = {} } = useContext(StoreContext);
   const [activeMood, setActiveMood] = useState(null);
   const [customMood, setCustomMood] = useState("");
@@ -93,13 +95,13 @@ const MoodPicker = () => {
         
         <div className="mp-header">
             <div className="mp-badge-ai">
-                <span className="mp-ai-icon">✨</span> CRAVE AI ENGINE
+                <span className="mp-ai-icon">✨</span> {t('crave_ai_engine')}
             </div>
             <h2 className="mp-title">
-                Match Your <span className="brand-text">Mood</span>
+                {t('match_mood_title')} <span className="brand-text">{t('mood_word')}</span>
             </h2>
             <p className="mp-sub">
-                Our AI analyzes your cravings to find the perfect meal match for your current vibe.
+                {t('mood_desc')}
             </p>
         </div>
 
@@ -108,12 +110,12 @@ const MoodPicker = () => {
                 <input 
                     type="text" 
                     className="mp-input" 
-                    placeholder="e.g. Rough day at work, need huge comfort food..." 
+                    placeholder={t('mood_placeholder')}
                     value={customMood}
                     onChange={(e) => setCustomMood(e.target.value)}
                 />
                 <button type="submit" className="mp-match-btn" disabled={!customMood.trim() || loading}>
-                    {loading ? "Analyzing..." : "Find Match"}
+                    {loading ? t('analyzing') : t('find_match')}
                 </button>
             </form>
 
@@ -126,7 +128,7 @@ const MoodPicker = () => {
                         onClick={() => pickMood(m.key)}
                     >
                         <span className="mood-emoji">{m.emoji}</span>
-                        <span className="mood-label">{m.label}</span>
+                        <span className="mood-label">{t(m.labelKey)}</span>
                     </button>
                 ))}
             </div>
@@ -137,9 +139,9 @@ const MoodPicker = () => {
         {!loading && results.length === 0 && activeMood && (
             <div className="mp-no-results">
                 <div className="no-res-icon">🔍</div>
-                <h3>No perfect match found</h3>
-                <p>Try a different mood or type something specific above!</p>
-                <button className="clear-vibe-btn" onClick={() => { setActiveMood(null); setCustomMood(""); }}>Clear vibe</button>
+                <h3>{t('no_perfect_match')}</h3>
+                <p>{t('try_different_mood')}</p>
+                <button className="clear-vibe-btn" onClick={() => { setActiveMood(null); setCustomMood(""); }}>{t('clear_vibe')}</button>
             </div>
         )}
 
@@ -147,10 +149,10 @@ const MoodPicker = () => {
             <div className="mp-results-area" ref={resultsRef}>
                 <div className="mp-results-header">
                     <h3 className="mp-results-title">
-                        {usedAi ? "AI Curated Selections" : "Mood Match Results"}
-                        {usedAi && <span className="mp-ai-badge-inline" style={{ marginLeft: '15px' }}>✨ Engine Synced</span>}
+                        {usedAi ? t('ai_curated') : t('mood_match_results')}
+                        {usedAi && <span className="mp-ai-badge-inline" style={{ marginLeft: '15px' }}>✨ {t('engine_synced')}</span>}
                     </h3>
-                    <span className="mp-results-count">{results.length} cravings identified</span>
+                    <span className="mp-results-count">{t('cravings_identified', { count: results.length })}</span>
                 </div>
                 
                 <div className="mp-grid-display">
