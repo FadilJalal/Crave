@@ -255,6 +255,88 @@ export default function RestaurantLayout({ children }) {
 
   return (
     <div className="ra-shell">
+      <style>{`
+        .ra-sidebar {
+          background: #0b1220;
+          color: #fff;
+        }
+        .nav-group {
+          margin-bottom: 8px;
+          border-radius: 12px;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+        .nav-group.expanded {
+          background: rgba(255, 255, 255, 0.03);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          margin: 8px 12px;
+        }
+        .nav-group-header {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          padding: 12px 16px;
+          background: transparent;
+          border: none;
+          color: rgba(255, 255, 255, 0.7);
+          cursor: pointer;
+          font-weight: 800;
+          font-size: 13px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          transition: all 0.2s ease;
+        }
+        .nav-group.expanded .nav-group-header {
+          color: #fff;
+          background: linear-gradient(90deg, rgba(255, 78, 42, 0.1), transparent);
+          border-left: 3px solid #ff4e2a;
+          padding-left: 13px;
+        }
+        .nav-group-icon {
+          margin-right: 12px;
+          font-size: 16px;
+        }
+        .nav-group-label {
+          flex: 1;
+          text-align: left;
+        }
+        .nav-group-arrow {
+          font-size: 18px;
+          transition: transform 0.3s ease;
+          opacity: 0.5;
+        }
+        .nav-group.expanded .nav-group-arrow {
+          transform: rotate(90deg);
+          opacity: 1;
+          color: #ff4e2a;
+        }
+        .nav-group-content {
+          padding: 4px 0 8px;
+          display: none;
+        }
+        .nav-group.expanded .nav-group-content {
+          display: block;
+        }
+        .nav-group-content a, .nav-group-content .nav-link-disabled {
+          display: block;
+          padding: 10px 16px 10px 44px;
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.6);
+          text-decoration: none;
+          font-weight: 600;
+          transition: all 0.2s;
+        }
+        .nav-group-content a:hover {
+          color: #fff;
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .nav-group-content a.active {
+          color: #ff4e2a;
+          background: rgba(255, 78, 42, 0.08);
+          font-weight: 800;
+        }
+      `}</style>
       {isMobile && sidebarOpen && <button className="ra-overlay" aria-label="Close menu" onClick={() => setSidebarOpen(false)} />}
 
       <aside

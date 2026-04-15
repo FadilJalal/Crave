@@ -120,6 +120,7 @@ const uploadRow = async (row) => {
   form.append("description",    row.description);
   form.append("image",          row.imageFile);
   form.append("customizations", JSON.stringify(row.customizations));
+  form.append("ingredients",    row.ingredients || "");
 
   const res = await api.post("/api/restaurantadmin/food/add", form, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -194,13 +195,25 @@ const guessUnit = (name) => {
 
 const linkIngredientsForFood = async (foodId, parsedIngredients, inventoryItems, createdCache, pendingCreations) => {
   for (const ing of parsedIngredients) {
-    const lowerName = ing.name.toLowerCase().trim();
-    let match = inventoryItems.find(inv => inv.itemName.toLowerCase().trim() === lowerName)
-             || createdCache.find(inv => inv.itemName.toLowerCase().trim() === lowerName);
+    const itemNameRaw = ing.name.toLowerCase().trim();
+    const normalizedSearch = itemNameRaw
+      .replace(/potatoe|potos|potat/gi, "potato")
+      .replace(/s\b|es\b/gi, "")
+      .trim();
+
+    let match = inventoryItems.find(inv => {
+      const invName = inv.itemName.toLowerCase().trim();
+      const normInv = invName.replace(/potatoe|potos|potat/gi, "potato").replace(/s\b|es\b/gi, "").trim();
+      return invName === itemNameRaw || normInv === normalizedSearch || invName.includes(normalizedSearch);
+    }) || createdCache.find(inv => {
+      const invName = inv.itemName.toLowerCase().trim();
+      const normInv = invName.replace(/potatoe|potos|potat/gi, "potato").replace(/s\b|es\b/gi, "").trim();
+      return invName === itemNameRaw || normInv === normalizedSearch || invName.includes(normalizedSearch);
+    });
     
     if (!match) {
-      if (pendingCreations.has(lowerName)) {
-        match = await pendingCreations.get(lowerName);
+      if (pendingCreations.has(normalizedSearch)) {
+        match = await pendingCreations.get(normalizedSearch);
       } else {
         const createPromise = api.post("/api/inventory/add", {
           itemName: ing.name.trim(),

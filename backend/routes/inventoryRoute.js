@@ -23,7 +23,8 @@ import {
     getStockTurnoverAnalytics,
     getSupplierAnalytics,
     getInventoryPaginated,
-    getCostAnalysis
+    getCostAnalysis,
+    syncAllLinks
 } from "../controllers/inventoryController.js";
 
 const router = express.Router();
@@ -65,6 +66,9 @@ router.post("/bulk-update", restaurantAuth, bulkUpdateInventoryItems);
 
 // ── Bulk import inventory items ─────────────────────────────────────────────
 router.post("/bulk-import", restaurantAuth, bulkImportInventory);
+
+// ── Sync all missing links at once ──────────────────────────────────────────
+router.post("/sync-all-links", restaurantAuth, syncAllLinks);
 
 // ── Preview deduction for a candidate order (no data change) ────────────────
 router.post("/deduction-preview", restaurantAuth, previewInventoryDeduction);

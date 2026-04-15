@@ -76,6 +76,7 @@ foodRouter.post("/add", adminAuth, upload.single("image"), async (req, res) => {
       category: req.body.category,
       restaurantId,
       customizations,
+      ingredients: req.body.ingredients || "",
       // ⚡ Capture flash deal fields on creation
       isFlashDeal: req.body.isFlashDeal === "true",
       salePrice: req.body.salePrice ? Number(req.body.salePrice) : null,
@@ -138,6 +139,7 @@ foodRouter.post("/edit", (req, res, next) => {
     if (description) food.description = description;
     if (price)       food.price       = Number(price);
     if (category)    food.category    = category;
+    if (req.body.ingredients !== undefined) food.ingredients = req.body.ingredients;
 
     // ✅ Update customizations if provided
     if (req.body.customizations !== undefined) {

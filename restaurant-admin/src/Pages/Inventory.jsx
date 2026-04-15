@@ -200,8 +200,8 @@ export default function Inventory() {
     const processed = data.map((row, index) => {
       const normalizedRow = {};
       Object.keys(row).forEach(key => {
-        // More robust fuzzy key matching
-        const cleanKey = key.toLowerCase().trim().replace(/[^a-z]/g, '');
+        // Clean key but KEEP numbers for things like "AED 50" or "Unit 1"
+        const cleanKey = key.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
         normalizedRow[cleanKey] = row[key];
       });
 
@@ -232,55 +232,75 @@ export default function Inventory() {
       seenNames.add(lowerName);
 
       // --- Advanced Smart Linking Engine ---
-      const suggestedLinks = [];
-      const cleanName = itemName.toLowerCase().trim();
-      const baseWords = cleanName.replace(/[0-9]|ml|kg|l|g|btl|can|pieces|pcs|bottle|box|pkt|packets/gi, "").split(/\s+/).filter(w => w.length > 2);
       
-      const findBestMatch = () => {
-        if (!menuItems || menuItems.length === 0) return null;
+      const findMatches = () => {
+        if (!menuItems || menuItems.length === 0) return [];
         
         const search = itemName.toLowerCase().trim();
-        const cleanSearch = search.replace(/[0-9]|ml|kg|l|g|btl|can|pieces|pcs|bottle|box|pkt|packets/gi, "").trim();
-        const keywords = cleanSearch.split(/\s+/).filter(w => w.length > 2);
+        // Normalization for common typos and variations
+        const normalizedSearch = search
+          .replace(/potatoe|potos|potat/gi, "potato") // Handle the "potos" typo
+          .replace(/[0-9]|ml|kg|l|g|btl|can|pieces|pcs|bottle|box|pkt|packets/gi, "")
+          .replace(/s\b|es\b/gi, "") 
+          .replace(/[^a-z0-9\s]/gi, "")
+          .trim();
+        
+        const keywords = normalizedSearch.split(/\s+/).filter(w => w.length > 2);
 
-        // 1. Precise Match
-        let m = menuItems.find(f => f.name.toLowerCase().trim() === search || f.name.toLowerCase().trim() === cleanSearch);
-        if (m) return m;
+        const matchedIds = new Set();
+        const results = [];
 
-        // 2. Phrase Nesting
-        m = menuItems.find(f => {
-            const fName = f.name.toLowerCase();
-            return fName.includes(search) || search.includes(fName) || fName.includes(cleanSearch);
+        menuItems.forEach(f => {
+            const fNameRaw = (f.name || "").toLowerCase().trim();
+            const fName = fNameRaw.replace(/\(.*\)/g, "").replace(/[^a-z0-9\s]/gi, "").trim();
+            
+            // Check Ingredients list (Recipe column in your CSV)
+            const fIngsRaw = (f.ingredients || "").toLowerCase();
+            const fIngs = fIngsRaw.replace(/[^a-z0-9\s,:]/gi, "").trim();
+            const fDesc = (f.description || "").toLowerCase().replace(/[^a-z0-9\s]/gi, "").trim();
+            
+            // Normalize recipe text for comparison
+            const normalizedIngs = fIngsRaw.replace(/potatoe|potos|potat/gi, "potato");
+
+            const combinedSearchArea = `${fName} ${fIngs} ${fDesc}`;
+
+            // 1. Direct Recipe Match (The most important one for your sheet)
+            const recipeMatch = 
+                normalizedIngs.includes(normalizedSearch) || 
+                fIngsRaw.includes(search);
+
+            // 2. Direct Name Match
+            const directMatch = 
+                fNameRaw.includes(search) || 
+                search.includes(fNameRaw) || 
+                fName.includes(normalizedSearch);
+
+            // 3. Keyword Overlap
+            const keywordMatch = keywords.length > 0 && keywords.some(word => combinedSearchArea.includes(word));
+
+            if ((recipeMatch || directMatch || keywordMatch) && !matchedIds.has(f._id)) {
+                matchedIds.add(f._id);
+                results.push({ 
+                    foodId: f._id, 
+                    foodName: f.name, 
+                    quantityPerOrder: 1 
+                });
+            }
         });
-        if (m) return m;
 
-        // 3. Keyword Presence (Very aggressive - matches if any significant word is found in dish name)
-        if (keywords.length > 0) {
-            m = menuItems.find(f => {
-                const fName = f.name.toLowerCase();
-                return keywords.some(word => fName.includes(word));
-            });
-            if (m) return m;
-        }
-
-        return null;
+        return results;
       };
 
-      const match = findBestMatch();
-      if (match) {
-        suggestedLinks.push({ 
-          foodId: match._id, 
-          foodName: match.name, 
-          quantityPerOrder: 1 
-        });
-      }
+      const suggestedLinks = findMatches();
+
+      // Headers like "Unit Cost (AED)" normalize to "unitcostaed"
       const unitCost = parseFloat(
+          normalizedRow.unitcostaed || 
           normalizedRow.unitcost || 
+          normalizedRow.costaed ||
           normalizedRow.cost || 
           normalizedRow.price || 
           normalizedRow.unitprice || 
-          normalizedRow.rate || 
-          normalizedRow.buyingprice || 
           0
       ) || 0;
 
@@ -447,19 +467,68 @@ export default function Inventory() {
     }
   };
 
+  const handleSyncAllLinks = async () => {
+    const confirm = window.confirm("This will scan all your inventory and automatically link them to menu items based on your recipes. Existing links will not be changed. Proceed?");
+    if (!confirm) return;
+
+    setLoading(true);
+    try {
+      const res = await api.post("/api/inventory/sync-all-links");
+      if (res.data.success) {
+        toast.success(res.data.message);
+        loadInventory();
+      }
+    } catch (err) {
+      toast.error("Sync failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <RestaurantLayout>
       <style>
         {`
           .inventory-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 20px;
             margin-top: 24px;
             padding-bottom: 60px;
+            align-items: stretch;
           }
+          
           @media (max-width: 1000px) { .inventory-grid { grid-template-columns: repeat(2, 1fr); } }
           @media (max-width: 700px) { .inventory-grid { grid-template-columns: 1fr; } }
+
+          .inv-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1.5px solid #f3f4f6;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+            height: 100%;
+          }
+
+          .inv-card:hover { 
+            transform: translateY(-4px); 
+            box-shadow: 0 12px 24px -10px rgba(0,0,0,0.1);
+            border-color: #ff4e2a;
+          }
+
+          .inv-card.selected { 
+            border-color: #ff4e2a; 
+            background: #fffafa;
+          }
+
+          .inv-card.low-stock { 
+            border-color: #fee2e2; 
+            background: #fffcfc; 
+          }
           
           .action-navbar {
             display: flex;
@@ -477,73 +546,61 @@ export default function Inventory() {
             box-shadow: 0 4px 20px -5px rgba(0,0,0,0.05);
           }
 
-          .inv-card {
-            background: white;
-            border-radius: 16px;
-            padding: 18px;
-            border: 1.5px solid #f3f4f6;
-            transition: all 0.3s ease;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
-          }
-          .inv-card:hover { 
-            transform: translateY(-4px); 
-            box-shadow: 0 12px 24px -10px rgba(0,0,0,0.1);
-            border-color: #ff4e2a;
-          }
-          .inv-card.selected { 
-            border-color: #ff4e2a; 
-            background: #fffafa;
-          }
-          .inv-card.low-stock { border-color: #fee2e2; background: #fffcfc; }
-          
           .stock-ctrl {
             display: flex;
             align-items: center;
             justify-content: space-between;
             background: #f8fafc;
-            padding: 10px 14px;
+            padding: 12px;
             border-radius: 14px;
-            margin: 12px 0;
+            margin: 16px 0;
             border: 1px solid #f1f5f9;
           }
-          .progress-bar { height: 6px; background: #f1f5f9; border-radius: 100px; overflow: hidden; margin-top: 6px; }
-          .progress-fill { height: 100%; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+
+          .progress-bar { 
+            height: 6px; 
+            background: #f1f5f9; 
+            border-radius: 100px; 
+            overflow: hidden; 
+            margin-top: 6px; 
+          }
+
+          .progress-fill { 
+            height: 100%; 
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
+          }
           
           .card-action-btn {
-            padding: 12px 16px;
-            border-radius: 14px;
+            padding: 10px 14px;
+            border-radius: 12px;
             border: 1.5px solid #e5e7eb;
             background: white;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             flex: 1;
             transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
           }
+
           .card-action-btn:hover { 
             background: #111827; 
             color: white; 
             border-color: #111827;
-            transform: scale(1.02);
           }
-          .status-tag { padding: 4px 12px; border-radius: 10px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+
           .card-checkbox { 
             position: absolute; 
-            top: 20px; 
-            right: 20px; 
-            width: 20px; 
-            height: 20px; 
+            top: 16px; 
+            right: 16px; 
+            width: 18px; 
+            height: 18px; 
             accent-color: #ff4e2a; 
             z-index: 10; 
             cursor: pointer;
-            border-radius: 6px;
           }
           
           .filter-pill {
@@ -554,7 +611,10 @@ export default function Inventory() {
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
+            transition: all 0.2s;
           }
+
+          .filter-pill:hover { border-color: #ff4e2a; color: #ff4e2a; }
           .filter-pill.active { background: #111827; color: white; border-color: #111827; }
           
           .drop-zone {
@@ -570,22 +630,14 @@ export default function Inventory() {
             align-items: center;
             gap: 12px;
           }
-          .drop-zone:hover, .drop-zone.active {
-            border-color: #ff4e2a;
-            background: #fffafa;
-            transform: scale(1.01);
-          }
-          .drop-icon {
-            font-size: 40px;
-            margin-bottom: 8px;
-          }
-          
+
           .preview-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 16px;
             font-size: 13px;
           }
+
           .preview-table th {
             text-align: left;
             padding: 12px;
@@ -594,32 +646,10 @@ export default function Inventory() {
             font-weight: 700;
             border-bottom: 1px solid #e5e7eb;
           }
+
           .preview-table td {
             padding: 12px;
             border-bottom: 1px solid #f3f4f6;
-          }
-          .status-badge {
-            padding: 4px 10px;
-            border-radius: 99px;
-            font-size: 11px;
-            font-weight: 800;
-          }
-          .status-new { background: #dcfce7; color: #166534; }
-          .status-update { background: #dbeafe; color: #1e40af; }
-          .status-duplicate { background: #fef9c3; color: #854d0e; }
-          .status-invalid { background: #fee2e2; color: #991b1b; }
-          .select-sm, .input-sm {
-            border: 1.5px solid #e5e7eb;
-            border-radius: 8px;
-            background: #f9fafb;
-            font-family: inherit;
-            outline: none;
-            transition: all 0.2s;
-          }
-          .select-sm:focus, .input-sm:focus {
-            border-color: #ff4e2a;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(255, 78, 42, 0.1);
           }
         `}
       </style>
@@ -631,6 +661,7 @@ export default function Inventory() {
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <button className="btn btn-outline" onClick={downloadTemplate}>📥 Template</button>
+          <button className="btn btn-outline" style={{ borderColor: '#6366f1', color: '#6366f1' }} onClick={handleSyncAllLinks}>🔄 Sync All Links</button>
           <button className="btn btn-outline" style={{ borderColor: '#ff4e2a', color: '#ff4e2a' }} onClick={() => { fetchMenuItems(); setShowImportModal(true); }}>Bulk Upload</button>
           <button className="btn" onClick={() => { setEditingItem(null); setShowAddModal(true); }}>+ Add Item</button>
         </div>
@@ -680,70 +711,68 @@ export default function Inventory() {
           return (
             <div key={item._id} className={`inv-card ${isSelected ? 'selected' : ''} ${isOut ? 'low-stock' : isLow ? 'low-stock' : ''}`}>
               <input type="checkbox" className="card-checkbox" checked={isSelected} onChange={() => toggleSelect(item._id)} />
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1, paddingRight: 10 }}>
-                        <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.3px', marginBottom: 2, lineHeight: 1.2 }}>{item.itemName}</div>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', background: '#eff6ff', color: '#2563eb', borderRadius: 6, fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>
-                           {item.category.replace('_', ' ')}
-                        </div>
-                    </div>
-                </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', minHeight: 42 }}>
+                  <div style={{ flex: 1, paddingRight: 10 }}>
+                      <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.3px', marginBottom: 2, lineHeight: 1.2 }}>{item.itemName}</div>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', background: '#eff6ff', color: '#2563eb', borderRadius: 6, fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>
+                          {item.category.replace('_', ' ')}
+                      </div>
+                  </div>
+              </div>
 
-                <div className="stock-ctrl">
-                    <button onClick={() => updateStock(item._id, -1)} style={{ width: 28, height: 28, border: '1px solid #e2e8f0', background: 'white', fontWeight: 900, borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>-</button>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1 }}>{item.currentStock}</div>
-                        <div style={{ fontSize: 9, fontWeight: 800, color: '#64748b' }}>{item.unit}</div>
-                    </div>
-                    <button onClick={() => updateStock(item._id, 1)} style={{ width: 28, height: 28, border: '1px solid #e2e8f0', background: 'white', fontWeight: 900, borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>+</button>
-                </div>
+              <div className="stock-ctrl">
+                  <button onClick={() => updateStock(item._id, -1)} style={{ width: 28, height: 28, border: '1px solid #e2e8f0', background: 'white', fontWeight: 900, borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>-</button>
+                  <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1 }}>{item.currentStock}</div>
+                      <div style={{ fontSize: 9, fontWeight: 800, color: '#64748b' }}>{item.unit}</div>
+                  </div>
+                  <button onClick={() => updateStock(item._id, 1)} style={{ width: 28, height: 28, border: '1px solid #e2e8f0', background: 'white', fontWeight: 900, borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>+</button>
+              </div>
 
-                <div style={{ marginBottom: 12 }}>
-                    <div className="progress-bar"><div className="progress-fill" style={{ width: `${stockPercentage}%`, background: isOut ? '#ef4444' : isLow ? '#f97316' : '#22c55e' }} /></div>
-                </div>
+              <div style={{ marginBottom: 12 }}>
+                  <div className="progress-bar"><div className="progress-fill" style={{ width: `${stockPercentage}%`, background: isOut ? '#ef4444' : isLow ? '#f97316' : '#22c55e' }} /></div>
+              </div>
 
-                <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Linked Recipes</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                        {(item.linkedMenuItems || []).length > 0 ? (
-                            item.linkedMenuItems.slice(0, 3).map((link, idx) => {
-                                // link.foodId is populated by the backend, so we can access its name directly
-                                const dishName = link.foodId?.name || 'Dish';
-                                return (
-                                    <span key={idx} style={{ fontSize: 10, fontWeight: 700, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '2px 6px', borderRadius: 6, color: '#475569', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {dishName}
-                                    </span>
-                                );
-                            })
-                        ) : (
-                            <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>No links</span>
-                        )}
-                        {(item.linkedMenuItems || []).length > 3 && (
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#ff4e2a' }}>+{(item.linkedMenuItems || []).length - 3} more</span>
-                        )}
-                    </div>
-                </div>
+              <div style={{ marginBottom: 16, minHeight: 44 }}>
+                  <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Linked Recipes</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {(item.linkedMenuItems || []).length > 0 ? (
+                          item.linkedMenuItems.slice(0, 3).map((link, idx) => {
+                              const dishName = link.foodId?.name || 'Dish';
+                              return (
+                                  <span key={idx} style={{ fontSize: 10, fontWeight: 700, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '2px 6px', borderRadius: 6, color: '#475569', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {dishName}
+                                  </span>
+                              );
+                          })
+                      ) : (
+                          <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>No links</span>
+                      )}
+                      {(item.linkedMenuItems || []).length > 3 && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#ff4e2a' }}>+{(item.linkedMenuItems || []).length - 3} more</span>
+                      )}
+                  </div>
+              </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                    <div>
-                        <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 800 }}>Unit Cost / Total Value</div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                            <div style={{ fontSize: 16, fontWeight: 900, color: '#1e293b' }}>AED {item.unitCost} <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>/ {item.unit}</span></div>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: '#ff4e2a', background: '#fff1f0', padding: '1px 6px', borderRadius: 4 }}>
-                                Total: AED {Number((item.unitCost * item.currentStock).toFixed(2))}
-                            </div>
-                        </div>
-                    </div>
-                    <button onClick={() => handleManageLinks(item)} style={{ cursor: 'pointer', border: 'none', background: '#ff4e2a', color: 'white', fontSize: 10, fontWeight: 900, padding: '4px 10px', borderRadius: 8 }}>
-                        {item.linkedMenuItems?.length > 0 ? 'Edit Links' : 'Add Link'}
-                    </button>
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
+                  <div>
+                      <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 800 }}>Unit Cost / Total Value</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                          <div style={{ fontSize: 16, fontWeight: 900, color: '#1e293b' }}>AED {item.unitCost} <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>/ {item.unit}</span></div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#ff4e2a', background: '#fff1f0', padding: '1px 6px', borderRadius: 4 }}>
+                              Total: AED {Number((item.unitCost * item.currentStock).toFixed(2))}
+                          </div>
+                      </div>
+                  </div>
+                  <button onClick={() => handleManageLinks(item)} style={{ cursor: 'pointer', border: 'none', background: '#ff4e2a', color: 'white', fontSize: 10, fontWeight: 900, padding: '4px 10px', borderRadius: 8 }}>
+                      {item.linkedMenuItems?.length > 0 ? 'Edit Links' : 'Add Link'}
+                  </button>
+              </div>
 
-                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                    <button className="card-action-btn" style={{ padding: '8px', fontSize: 12, flex: 1.5 }} onClick={() => handleEdit(item)}>Edit Item</button>
-                    <button className="card-action-btn" style={{ padding: '8px', fontSize: 12, borderColor: '#fee2e2', color: '#dc2626' }} onClick={() => confirmDelete(item)}>Delete</button>
-                </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                  <button className="card-action-btn" style={{ padding: '8px', fontSize: 12, flex: 1.5 }} onClick={() => handleEdit(item)}>Edit Item</button>
+                  <button className="card-action-btn" style={{ padding: '8px', fontSize: 12, borderColor: '#fee2e2', color: '#dc2626' }} onClick={() => confirmDelete(item)}>Delete</button>
               </div>
             </div>
           );
@@ -753,17 +782,24 @@ export default function Inventory() {
       {showImportModal && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
               <div className="card" style={{ width: '100%', maxWidth: 900, padding: 32, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, flexShrink: 0 }}>
                     <div>
-                        <h2 style={{ margin: 0 }}>Bulk Upload</h2>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Upload your ingredients using CSV or Excel</p>
-                            <span style={{ fontSize: 11, fontWeight: 900, background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 6 }}>
-                                {menuItems.length} Recipes Loaded
+                        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>Bulk Upload</h2>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                            <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>Populate your storage via CSV or Excel.</p>
+                            <span style={{ fontSize: 11, fontWeight: 900, background: '#f1f5f9', color: '#475569', padding: '3px 10px', borderRadius: 50, border: '1px solid #e2e8f0' }}>
+                                {menuItems.length} Recipes Ready
                             </span>
                         </div>
                     </div>
-                    <button className="btn-sm btn-outline" onClick={() => { setShowImportModal(false); setImportPreview([]); setImportSummary(null); }}>✕</button>
+                    <button 
+                      onClick={() => { setShowImportModal(false); setImportPreview([]); setImportSummary(null); }}
+                      style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', transition: 'all 0.2s' }}
+                      onMouseOver={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#1e293b'; }}
+                      onMouseOut={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                   </div>
 
                   <div style={{ overflowY: 'auto', flex: 1, paddingRight: 8 }}>
@@ -910,7 +946,25 @@ export default function Inventory() {
                 </div>
                 <div className="field">
                   <label className="label">UNIT</label>
-                  <input className="input" required value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})} placeholder="e.g. kg, pieces, liters" />
+                  <input 
+                    className="input" 
+                    list="unit-suggestions"
+                    required 
+                    value={formData.unit} 
+                    onChange={e => setFormData({...formData, unit: e.target.value})} 
+                    placeholder="e.g. kg, pieces, liters" 
+                  />
+                  <datalist id="unit-suggestions">
+                    <option value="kg" />
+                    <option value="grams" />
+                    <option value="liters" />
+                    <option value="ml" />
+                    <option value="pieces" />
+                    <option value="box" />
+                    <option value="packet" />
+                    <option value="portion" />
+                    <option value="dozen" />
+                  </datalist>
                 </div>
                 <div className="field">
                   <label className="label">CURRENT STOCK</label>

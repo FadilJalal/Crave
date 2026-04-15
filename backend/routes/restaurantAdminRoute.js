@@ -127,6 +127,7 @@ router.post("/food/add", restaurantAuth, upload.single("image"), async (req, res
       category: req.body.category,
       restaurantId: req.restaurantId,
       customizations,
+      ingredients: req.body.ingredients || "",
     });
 
     await food.save();

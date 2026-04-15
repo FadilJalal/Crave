@@ -404,7 +404,7 @@ const bulkImportInventory = async (req, res) => {
         }
 
         const foodModel = (await import("../models/foodModel.js")).default;
-        const menuFoods = await foodModel.find({ restaurantId: req.restaurantId }).select("name").lean();
+        const menuFoods = await foodModel.find({ restaurantId: req.restaurantId }).select("name ingredients description").lean();
 
         let createdCount = 0;
         let updatedCount = 0;
@@ -445,12 +445,25 @@ const bulkImportInventory = async (req, res) => {
                  if (itemData.linkedMenuItems && Array.isArray(itemData.linkedMenuItems) && itemData.linkedMenuItems.length > 0) {
                      updates.linkedMenuItems = itemData.linkedMenuItems;
                  } else if (!existingItem.linkedMenuItems || existingItem.linkedMenuItems.length === 0) {
-                     const cleanName = itemName.toLowerCase().trim();
-                     const match = menuFoods.find(f => 
-                        f.name.toLowerCase().trim() === cleanName || 
-                        f.name.toLowerCase().includes(cleanName) ||
-                        cleanName.includes(f.name.toLowerCase())
-                     );
+                     const itemNameLower = itemName.toLowerCase().trim();
+                     const normalizedSearch = itemNameLower
+                         .replace(/potatoe|potos|potat/gi, "potato")
+                         .replace(/s\b|es\b/gi, "")
+                         .trim();
+
+                     const match = menuFoods.find(f => {
+                        const fName = (f.name || "").toLowerCase();
+                        const fIngsRaw = (f.ingredients || "").toLowerCase();
+                        const normalizedIngs = fIngsRaw.replace(/potatoe|potos|potat/gi, "potato");
+                        const fDesc = (f.description || "").toLowerCase();
+                        
+                        const combined = `${fName} ${fIngsRaw} ${fDesc}`;
+                        
+                        return normalizedIngs.includes(normalizedSearch) || 
+                               fIngsRaw.includes(itemNameLower) ||
+                               combined.includes(itemNameLower) ||
+                               itemNameLower.includes(fName);
+                     });
                      if (match) {
                          updates.linkedMenuItems = [{ foodId: match._id, quantityPerOrder: 1 }];
                          linkedCount++;
@@ -466,13 +479,25 @@ const bulkImportInventory = async (req, res) => {
                     linkedMenuItems = itemData.linkedMenuItems;
                     linkedCount++;
                 } else {
-                    // Internal auto-link for NEW items
-                    const cleanName = itemName.toLowerCase().trim();
-                    const match = menuFoods.find(f => 
-                        f.name.toLowerCase().trim() === cleanName || 
-                        f.name.toLowerCase().includes(cleanName) ||
-                        cleanName.includes(f.name.toLowerCase())
-                    );
+                    const itemNameLower = itemName.toLowerCase().trim();
+                    const normalizedSearch = itemNameLower
+                        .replace(/potatoe|potos|potat/gi, "potato")
+                        .replace(/s\b|es\b/gi, "")
+                        .trim();
+
+                    const match = menuFoods.find(f => {
+                        const fName = (f.name || "").toLowerCase();
+                        const fIngsRaw = (f.ingredients || "").toLowerCase();
+                        const normalizedIngs = fIngsRaw.replace(/potatoe|potos|potat/gi, "potato");
+                        const fDesc = (f.description || "").toLowerCase();
+                        
+                        const combined = `${fName} ${fIngsRaw} ${fDesc}`;
+                        
+                        return normalizedIngs.includes(normalizedSearch) || 
+                               fIngsRaw.includes(itemNameLower) ||
+                               combined.includes(itemNameLower) ||
+                               itemNameLower.includes(fName);
+                    });
                     if (match) {
                         linkedMenuItems = [{ foodId: match._id, quantityPerOrder: 1 }];
                         linkedCount++;
@@ -917,6 +942,53 @@ const getFoodIngredients = async (req, res) => {
     }
 };
 
+// ── Sync ALL missing menu links for the restaurant ────────────────────────
+const syncAllLinks = async (req, res) => {
+    try {
+        const foodModel = (await import("../models/foodModel.js")).default;
+        const menuFoods = await foodModel.find({ restaurantId: req.restaurantId }).select("name ingredients description").lean();
+        const inventoryItems = await inventoryModel.find({ restaurantId: req.restaurantId, isActive: true });
+
+        let syncedCount = 0;
+
+        for (const item of inventoryItems) {
+            // Only try to sync if currently unlinked or empty
+            if (!item.linkedMenuItems || item.linkedMenuItems.length === 0) {
+                const itemName = item.itemName.toLowerCase().trim();
+                const normalizedSearch = itemName
+                    .replace(/potatoe|potos|potat/gi, "potato")
+                    .replace(/s\b|es\b/gi, "")
+                    .trim();
+
+                const matches = menuFoods.filter(f => {
+                    const fName = (f.name || "").toLowerCase();
+                    const fIngsRaw = (f.ingredients || "").toLowerCase();
+                    const normalizedIngs = fIngsRaw.replace(/potatoe|potos|potat/gi, "potato");
+                    const fDesc = (f.description || "").toLowerCase();
+                    
+                    const combined = `${fName} ${fIngsRaw} ${fDesc}`;
+                    
+                    return normalizedIngs.includes(normalizedSearch) || 
+                           fIngsRaw.includes(itemName) ||
+                           combined.includes(itemName) ||
+                           itemName.includes(fName);
+                });
+
+                if (matches.length > 0) {
+                    const newLinks = matches.map(m => ({ foodId: m._id, quantityPerOrder: 1 }));
+                    await inventoryModel.updateOne({ _id: item._id }, { $set: { linkedMenuItems: newLinks } });
+                    syncedCount++;
+                }
+            }
+        }
+
+        res.json({ success: true, message: `Successfully synced ${syncedCount} new links!`, syncedCount });
+    } catch (error) {
+        console.error("Error syncing all links:", error);
+        res.status(500).json({ success: false, message: "Failed to sync links" });
+    }
+};
+
 // ── Unlink a menu item from an inventory item ─────────────────────────────
 const unlinkMenuItem = async (req, res) => {
     try {
@@ -946,7 +1018,7 @@ const getRestaurantFoods = async (req, res) => {
         const foodModel = (await import("../models/foodModel.js")).default;
         const foods = await foodModel
             .find({ restaurantId: req.restaurantId })
-            .select("name image price category inStock")
+            .select("name image price category inStock ingredients description")
             .sort({ name: 1 })
             .lean();
         res.json({ success: true, data: foods });
@@ -956,21 +1028,28 @@ const getRestaurantFoods = async (req, res) => {
     }
 };
 
-// ── Automatic Inventory Deduction for Orders ───────────────────────────────
 const deductInventoryForOrder = async (restaurantId, orderItems, orderId) => {
     try {
+        console.log(`[inventory][deduct] Starting deduction for order ${orderId} (restaurant: ${restaurantId})`);
         if (!orderItems || orderItems.length === 0) {
+            console.log(`[inventory][deduct] No items in order to deduct.`);
             return { success: true, message: "No items to deduct" };
         }
 
         // Build a map of foodId -> quantity ordered
         const orderedMap = {};
         for (const oi of orderItems) {
-            const fid = oi._id || oi.foodId;
-            if (!fid) continue;
-            const key = String(fid);
+            // Check all possible ID fields (Mongoose _id, or flat foodId)
+            const idSource = oi._id || oi.foodId || oi.id;
+            if (!idSource) {
+                console.warn(`[inventory][deduct] Item in order ${orderId} missing ID:`, oi.name);
+                continue;
+            }
+            const key = String(idSource);
             orderedMap[key] = (orderedMap[key] || 0) + (Number(oi.quantity) || 0);
         }
+
+        console.log(`[inventory][deduct] Ordered Items Map:`, orderedMap);
 
         const inventoryItems = await inventoryModel.find({
             restaurantId,
@@ -978,71 +1057,85 @@ const deductInventoryForOrder = async (restaurantId, orderItems, orderId) => {
             "linkedMenuItems.0": { $exists: true }
         });
 
+        console.log(`[inventory][deduct] Found ${inventoryItems.length} inventory items with links.`);
+
         const deductionResults = [];
 
         for (const inv of inventoryItems) {
             let invCurrentStock = Number(inv.currentStock) || 0;
+            let totalDeductionForThisItem = 0;
+            const itemLogs = [];
 
             for (const link of inv.linkedMenuItems) {
+                // Ensure we get the raw ID string
                 const foodKey = String(link.foodId?._id || link.foodId || "");
                 const qtyOrdered = Number(orderedMap[foodKey] || 0);
-                if (!qtyOrdered || Number(link.quantityPerOrder) <= 0) continue;
+                
+                if (!qtyOrdered) continue;
+                if (Number(link.quantityPerOrder) <= 0) {
+                    console.warn(`[inventory][deduct] Invalid link qty for ${inv.itemName} -> ${foodKey}`);
+                    continue;
+                }
 
                 const linkQtyPerOrder = Number(link.quantityPerOrder);
                 const qtyToDeduct = Number((qtyOrdered * linkQtyPerOrder).toFixed(4));
-                const stockBefore = invCurrentStock;
-                const stockAfter = Math.max(0, stockBefore - qtyToDeduct);
-
-                invCurrentStock = stockAfter;
-
-                await inventoryModel.findByIdAndUpdate(inv._id, {
-                    currentStock: invCurrentStock,
-                    $push: {
-                        deductionLog: {
-                            $each: [{
-                                orderId: orderId || "unknown",
-                                foodId: foodKey,
-                                foodName: orderItems.find(oi => String(oi._id || oi.foodId) === foodKey)?.name || "",
-                                qtyOrdered,
-                                qtyDeducted: qtyToDeduct,
-                                stockBefore,
-                                stockAfter,
-                                date: new Date()
-                            }],
-                            $slice: -100
-                        }
-                    }
+                
+                totalDeductionForThisItem += qtyToDeduct;
+                itemLogs.push({
+                    orderId: orderId || "unknown",
+                    foodId: foodKey,
+                    foodName: orderItems.find(oi => String(oi._id || oi.foodId || oi.id) === foodKey)?.name || "Unknown Item",
+                    qtyOrdered,
+                    qtyDeducted: qtyToDeduct,
+                    stockBefore: invCurrentStock - (totalDeductionForThisItem - qtyToDeduct),
+                    stockAfter: invCurrentStock - totalDeductionForThisItem,
+                    date: new Date()
                 });
 
                 deductionResults.push({
                     inventoryItem: inv.itemName,
-                    inventoryId: inv._id,
                     foodId: foodKey,
-                    qtyOrdered,
-                    qtyDeducted: qtyToDeduct,
-                    stockBefore,
-                    stockAfter,
-                    linkQuantityPerOrder: linkQtyPerOrder,
-                    success: true
+                    qtyDeducted: qtyToDeduct
                 });
+            }
+
+            // Apply the total deduction for this inventory item in one go
+            if (totalDeductionForThisItem > 0) {
+                const stockBefore = inv.currentStock;
+                const stockAfter = Math.max(0, stockBefore - totalDeductionForThisItem);
+
+                await inventoryModel.findByIdAndUpdate(inv._id, {
+                    currentStock: stockAfter,
+                    $push: {
+                        deductionLog: {
+                            $each: itemLogs,
+                            $slice: -100
+                        }
+                    }
+                });
+                console.log(`[inventory][deduct] Successfully deducted ${totalDeductionForThisItem} from ${inv.itemName} (${stockBefore} -> ${stockAfter})`);
             }
         }
 
-        console.log(`[inventory] Deducted ${deductionResults.length} entries for order ${orderId || "?"}`);
+        if (deductionResults.length === 0) {
+            console.log(`[inventory][deduct] No deduction was needed for this order (no linked ingredients found in maps).`);
+        } else {
+            console.log(`[inventory][deduct] Completed ${deductionResults.length} deductions for order ${orderId}`);
+        }
         
-        // Mark order as deducted
+        // Mark order as deducted in DB
         if (orderId && orderId !== "unknown") {
             try {
                 const orderModel = (await import("../models/orderModel.js")).default;
                 await orderModel.findByIdAndUpdate(orderId, { inventoryDeducted: true });
             } catch (e) {
-                console.error("[inventory] Failed to update order inventoryDeducted flag:", e);
+                console.error("[inventory][deduct] Failed to update flag on orderDoc:", e.message);
             }
         }
 
         return { success: true, message: "Inventory deduction completed", deductions: deductionResults };
     } catch (error) {
-        console.error("Error deducting inventory:", error);
+        console.error("[inventory][deduct] FATAL ERROR during deduction:", error);
         return { success: false, message: "Failed to deduct inventory", error: error.message };
     }
 };
@@ -1704,5 +1797,6 @@ export {
     getStockTurnoverAnalytics,
     getSupplierAnalytics,
     getInventoryPaginated,
-    getCostAnalysis
+    getCostAnalysis,
+    syncAllLinks
 };
