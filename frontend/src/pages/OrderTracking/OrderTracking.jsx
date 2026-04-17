@@ -78,23 +78,6 @@ const OrderTracking = () => {
       if (res.data.success) {
         const newOrder = res.data.data;
         
-        // Notify user if status changed
-        if (prevStatusRef.current && prevStatusRef.current !== newOrder.status) {
-          const statusMap = {
-            'Order Accepted': '✅ Your order has been accepted by the restaurant!',
-            'Food Processing': '🍳 The chef has started preparing your food!',
-            'Out for Delivery': '🛵 Your order is on the way!',
-            'Delivered': '🏁 Enjoy your meal! Order delivered.',
-          };
-          
-          const matchedKey = Object.keys(statusMap).find(k => k.toLowerCase() === newOrder.status?.toLowerCase());
-          const msg = statusMap[matchedKey];
-          
-          if (msg) {
-            playNotificationSound();
-            toast.success(msg, { icon: '🔔', autoClose: 5000 });
-          }
-        }
         prevStatusRef.current = newOrder.status;
 
         setOrder(newOrder);

@@ -1,4 +1,25 @@
 import inventoryModel from "../models/inventoryModel.js";
+import mongoose from "mongoose";
+
+/**
+ * Smart quantity parser: extracts numbers from strings like "20pcs", "15 PC", "10 units"
+ * Defaults to 1 if no clear pattern is found.
+ */
+const extractQuantityFromName = (name = "") => {
+    const text = name.toLowerCase();
+    // Match patterns like "20pcs", "20 pcs", "20 pieces", "20 pc", "20 units", "20 count"
+    const match = text.match(/(\d+(?:\.\d+)?)\s*(?:pcs|pieces|pc|units?|items?|count|pieces|sticks?)\b/);
+    if (match && match[1]) {
+        const val = parseFloat(match[1]);
+        return val > 0 ? val : 1;
+    }
+    // Fallback: search for just a leading number like "6 Nugget"
+    const leadingMatch = text.match(/^(\d+)\s/);
+    if (leadingMatch && leadingMatch[1]) {
+        return parseFloat(leadingMatch[1]) || 1;
+    }
+    return 1;
+};
 
 const normalizeLinkedMenuItems = (linkedMenuItems = []) => {
     const deduped = new Map();
@@ -150,7 +171,8 @@ const addInventoryItem = async (req, res) => {
             });
 
             if (match) {
-                linkedMenuItems.push({ foodId: match._id, quantityPerOrder: 1 });
+                const qty = extractQuantityFromName(match.name);
+                linkedMenuItems.push({ foodId: match._id, quantityPerOrder: qty });
             }
         } catch (linkErr) {
             console.error("Auto-link fallback error:", linkErr);
@@ -465,7 +487,8 @@ const bulkImportInventory = async (req, res) => {
                                itemNameLower.includes(fName);
                      });
                      if (match) {
-                         updates.linkedMenuItems = [{ foodId: match._id, quantityPerOrder: 1 }];
+                         const qty = extractQuantityFromName(match.name);
+                         updates.linkedMenuItems = [{ foodId: match._id, quantityPerOrder: qty }];
                          linkedCount++;
                      }
                  }
@@ -499,7 +522,8 @@ const bulkImportInventory = async (req, res) => {
                                itemNameLower.includes(fName);
                     });
                     if (match) {
-                        linkedMenuItems = [{ foodId: match._id, quantityPerOrder: 1 }];
+                        const qty = extractQuantityFromName(match.name);
+                        linkedMenuItems = [{ foodId: match._id, quantityPerOrder: qty }];
                         linkedCount++;
                     }
                 }
@@ -975,7 +999,10 @@ const syncAllLinks = async (req, res) => {
                 });
 
                 if (matches.length > 0) {
-                    const newLinks = matches.map(m => ({ foodId: m._id, quantityPerOrder: 1 }));
+                    const newLinks = matches.map(m => ({ 
+                        foodId: m._id, 
+                        quantityPerOrder: extractQuantityFromName(m.name) 
+                    }));
                     await inventoryModel.updateOne({ _id: item._id }, { $set: { linkedMenuItems: newLinks } });
                     syncedCount++;
                 }

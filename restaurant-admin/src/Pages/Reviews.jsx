@@ -36,12 +36,17 @@ const ReplyBox = ({ review, onReplied }) => {
     if (!text.trim()) return;
     setLoading(true);
     try {
-      const res = await api.post(`/api/review/reply/${review._id}`, { text });
+      const res = await api.post("/api/review/reply", { 
+        reviewId: review._id,
+        reply: text 
+      });
       if (res.data.success) {
         onReplied(review._id, res.data.reply);
         setOpen(false);
       }
-    } catch {}
+    } catch (err) {
+      console.error("Reply failed:", err);
+    }
     setLoading(false);
   };
 

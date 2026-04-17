@@ -534,16 +534,37 @@ export default function Inventory() {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(12px);
-            padding: 18px 24px;
-            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(16px);
+            padding: 12px 24px;
+            border-radius: 18px;
             border: 1px solid #e5e7eb;
-            margin-top: 32px;
+            margin-top: 24px;
             position: sticky;
-            top: 16px;
-            z-index: 100;
+            top: 80px;
+            z-index: 95;
             box-shadow: 0 4px 20px -5px rgba(0,0,0,0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          @media (max-width: 900px) {
+            .action-navbar {
+              flex-direction: column;
+              gap: 16px;
+              align-items: flex-start;
+              padding: 16px;
+            }
+            .action-navbar > div {
+              width: 100%;
+              justify-content: space-between;
+            }
+          }
+          
+          /* Dark mode adjustment */
+          [data-theme="dark"] .action-navbar {
+            background: rgba(15, 23, 42, 0.85);
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 20px -5px rgba(0,0,0,0.3);
           }
 
           .stock-ctrl {
@@ -556,6 +577,11 @@ export default function Inventory() {
             margin: 16px 0;
             border: 1px solid #f1f5f9;
           }
+          
+          [data-theme="dark"] .stock-ctrl {
+            background: rgba(255,255,255,0.03);
+            border-color: rgba(255,255,255,0.05);
+          }
 
           .progress-bar { 
             height: 6px; 
@@ -563,6 +589,10 @@ export default function Inventory() {
             border-radius: 100px; 
             overflow: hidden; 
             margin-top: 6px; 
+          }
+          
+          [data-theme="dark"] .progress-bar {
+            background: rgba(255,255,255,0.05);
           }
 
           .progress-fill { 
@@ -585,11 +615,22 @@ export default function Inventory() {
             justify-content: center;
             gap: 6px;
           }
+          
+          [data-theme="dark"] .card-action-btn {
+            background: #1e293b;
+            border-color: rgba(255,255,255,0.08);
+            color: #f1f5f9;
+          }
 
           .card-action-btn:hover { 
             background: #111827; 
             color: white; 
             border-color: #111827;
+          }
+          
+          [data-theme="dark"] .card-action-btn:hover {
+            background: #ff4e2a;
+            border-color: #ff4e2a;
           }
 
           .card-checkbox { 
@@ -608,14 +649,27 @@ export default function Inventory() {
             border-radius: 100px;
             border: 1px solid #e5e7eb;
             background: white;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
+            white-space: nowrap;
+          }
+          
+          [data-theme="dark"] .filter-pill {
+            background: #1e293b;
+            border-color: rgba(255,255,255,0.08);
+            color: #94a3b8;
           }
 
           .filter-pill:hover { border-color: #ff4e2a; color: #ff4e2a; }
           .filter-pill.active { background: #111827; color: white; border-color: #111827; }
+          
+          [data-theme="dark"] .filter-pill.active {
+            background: #ff4e2a;
+            border-color: #ff4e2a;
+            color: white;
+          }
           
           .drop-zone {
             border: 2px dashed #e5e7eb;

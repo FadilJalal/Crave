@@ -8,10 +8,12 @@ export const NotificationContext = createContext({});
 const POLL_INTERVAL = 10000;
 
 const NOTIF_CONFIG = {
-  'Food Processing':  { emoji: '👨‍🍳', msg: (r) => `Your order from ${r} is being prepared!`, color: '#f59e0b', bg: '#fffbeb' },
+  'Accepted':         { emoji: '✅', msg: (r) => `Your order from ${r} has been accepted!`,    color: '#10b981', bg: '#f0fdfa' },
+  'Order Accepted':   { emoji: '✅', msg: (r) => `Your order from ${r} has been accepted!`,    color: '#10b981', bg: '#f0fdfa' },
+  'Food Processing':  { emoji: '🍳', msg: (r) => `The chef at ${r} is preparing your food!`, color: '#f59e0b', bg: '#fffbeb' },
   'Out for Delivery': { emoji: '🛵', msg: (r) => `Your order from ${r} is on its way!`,       color: '#3b82f6', bg: '#eff6ff' },
   'Out for delivery': { emoji: '🛵', msg: (r) => `Your order from ${r} is on its way!`,       color: '#3b82f6', bg: '#eff6ff' },
-  'Delivered':        { emoji: '✅', msg: (r) => `Your order from ${r} has been delivered!`,   color: '#16a34a', bg: '#f0fdf4' },
+  'Delivered':        { emoji: '🏁', msg: (r) => `Enjoy your meal! Order delivered from ${r}.`, color: '#16a34a', bg: '#f0fdf4' },
 };
 
 function playNotifSound() {

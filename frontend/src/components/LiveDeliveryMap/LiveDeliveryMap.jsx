@@ -165,6 +165,7 @@ export default function LiveDeliveryMap({ order }) {
   const routeRef    = useRef(null); // full road route points
   const firstStopProgressRef = useRef(null);
   const firstStopNotifiedRef = useRef(false);
+  const [renderedProgress, setRenderedProgress] = useState(0);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -427,9 +428,45 @@ export default function LiveDeliveryMap({ order }) {
         routeRef.current = null;
         firstStopProgressRef.current = null;
         firstStopNotifiedRef.current = false;
+        setRenderedProgress(0);
       }
     };
-  }, [customerCoords, firstOrderCoords]);
+  }, [customerCoords, firstOrderCoords, order?.status]);
+
+  // Logic to animate progress slowly from 0 to a target point when "Out for Delivery"
+  useEffect(() => {
+    if (!order?.status) return;
+    const s = order.status.toLowerCase().trim();
+    
+    if (s === 'delivered') {
+      setRenderedProgress(1);
+      return;
+    }
+
+    if (s === 'out for delivery') {
+      let start = null;
+      let frameId = null;
+      const duration = 180000; // 3 minutes to go through the route (slower, more realistic)
+      
+      const step = (timestamp) => {
+        if (!start) start = timestamp;
+        const elapsed = timestamp - start;
+        const progress = Math.min(0.92, (elapsed / duration)); // Move to 92% and stay there
+        
+        setRenderedProgress(progress);
+        if (progress < 0.92) {
+          frameId = requestAnimationFrame(step);
+        }
+      };
+      
+      frameId = requestAnimationFrame(step);
+      return () => {
+        if (frameId) cancelAnimationFrame(frameId);
+      };
+    } else {
+      setRenderedProgress(0);
+    }
+  }, [order?.status]);
 
   useEffect(() => {
     if (!order?.isSharedDelivery || !firstOrderCoords) return;
@@ -444,7 +481,7 @@ export default function LiveDeliveryMap({ order }) {
     }
   }, [order?.isSharedDelivery, order?.status, firstOrderCoords, statusInfo.progress]);
 
-  // Update rider position when status changes
+  // Update rider position when status or renderedProgress changes
   useEffect(() => {
     if (!mapRef.current || !customerCoords || !markersRef.current.rider) return;
     import('leaflet').then(L => {
@@ -455,14 +492,14 @@ export default function LiveDeliveryMap({ order }) {
 
       if (routeRef.current && routeRef.current.length > 1) {
         // Move rider along the actual road route
-        riderPos = interpolateAlongRoute(routeRef.current, statusInfo.progress);
-        const splitIndex = Math.round(statusInfo.progress * (routeRef.current.length - 1));
+        riderPos = interpolateAlongRoute(routeRef.current, renderedProgress);
+        const splitIndex = Math.round(renderedProgress * (routeRef.current.length - 1));
         donePortion = routeRef.current.slice(0, splitIndex + 1);
       } else if (restaurantCoords) {
         // Fallback straight-line interpolation
         riderPos = [
-          restaurantCoords[0] + (customerCoords[0] - restaurantCoords[0]) * statusInfo.progress,
-          restaurantCoords[1] + (customerCoords[1] - restaurantCoords[1]) * statusInfo.progress,
+          restaurantCoords[0] + (customerCoords[0] - restaurantCoords[0]) * renderedProgress,
+          restaurantCoords[1] + (customerCoords[1] - restaurantCoords[1]) * renderedProgress,
         ];
         donePortion = [restaurantCoords, riderPos];
       } else {
@@ -471,7 +508,7 @@ export default function LiveDeliveryMap({ order }) {
 
       markersRef.current.rider.setLatLng(riderPos);
       if (mountedRef.current) {
-        markersRef.current.rider.setIcon(makePulseIcon(L, statusInfo.step === 3 ? '✅' : '🛵', statusInfo.color));
+        markersRef.current.rider.setIcon(makePulseIcon(L, renderedProgress >= 1 ? '✅' : '🛵', statusInfo.color));
       }
 
       if (doneLineRef.current) {
@@ -479,7 +516,7 @@ export default function LiveDeliveryMap({ order }) {
         doneLineRef.current.setStyle({ color: statusInfo.color });
       }
     });
-  }, [order?.status, customerCoords]);
+  }, [renderedProgress, customerCoords]);
 
   const distanceKm = customerCoords && restaurantCoords
     ? haversine(customerCoords[0], customerCoords[1], restaurantCoords[0], restaurantCoords[1])

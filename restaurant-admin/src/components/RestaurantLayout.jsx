@@ -263,14 +263,12 @@ export default function RestaurantLayout({ children }) {
         .nav-group {
           margin-bottom: 8px;
           border-radius: 12px;
-          overflow: hidden;
-          transition: all 0.3s ease;
+          transition: background 0.3s ease, margin 0.3s ease;
         }
         .nav-group.expanded {
-          background: rgba(255, 255, 255, 0.03);
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          margin: 8px 12px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          margin: 4px 6px;
         }
         .nav-group-header {
           width: 100%;
@@ -289,9 +287,8 @@ export default function RestaurantLayout({ children }) {
         }
         .nav-group.expanded .nav-group-header {
           color: #fff;
-          background: linear-gradient(90deg, rgba(255, 78, 42, 0.1), transparent);
-          border-left: 3px solid #ff4e2a;
-          padding-left: 13px;
+          background: rgba(255, 255, 255, 0.03);
+          padding-left: 16px;
         }
         .nav-group-icon {
           margin-right: 12px;
@@ -309,7 +306,7 @@ export default function RestaurantLayout({ children }) {
         .nav-group.expanded .nav-group-arrow {
           transform: rotate(90deg);
           opacity: 1;
-          color: #ff4e2a;
+          color: var(--primary);
         }
         .nav-group-content {
           padding: 4px 0 8px;
@@ -317,6 +314,8 @@ export default function RestaurantLayout({ children }) {
         }
         .nav-group.expanded .nav-group-content {
           display: block;
+          max-height: 2000px;
+          opacity: 1;
         }
         .nav-group-content a, .nav-group-content .nav-link-disabled {
           display: block;
@@ -332,8 +331,11 @@ export default function RestaurantLayout({ children }) {
           background: rgba(255, 255, 255, 0.05);
         }
         .nav-group-content a.active {
-          color: #ff4e2a;
-          background: rgba(255, 78, 42, 0.08);
+          color: var(--sidebar-active-text);
+          background: var(--sidebar-active-bg);
+          border: 1px solid var(--sidebar-active-border);
+          border-radius: 8px;
+          margin: 0 8px;
           font-weight: 800;
         }
       `}</style>

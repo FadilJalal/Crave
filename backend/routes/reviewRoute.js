@@ -161,6 +161,29 @@ reviewRouter.post("/reply", restaurantAuth, async (req, res) => {
   }
 });
 
+// Legacy shim for older frontend calls
+reviewRouter.post("/reply/:reviewId", restaurantAuth, async (req, res) => {
+  try {
+    const text = req.body.text || req.body.reply;
+    const { reviewId } = req.params;
+    
+    const review = await reviewModel.findById(reviewId);
+    if (!review) return res.json({ success: false, message: "Review not found." });
+
+    if (String(review.restaurantId) !== String(req.restaurantId)) {
+      return res.status(403).json({ success: false, message: "Not your review." });
+    }
+
+    review.reply = { text: text.trim().slice(0, 500), repliedAt: new Date() };
+    await review.save();
+
+    res.json({ success: true, message: "Reply posted.", reply: review.reply });
+  } catch (err) {
+    console.error("[review/reply-legacy]", err);
+    res.json({ success: false, message: "Error posting reply." });
+  }
+});
+
 // DELETE /api/review/reply/:reviewId — clear a reply
 reviewRouter.delete("/reply/:reviewId", restaurantAuth, async (req, res) => {
   try {
