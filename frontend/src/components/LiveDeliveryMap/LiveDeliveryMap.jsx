@@ -451,10 +451,22 @@ export default function LiveDeliveryMap({ order }) {
       const step = (timestamp) => {
         if (!start) start = timestamp;
         const elapsed = timestamp - start;
-        const progress = Math.min(0.92, (elapsed / duration)); // Move to 92% and stay there
         
-        setRenderedProgress(progress);
-        if (progress < 0.92) {
+        // Slower approach as it gets closer to the house
+        const rawProgress = elapsed / duration;
+        let progress;
+        
+        if (rawProgress < 0.95) {
+          progress = rawProgress;
+        } else {
+          // Slow down significantly for the last few meters (idle phase)
+          progress = 0.95 + (Math.min(0.04, (rawProgress - 0.95) * 0.1));
+        }
+        
+        const finalProgress = Math.min(0.99, progress);
+        setRenderedProgress(finalProgress);
+        
+        if (finalProgress < 0.99) {
           frameId = requestAnimationFrame(step);
         }
       };

@@ -443,8 +443,37 @@ export default function Inventory() {
       const exists = prev.find(l => (typeof l.foodId === 'object' ? String(l.foodId._id) : String(l.foodId)) === targetId);
       
       if (exists) return prev.filter(l => (typeof l.foodId === 'object' ? String(l.foodId._id) : String(l.foodId)) !== targetId);
-      return [...prev, { foodId: targetId, quantityPerOrder: 1 }];
+      
+      // Smart detection for new links
+      const food = menuItems.find(f => String(f._id) === targetId);
+      let qty = 1;
+      if (food) {
+        qty = autoDetectQty(food.name);
+      }
+
+      return [...prev, { foodId: targetId, quantityPerOrder: qty }];
     });
+  };
+
+  const autoDetectQty = (name = "") => {
+    const text = name.toLowerCase();
+    const match = text.match(/(\d+(?:\.\d+)?)\s*[-]*\s*(?:pcs?|pieces?|pc|units?|items?|counts?|sticks?|nuggets?|wings?|buckets?|portions?|strips?|slices?)\b/);
+    if (match) return parseFloat(match[1]) || 1;
+    const parenMatch = text.match(/[\(\[](\d+)[\)\]]/);
+    if (parenMatch) return parseFloat(parenMatch[1]) || 1;
+    return 1;
+  };
+
+  const handleAutoDetectAll = () => {
+    setSelectedLinks(prev => prev.map(link => {
+        const food = menuItems.find(f => String(f._id) === String(link.foodId));
+        if (food) {
+            const detectedValue = autoDetectQty(food.name);
+            return { ...link, quantityPerOrder: detectedValue };
+        }
+        return link;
+    }));
+    toast.info("Quantities auto-detected from names. Click 'Save' to apply.");
   };
 
   const saveLinks = async () => {
@@ -796,15 +825,17 @@ export default function Inventory() {
                               const dishName = link.foodId?.name || 'Dish';
                               return (
                                   <span key={idx} style={{ fontSize: 10, fontWeight: 700, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '2px 6px', borderRadius: 6, color: '#475569', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      {dishName}
+                                      {dishName} {link.quantityPerOrder > 1 ? `(${link.quantityPerOrder})` : ''}
                                   </span>
                               );
                           })
                       ) : (
-                          <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>No links</span>
+                          <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>No recipes linked</span>
                       )}
                       {(item.linkedMenuItems || []).length > 3 && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#ff4e2a' }}>+{(item.linkedMenuItems || []).length - 3} more</span>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: '#f97316', cursor: 'pointer' }} onClick={() => handleManageLinks(item)}>
+                              +{item.linkedMenuItems.length - 3} more
+                          </span>
                       )}
                   </div>
               </div>
@@ -1042,9 +1073,22 @@ export default function Inventory() {
       {showLinkModal && linkingItem && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
               <div className="card" style={{ width: '100%', maxWidth: 700, padding: 32, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ marginBottom: 24, flexShrink: 0 }}>
-                      <h2 style={{ margin: 0, fontWeight: 900 }}>Linking: {linkingItem.itemName}</h2>
-                      <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>Select menu items that use this ingredient.</p>
+                   <div style={{ marginBottom: 24, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                          <h2 style={{ margin: 0, fontWeight: 900, color: '#0f172a' }}>Recipe Linking: {linkingItem.itemName}</h2>
+                          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+                             Manage how much <strong>{linkingItem.itemName}</strong> is deducted per menu item.
+                          </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                          <button 
+                            className="btn btn-sm btn-outline" 
+                            style={{ background: '#f8fafc', borderColor: '#e2e8f0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+                            onClick={handleAutoDetectAll}
+                          >
+                             ✨ Auto-Detect Quantities
+                          </button>
+                      </div>
                   </div>
 
                   <div style={{ marginBottom: 16, flexShrink: 0 }}>

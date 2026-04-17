@@ -6,18 +6,29 @@ import mongoose from "mongoose";
  * Defaults to 1 if no clear pattern is found.
  */
 const extractQuantityFromName = (name = "") => {
-    const text = name.toLowerCase();
-    // Match patterns like "20pcs", "20 pcs", "20 pieces", "20 pc", "20 units", "20 count"
-    const match = text.match(/(\d+(?:\.\d+)?)\s*(?:pcs|pieces|pc|units?|items?|count|pieces|sticks?)\b/);
+    const text = name.toLowerCase().trim();
+    if (!text) return 1;
+
+    // Pattern 1: Look for numbers associated with units (20pcs, 15-piece, 10 units, 6 nuggets)
+    // Supports dash separators and singular/plural units
+    const match = text.match(/(\d+(?:\.\d+)?)\s*[-]*\s*(?:pcs|pieces?|pc|units?|items?|counts?|sticks?|nuggets?|wings?|buckets?|portions?|strips?|slices?|pcs\.)\b/);
     if (match && match[1]) {
         const val = parseFloat(match[1]);
         return val > 0 ? val : 1;
     }
-    // Fallback: search for just a leading number like "6 Nugget"
+
+    // Pattern 2: Look for numbers in parentheses like "(20)" or "[15]" near the end
+    const parenMatch = text.match(/[\(\[](\d+)[\)\]]\s*$/);
+    if (parenMatch && parenMatch[1]) {
+        return parseFloat(parenMatch[1]) || 1;
+    }
+
+    // Pattern 3: Fallback - check for leading numbers followed by a space (6 Nugget, 2 Pizza)
     const leadingMatch = text.match(/^(\d+)\s/);
     if (leadingMatch && leadingMatch[1]) {
         return parseFloat(leadingMatch[1]) || 1;
     }
+
     return 1;
 };
 
@@ -966,7 +977,7 @@ const getFoodIngredients = async (req, res) => {
     }
 };
 
-// ── Sync ALL missing menu links for the restaurant ────────────────────────
+// ── Sync ALL missing or incorrect menu links for the restaurant ───────────
 const syncAllLinks = async (req, res) => {
     try {
         const foodModel = (await import("../models/foodModel.js")).default;
@@ -974,9 +985,29 @@ const syncAllLinks = async (req, res) => {
         const inventoryItems = await inventoryModel.find({ restaurantId: req.restaurantId, isActive: true });
 
         let syncedCount = 0;
+        let repairedCount = 0;
 
         for (const item of inventoryItems) {
-            // Only try to sync if currently unlinked or empty
+            let changed = false;
+            
+            // 1. Repair existing links that are stuck at 1
+            if (item.linkedMenuItems && item.linkedMenuItems.length > 0) {
+                for (const link of item.linkedMenuItems) {
+                    if (link.quantityPerOrder === 1) {
+                        const food = menuFoods.find(f => String(f._id) === String(link.foodId));
+                        if (food) {
+                            const correctQty = extractQuantityFromName(food.name);
+                            if (correctQty > 1) {
+                                link.quantityPerOrder = correctQty;
+                                repairedCount++;
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Only try to sync new links if currently empty
             if (!item.linkedMenuItems || item.linkedMenuItems.length === 0) {
                 const itemName = item.itemName.toLowerCase().trim();
                 const normalizedSearch = itemName
@@ -987,13 +1018,10 @@ const syncAllLinks = async (req, res) => {
                 const matches = menuFoods.filter(f => {
                     const fName = (f.name || "").toLowerCase();
                     const fIngsRaw = (f.ingredients || "").toLowerCase();
-                    const normalizedIngs = fIngsRaw.replace(/potatoe|potos|potat/gi, "potato");
                     const fDesc = (f.description || "").toLowerCase();
-                    
                     const combined = `${fName} ${fIngsRaw} ${fDesc}`;
                     
-                    return normalizedIngs.includes(normalizedSearch) || 
-                           fIngsRaw.includes(itemName) ||
+                    return fIngsRaw.includes(normalizedSearch) || 
                            combined.includes(itemName) ||
                            itemName.includes(fName);
                 });
@@ -1003,13 +1031,23 @@ const syncAllLinks = async (req, res) => {
                         foodId: m._id, 
                         quantityPerOrder: extractQuantityFromName(m.name) 
                     }));
-                    await inventoryModel.updateOne({ _id: item._id }, { $set: { linkedMenuItems: newLinks } });
+                    item.linkedMenuItems = newLinks;
                     syncedCount++;
+                    changed = true;
                 }
+            }
+
+            if (changed) {
+                await item.save();
             }
         }
 
-        res.json({ success: true, message: `Successfully synced ${syncedCount} new links!`, syncedCount });
+        res.json({ 
+            success: true, 
+            message: `Sync complete! Synced ${syncedCount} new items and repaired ${repairedCount} existing links.`,
+            syncedCount,
+            repairedCount
+        });
     } catch (error) {
         console.error("Error syncing all links:", error);
         res.status(500).json({ success: false, message: "Failed to sync links" });
