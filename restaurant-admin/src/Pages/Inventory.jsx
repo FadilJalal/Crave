@@ -5,6 +5,24 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 
+const extractQuantityFromName = (name) => {
+    if (!name) return 1;
+    const patterns = [
+        /(\d+)\s*(?:-?\s*piece|pc|pcs|pce|wing|strip)/i,
+        /(?:pack|bucket|deal)\s*(?:of|for)?\s*(\d+)/i,
+        /(?:^|\s)(\d+)\s*(?:x|qty|quantity)/i,
+        /(\d+)\s*x\s*(?:^|\s)/i
+    ];
+    for (const pattern of patterns) {
+        const match = name.match(pattern);
+        if (match && match[1]) {
+            const val = parseInt(match[1]);
+            if (val > 0 && val < 500) return val;
+        }
+    }
+    return 1;
+};
+
 export default function Inventory() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -283,7 +301,7 @@ export default function Inventory() {
                 results.push({ 
                     foodId: f._id, 
                     foodName: f.name, 
-                    quantityPerOrder: 1 
+                    quantityPerOrder: extractQuantityFromName(f.name) 
                 });
             }
         });
@@ -457,8 +475,11 @@ export default function Inventory() {
 
   const autoDetectQty = (name = "") => {
     const text = name.toLowerCase();
-    const match = text.match(/(\d+(?:\.\d+)?)\s*[-]*\s*(?:pcs?|pieces?|pc|units?|items?|counts?|sticks?|nuggets?|wings?|buckets?|portions?|strips?|slices?)\b/);
+    // Handle "16pcs", "16 pcs", "16-piece", "16 count", "bucket of 15"
+    const match = text.match(/(\d+(?:\.\d+)?)\s*[-]*\s*(?:pcs?|pieces?|pc|units?|items?|counts?|sticks?|nuggets?|wings?|buckets?|portions?|strips?|slices?|pcs|piece)\b/i);
     if (match) return parseFloat(match[1]) || 1;
+    const ofMatch = text.match(/(?:of|contains|with)\s+(\d+)/i);
+    if (ofMatch) return parseFloat(ofMatch[1]) || 1;
     const parenMatch = text.match(/[\(\[](\d+)[\)\]]/);
     if (parenMatch) return parseFloat(parenMatch[1]) || 1;
     return 1;
@@ -833,8 +854,16 @@ export default function Inventory() {
                           <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>No recipes linked</span>
                       )}
                       {(item.linkedMenuItems || []).length > 3 && (
-                          <span style={{ fontSize: 9, fontWeight: 800, color: '#f97316', cursor: 'pointer' }} onClick={() => handleManageLinks(item)}>
-                              +{item.linkedMenuItems.length - 3} more
+                          <span style={{ 
+                            fontSize: 9, 
+                            fontWeight: 800, 
+                            color: item.linkedMenuItems.length > 15 ? '#ef4444' : '#f97316', 
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }} onClick={() => handleManageLinks(item)}>
+                              {item.linkedMenuItems.length > 15 ? '🚨' : ''} +{item.linkedMenuItems.length - 3} more
                           </span>
                       )}
                   </div>
@@ -1080,26 +1109,24 @@ export default function Inventory() {
                              Manage how much <strong>{linkingItem.itemName}</strong> is deducted per menu item.
                           </p>
                       </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                          <button 
-                            className="btn btn-sm btn-outline" 
-                            style={{ background: '#f8fafc', borderColor: '#e2e8f0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
-                            onClick={handleAutoDetectAll}
-                          >
-                             ✨ Auto-Detect Quantities
-                          </button>
-                      </div>
                   </div>
 
-                  <div style={{ marginBottom: 16, flexShrink: 0 }}>
+                  <div style={{ marginBottom: 16, flexShrink: 0, display: 'flex', gap: 12 }}>
                       <input 
                         type="text" 
                         placeholder="Search menu items..." 
                         className="input" 
                         value={linkSearch} 
                         onChange={(e) => setLinkSearch(e.target.value)}
-                        style={{ background: '#f9fafb' }}
+                        style={{ background: '#f9fafb', flex: 1 }}
                       />
+                      <button 
+                        className="btn btn-sm" 
+                        style={{ background: '#ff4e2a', color: 'white', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8, padding: '0 24px', fontWeight: 900, border: 'none' }}
+                        onClick={handleAutoDetectAll}
+                      >
+                         ✨ Auto-Detect
+                      </button>
                   </div>
 
                   <div style={{ flex: 1, overflowY: 'auto', paddingRight: 8, marginBottom: 24 }}>

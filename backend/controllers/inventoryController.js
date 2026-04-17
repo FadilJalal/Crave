@@ -9,21 +9,26 @@ const extractQuantityFromName = (name = "") => {
     const text = name.toLowerCase().trim();
     if (!text) return 1;
 
-    // Pattern 1: Look for numbers associated with units (20pcs, 15-piece, 10 units, 6 nuggets)
-    // Supports dash separators and singular/plural units
+    // Pattern 1: Look for numbers associated with units (20pcs, 15-piece, 10 units)
     const match = text.match(/(\d+(?:\.\d+)?)\s*[-]*\s*(?:pcs|pieces?|pc|units?|items?|counts?|sticks?|nuggets?|wings?|buckets?|portions?|strips?|slices?|pcs\.)\b/);
     if (match && match[1]) {
         const val = parseFloat(match[1]);
         return val > 0 ? val : 1;
     }
 
-    // Pattern 2: Look for numbers in parentheses like "(20)" or "[15]" near the end
+    // Pattern 2: "Bucket of 15", "Order of 6"
+    const ofMatch = text.match(/\b(?:bucket|order|pack|box|deck|set|tray|plate|bowl|serving)\s+(?:of\s+)?(\d+)/i);
+    if (ofMatch && ofMatch[1]) {
+        return parseFloat(ofMatch[1]) || 1;
+    }
+
+    // Pattern 3: Look for numbers in parentheses like "(20)" or "[15]" near the end
     const parenMatch = text.match(/[\(\[](\d+)[\)\]]\s*$/);
     if (parenMatch && parenMatch[1]) {
         return parseFloat(parenMatch[1]) || 1;
     }
 
-    // Pattern 3: Fallback - check for leading numbers followed by a space (6 Nugget, 2 Pizza)
+    // Pattern 4: Fallback - check for leading numbers followed by a space (6 Nugget, 2 Pizza)
     const leadingMatch = text.match(/^(\d+)\s/);
     if (leadingMatch && leadingMatch[1]) {
         return parseFloat(leadingMatch[1]) || 1;
@@ -189,6 +194,24 @@ const addInventoryItem = async (req, res) => {
             console.error("Auto-link fallback error:", linkErr);
         }
 
+        // Check for duplicate before creating (escaping special chars for strict match)
+        const escapedName = itemName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const existing = await inventoryModel.findOne({
+            restaurantId: req.restaurantId,
+            itemName: new RegExp(`^${escapedName}$`, 'i'),
+            isActive: true
+        });
+
+        if (existing) {
+             // If it exists, we just update it instead of making a duplicate
+             existing.currentStock += Number(currentStock);
+             if (category) existing.category = category;
+             if (unit) existing.unit = unit;
+             if (unitCost) existing.unitCost = Number(unitCost);
+             await existing.save();
+             return res.json({ success: true, message: "Inventory updated (item already existed)", data: existing });
+        }
+
         const newItem = new inventoryModel({
             restaurantId: req.restaurantId,
             itemName,
@@ -198,7 +221,7 @@ const addInventoryItem = async (req, res) => {
             minimumStock: Number(minimumStock) || 10,
             maximumStock: Number(maximumStock) || 100,
             unitCost: Number(unitCost) || 0,
-            supplier: supplier ? JSON.parse(supplier) : {},
+            supplier: supplier ? (typeof supplier === 'string' ? JSON.parse(supplier) : supplier) : {},
             expiryDate: expiryDate ? new Date(expiryDate) : null,
             notes,
             isActive: true,
@@ -453,10 +476,11 @@ const bulkImportInventory = async (req, res) => {
                 try { supplier = JSON.parse(supplier); } catch (e) {}
             }
 
-            // Check if item already exists
+            // Escape special chars to prevent regex errors and ensure strict unique matching
+            const escapedName = itemName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const existingItem = await inventoryModel.findOne({
                 restaurantId: req.restaurantId,
-                itemName: new RegExp(`^${itemName.trim()}$`, 'i'),
+                itemName: new RegExp(`^${escapedName}$`, 'i'),
                 isActive: true
             });
 
@@ -484,19 +508,17 @@ const bulkImportInventory = async (req, res) => {
                          .replace(/s\b|es\b/gi, "")
                          .trim();
 
-                     const match = menuFoods.find(f => {
-                        const fName = (f.name || "").toLowerCase();
-                        const fIngsRaw = (f.ingredients || "").toLowerCase();
-                        const normalizedIngs = fIngsRaw.replace(/potatoe|potos|potat/gi, "potato");
-                        const fDesc = (f.description || "").toLowerCase();
-                        
-                        const combined = `${fName} ${fIngsRaw} ${fDesc}`;
-                        
-                        return normalizedIngs.includes(normalizedSearch) || 
-                               fIngsRaw.includes(itemNameLower) ||
-                               combined.includes(itemNameLower) ||
-                               itemNameLower.includes(fName);
-                     });
+                      const match = menuFoods.find(f => {
+                         const fName = (f.name || "").toLowerCase();
+                         const fIngsRaw = (f.ingredients || "").toLowerCase();
+                         const DISH_KEYWORDS = ["combo", "meal", "bucket", "deal", "offer", "pack", "sandwich", "burger", "pizza", "platter", "feast", "box"];
+                         const isLikelyDish = DISH_KEYWORDS.some(k => itemNameLower.includes(k));
+                        // Priority 1: High Confidence - Ingredient String Match (ALWAYS ALLOW)
+                        if (fIngsRaw.includes(normalizedSearch)) return true;
+                         if (fName === itemNameLower) return true;
+                         if (isLikelyDish) return false;
+                         return new RegExp(`\\b${normalizedSearch}\\b`, "i").test(fName);
+                      });
                      if (match) {
                          const qty = extractQuantityFromName(match.name);
                          updates.linkedMenuItems = [{ foodId: match._id, quantityPerOrder: qty }];
@@ -522,15 +544,20 @@ const bulkImportInventory = async (req, res) => {
                     const match = menuFoods.find(f => {
                         const fName = (f.name || "").toLowerCase();
                         const fIngsRaw = (f.ingredients || "").toLowerCase();
-                        const normalizedIngs = fIngsRaw.replace(/potatoe|potos|potat/gi, "potato");
-                        const fDesc = (f.description || "").toLowerCase();
-                        
-                        const combined = `${fName} ${fIngsRaw} ${fDesc}`;
-                        
-                        return normalizedIngs.includes(normalizedSearch) || 
-                               fIngsRaw.includes(itemNameLower) ||
-                               combined.includes(itemNameLower) ||
-                               itemNameLower.includes(fName);
+                        const DISH_KEYWORDS = ["combo", "meal", "bucket", "deal", "offer", "pack", "sandwich", "burger", "pizza", "platter", "feast", "box"];
+                        const isLikelyDish = DISH_KEYWORDS.some(k => itemNameLower.includes(k));
+
+                        // Priority 1: High Confidence - Ingredient String Match (ALWAYS ALLOW)
+                        if (fIngsRaw.includes(normalizedSearch)) return true;
+
+                        // Priority 2: Medium Confidence - Exact Name Match
+                        if (fName === itemNameLower) return true;
+
+                        // Priority 3: Partial Match - ONLY IF IT'S NOT A DISH NAME
+                        if (isLikelyDish) return false;
+
+                        // Final check: Word boundaries match
+                        return new RegExp(`\\b${normalizedSearch}\\b`, 'i').test(fName);
                     });
                     if (match) {
                         const qty = extractQuantityFromName(match.name);
@@ -982,12 +1009,40 @@ const syncAllLinks = async (req, res) => {
     try {
         const foodModel = (await import("../models/foodModel.js")).default;
         const menuFoods = await foodModel.find({ restaurantId: req.restaurantId }).select("name ingredients description").lean();
-        const inventoryItems = await inventoryModel.find({ restaurantId: req.restaurantId, isActive: true });
-
+        // --- STEP 0: Smart Cleanup & Deduplication ---
+        // If we have items with exact same name, merge their links and delete duplicates
+        const allInventory = await inventoryModel.find({ restaurantId: req.restaurantId, isActive: true });
+        const nameMap = new Map();
+        for (const item of allInventory) {
+            const lowerLabel = String(item.itemName || "").toLowerCase().trim();
+            if (!nameMap.has(lowerLabel)) {
+                nameMap.set(lowerLabel, item);
+            } else {
+                const existing = nameMap.get(lowerLabel);
+                // Merge links from duplicate to existing
+                if (item.linkedMenuItems && item.linkedMenuItems.length > 0) {
+                    const currentLinks = new Set(existing.linkedMenuItems.map(l => String(l.foodId?._id || l.foodId || "")));
+                    for (const link of item.linkedMenuItems) {
+                        const foodIdStr = String(link.foodId?._id || link.foodId || "");
+                        if (!currentLinks.has(foodIdStr) && foodIdStr) {
+                            existing.linkedMenuItems.push(link);
+                        }
+                    }
+                    await existing.save();
+                }
+                // Mark duplicate for deletion
+                await inventoryModel.findByIdAndDelete(item._id);
+                console.log(`[sync] Merged and deleted duplicate inventory: ${item.itemName}`);
+            }
+        }
+        
+        // Refresh items after cleanup
+        const cleanInventory = await inventoryModel.find({ restaurantId: req.restaurantId, isActive: true });
+        
         let syncedCount = 0;
         let repairedCount = 0;
 
-        for (const item of inventoryItems) {
+        for (const item of cleanInventory) {
             let changed = false;
             
             // 1. Repair existing links that are stuck at 1
@@ -1007,8 +1062,24 @@ const syncAllLinks = async (req, res) => {
                 }
             }
 
-            // 2. Only try to sync new links if currently empty
-            if (!item.linkedMenuItems || item.linkedMenuItems.length === 0) {
+            // 2. Identify if we need to sync:
+            // - It has no links
+            // - It has too many links (explosion)
+            // - It has 1 link but the quantity seems wrong (e.g. dish says "15pcs" but link says "1")
+            let needsSync = !item.linkedMenuItems || item.linkedMenuItems.length === 0 || excessiveLinks;
+            
+            if (!needsSync && item.linkedMenuItems.length > 0) {
+                for (const link of item.linkedMenuItems) {
+                    const dishName = link.foodId?.name || "";
+                    const detectedQty = extractQuantityFromName(dishName);
+                    if (detectedQty !== link.quantityPerOrder) {
+                        needsSync = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (needsSync) {
                 const itemName = item.itemName.toLowerCase().trim();
                 const normalizedSearch = itemName
                     .replace(/potatoe|potos|potat/gi, "potato")
@@ -1018,15 +1089,36 @@ const syncAllLinks = async (req, res) => {
                 const matches = menuFoods.filter(f => {
                     const fName = (f.name || "").toLowerCase();
                     const fIngsRaw = (f.ingredients || "").toLowerCase();
-                    const fDesc = (f.description || "").toLowerCase();
-                    const combined = `${fName} ${fIngsRaw} ${fDesc}`;
                     
-                    return fIngsRaw.includes(normalizedSearch) || 
-                           combined.includes(itemName) ||
-                           itemName.includes(fName);
+                    // Normalize dish name for better matching (handles plurals like Potatoes -> Potato)
+                    const fNameNorm = fName
+                        .replace(/potatoe|potos|potat/gi, "potato")
+                        .replace(/s\b|es\b/gi, "")
+                        .trim();
+
+                    const DISH_KEYWORDS = ["combo", "meal", "bucket", "deal", "offer", "pack", "sandwich", "burger", "pizza", "platter", "feast", "box"];
+                    const isLikelyDish = DISH_KEYWORDS.some(k => itemName.includes(k));
+
+                    // Priority 1: High Confidence - Ingredient String Match (ALWAYS ALLOW)
+                    if (fIngsRaw.includes(normalizedSearch)) return true;
+
+                    // Priority 2: Medium Confidence - Exact Name Match
+                    if (fNameNorm === normalizedSearch || fName === itemName) return true;
+
+                    // Priority 3: Partial Match - ONLY IF IT'S NOT A DISH NAME
+                    // (But allow if it's explicitly a food_ingredient category)
+                    if (isLikelyDish && item.category !== 'food_ingredient') return false;
+
+                    // Final check: Two-way fuzzy match with word boundaries or inclusion
+                    const boundaryRegex = new RegExp(`\\b${normalizedSearch}\\b`, 'i');
+                    return boundaryRegex.test(fNameNorm) || 
+                           fNameNorm.includes(normalizedSearch) || 
+                           normalizedSearch.includes(fNameNorm); // TWO-WAY match
                 });
 
-                if (matches.length > 0) {
+                // If we found reliable matches, update. 
+                // IF we were repairing an "explosion" and found 0 reliable matches, clear it!
+                if (matches.length < 15) {
                     const newLinks = matches.map(m => ({ 
                         foodId: m._id, 
                         quantityPerOrder: extractQuantityFromName(m.name) 
@@ -1034,6 +1126,8 @@ const syncAllLinks = async (req, res) => {
                     item.linkedMenuItems = newLinks;
                     syncedCount++;
                     changed = true;
+                } else if (matches.length >= 15 && excessiveLinks) {
+                    // Still too many matches, do nothing to avoid pollution
                 }
             }
 
@@ -1257,7 +1351,7 @@ const restoreInventoryForCancelledOrder = async (restaurantId, orderItems, order
 
             // Process each linked menu item
             for (const link of inv.linkedMenuItems) {
-                const foodKey = String(link.foodId);
+                const foodKey = String(link.foodId?._id || link.foodId || "");
                 const qtyOrdered = Number(orderedMap[foodKey] || 0);
                 if (!qtyOrdered || Number(link.quantityPerOrder) <= 0) continue;
 
@@ -1656,7 +1750,7 @@ const getInventoryPaginated = async (req, res) => {
 
         // Validate pagination params
         const pageNum = Math.max(1, parseInt(page) || 1);
-        const pageLimit = Math.min(Math.max(1, parseInt(limit) || 20), 100); // Max 100 per page
+        const pageLimit = Math.min(500, parseInt(limit) || 200); // Increased default limit for better bulk management
         const skip = (pageNum - 1) * pageLimit;
 
         // Build filter

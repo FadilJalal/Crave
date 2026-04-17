@@ -198,6 +198,9 @@ export default function Menu() {
     });
   };
 
+  // Duplicate cleaning is now handled automatically by the backend Upsert logic
+  // handleCleanDuplicates removed to simplify UI
+
   // --- REMOVED: Stock toggle functionality moved to Inventory section ---
  
   const generateDescription = async () => {
@@ -307,15 +310,18 @@ export default function Menu() {
             ({filtered.length}{filtered.length !== foods.length ? ` of ${foods.length}` : ""} items)
           </span>
         </h2>
-        <button onClick={() => navigate("/add-food")} style={{ 
-          padding: "12px 24px", borderRadius: 16, border: "none", 
-          background: "linear-gradient(90deg, #FF3008, #ff6b4a)", color: "white", 
-          fontWeight: 900, fontSize: 14, cursor: "pointer",
-          boxShadow: "0 8px 20px rgba(255,48,8,0.25)",
-          display: "flex", alignItems: "center", gap: 8
-        }}>
-          <span style={{ fontSize: 18 }}>+</span> Add New Item
-        </button>
+        <div style={{ display: "flex", gap: 12 }}>
+          {/* Manual duplicate cleaner removed as backend now handles upserts automatically */}
+          <button onClick={() => navigate("/add-food")} style={{ 
+            padding: "12px 24px", borderRadius: 16, border: "none", 
+            background: "linear-gradient(90deg, #FF3008, #ff6b4a)", color: "white", 
+            fontWeight: 900, fontSize: 14, cursor: "pointer",
+            boxShadow: "0 8px 20px rgba(255,48,8,0.25)",
+            display: "flex", alignItems: "center", gap: 8
+          }}>
+            <span style={{ fontSize: 18 }}>+</span> Add New Item
+          </button>
+        </div>
       </div>
 
       {!loading && (

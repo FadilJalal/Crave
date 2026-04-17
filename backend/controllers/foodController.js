@@ -11,6 +11,21 @@ const addFood = async (req, res) => {
 
     const image_filename = req.file.filename;
 
+    const escapedName = req.body.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const existing = await foodModel.findOne({
+      restaurantId: req.admin.restaurantId,
+      name: { $regex: new RegExp(`^${escapedName}$`, "i") }
+    });
+
+    if (existing) {
+      existing.description = req.body.description;
+      existing.price = Number(req.body.price);
+      existing.image = image_filename;
+      existing.category = req.body.category;
+      await existing.save();
+      return res.json({ success: true, message: "Food updated", data: existing });
+    }
+
     const food = new foodModel({
 
       name:req.body.name,

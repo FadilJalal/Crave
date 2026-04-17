@@ -195,6 +195,49 @@ foodRouter.post("/edit", (req, res, next) => {
   }
 });
 
+// ── DEDUPLICATE MENU ITEMS (restaurant admin) ─────────────────────────────
+foodRouter.post("/remove-duplicates", restaurantAuth, async (req, res) => {
+  try {
+    const restaurantId = req.restaurantId;
+    if (!restaurantId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    // Find all foods for this restaurant
+    const foods = await foodModel.find({ restaurantId }).sort({ createdAt: -1 });
+    
+    const seenNames = new Set();
+    const toDelete = [];
+    const keptCount = 0;
+
+    for (const food of foods) {
+      const lowerName = food.name.toLowerCase().trim();
+      if (seenNames.has(lowerName)) {
+        toDelete.push(food);
+      } else {
+        seenNames.add(lowerName);
+      }
+    }
+
+    if (toDelete.length === 0) {
+      return res.json({ success: true, message: "No duplicates found!", count: 0 });
+    }
+
+    // Delete image files and DB entries
+    for (const food of toDelete) {
+      try { if(food.image) fs.unlinkSync(`uploads/${food.image}`); } catch (e) {}
+      await foodModel.findByIdAndDelete(food._id);
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Cleaned up ${toDelete.length} duplicate items. Your menu is now unique!`, 
+      removed: toDelete.length 
+    });
+  } catch (error) {
+    console.error("[DEDUPE ERROR]", error);
+    res.status(500).json({ success: false, message: "Error cleaning duplicates" });
+  }
+});
+
 // ── DELETE ALL ITEMS IN A CATEGORY (restaurant admin) ─────────────────────
 foodRouter.post("/remove-by-category", (req, res, next) => {
   const authHeader = req.headers.authorization;

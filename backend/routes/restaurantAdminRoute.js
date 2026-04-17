@@ -119,6 +119,25 @@ router.post("/food/add", restaurantAuth, upload.single("image"), async (req, res
       }
     }
 
+    // ❌ CHECK FOR DUPLICATE BEFORE ADDING
+    const existingFood = await foodModel.findOne({
+      restaurantId: req.restaurantId,
+      name: { $regex: new RegExp(`^${req.body.name.trim()}$`, "i") }
+    });
+
+    if (existingFood) {
+      // Update existing
+      existingFood.description = req.body.description;
+      existingFood.price = Number(req.body.price);
+      existingFood.category = req.body.category;
+      existingFood.image = req.file.filename;
+      if (customizations.length > 0) existingFood.customizations = customizations;
+      existingFood.ingredients = req.body.ingredients || existingFood.ingredients;
+      
+      await existingFood.save();
+      return res.json({ success: true, message: "Food item updated (already existed)", data: existingFood });
+    }
+
     const food = new foodModel({
       name: req.body.name,
       description: req.body.description,

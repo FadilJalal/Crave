@@ -42,32 +42,49 @@ const parseSpreadsheet = async (file) => {
   return XLSX.utils.sheet_to_json(ws, { defval: "" });
 };
 
-const normaliseRow = (r) => ({
-  id:                  uid(),
-  name:                String(r.name        || r.Name        || r["Item Name"] || "").trim(),
-  category:            String(r.category    || r.Category    || "").trim(),
-  price:               String(r.price       || r.Price       || "").trim(),
-  description:         String(r.description || r.Description || "").trim(),
-  image_filename:      String(r.image_filename || r["Image Filename"] || r.image || "").trim(),
-  customizations_json: String(r.customizations_json || r.customizations || "").trim(),
-  ingredients:         String(r.ingredients || "").trim(),
+const normaliseRow = (r) => {
+  // Find key by inclusive matching (to handle cut-off headers like "descriptio")
+  const findValue = (keys) => {
+    const rowKeys = Object.keys(r);
+    for (const k of keys) {
+      if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== "") return r[k];
+      const foundKey = rowKeys.find(rk => {
+        const normalizedRK = rk.toLowerCase().replace(/[^a-z]/g, "");
+        const normalizedK = k.toLowerCase().replace(/[^a-z]/g, "");
+        return normalizedRK.includes(normalizedK) || normalizedK.includes(normalizedRK);
+      });
+      if (foundKey) return r[foundKey];
+    }
+    return "";
+  };
 
-  inventory_unit:       String(r.inventory_unit || r.unit || "").trim(),
-  inventory_currentStock: String(r.inventory_currentStock || r.currentStock || "").trim(),
-  inventory_minimumStock: String(r.inventory_minimumStock || r.minimumStock || "").trim(),
-  inventory_maximumStock: String(r.inventory_maximumStock || r.maximumStock || "").trim(),
-  inventory_unitCost:   String(r.inventory_unitCost || r.unitCost || "").trim(),
-  inventory_supplier:   String(r.inventory_supplier || r.supplier || "").trim(),
+  return {
+    id:                  uid(),
+    name:                String(findValue(["name", "itemname", "product"]) || "").trim(),
+    category:            String(findValue(["category", "cat", "type"]) || "").trim(),
+    price:               String(findValue(["price", "cost", "amt"]) || "").trim(),
+    description:         String(findValue(["description", "desc", "about"]) || "").trim(),
+    image_filename:      String(findValue(["image_filename", "image", "filename", "img"]) || "").trim(),
+    customizations_json: String(findValue(["customizations_json", "customizations", "mizations", "options"]) || "").trim(),
+    ingredients:         String(findValue(["ingredients", "ngredients", "recipe", "items"]) || "").trim(),
 
-  imageFile:      null,
-  imagePreview:   null,
-  customizations: [],
-  warnings:    [],
-  errors:      [],
-  valid:       false,
-  status:      "idle",
-  uploadError: "",
-});
+    inventory_unit:       String(findValue(["inventory_unit", "unit", "uom"]) || "").trim(),
+    inventory_currentStock: String(findValue(["inventory_currentStock", "currentStock", "stock", "qty"]) || "").trim(),
+    inventory_minimumStock: String(findValue(["inventory_minimumStock", "minimumStock", "minstock"]) || "").trim(),
+    inventory_maximumStock: String(findValue(["inventory_maximumStock", "maximumStock", "maxstock"]) || "").trim(),
+    inventory_unitCost:   String(findValue(["inventory_unitCost", "unitCost", "cost", "price"]) || "").trim(),
+    inventory_supplier:   String(findValue(["inventory_supplier", "supplier", "vendor"]) || "").trim(),
+
+    imageFile:      null,
+    imagePreview:   null,
+    customizations: [],
+    warnings:    [],
+    errors:      [],
+    valid:       false,
+    status:      "idle",
+    uploadError: "",
+  };
+};
 
 const buildImageMap = (imageFiles) => {
   const map = {};
@@ -96,7 +113,11 @@ const enrichRows = (rows, imageMap) =>
 const validateRow = (row) => {
   const errors = [];
   if (!row.name)                              errors.push("Missing name");
-  if (!row.price || isNaN(Number(row.price))) errors.push("Invalid price");
+  if (row.price !== "0" && !row.price && row.price !== 0) {
+    // If it's completely missing and not explicitly "0", then it's an error
+    // errors.push("Missing price"); // Actually let's just default to 0
+  }
+  if (row.price && isNaN(Number(row.price))) errors.push("Invalid price");
   if (!row.description)                       errors.push("Missing description");
   if (!row.imageFile)                         errors.push("No image matched");
 
@@ -116,7 +137,7 @@ const uploadRow = async (row) => {
   const form = new FormData();
   form.append("name",           row.name);
   form.append("category",       row.category);
-  form.append("price",          row.price);
+  form.append("price",          row.price || "0");
   form.append("description",    row.description);
   form.append("image",          row.imageFile);
   form.append("customizations", JSON.stringify(row.customizations));
@@ -155,7 +176,27 @@ const uploadRow = async (row) => {
   return res.data;
 };
 
-const parseIngredientString = (str) => {
+const extractQuantityFromName = (name) => {
+    if (!name) return 1;
+    // Patterns like "15pcs", "6 wings", "10-piece", "pack of 4"
+    const patterns = [
+        /(\d+)\s*(?:-?\s*piece|pc|pcs|pce|wing|strip|piece)/i,
+        /(?:pack|bucket|deal)\s*(?:of|for)?\s*(\d+)/i,
+        /(?:^|\s)(\d+)\s*(?:x|qty|quantity)/i,
+        /(\d+)\s*x\s*(?:^|\s)/i
+    ];
+
+    for (const pattern of patterns) {
+        const match = name.match(pattern);
+        if (match && match[1]) {
+            const val = parseInt(match[1]);
+            if (val > 0 && val < 100) return val; // Sanity check
+        }
+    }
+    return 1;
+};
+
+const parseIngredientString = (str, foodNameFallback = "") => {
   if (!str || !str.trim()) return [];
   
   // Remove any surrounding container characters like ( ) [ ] { }
@@ -163,13 +204,22 @@ const parseIngredientString = (str) => {
     .replace(/^[\(\{\[]+/, "")
     .replace(/[\)\}\]]+$/, "");
 
+  const fallbackQty = extractQuantityFromName(foodNameFallback);
+
   return cleanStr.split(",").map(s => {
-    const parts = s.trim().split(":");
-    // Handle Case where name might have a colon itself (unlikely but safe)
-    if (parts.length < 2) return null;
+    // Handle messy separators if necessary (e.g. mixture of ; and ,)
+    const cleanS = s.trim();
+    if (!cleanS) return null;
+
+    const parts = cleanS.split(":");
+    const name = parts[0].trim().replace(/^[\(\{\["']+|[\)\}\]"']+$/g, "").trim();
     
-    const name = parts[0].trim().replace(/^[\(\{\[]+/, "").replace(/[\)\}\]]+$/, "");
-    const qty = parseFloat(parts[1]) || 1;
+    let qty;
+    if (parts.length >= 2) {
+        qty = parseFloat(parts[1].replace(/[^\d.]/g, "")) || 1;
+    } else {
+        qty = fallbackQty; 
+    }
     
     return { name, qty };
   }).filter(i => i && i.name);
@@ -193,25 +243,39 @@ const guessUnit = (name) => {
   return "pieces";
 };
 
-const linkIngredientsForFood = async (foodId, parsedIngredients, inventoryItems, createdCache, pendingCreations) => {
-  for (const ing of parsedIngredients) {
-    const itemNameRaw = ing.name.toLowerCase().trim();
+const findBestInventoryMatch = (itemName, inventoryItems) => {
+    if (!itemName || !inventoryItems) return null;
+    const itemNameRaw = itemName.toLowerCase().trim();
     const normalizedSearch = itemNameRaw
       .replace(/potatoe|potos|potat/gi, "potato")
       .replace(/s\b|es\b/gi, "")
       .trim();
 
-    let match = inventoryItems.find(inv => {
+    return inventoryItems.find(inv => {
       const invName = inv.itemName.toLowerCase().trim();
       const normInv = invName.replace(/potatoe|potos|potat/gi, "potato").replace(/s\b|es\b/gi, "").trim();
-      return invName === itemNameRaw || normInv === normalizedSearch || invName.includes(normalizedSearch);
-    }) || createdCache.find(inv => {
-      const invName = inv.itemName.toLowerCase().trim();
-      const normInv = invName.replace(/potatoe|potos|potat/gi, "potato").replace(/s\b|es\b/gi, "").trim();
-      return invName === itemNameRaw || normInv === normalizedSearch || invName.includes(normalizedSearch);
+      return invName === itemNameRaw || 
+             normInv === normalizedSearch || 
+             invName.includes(normalizedSearch) || 
+             normalizedSearch.includes(normInv); // TWO-WAY fuzzy match
     });
+};
+
+const linkIngredientsForFood = async (foodId, foodName, parsedIngredients, inventoryItems, createdCache, pendingCreations) => {
+  const foodNameNorm = (foodName || "").toLowerCase().trim();
+  for (const ing of parsedIngredients) {
+    const itemNameRaw = ing.name.toLowerCase().trim();
+    
+    // LOGIC FIX: Warn but allow if explicitly listed as an ingredient
+    if (itemNameRaw === foodNameNorm) {
+        console.warn(`Explicit ingredient "${ing.name}" matches dish name. Linking anyway.`);
+    }
+
+    let match = findBestInventoryMatch(ing.name, inventoryItems) || 
+                findBestInventoryMatch(ing.name, createdCache);
     
     if (!match) {
+        const normalizedSearch = itemNameRaw.replace(/potatoe|potos|potat/gi, "potato").replace(/s\b|es\b/gi, "").trim();
       if (pendingCreations.has(normalizedSearch)) {
         match = await pendingCreations.get(normalizedSearch);
       } else {
@@ -226,7 +290,7 @@ const linkIngredientsForFood = async (foodId, parsedIngredients, inventoryItems,
           notes: `Auto-created during menu import for "${ing.name}"`
         }).then(r => r.data?.success ? r.data.data : null).catch(() => null);
         
-        pendingCreations.set(lowerName, createPromise);
+        pendingCreations.set(normalizedSearch, createPromise);
         match = await createPromise;
         if (match) createdCache.push(match);
       }
@@ -673,8 +737,8 @@ export default function BulkUpload() {
         const foodId = data.data?._id;
         // Link inventory ingredients if specified
         if (foodId && row.ingredients) {
-          const parsed = parseIngredientString(row.ingredients);
-          await linkIngredientsForFood(foodId, parsed, currentInventoryItems, createdCache, pendingCreations);
+          const parsed = parseIngredientString(row.ingredients, row.name);
+          await linkIngredientsForFood(foodId, row.name, parsed, currentInventoryItems, createdCache, pendingCreations);
         }
         dispatch({ type: "SET_STATUS", id: row.id, status: "success" });
       } catch (err) {
@@ -894,7 +958,7 @@ export default function BulkUpload() {
                           {/* ── Ingredients cell ── */}
                           <td style={{ padding: "10px 12px" }} onClick={e => e.stopPropagation()}>
                             {(() => {
-                              const parsed = parseIngredientString(row.ingredients);
+                              const parsed = parseIngredientString(row.ingredients, row.name);
                               const ingCount = parsed.length;
                               const hasInv = inventoryItems.length > 0;
                               return (
@@ -902,7 +966,7 @@ export default function BulkUpload() {
                                   {ingCount > 0 && (
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                                       {parsed.map((ing, pi) => {
-                                        const matched = inventoryItems.find(iv => iv.itemName.toLowerCase() === ing.name.toLowerCase());
+                                        const matched = findBestInventoryMatch(ing.name, inventoryItems);
                                         return (
                                           <Pill key={pi}
                                             color={matched ? "#166534" : "#1d4ed8"}
