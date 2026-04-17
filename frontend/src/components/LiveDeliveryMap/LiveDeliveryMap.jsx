@@ -446,36 +446,32 @@ export default function LiveDeliveryMap({ order }) {
     if (s === 'out for delivery') {
       let start = null;
       let frameId = null;
-      const duration = 180000; // 3 minutes to go through the route
+      const duration = 180000; // 3 minutes to go through the route (slower, more realistic)
       
-      const animate = (timestamp) => {
+      const step = (timestamp) => {
         if (!start) start = timestamp;
         const elapsed = timestamp - start;
-        const rawProgress = elapsed / duration;
         
+        // Slower approach as it gets closer to the house
+        const rawProgress = elapsed / duration;
         let progress;
-        if (rawProgress < 0.85) {
-          // Normal speed for most of the way
+        
+        if (rawProgress < 0.95) {
           progress = rawProgress;
-        } else if (rawProgress < 1.0) {
-          // Simulate the rider slowing down as they enter the neighborhood
-          // This makes the transition to the house feel more "live" and intentional
-          progress = 0.85 + (rawProgress - 0.85) * 0.4;
         } else {
-          // Once it reaches the end, it stays at the door
-          progress = 1;
+          // Slow down significantly for the last few meters (idle phase)
+          progress = 0.95 + (Math.min(0.04, (rawProgress - 0.95) * 0.1));
         }
         
-        const finalProgress = Math.min(1, progress);
+        const finalProgress = Math.min(0.99, progress);
         setRenderedProgress(finalProgress);
         
-        // Keep animating until we hit the destination
-        if (finalProgress < 1) {
-          frameId = requestAnimationFrame(animate);
+        if (finalProgress < 0.99) {
+          frameId = requestAnimationFrame(step);
         }
       };
       
-      frameId = requestAnimationFrame(animate);
+      frameId = requestAnimationFrame(step);
       return () => {
         if (frameId) cancelAnimationFrame(frameId);
       };
@@ -524,9 +520,7 @@ export default function LiveDeliveryMap({ order }) {
 
       markersRef.current.rider.setLatLng(riderPos);
       if (mountedRef.current) {
-        // Icon stays as a bike until the official status is 'delivered' (step 3)
-        const iconEmoji = statusInfo.step === 3 ? '✅' : '🛵';
-        markersRef.current.rider.setIcon(makePulseIcon(L, iconEmoji, statusInfo.color));
+        markersRef.current.rider.setIcon(makePulseIcon(L, renderedProgress >= 1 ? '✅' : '🛵', statusInfo.color));
       }
 
       if (doneLineRef.current) {

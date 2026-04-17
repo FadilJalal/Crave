@@ -20,11 +20,11 @@ const loadXLSX = () =>
 
 const TEMPLATE_COLS = [
   { key: "name",                label: "name",                required: true,  hint: "e.g. Margherita Pizza" },
-  { key: "category",            label: "category",            required: true,  hint: "e.g. pizza, burger" },
+  { key: "category",            label: "category",            required: true,  hint: "e.g. pizza, burger, pasta" },
   { key: "price",               label: "price",               required: true,  hint: "e.g. 12.99" },
   { key: "description",         label: "description",         required: true,  hint: "Detailed description" },
   { key: "image_filename",      label: "image_filename",      required: false, hint: "e.g. pizza.jpg" },
-  { key: "customizations",      label: "customizations",      required: false, hint: "e.g. Spice*: Mild, Hot | Extras+: Eggs:2" },
+  { key: "customizations_json", label: "customizations_json", required: false, hint: "JSON array (optional)" },
   { key: "ingredients",         label: "ingredients",         required: false, hint: "e.g. Chicken:2, Oil:0.5" },
 ];
 
@@ -49,8 +49,8 @@ const normaliseRow = (r) => ({
   price:               String(r.price       || r.Price       || "").trim(),
   description:         String(r.description || r.Description || "").trim(),
   image_filename:      String(r.image_filename || r["Image Filename"] || r.image || "").trim(),
-  customizations_raw: String(r.customizations || r.customizations_json || r.Customizations || "").trim(),
-  ingredients:         String(r.ingredients || r.Ingredients || "").trim(),
+  customizations_json: String(r.customizations_json || r.customizations || "").trim(),
+  ingredients:         String(r.ingredients || "").trim(),
 
   inventory_unit:       String(r.inventory_unit || r.unit || "").trim(),
   inventory_currentStock: String(r.inventory_currentStock || r.currentStock || "").trim(),
@@ -69,43 +69,6 @@ const normaliseRow = (r) => ({
   uploadError: "",
 });
 
-const parseCustomizations = (str) => {
-  if (!str || !str.trim()) return [];
-  
-  // If it looks like JSON, return as is (handled in enrichRows) or return null to signal error
-  if (str.trim().startsWith("[") || str.trim().startsWith("{")) return null;
-
-  // Groups are separated by |
-  return str.split("|").map(groupStr => {
-    const parts = groupStr.trim().split(":");
-    if (parts.length < 2) return null;
-    
-    let titlePart = parts[0].trim();
-    // Everything after the first colon is the options part
-    const optionsPart = parts.slice(1).join(":").trim(); 
-    
-    const required = titlePart.includes("*") || titlePart.toLowerCase().includes("(required)");
-    const multiSelect = titlePart.includes("+") || titlePart.toLowerCase().includes("(multi)");
-    
-    // Clean keys
-    const title = titlePart
-      .replace(/[*+]/g, "")
-      .replace(/\(required\)/gi, "")
-      .replace(/\(multi\)/gi, "")
-      .trim();
-    
-    const options = optionsPart.split(",").map(optStr => {
-      const optParts = optStr.trim().split(":");
-      const label = optParts[0].trim();
-      // Price can be provided as "Cheese:2" or just "Cheese" (defaults to 0)
-      const extraPrice = optParts.length > 1 ? (parseFloat(optParts[1]) || 0) : 0;
-      return { label, extraPrice };
-    }).filter(o => o.label);
-    
-    return { title, required, multiSelect, options };
-  }).filter(g => g && g.title && g.options.length > 0);
-};
-
 const buildImageMap = (imageFiles) => {
   const map = {};
   for (const f of imageFiles) {
@@ -123,19 +86,9 @@ const enrichRows = (rows, imageMap) =>
     const warnings = [...row.warnings];
     let customizations = row.customizations;
     if (!file && row.image_filename) warnings.push(`No image matched "${row.image_filename}"`);
-    if (row.customizations_raw) {
-      const raw = row.customizations_raw.trim();
-      if (raw.startsWith("[") || raw.startsWith("{")) {
-        try { customizations = JSON.parse(raw); }
-        catch { warnings.push("Invalid customizations JSON — skipped"); }
-      } else {
-        const parsed = parseCustomizations(raw);
-        if (parsed && parsed.length > 0) {
-          customizations = parsed;
-        } else if (raw) {
-          warnings.push("Invalid customizations format (use Group Name: Opt1, Opt2)");
-        }
-      }
+    if (row.customizations_json) {
+      try   { customizations = JSON.parse(row.customizations_json); }
+      catch { warnings.push("Invalid customizations JSON — skipped"); }
     }
     return { ...row, imageFile: file, imagePreview: file ? URL.createObjectURL(file) : null, customizations, warnings };
   });
@@ -309,9 +262,10 @@ const downloadTemplate = async () => {
   const XLSX = await loadXLSX();
   const ws = XLSX.utils.aoa_to_sheet([
     TEMPLATE_COLS.map((c) => c.key),
-    ["Margherita Pizza", "Pizza",   "12.99", "Classic tomato and mozzarella",   "margherita.jpg", "Extra Toppings+: Olives:1, Mushrooms:2", "Cheese:0.2, Flour:0.3"],
+    ["Margherita Pizza", "Pizza",   "12.99", "Classic tomato and mozzarella",   "margherita.jpg", "", "Cheese:0.2, Flour:0.3"],
     ["Spicy Ramen",      "Noodles", "14.50", "Rich broth with noodles and egg", "ramen.jpg",
-      "Spice Level*: Mild, Medium, Hot | Extra Egg: 2.50",
+      JSON.stringify([{ title: "Spice Level", required: true, multiSelect: false,
+        options: [{ label: "Mild", extraPrice: 0 }, { label: "Hot", extraPrice: 0 }] }]),
       "Noodles:1, Broth:0.5, Egg:2"],
   ]);
   ws["!cols"] = [20, 14, 8, 36, 22, 60, 40].map((w) => ({ wch: w }));
