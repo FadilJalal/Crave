@@ -462,40 +462,11 @@ export default function Inventory() {
       
       if (exists) return prev.filter(l => (typeof l.foodId === 'object' ? String(l.foodId._id) : String(l.foodId)) !== targetId);
       
-      // Smart detection for new links
-      const food = menuItems.find(f => String(f._id) === targetId);
-      let qty = 1;
-      if (food) {
-        qty = autoDetectQty(food.name);
-      }
-
-      return [...prev, { foodId: targetId, quantityPerOrder: qty }];
+      return [...prev, { foodId: targetId, quantityPerOrder: 1 }];
     });
   };
 
-  const autoDetectQty = (name = "") => {
-    const text = name.toLowerCase();
-    // Handle "16pcs", "16 pcs", "16-piece", "16 count", "bucket of 15"
-    const match = text.match(/(\d+(?:\.\d+)?)\s*[-]*\s*(?:pcs?|pieces?|pc|units?|items?|counts?|sticks?|nuggets?|wings?|buckets?|portions?|strips?|slices?|pcs|piece)\b/i);
-    if (match) return parseFloat(match[1]) || 1;
-    const ofMatch = text.match(/(?:of|contains|with)\s+(\d+)/i);
-    if (ofMatch) return parseFloat(ofMatch[1]) || 1;
-    const parenMatch = text.match(/[\(\[](\d+)[\)\]]/);
-    if (parenMatch) return parseFloat(parenMatch[1]) || 1;
-    return 1;
-  };
 
-  const handleAutoDetectAll = () => {
-    setSelectedLinks(prev => prev.map(link => {
-        const food = menuItems.find(f => String(f._id) === String(link.foodId));
-        if (food) {
-            const detectedValue = autoDetectQty(food.name);
-            return { ...link, quantityPerOrder: detectedValue };
-        }
-        return link;
-    }));
-    toast.info("Quantities auto-detected from names. Click 'Save' to apply.");
-  };
 
   const saveLinks = async () => {
     if (!linkingItem) return;
@@ -1120,13 +1091,7 @@ export default function Inventory() {
                         onChange={(e) => setLinkSearch(e.target.value)}
                         style={{ background: '#f9fafb', flex: 1 }}
                       />
-                      <button 
-                        className="btn btn-sm" 
-                        style={{ background: '#ff4e2a', color: 'white', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8, padding: '0 24px', fontWeight: 900, border: 'none' }}
-                        onClick={handleAutoDetectAll}
-                      >
-                         ✨ Auto-Detect
-                      </button>
+
                   </div>
 
                   <div style={{ flex: 1, overflowY: 'auto', paddingRight: 8, marginBottom: 24 }}>

@@ -52,4 +52,27 @@ const getCart = async (req, res) => {
   }
 };
 
-export { addToCart, removeFromCart, getCart };
+const updateQuantity = async (req, res) => {
+  try {
+    const { itemId, quantity } = req.body;
+    if (!itemId) return res.json({ success: false, message: "itemId is required" });
+
+    const userData = await userModel.findById(req.body.userId);
+    if (!userData) return res.json({ success: false, message: "User not found" });
+
+    const cartData = userData.cartData || {};
+    if (quantity <= 0) {
+      delete cartData[itemId];
+    } else {
+      cartData[itemId] = Number(quantity);
+    }
+
+    await userModel.findByIdAndUpdate(req.body.userId, { cartData });
+    res.json({ success: true, message: "Cart Updated" });
+  } catch (error) {
+    console.error("[updateQuantity]", error.message);
+    res.json({ success: false, message: "Error updating cart" });
+  }
+};
+
+export { addToCart, removeFromCart, getCart, updateQuantity };

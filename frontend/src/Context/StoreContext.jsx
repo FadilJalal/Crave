@@ -121,6 +121,24 @@ const StoreContextProvider = (props) => {
     }
   };
 
+  const clearVariation = async (key) => {
+    setCartItems((prev) => {
+      const updated = { ...prev };
+      delete updated[key];
+      try { localStorage.setItem('crave_cart', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
+    if (token) {
+      try {
+        const itemId = key.split("::")[0];
+        // For server-side, we might need a dedicated clear endpoint, but for now
+        // we'll just try to decrement the appropriate number of times or use an update call.
+        await axios.post(url + "/api/cart/update-quantity", { itemId, quantity: 0 }, { headers: { token } });
+      } catch {}
+    }
+  };
+
   const removeFromCart = async (key) => {
     setCartItems((prev) => {
       const entry = prev[key];
@@ -406,7 +424,7 @@ const StoreContextProvider = (props) => {
 
   const contextValue = {
     url, food_list, foodListLoading, foodListError, restaurantsById,
-    cartItems, addToCart, removeFromCart,
+    cartItems, addToCart, removeFromCart, clearVariation,
     getTotalCartAmount, getItemCount, buildCartKey,
     token, setToken, loadCartData, setCartItems,
     currency, deliveryCharge,

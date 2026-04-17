@@ -72,7 +72,7 @@ const normaliseRow = (r) => {
     inventory_currentStock: String(findValue(["inventory_currentStock", "currentStock", "stock", "qty"]) || "").trim(),
     inventory_minimumStock: String(findValue(["inventory_minimumStock", "minimumStock", "minstock"]) || "").trim(),
     inventory_maximumStock: String(findValue(["inventory_maximumStock", "maximumStock", "maxstock"]) || "").trim(),
-    inventory_unitCost:   String(findValue(["inventory_unitCost", "unitCost", "cost", "price"]) || "").trim(),
+    inventory_unitCost:   String(findValue(["inventory_unitCost", "unitCost", "unitcost"]) || "").trim(),
     inventory_supplier:   String(findValue(["inventory_supplier", "supplier", "vendor"]) || "").trim(),
 
     imageFile:      null,
@@ -148,30 +148,9 @@ const uploadRow = async (row) => {
   });
   if (!res.data?.success) throw new Error(res.data?.message || "Failed");
 
-  const inventoryPayload = {
-    itemName: row.name,
-    category: row.category || "food_ingredient",
-    unit: row.inventory_unit || "pieces",
-    currentStock: row.inventory_currentStock ? Number(row.inventory_currentStock) : 0,
-    minimumStock: row.inventory_minimumStock ? Number(row.inventory_minimumStock) : 10,
-    maximumStock: row.inventory_maximumStock ? Number(row.inventory_maximumStock) : 100,
-    unitCost: row.inventory_unitCost ? Number(row.inventory_unitCost) : 0,
-    supplier: row.inventory_supplier ? (row.inventory_supplier.startsWith("{") ? JSON.parse(row.inventory_supplier) : { name: row.inventory_supplier }) : {},
-    expiryDate: row.expiryDate ? row.expiryDate : null,
-    notes: row.notes || "",
-  };
-
-  // Always add inventory items for ingredients if specified
-  if (row.inventory_unit || row.inventory_currentStock || row.inventory_minimumStock || row.inventory_maximumStock || row.inventory_unitCost || row.inventory_supplier) {
-    try {
-      await api.post("/api/inventory/add", inventoryPayload);
-    } catch (invErr) {
-      console.warn("Inventory add for row failed", invErr?.response?.data?.message || invErr.message);
-    }
-  }
-
   // Note: Ingredient linking is now handled in submitAll() via linkIngredientsForFood()
   // to avoid duplicate processing and linking
+
 
   return res.data;
 };
@@ -180,17 +159,17 @@ const extractQuantityFromName = (name) => {
     if (!name) return 1;
     // Patterns like "15pcs", "6 wings", "10-piece", "pack of 4"
     const patterns = [
-        /(\d+)\s*(?:-?\s*piece|pc|pcs|pce|wing|strip|piece)/i,
-        /(?:pack|bucket|deal)\s*(?:of|for)?\s*(\d+)/i,
-        /(?:^|\s)(\d+)\s*(?:x|qty|quantity)/i,
-        /(\d+)\s*x\s*(?:^|\s)/i
+        /(\d+(?:\.\d+)?)\s*(?:-?\s*piece|pc|pcs|pce|wing|strip|piece)/i,
+        /(?:pack|bucket|deal)\s*(?:of|for)?\s*(\d+(?:\.\d+)?)/i,
+        /(?:^|\s)(\d+(?:\.\d+)?)\s*(?:x|qty|quantity)/i,
+        /(\d+(?:\.\d+)?)\s*x\s*(?:^|\s)/i
     ];
 
     for (const pattern of patterns) {
         const match = name.match(pattern);
         if (match && match[1]) {
-            const val = parseInt(match[1]);
-            if (val > 0 && val < 100) return val; // Sanity check
+            const val = parseFloat(match[1]);
+            if (val > 0 && val < 500) return val; 
         }
     }
     return 1;
@@ -199,30 +178,60 @@ const extractQuantityFromName = (name) => {
 const parseIngredientString = (str, foodNameFallback = "") => {
   if (!str || !str.trim()) return [];
   
-  // Remove any surrounding container characters like ( ) [ ] { }
-  const cleanStr = str.trim()
-    .replace(/^[\(\{\[]+/, "")
-    .replace(/[\)\}\]]+$/, "");
+  let cleanStr = str.trim();
+
+  // HEURISTIC: Check if it's a stringified JSON array with objects like [{"title": "0", "ingredient:qty"}]
+  // This handles the format found in the user's Excel data.
+  if (cleanStr.startsWith("[") && cleanStr.includes("title")) {
+    try {
+        const parsed = JSON.parse(cleanStr);
+        if (Array.isArray(parsed) && parsed[0]) {
+            // Either it's in a specific key or it's a string entry
+            const first = parsed[0];
+            const candidate = first.ingredients || Object.values(first).find(v => typeof v === 'string' && v.includes(':'));
+            if (candidate) cleanStr = candidate;
+            else {
+                // If the object flat-out contains the string in a messy way
+                const strRep = JSON.stringify(first);
+                cleanStr = strRep.replace(/^\{|\}$/g, "").replace(/"title":\s*"[^"]*",?\s*/g, "");
+            }
+        }
+    } catch(e) {
+        // Fallback to regex cleaning if JSON parse fails
+        cleanStr = cleanStr.replace(/^\[\{"title":\s*"[^"]*",?\s*/, "").replace(/\}\]$/, "");
+    }
+  }
+
+  // Final manual strip of array/object wrappers
+  cleanStr = cleanStr.replace(/^[\(\{\[]+/, "").replace(/[\)\}\]]+$/, "");
 
   const fallbackQty = extractQuantityFromName(foodNameFallback);
 
-  return cleanStr.split(",").map(s => {
-    // Handle messy separators if necessary (e.g. mixture of ; and ,)
-    const cleanS = s.trim();
-    if (!cleanS) return null;
+  return cleanStr.split(",").map(part => {
+    const s = part.trim();
+    if (!s) return null;
+
+    // Clean out quotes that might come from JSON or messy CSV exports
+    const cleanS = s.replace(/^["']+|["']+$/g, "").trim();
+    if (!cleanS || cleanS === ":" || cleanS.includes('title":')) return null;
 
     const parts = cleanS.split(":");
-    const name = parts[0].trim().replace(/^[\(\{\["']+|[\)\}\]"']+$/g, "").trim();
+    let name = parts[0].trim().replace(/^["']+|["']+$/g, "").trim();
     
-    let qty;
+    // If name contains a field key like "data", strip it
+    name = name.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "").trim();
+
+    let qty = 1;
     if (parts.length >= 2) {
-        qty = parseFloat(parts[1].replace(/[^\d.]/g, "")) || 1;
+        // Extract number, supporting decimals like 0.6
+        const qtyMatch = parts[1].match(/(\d+(?:\.\d+)?)/);
+        qty = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
     } else {
         qty = fallbackQty; 
     }
     
     return { name, qty };
-  }).filter(i => i && i.name);
+  }).filter(i => i && i.name && i.name.length > 1);
 };
 
 const guessCategory = (name) => {
@@ -244,55 +253,98 @@ const guessUnit = (name) => {
 };
 
 const findBestInventoryMatch = (itemName, inventoryItems) => {
-    if (!itemName || !inventoryItems) return null;
-    const itemNameRaw = itemName.toLowerCase().trim();
-    const normalizedSearch = itemNameRaw
-      .replace(/potatoe|potos|potat/gi, "potato")
-      .replace(/s\b|es\b/gi, "")
-      .trim();
-
-    return inventoryItems.find(inv => {
-      const invName = inv.itemName.toLowerCase().trim();
-      const normInv = invName.replace(/potatoe|potos|potat/gi, "potato").replace(/s\b|es\b/gi, "").trim();
-      return invName === itemNameRaw || 
-             normInv === normalizedSearch || 
-             invName.includes(normalizedSearch) || 
-             normalizedSearch.includes(normInv); // TWO-WAY fuzzy match
+    if (!itemName || !inventoryItems || !inventoryItems.length) return null;
+    const clean = (s) => String(s).toLowerCase().trim()
+        .replace(/potatoe|potos|potat/gi, "potato")
+        .replace(/tomatoes|tomatoe/gi, "tomato")
+        .replace(/s\b|es\b/gi, "") // basic singularize
+        .replace(/[^a-z0-9]/g, ""); // strip junk
+        
+    const needle = clean(itemName);
+    if (!needle) return null;
+    
+    // 1. Exact cleaned match
+    let found = inventoryItems.find(inv => clean(inv.itemName) === needle);
+    if (found) return found;
+    
+    // 2. Contains match either direction
+    found = inventoryItems.find(inv => {
+        const hay = clean(inv.itemName);
+        return (hay.length > 2 && needle.includes(hay)) || (needle.length > 2 && hay.includes(needle));
     });
+    
+    return found || null;
+};
+
+const createOrUpdateInventoryForRow = async (row, createdCache, pendingCreations) => {
+  if (!row.inventory_unit) return null;
+
+  const normalizedName = row.name.toLowerCase().trim()
+        .replace(/potatoe|potos|potat/gi, "potato")
+        .replace(/s\b|es\b/gi, "")
+        .trim();
+
+  if (pendingCreations.has(normalizedName)) {
+    return await pendingCreations.get(normalizedName);
+  }
+
+  const createPromise = api.post("/api/inventory/add", {
+    itemName:     row.name,
+    category:     row.category || guessCategory(row.name),
+    unit:         row.inventory_unit,
+    currentStock: Number(row.inventory_currentStock) || 0,
+    minimumStock: Number(row.inventory_minimumStock) || 10,
+    maximumStock: Number(row.inventory_maximumStock) || 100,
+    unitCost:     Number(row.inventory_unitCost) || 0,
+    supplier:     { name: row.inventory_supplier || "" },
+    notes:        `Imported from menu upload: ${row.description || ""}`
+  }).then(r => r.data?.success ? r.data.data : null).catch(() => null);
+
+  pendingCreations.set(normalizedName, createPromise);
+  const match = await createPromise;
+  if (match && match._id) {
+    // Add to cache so other rows can find it
+    if (!createdCache.find(c => String(c._id) === String(match._id))) {
+      createdCache.push(match);
+    }
+  }
+  return match;
 };
 
 const linkIngredientsForFood = async (foodId, foodName, parsedIngredients, inventoryItems, createdCache, pendingCreations) => {
   const foodNameNorm = (foodName || "").toLowerCase().trim();
+  
   for (const ing of parsedIngredients) {
     const itemNameRaw = ing.name.toLowerCase().trim();
     
-    // LOGIC FIX: Warn but allow if explicitly listed as an ingredient
-    if (itemNameRaw === foodNameNorm) {
-        console.warn(`Explicit ingredient "${ing.name}" matches dish name. Linking anyway.`);
-    }
-
+    // Check if ingredient exists in inventory or already created/cached
     let match = findBestInventoryMatch(ing.name, inventoryItems) || 
                 findBestInventoryMatch(ing.name, createdCache);
     
     if (!match) {
-        const normalizedSearch = itemNameRaw.replace(/potatoe|potos|potat/gi, "potato").replace(/s\b|es\b/gi, "").trim();
+        // Normalize for pending map to avoid race conditions
+        const normalizedSearch = itemNameRaw
+            .replace(/potatoe|potos|potat/gi, "potato")
+            .replace(/s\b|es\b/gi, "")
+            .trim();
+
       if (pendingCreations.has(normalizedSearch)) {
         match = await pendingCreations.get(normalizedSearch);
       } else {
         const createPromise = api.post("/api/inventory/add", {
-          itemName: ing.name.trim(),
-          category: guessCategory(ing.name),
-          unit: guessUnit(ing.name) || "pieces",
+          itemName:     ing.name.trim(),
+          category:     guessCategory(ing.name),
+          unit:         guessUnit(ing.name) || "pieces",
           currentStock: 0, 
           minimumStock: 5, 
           maximumStock: 500, 
-          unitCost: 0,
-          notes: `Auto-created during menu import for "${ing.name}"`
+          unitCost:     0,
+          notes:        `Auto-created during menu import for "${ing.name}"`
         }).then(r => r.data?.success ? r.data.data : null).catch(() => null);
         
         pendingCreations.set(normalizedSearch, createPromise);
         match = await createPromise;
-        if (match) createdCache.push(match);
+        if (match && match._id) createdCache.push(match);
       }
     }
 
@@ -302,7 +354,6 @@ const linkIngredientsForFood = async (foodId, foodName, parsedIngredients, inven
           foodId, 
           quantityPerOrder: Number(ing.qty) || 1 
         });
-        console.log(`Successfully linked ${match.itemName} to food ${foodId}`);
       } catch (err) {
         console.error("Link failed for:", match.itemName, err);
       }
@@ -733,9 +784,14 @@ export default function BulkUpload() {
     const tasks = pending.map(row => async () => {
       dispatch({ type: "SET_STATUS", id: row.id, status: "uploading" });
       try {
+        // 1. Create/Update inventory item for this row if it contains inventory data
+        await createOrUpdateInventoryForRow(row, createdCache, pendingCreations);
+
+        // 2. Upload the Food item
         const data = await uploadRow(row);
         const foodId = data.data?._id;
-        // Link inventory ingredients if specified
+        
+        // 3. Link ingredients if specified
         if (foodId && row.ingredients) {
           const parsed = parseIngredientString(row.ingredients, row.name);
           await linkIngredientsForFood(foodId, row.name, parsed, currentInventoryItems, createdCache, pendingCreations);

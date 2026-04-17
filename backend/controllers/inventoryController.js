@@ -173,26 +173,8 @@ const addInventoryItem = async (req, res) => {
         }
 
         let linkedMenuItems = [];
-        try {
-            const foodModel = (await import("../models/foodModel.js")).default;
-            const cleanName = itemName.trim().toLowerCase();
-            
-            // Search for best matching food item to auto-link
-            const match = await foodModel.findOne({
-                restaurantId: req.restaurantId,
-                $or: [
-                    { name: new RegExp(`^${cleanName}$`, 'i') },
-                    { name: new RegExp(cleanName, 'i') }
-                ]
-            });
+        // ── Auto-linking logic moved to dedicated sync function for precision ──
 
-            if (match) {
-                const qty = extractQuantityFromName(match.name);
-                linkedMenuItems.push({ foodId: match._id, quantityPerOrder: qty });
-            }
-        } catch (linkErr) {
-            console.error("Auto-link fallback error:", linkErr);
-        }
 
         // Check for duplicate before creating (escaping special chars for strict match)
         const escapedName = itemName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

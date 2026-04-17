@@ -9,7 +9,7 @@ import PromoSection from '../../components/PromoSection/PromoSection';
 
 const Cart = () => {
   const { t, i18n } = useTranslation();
-  const { cartItems, food_list, foodListLoading, removeFromCart, addToCart, getTotalCartAmount, url, token, currency, deliveryCharge } = useContext(StoreContext);
+  const { cartItems, food_list, foodListLoading, removeFromCart, addToCart, clearVariation, getTotalCartAmount, url, token, currency, deliveryCharge } = useContext(StoreContext);
   const navigate = useNavigate();
 
   // Build cart rows from the new cartItems format
@@ -164,10 +164,7 @@ const Cart = () => {
                   {/* ✅ Shows correct price including extras */}
                   <p className='cart-row-price'>{currency}{itemTotal.toFixed(2)}</p>
 
-                  <button className='cart-row-remove' onClick={() => {
-                    // Remove all quantity of this specific variation
-                    for (let i = 0; i < entry.quantity; i++) removeFromCart(key);
-                  }}>
+                  <button className='cart-row-remove' onClick={() => clearVariation(key)}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" />
                       <path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
