@@ -45,6 +45,7 @@ export default function Addresses() {
   const [mapPosition, setMapPosition] = useState([24.4539, 54.3773]); // Abu Dhabi
   const [markerPosition, setMarkerPosition] = useState(null);
   const [loadingLoc, setLoadingLoc] = useState(false);
+  const [coords, setCoords] = useState({ lat: null, lng: null });
 
   /* ===== Form Change ===== */
   const handleChange = (e) => {
@@ -100,6 +101,7 @@ export default function Addresses() {
         city: addr?.city || addr?.town || addr?.village || prev.city,
         building: addr?.building || prev.building,
       }));
+      setCoords({ lat, lng });
       setShowMap(false);
     } catch (err) {
       console.error(err);
@@ -144,7 +146,7 @@ export default function Addresses() {
 
     setAddresses((prev) => [
       ...prev,
-      { ...form, isDefault: prev.length === 0 },
+      { ...form, location: coords, isDefault: prev.length === 0 },
     ]);
 
     setForm({
@@ -153,6 +155,7 @@ export default function Addresses() {
       city: "",
       building: "",
     });
+    setCoords({ lat: null, lng: null });
 
     setAdding(false);
   };

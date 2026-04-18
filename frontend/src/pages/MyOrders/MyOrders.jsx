@@ -103,22 +103,7 @@ const MyOrders = () => {
     }
   };
 
-  const playNotificationSound = () => {
-    try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
-      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.3);
-    } catch (e) { console.error('Audio failed', e); }
-  };
+
 
   const pollRef = useRef(null);
   const prevStatusesRef = useRef({}); // { orderId: status }
@@ -131,27 +116,7 @@ const MyOrders = () => {
       if (res.data.success) {
         const newOrders = res.data.data || [];
         
-        // --- NOTIFICATION LOGIC ---
-        if (silent && Object.keys(prevStatusesRef.current).length > 0) {
-          newOrders.forEach(order => {
-            const oldStatus = prevStatusesRef.current[order._id];
-            if (oldStatus && oldStatus !== order.status) {
-              const statusMap = {
-                'Order Accepted': '✅ Your order has been accepted!',
-                'Food Processing': '🍳 The chef is preparing your food!',
-                'Out for Delivery': '🛵 Your order is on the way!',
-                'Delivered': '🏁 Your order has been delivered! Enjoy.',
-              };
-              
-              const matchedKey = Object.keys(statusMap).find(k => k.toLowerCase() === order.status?.toLowerCase());
-              const msg = statusMap[matchedKey];
-              if (msg) {
-                playNotificationSound();
-                toast.success(`Order #${order._id.slice(-6).toUpperCase()}: ${msg}`, { icon: '🔔', autoClose: 5000 });
-              }
-            }
-          });
-        }
+        // Notification logic removed (centralized in NotificationContext.jsx)
         // Update Ref
         const statusMap = {};
         newOrders.forEach(o => statusMap[o._id] = o.status);

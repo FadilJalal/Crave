@@ -277,6 +277,7 @@ export default function Settings() {
   const [sharedDropKm, setSharedDropKm] = useState(2);
   const [sharedPickupKm, setSharedPickupKm] = useState(2);
   const [sharedWindowMin, setSharedWindowMin] = useState(12);
+  const [pioneerDiscountAed, setPioneerDiscountAed] = useState(3);
 
   const [deliveryTiers,  setDeliveryTiers]  = useState([
     { upToKm: 3,    fee: 5  },
@@ -327,6 +328,7 @@ export default function Settings() {
         setSharedDropKm(r.sharedDelivery?.maxDropDistanceKm ?? 2);
         setSharedPickupKm(r.sharedDelivery?.maxPickupDistanceKm ?? 2);
         setSharedWindowMin(r.sharedDelivery?.matchWindowMin ?? 12);
+        setPioneerDiscountAed(r.sharedDelivery?.pioneerDiscountAed ?? 3);
 
         if (r.deliveryTiers?.length) setDeliveryTiers(r.deliveryTiers);
 
@@ -412,6 +414,7 @@ export default function Settings() {
           maxDropDistanceKm: sharedDropKm,
           maxPickupDistanceKm: sharedPickupKm,
           matchWindowMin: sharedWindowMin,
+          pioneerDiscountAed,
         },
       };
       console.log("[Settings] Saving payload:", payload);
@@ -437,6 +440,7 @@ export default function Settings() {
                 maxDropDistanceKm: sharedDropKm,
                 maxPickupDistanceKm: sharedPickupKm,
                 matchWindowMin: sharedWindowMin,
+                pioneerDiscountAed,
               },
               address,
               ...(loc?.lat != null && loc?.lng != null ? { location: loc } : {}),
@@ -722,7 +726,10 @@ export default function Settings() {
                      <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900 }}>Delivery Radius</h3>
                      <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--muted)" }}>Max km from restaurant</p>
                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                       <input type="number" value={deliveryRadius} onChange={e => setDeliveryRadius(Number(e.target.value))} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
+                       <input type="number" value={deliveryRadius} onChange={e => {
+                         const val = e.target.value;
+                         setDeliveryRadius(val === "" ? "" : Number(val));
+                       }} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
                        <span style={{ fontWeight: 800, color: "var(--muted)" }}>KM</span>
                      </div>
                    </div>
@@ -731,7 +738,10 @@ export default function Settings() {
                      <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900 }}>Min. Order Amount</h3>
                      <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--muted)" }}>Required checkout total</p>
                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                       <input type="number" value={minimumOrder} onChange={e => setMinimumOrder(Number(e.target.value))} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
+                       <input type="number" value={minimumOrder} onChange={e => {
+                         const val = e.target.value;
+                         setMinimumOrder(val === "" ? "" : Number(val));
+                       }} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
                        <span style={{ fontWeight: 800, color: "var(--muted)" }}>AED</span>
                      </div>
                    </div>
@@ -757,7 +767,8 @@ export default function Settings() {
                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                              <input type="number" value={tier.fee} onChange={e => {
                                const next = [...deliveryTiers];
-                               next[i].fee = Number(e.target.value);
+                               const val = e.target.value;
+                               next[i].fee = val === "" ? "" : Number(val);
                                setDeliveryTiers(next);
                              }} style={{ width: 60, padding: "4px 8px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", fontWeight: 800 }} />
                              <span style={{ fontWeight: 700, fontSize: 12 }}>AED</span>
@@ -785,7 +796,10 @@ export default function Settings() {
                       <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>Max distance between two customers to allow sharing</p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <input type="number" value={sharedDropKm} onChange={e => setSharedDropKm(Number(e.target.value))} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
+                      <input type="number" value={sharedDropKm} onChange={e => {
+                        const val = e.target.value;
+                        setSharedDropKm(val === "" ? "" : Number(val));
+                      }} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
                       <span style={{ fontWeight: 800, color: "var(--muted)" }}>KM</span>
                     </div>
                   </div>
@@ -796,8 +810,25 @@ export default function Settings() {
                       <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>Max time gap between orders to bundle together</p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <input type="number" value={sharedWindowMin} onChange={e => setSharedWindowMin(Number(e.target.value))} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
+                      <input type="number" value={sharedWindowMin} onChange={e => {
+                        const val = e.target.value;
+                        setSharedWindowMin(val === "" ? "" : Number(val));
+                      }} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
                       <span style={{ fontWeight: 800, color: "var(--muted)" }}>MIN</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 32 }}>
+                    <div>
+                      <h4 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 900 }}>Pioneer Discount</h4>
+                      <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>Incentive for first customer who opts into shared delivery</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input type="number" value={pioneerDiscountAed} onChange={e => {
+                        const val = e.target.value;
+                        setPioneerDiscountAed(val === "" ? "" : Number(val));
+                      }} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
+                      <span style={{ fontWeight: 800, color: "var(--muted)" }}>AED</span>
                     </div>
                   </div>
                 </div>

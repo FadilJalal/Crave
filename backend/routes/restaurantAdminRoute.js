@@ -6,6 +6,7 @@ import foodModel from "../models/foodModel.js";
 import restaurantModel from "../models/restaurantModel.js";
 import userModel from "../models/userModel.js";
 import orderModel from "../models/orderModel.js";
+import payoutModel from "../models/payoutModel.js";
 
 const router = express.Router();
 
@@ -552,6 +553,75 @@ router.post("/food/stock", restaurantAuth, async (req, res) => {
   } catch (err) {
     console.error("[food/stock]", err);
     res.json({ success: false, message: "Error updating stock." });
+  }
+});
+
+// ── GET /api/restaurantadmin/finance ──────────────────────────────────────
+router.get("/finance", restaurantAuth, async (req, res) => {
+  try {
+    const restaurantId = req.restaurantId;
+    
+    const [restaurant, orders, payouts] = await Promise.all([
+      restaurantModel.findById(restaurantId).select("bankDetails commissionRate name").lean(),
+      orderModel.find({ restaurantId, status: "Delivered" }).select("amount createdAt").lean(),
+      payoutModel.find({ restaurantId }).sort({ createdAt: -1 }).lean(),
+    ]);
+
+    if (!restaurant) return res.json({ success: false, message: "Restaurant not found." });
+
+    const totalRevenue = orders.reduce((s, o) => s + (o.amount || 0), 0);
+    const commissionRate = restaurant.commissionRate || 15;
+    const totalCommission = totalRevenue * (commissionRate / 100);
+    const netEarnings = totalRevenue - totalCommission;
+    
+    const totalPaidPayouts = payouts
+      .filter(p => p.status === "Processed")
+      .reduce((s, p) => s + p.amount, 0);
+      
+    const currentBalance = netEarnings - totalPaidPayouts;
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          totalRevenue,
+          commissionRate,
+          totalCommission,
+          netEarnings,
+          totalPaidPayouts,
+          currentBalance: Math.max(0, currentBalance),
+        },
+        bankDetails: restaurant.bankDetails || {},
+        payouts: payouts.slice(0, 50), // Send last 50 payouts
+      }
+    });
+  } catch (err) {
+    console.error("[finance]", err);
+    res.json({ success: false, message: "Error loading financial data." });
+  }
+});
+
+// ── POST /api/restaurantadmin/bank-details ───────────────────────────────
+router.post("/bank-details", restaurantAuth, async (req, res) => {
+  try {
+    const { accountHolder, bankName, iban, swiftCode } = req.body;
+    
+    if (!accountHolder || !bankName || !iban) {
+      return res.json({ success: false, message: "Required fields missing (Holder, Bank Name, IBAN)." });
+    }
+
+    const restaurant = await restaurantModel.findByIdAndUpdate(
+      req.restaurantId,
+      { $set: { 
+          bankDetails: { accountHolder, bankName, iban, swiftCode } 
+      }},
+      { new: true }
+    );
+
+    res.json({ success: true, message: "Bank details updated.", details: restaurant.bankDetails });
+  } catch (err) {
+    console.error("[bank-details update]", err);
+    res.json({ success: false, message: "Error saving bank details." });
   }
 });
 

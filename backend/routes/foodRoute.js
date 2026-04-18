@@ -6,6 +6,7 @@ import authMiddleware from "../middleware/auth.js";
 import restaurantAuth from "../middleware/restaurantAuth.js";
 import { listFood } from "../controllers/foodController.js";
 import foodModel from "../models/foodModel.js";
+import inventoryModel from "../models/inventoryModel.js";
 import fs from "fs";
 
 const foodRouter = express.Router();
@@ -109,6 +110,13 @@ foodRouter.post("/remove", async (req, res, next) => {
 
     try { fs.unlinkSync(`uploads/${food.image}`); } catch (e) {}
     await foodModel.findByIdAndDelete(req.body.id);
+
+    // 🔗 Remove from inventory linked items
+    await inventoryModel.updateMany(
+      { "linkedMenuItems.foodId": req.body.id },
+      { $pull: { linkedMenuItems: { foodId: req.body.id } } }
+    );
+
     res.json({ success: true, message: "Food Removed" });
   } catch (error) {
     res.json({ success: false, message: "Error removing food" });
@@ -222,9 +230,18 @@ foodRouter.post("/remove-duplicates", restaurantAuth, async (req, res) => {
     }
 
     // Delete image files and DB entries
+    const removedIds = toDelete.map(f => f._id);
     for (const food of toDelete) {
       try { if(food.image) fs.unlinkSync(`uploads/${food.image}`); } catch (e) {}
       await foodModel.findByIdAndDelete(food._id);
+    }
+
+    // 🔗 Remove all duplicate IDs from inventory linked items
+    if (removedIds.length > 0) {
+      await inventoryModel.updateMany(
+        { "linkedMenuItems.foodId": { $in: removedIds } },
+        { $pull: { linkedMenuItems: { foodId: { $in: removedIds } } } }
+      );
     }
 
     res.json({ 
@@ -262,11 +279,20 @@ foodRouter.post("/remove-by-category", (req, res, next) => {
     }
 
     // Delete image files for each food
+    const removedIds = foods.map(f => f._id);
     for (const food of foods) {
       try { fs.unlinkSync(`uploads/${food.image}`); } catch (e) {}
     }
 
     await foodModel.deleteMany(query);
+
+    // 🔗 Remove all category IDs from inventory linked items
+    if (removedIds.length > 0) {
+      await inventoryModel.updateMany(
+        { "linkedMenuItems.foodId": { $in: removedIds } },
+        { $pull: { linkedMenuItems: { foodId: { $in: removedIds } } } }
+      );
+    }
 
     res.json({ success: true, message: `Deleted ${foods.length} item(s) from "${category}"`, deleted: foods.length });
   } catch (error) {

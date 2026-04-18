@@ -65,7 +65,7 @@ const Cart = () => {
     setPromoLoading(true);
     setPromoError('');
     try {
-      const res = await axios.post(url + '/api/promo/validate', { code: promoInput, subtotal, restaurantId: cartRestaurantId }, { headers: { token } });
+      const res = await axios.post(url + '/api/promo/validate', { code: promoInput, subtotal, restaurantId: cartRestaurantId, deliveryFee: deliveryCharge }, { headers: { token } });
       if (res.data.success) {
         setAppliedPromo({ ...res.data, code: promoInput });
       } else {

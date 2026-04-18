@@ -55,9 +55,13 @@ const Navbar = ({ setShowLogin }) => {
   const locDebounce = useRef(null);
 
   // Optimized cart count
-  const cartCount = useMemo(() => 
-    Object.values(cartItems || {}).reduce((a, b) => a + (b?.quantity || 0), 0)
-  , [cartItems]);
+  const cartCount = useMemo(() => {
+    if (!cartItems || !food_list.length) return 0;
+    return Object.values(cartItems).reduce((acc, entry) => {
+      const exists = food_list.some(f => f._id === entry.itemId);
+      return exists ? acc + (entry.quantity || 0) : acc;
+    }, 0);
+  }, [cartItems, food_list]);
 
   useEffect(() => {
     try { 

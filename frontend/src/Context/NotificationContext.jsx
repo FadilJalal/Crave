@@ -50,11 +50,23 @@ export function NotificationProvider({ children }) {
   const markAllRead = () => setUnreadCount(0);
   const clearAll    = () => { setNotifications([]); setUnreadCount(0); };
 
+  // Clear everything on logout or user change
+  useEffect(() => {
+    clearAll();
+    prevStatusRef.current   = {};
+    initialLoadDone.current = false;
+  }, [token]);
+
   const poll = async () => {
-    if (!token) return;
+    const sessionToken = token;
+    if (!sessionToken) return;
     try {
-      const res = await axios.post(url + '/api/order/userorders', {}, { headers: { token } });
+      const res = await axios.post(url + '/api/order/userorders', {}, { headers: { token: sessionToken } });
       if (!res.data.success) return;
+      
+      // If token changed during request, discard results
+      if (token !== sessionToken) return;
+
       const orders = res.data.data || [];
 
       const statusMap = {};
@@ -114,8 +126,6 @@ export function NotificationProvider({ children }) {
   useEffect(() => {
     if (!token) {
       clearInterval(pollRef.current);
-      prevStatusRef.current   = {};
-      initialLoadDone.current = false;
       return;
     }
     poll();

@@ -1,4 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ResetPassword from "./Pages/ResetPassword";
 import Dashboard from "./Pages/Dashboard";
@@ -24,40 +26,43 @@ import ProtectedFeature from "./components/ProtectedFeature";
 import Login from "./Pages/Login";
 import Finance from "./Pages/Finance";
 import ReviewReply from "./Pages/ReviewReply";
-import AICouponStrategist from "./Pages/AICouponStrategist";
+
 
 export default function App() {
   return (
-    <Routes>
-      {/* ✅ MUST be public */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/bridge" element={<Bridge />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+    <>
+      <ToastContainer theme="dark" position="top-right" autoClose={3000} />
+      <Routes>
+        {/* ✅ MUST be public */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/bridge" element={<Bridge />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/menu" element={<ProtectedRoute><ProtectedFeature featureName="menu"><Menu /></ProtectedFeature></ProtectedRoute>} />
-      <Route path="/add-food" element={<ProtectedRoute><ProtectedFeature featureName="menu"><AddFood /></ProtectedFeature></ProtectedRoute>} />
-      <Route path="/bulk-upload" element={<ProtectedRoute><ProtectedFeature featureName="bulkUpload"><BulkUpload /></ProtectedFeature></ProtectedRoute>} />
-      <Route path="/edit-food/:id" element={<ProtectedRoute><ProtectedFeature featureName="menu"><EditFood /></ProtectedFeature></ProtectedRoute>} />
-      <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-      <Route path="/revenue" element={<ProtectedRoute><Revenue /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
-      <Route path="/email-campaign" element={<ProtectedRoute><EmailCampaign /></ProtectedRoute>} />
-      <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-      <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-      <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
-      <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
-      <Route path="/inventory/analytics" element={<ProtectedRoute><InventoryAnalytics /></ProtectedRoute>} />
-      <Route path="/ai-insights" element={<ProtectedRoute><ProtectedFeature featureName="aiInsights"><AIInsights /></ProtectedFeature></ProtectedRoute>} />
-      <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><AICustomerSegmentation /></ProtectedFeature></ProtectedRoute>} />
-      <Route path="/coupons" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><Promos /></ProtectedFeature></ProtectedRoute>} />
-      <Route path="/review-reply" element={<ProtectedRoute><ReviewReply /></ProtectedRoute>} />
-      <Route path="/ai-coupon-strategist" element={<ProtectedRoute><AICouponStrategist /></ProtectedRoute>} />
-      <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/menu" element={<ProtectedRoute><ProtectedFeature featureName="menu"><Menu /></ProtectedFeature></ProtectedRoute>} />
+        <Route path="/add-food" element={<ProtectedRoute><ProtectedFeature featureName="menu"><AddFood /></ProtectedFeature></ProtectedRoute>} />
+        <Route path="/bulk-upload" element={<ProtectedRoute><ProtectedFeature featureName="bulkUpload"><BulkUpload /></ProtectedFeature></ProtectedRoute>} />
+        <Route path="/edit-food/:id" element={<ProtectedRoute><ProtectedFeature featureName="menu"><EditFood /></ProtectedFeature></ProtectedRoute>} />
+        <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+        <Route path="/revenue" element={<ProtectedRoute><Revenue /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
+        <Route path="/email-campaign" element={<ProtectedRoute><EmailCampaign /></ProtectedRoute>} />
+        <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+        <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+        <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
+        <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+        <Route path="/inventory/analytics" element={<ProtectedRoute><InventoryAnalytics /></ProtectedRoute>} />
+        <Route path="/ai-insights" element={<ProtectedRoute><ProtectedFeature featureName="aiInsights"><AIInsights /></ProtectedFeature></ProtectedRoute>} />
+        <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><AICustomerSegmentation /></ProtectedFeature></ProtectedRoute>} />
+        <Route path="/coupons" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><Promos /></ProtectedFeature></ProtectedRoute>} />
+        <Route path="/review-reply" element={<ProtectedRoute><ReviewReply /></ProtectedRoute>} />
 
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
+
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </>
   );
 }

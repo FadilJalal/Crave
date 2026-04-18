@@ -53,9 +53,9 @@ export default function RestaurantLayout({ children }) {
     })();
     return () => { cancelled = true; };
   }, []);
-  
+
   let restaurantInfo = null;
-  try { restaurantInfo = JSON.parse(localStorage.getItem("restaurantInfo")); } catch {}
+  try { restaurantInfo = JSON.parse(localStorage.getItem("restaurantInfo")); } catch { }
 
   const restaurantLogo = restaurantInfo?.logo ? `${BASE_URL}/images/${restaurantInfo.logo}` : "";
   const restaurantName = restaurantInfo?.name || "Restaurant";
@@ -193,9 +193,9 @@ export default function RestaurantLayout({ children }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
           <span>{label}</span>
           {newCount > 0 && (
-            <span style={{ 
+            <span style={{
               background: "#ef4444", color: "white", fontSize: 10, fontWeight: 900,
-              minWidth: 18, height: 18, borderRadius: 9, display: "flex", 
+              minWidth: 18, height: 18, borderRadius: 9, display: "flex",
               alignItems: "center", justifyContent: "center", padding: "0 5px",
               boxShadow: "0 0 10px rgba(239, 68, 68, 0.4)"
             }}>
@@ -362,37 +362,37 @@ export default function RestaurantLayout({ children }) {
         </div>
 
         <nav className="nav">
-          {link("/dashboard",      "📊 Dashboard")}
+          {link("/dashboard", "📊 Dashboard")}
 
           {navGroup("management", "⚡", "Management", [
-              linkOrDisabled("/menu", "🍽️ Menu & Dishes", canMenu),
-              linkOrDisabled("/add-food", "➕ Add New Food", canMenu),
-              linkOrDisabled("/bulk-upload", "📦 Bulk Quick Upload", canBulk),
-              link("/orders",         "🧾 Active Orders"),
-              link("/inventory",      "📦 Inventory & Stock"),
+            linkOrDisabled("/menu", "🍽️ Menu & Dishes", canMenu),
+            linkOrDisabled("/add-food", "➕ Add New Food", canMenu),
+            linkOrDisabled("/bulk-upload", "📦 Bulk Quick Upload", canBulk),
+            link("/orders", "🧾 Active Orders"),
+            link("/inventory", "📦 Inventory & Stock"),
           ])}
-          
+
           {navGroup("growth", "🚀", "Growth & AI", [
-              linkOrDisabled("/coupons", "🏷️ AI Promo Lab", canAiPromo),
-              link("/ai-coupon-strategist", "🎯 Coupon Strategist"),
-              link("/email-campaign", "📧 AI Campaigns"),
-              linkOrDisabled("/ai-insights", "🧠 AI Insights", canAiInsights),
-              linkOrDisabled("/ai-customer-segmentation", "👥 AI Segmentation", canAiSegmentation),
-              link("/review-reply", "💬 Review Reply AI"),
+            linkOrDisabled("/coupons", "🏷️ AI Promo Generator", canAiPromo),
+
+            link("/email-campaign", "📧 AI Campaigns"),
+            linkOrDisabled("/ai-insights", "🧠 AI Insights", canAiInsights),
+            linkOrDisabled("/ai-customer-segmentation", "👥 AI Segmentation", canAiSegmentation),
+            link("/review-reply", "💬 Review Reply AI"),
           ])}
-          
+
           {navGroup("finance", "💰", "Finance & Data", [
-              link("/revenue",        "💰 Revenue"),
-              link("/finance",        "🏦 Billing & Payouts"),
-              link("/customers",      "👥 Customers"),
-              link("/inventory/analytics", "📊 Stock Analytics"),
+            link("/revenue", "💰 Revenue"),
+            link("/finance", "🏦 Billing & Payouts"),
+            link("/customers", "👥 Customers"),
+            link("/inventory/analytics", "📊 Stock Analytics"),
           ])}
 
           {navGroup("ops", "⚙️", "Operations", [
-              link("/messages",       "💬 Messages"),
-              link("/reviews",        "⭐ Reviews"),
-              link("/settings",       "⚙️ Settings"),
-              link("/subscription",   "💳 Subscription"),
+            link("/messages", "💬 Messages"),
+            link("/reviews", "⭐ Reviews"),
+            link("/settings", "⚙️ Settings"),
+            link("/subscription", "💳 Subscription"),
           ])}
         </nav>
 
@@ -405,22 +405,22 @@ export default function RestaurantLayout({ children }) {
         {/* Desktop Topbar */}
         {!isMobile && (
           <header style={{
-            height: 80, padding: "0 40px", display: "flex", alignItems: "center", 
-            justifyContent: "space-between", background: "var(--bg)", 
+            height: 80, padding: "0 40px", display: "flex", alignItems: "center",
+            justifyContent: "space-between", background: "var(--bg)",
             borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 100
           }}>
             <div>
               <h2 style={{ margin: 0, fontSize: 22, fontWeight: 950, letterSpacing: "-0.8px" }}>
-                {location.pathname === "/dashboard" ? "Dashboard Overview" : 
-                 location.pathname === "/orders" ? "Active Orders" :
-                 location.pathname === "/inventory" ? "Inventory Management" : "Restaurant Admin"}
+                {location.pathname === "/dashboard" ? "Dashboard Overview" :
+                  location.pathname === "/orders" ? "Active Orders" :
+                    location.pathname === "/inventory" ? "Inventory Management" : "Restaurant Admin"}
               </h2>
               <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>
                 {new Date().toLocaleDateString("en-AE", { weekday: "long", day: "numeric", month: "long" })}
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
-              <button 
+              <button
                 onClick={useTheme().toggle}
                 style={{
                   width: 44, height: 44, borderRadius: 14,
@@ -445,7 +445,7 @@ export default function RestaurantLayout({ children }) {
                   <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>Restaurant Admin</div>
                 </div>
                 {restaurantLogo ? (
-                   <img src={restaurantLogo} alt="Logo" style={{ width: 38, height: 38, borderRadius: 12, objectFit: "cover" }} />
+                  <img src={restaurantLogo} alt="Logo" style={{ width: 38, height: 38, borderRadius: 12, objectFit: "cover" }} />
                 ) : (
                   <div style={{ width: 38, height: 38, borderRadius: 12, background: "var(--sidebar-p)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>
                     {restaurantName.charAt(0).toUpperCase()}

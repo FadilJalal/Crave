@@ -23,9 +23,18 @@ const StoreContextProvider = (props) => {
     }
   });
 
+  const cartCount = useMemo(() => {
+    if (!cartItems || !food_list.length) return 0;
+    return Object.values(cartItems).reduce((acc, entry) => {
+      // Only count items that actually exist in the current food list
+      const exists = food_list.some(f => f._id === entry.itemId);
+      return exists ? acc + (entry.quantity || 0) : acc;
+    }, 0);
+  }, [cartItems, food_list]);
+
   // Calculate delivery fee dynamically from restaurant tiers + customer location
   const deliveryCharge = useMemo(() => {
-    const firstEntry = Object.values(cartItems).find(e => e.quantity > 0);
+    const firstEntry = Object.values(cartItems).find(e => e.quantity > 0 && food_list.some(f => f._id === e.itemId));
     if (!firstEntry) return 5;
     const food = food_list.find(f => f._id === firstEntry.itemId);
     const restaurant = food?.restaurantId;
@@ -168,6 +177,9 @@ const StoreContextProvider = (props) => {
   // Total count of a food item across all its variations
   const getItemCount = (itemId) => {
     let count = 0;
+    const exists = food_list.some(f => f._id === itemId);
+    if (!exists) return 0;
+    
     for (const key in cartItems) {
       if (cartItems[key].itemId === itemId) count += cartItems[key].quantity;
     }
@@ -182,9 +194,7 @@ const StoreContextProvider = (props) => {
       if (entry.quantity > 0) {
         const food = food_list.find((f) => f._id === entry.itemId);
         if (food) {
-          // Use salePrice if Flash Deal is active (support bool or string "true")
           const isFlash = food.isFlashDeal === true || food.isFlashDeal === "true" || food.isFlashDeal === 1 || (food.category && /flash/i.test(food.category));
-          // Bug 2 Fix: If no expiry is set, it's always valid. If set, check against current time.
           const isNotExpired = !food.flashDealExpiresAt || (new Date(food.flashDealExpiresAt).getTime() + 3600000) > now;
           const isFlashDealActive = isFlash && food.salePrice && isNotExpired;
           
@@ -276,7 +286,8 @@ const StoreContextProvider = (props) => {
     const raw = response.data.cartData || {};
     const converted = {};
     for (const itemId in raw) {
-      if (raw[itemId] > 0) {
+      // Very strict check: itemId must be 24 chars (ObjectId) and value must be number
+      if (itemId.length === 24 && typeof raw[itemId] === 'number' && raw[itemId] > 0) {
         converted[itemId] = { itemId, quantity: raw[itemId], selections: {}, extraPrice: 0 };
       }
     }
@@ -411,15 +422,41 @@ const StoreContextProvider = (props) => {
 
   // Sync navbar location with default address on login or address change
   useEffect(() => {
-    if (defaultAddress && defaultAddress.city) {
-      const loc = {
-        label: [defaultAddress.street, defaultAddress.area, defaultAddress.city].filter(Boolean).join(', '),
-        lat: defaultAddress.location?.lat || '',
-        lng: defaultAddress.location?.lng || ''
-      };
-      localStorage.setItem('crave_location', JSON.stringify(loc));
-      window.dispatchEvent(new Event('crave_location_changed'));
-    }
+    const syncLocation = async () => {
+      if (defaultAddress && defaultAddress.city) {
+        let lat = defaultAddress.location?.lat;
+        let lng = defaultAddress.location?.lng;
+
+        // If coordinates are missing, try geocoding the address
+        if (!lat || !lng) {
+          try {
+            const res = await axios.post(`${url}/api/geocode`, {
+              address: {
+                street: defaultAddress.street,
+                area: defaultAddress.area,
+                city: defaultAddress.city,
+                building: defaultAddress.building
+              }
+            });
+            if (res.data.success) {
+              lat = res.data.lat;
+              lng = res.data.lon;
+            }
+          } catch (err) {
+            console.error("Auto-geocoding failed:", err);
+          }
+        }
+
+        const loc = {
+          label: [defaultAddress.street, defaultAddress.area, defaultAddress.city].filter(Boolean).join(', '),
+          lat: lat || 25.3463, // Fallback to Sharjah default instead of 0
+          lng: lng || 55.4209
+        };
+        localStorage.setItem('crave_location', JSON.stringify(loc));
+        window.dispatchEvent(new Event('crave_location_changed'));
+      }
+    };
+    syncLocation();
   }, [defaultAddress]);
 
   const contextValue = {

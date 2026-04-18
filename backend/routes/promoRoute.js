@@ -35,8 +35,8 @@ const normalizePromoSuggestion = (suggestion, index) => {
     .replace(/[^A-Z0-9]/g, "")
     .slice(0, 16);
 
-  const type = suggestion?.type === "flat" ? "flat" : "percent";
-  const value = Number(suggestion?.value || 0);
+  const type = suggestion?.type === "flat" ? "flat" : suggestion?.type === "free-delivery" ? "free-delivery" : "percent";
+  const value = type === "free-delivery" ? 0 : Number(suggestion?.value || 0);
   const minOrder = Math.max(0, Number(suggestion?.minOrder || 0));
   const maxUsesValue = suggestion?.maxUses === null || suggestion?.maxUses === undefined || suggestion?.maxUses === ""
     ? null
@@ -69,7 +69,7 @@ const normalizePromoSuggestion = (suggestion, index) => {
 // Needs restaurantId so we only match promos belonging to that restaurant
 promoRouter.post("/validate", authMiddleware, async (req, res) => {
   try {
-    const { code, subtotal, restaurantId } = req.body;
+    const { code, subtotal, restaurantId, deliveryFee = 0 } = req.body;
     const userId = req.body.userId;
 
     if (!code) return res.json({ success: false, message: "Please enter a promo code." });
@@ -98,9 +98,14 @@ promoRouter.post("/validate", authMiddleware, async (req, res) => {
         message: `Minimum order of AED ${promo.minOrder} required for this code.`,
       });
 
-    const discount = promo.type === "percent"
-      ? Math.min((subtotal * promo.value) / 100, subtotal)
-      : Math.min(promo.value, subtotal);
+    let discount = 0;
+    if (promo.type === "percent") {
+      discount = Math.min((subtotal * promo.value) / 100, subtotal);
+    } else if (promo.type === "flat") {
+      discount = Math.min(promo.value, subtotal);
+    } else if (promo.type === "free-delivery") {
+      discount = deliveryFee;
+    }
 
     res.json({
       success: true,
@@ -109,7 +114,9 @@ promoRouter.post("/validate", authMiddleware, async (req, res) => {
       value: promo.value,
       message: promo.type === "percent"
         ? `${promo.value}% off applied!`
-        : `AED ${promo.value} off applied!`,
+        : promo.type === "free-delivery"
+          ? "Free Delivery applied!"
+          : `AED ${promo.value} off applied!`,
     });
   } catch (err) {
     console.error("[promo/validate]", err);
@@ -139,6 +146,7 @@ promoRouter.get("/public/:restaurantId", async (req, res) => {
     const promos = await promoModel.find({
       restaurantId: req.params.restaurantId,
       isActive: true,
+      isPublic: true,
       $and: [
         { $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }] },
         { $or: [{ maxUses: null }, { $expr: { $lt: ["$usedCount", "$maxUses"] } }] },
@@ -195,12 +203,13 @@ promoRouter.post("/ai-suggest", restaurantAuth, requireFeature("aiPromoGenerator
       "You are a restaurant marketing assistant.",
       "Generate exactly 3 practical promo code suggestions for a food delivery restaurant.",
       "Return JSON only with this shape:",
-      '{"headline":"...","suggestions":[{"title":"Campaign Name","code":"...","type":"percent|flat","value":20,"minOrder":40,"maxUses":100,"expiresInDays":14,"reason":"...","estimatedImpact":{"orders":"+15%","revenue":"+10%"},"tags":{"audience":"VIP Customers","bestTime":"Weekend Night"}}]}',
+      '{"headline":"...","suggestions":[{"title":"Campaign Name","code":"...","type":"percent|flat|free-delivery","value":20,"minOrder":40,"maxUses":100,"expiresInDays":14,"reason":"...","estimatedImpact":{"orders":"+15%","revenue":"+10%"},"tags":{"audience":"VIP Customers","bestTime":"Weekend Night"}}]}',
       "Rules:",
       "- title must be catchy and relevant to the strategy.",
       "- Code must be uppercase, short, memorable, and DIRECTLY RELEVANT to the campaign goal or strategy.",
       "- Ensure codes are professional, brand-safe, and avoid any gibberish or inappropriate strings.",
       "- Use realistic restaurant promo values.",
+      "- For 'free-delivery' type, set value to 0.",
       "- estimatedImpact should be a string like '+12%' or '+15%'.",
       "- tags.audience should be likely target (New Users, VIPs, Families).",
       "- tags.bestTime should be optimal window (Lunch, Weekends, Sluggish Mondays).",
@@ -209,7 +218,7 @@ promoRouter.post("/ai-suggest", restaurantAuth, requireFeature("aiPromoGenerator
       `Average menu price: AED ${avgMenuPrice}`,
       `Menu categories: ${categories.join(", ") || "General fast food"}`,
       `Existing promo codes to avoid: ${promos.map((promo) => promo.code).join(", ") || "none"}`,
-      goal ? `Campaign goal from restaurant owner (MUST REFLECT IN CODE): ${goal}` : "Campaign goal: increase conversion and repeat orders this week.",
+      goal ? `CRITICAL: The restaurant owner wants specifically: "${goal}". You MUST ensure ALL 3 suggestions are DIRECTLY focused on this goal. Do not suggest unrelated percentage or flat discounts if the goal is shipping-specific, and vice-versa.` : "Campaign goal: increase conversion and repeat orders this week.",
     ].join("\n");
 
     const response = await fetch(GROQ_CHAT_URL, {
@@ -263,14 +272,18 @@ promoRouter.post("/ai-suggest", restaurantAuth, requireFeature("aiPromoGenerator
 promoRouter.post("/create", restaurantAuth, requireFeature("aiPromoGenerator"), async (req, res) => {
   try {
     const code = String(req.body?.code || "").toUpperCase().trim();
-    const type = req.body?.type === "flat" ? "flat" : req.body?.type === "percent" ? "percent" : "";
-    const value = Number(req.body?.value);
+    const type = req.body?.type === "flat" ? "flat" : req.body?.type === "percent" ? "percent" : req.body?.type === "free-delivery" ? "free-delivery" : "";
+    const value = type === "free-delivery" ? 0 : Number(req.body?.value);
     const minOrder = Number(req.body?.minOrder || 0);
     const maxUsesRaw = req.body?.maxUses;
     const expiresAtRaw = req.body?.expiresAt;
 
-    if (!code || !type || !Number.isFinite(value) || value <= 0) {
+    if (!code || !type || !Number.isFinite(value)) {
       return res.json({ success: false, message: "Code, type, and value are required." });
+    }
+
+    if (type !== "free-delivery" && value <= 0) {
+      return res.json({ success: false, message: "Promo value must be greater than zero." });
     }
 
     if (type === "percent" && value > 100) {
@@ -300,9 +313,12 @@ promoRouter.post("/create", restaurantAuth, requireFeature("aiPromoGenerator"), 
     });
     if (exists) return res.json({ success: false, message: "You already have a promo with this code." });
 
+    const name = String(req.body?.name || "").trim();
+
     const promo = await promoModel.create({
       restaurantId: req.restaurantId,
       code,
+      name,
       type,
       value,
       minOrder: Number.isFinite(minOrder) ? minOrder : 0,

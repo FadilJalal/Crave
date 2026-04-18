@@ -81,24 +81,6 @@
 	min-height: 48px;
 	transition: border-color 0.18s, background 0.18s;
 }
-.po-delivery-mode-opt.unavailable {
-	background: #f8fafc;
-	color: var(--text-3);
-	border-style: dashed;
-	border-color: #e5e7eb;
-	cursor: not-allowed;
-	opacity: 0.85;
-	position: relative;
-}
-.po-delivery-mode-opt.unavailable strong {
-	color: var(--text-3);
-}
-.po-delivery-mode-opt.unavailable .po-unavailable-icon {
-	margin-right: 7px;
-	font-size: 15px;
-	color: #eab308;
-}
-
 .po-delivery-mode-opt.active {
 	border-color: var(--brand);
 	background: var(--brand-soft);

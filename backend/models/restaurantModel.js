@@ -27,6 +27,7 @@ const restaurantSchema = new mongoose.Schema(
       maxDropDistanceKm: { type: Number, default: 2 },
       maxPickupDistanceKm: { type: Number, default: 2 },
       matchWindowMin: { type: Number, default: 12 },
+      pioneerDiscountAed: { type: Number, default: 3 },
     },
 
     subscription: {
@@ -65,7 +66,14 @@ const restaurantSchema = new mongoose.Schema(
       stripeSubscriptionId: String,
     },
 
-    // Opening hours per day: { open: "09:00", close: "22:00", closed: false }
+    bankDetails: {
+      accountHolder: { type: String, default: "" },
+      bankName:      { type: String, default: "" },
+      iban:          { type: String, default: "" }, // International Bank Account Number
+      swiftCode:     { type: String, default: "" },
+    },
+    commissionRate: { type: Number, default: 15 }, // Crave's percentage cut (e.g. 15%)
+    
     openingHours: {
       type: Object,
       default: () => ({

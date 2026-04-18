@@ -128,10 +128,15 @@ const PlaceOrder = () => {
   const discount = promo ? promo.discount : 0;
   const subtotal = getTotalCartAmount();
   const standardDeliveryFee = Number(sharedQuote?.standardFee ?? deliveryCharge ?? 0);
-  const selectedDeliveryFee =
-    deliveryMode === 'shared' && sharedQuote?.eligible
-      ? Number(sharedQuote.sharedFee || standardDeliveryFee)
-      : standardDeliveryFee;
+  
+  // At checkout: shared delivery charges the same fee as standard.
+  // The real discount kicks in AFTER matching on the waiting screen.
+  // If there's already a match found at checkout time, apply the shared fee immediately.
+  let selectedDeliveryFee = standardDeliveryFee;
+  if (deliveryMode === 'shared' && sharedQuote?.eligible) {
+    selectedDeliveryFee = Number(sharedQuote.sharedFee);
+  }
+
   const finalTotal = Math.max(0, subtotal - discount + selectedDeliveryFee);
 
   const onChange = (e) => setData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -290,6 +295,7 @@ const PlaceOrder = () => {
       promoCode: promo?.code || null,
       discount: discount || 0,
       paymentMethod: payment,
+      deliveryPreference: deliveryMode === 'shared' ? 'shared' : 'express',
       sharedDelivery: {
         enabled: deliveryMode === 'shared' && !!sharedQuote?.eligible,
         sharedFee: selectedDeliveryFee,
@@ -344,7 +350,8 @@ const PlaceOrder = () => {
           toast.success('Payment successful! Order placed.');
           setCartItems({});
           const newOrderId = res.data.order?._id || res.data.orderId;
-          if (newOrderId) navigate(`/order/track/${newOrderId}`);
+          if (newOrderId && deliveryMode === 'shared') navigate(`/order/shared-waiting/${newOrderId}`);
+          else if (newOrderId) navigate(`/order/track/${newOrderId}`);
           else navigate('/myorders');
         } else if (res.data.success && res.data.session_url) {
           window.location.replace(res.data.session_url);
@@ -366,7 +373,8 @@ const PlaceOrder = () => {
           toast.success('Order placed successfully!'); 
           setCartItems({}); 
           const newOrderId = res.data.order?._id || res.data.orderId;
-          if (newOrderId) navigate(`/order/track/${newOrderId}`);
+          if (newOrderId && deliveryMode === 'shared') navigate(`/order/shared-waiting/${newOrderId}`);
+          else if (newOrderId) navigate(`/order/track/${newOrderId}`);
           else navigate('/myorders');
         }
         else if (res.data.outOfRange) toast.error('🚫 ' + res.data.message, { autoClose: 6000 });
@@ -577,39 +585,42 @@ const PlaceOrder = () => {
                   className={`po-delivery-mode-opt ${deliveryMode === 'standard' ? 'active' : ''}`}
                   onClick={() => setDeliveryMode('standard')}
                 >
-                  <span>{t("standard")}</span>
+                  <span style={{display:'flex',alignItems:'center',gap:6}}>⚡ Express</span>
                   <strong>{currency}{standardDeliveryFee.toFixed(2)}</strong>
                 </button>
 
                 <button
                   type='button'
-                  className={`po-delivery-mode-opt ${!sharedQuote?.eligible ? 'unavailable' : ''} ${deliveryMode === 'shared' ? 'active' : ''}`}
-                  onClick={() => sharedQuote?.eligible && setDeliveryMode('shared')}
-                  disabled={!sharedQuote?.eligible || sharedQuoteLoading}
+                  className={`po-delivery-mode-opt ${deliveryMode === 'shared' ? 'active' : ''}`}
+                  onClick={() => setDeliveryMode('shared')}
                 >
-                  <span style={{display:'flex',alignItems:'center'}}>
-                    {!sharedQuote?.eligible && <span className="po-unavailable-icon">&#9888;</span>}
-                    {t("shared")}
+                  <span style={{display:'flex',alignItems:'center',gap:6}}>
+                    🤝 Shared
+                    {sharedQuote?.eligible && <span style={{fontSize:10,background:'#16a34a',color:'#fff',borderRadius:20,padding:'2px 8px',fontWeight:800,marginLeft:4}}>MATCH</span>}
                   </span>
-                  <strong>
+                  <strong style={{display:'flex',alignItems:'center',gap:6}}>
                     {sharedQuoteLoading
                       ? t("checking")
                       : sharedQuote?.eligible
-                        ? `${currency}${Number(sharedQuote.sharedFee || 0).toFixed(2)}`
-                        : t("unavailable")}
+                        ? <><span style={{textDecoration:'line-through',color:'var(--text-3)',fontWeight:500,fontSize:12}}>{currency}{standardDeliveryFee.toFixed(2)}</span> {currency}{Number(sharedQuote.sharedFee).toFixed(2)}</>
+                        : `${currency}${standardDeliveryFee.toFixed(2)}`
+                    }
                   </strong>
                 </button>
               </div>
 
-              {sharedQuote?.eligible && (
+              {deliveryMode === 'shared' && (
                 <p className='po-shared-note'>
-                  {t("save_currency", { currency, savings: Number(sharedQuote.savings || 0).toFixed(2) })}
+                  {sharedQuote?.eligible 
+                    ? `🎉 Match found! You'll save ${currency}${Number(sharedQuote.savings).toFixed(2)} on delivery`
+                    : `🔍 After placing your order, we'll search for a delivery partner for 2 minutes. If matched, both of you get a discount!`
+                  }
                 </p>
               )}
 
-              {!sharedQuoteLoading && sharedQuote && !sharedQuote.eligible && (
+              {deliveryMode === 'standard' && sharedQuote?.eligible && (
                 <p className='po-shared-note po-shared-note-muted'>
-                  {sharedQuote.reason || t("no_nearby_shared_route")}
+                  💡 A neighbor chose shared delivery! Switch to save {currency}{Number(sharedQuote.savings).toFixed(2)}.
                 </p>
               )}
             </div>

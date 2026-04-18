@@ -32,11 +32,13 @@ const PromoSection = ({
               onClick={() => onPickCode?.(promo.code)}
               title={promo.type === 'percent'
                 ? `${promo.value}% ${t("off")}${promo.minOrder > 0 ? ` · ${t("min_aed")} ${promo.minOrder}` : ''}`
+                : promo.type === 'free-delivery'
+                ? `Free Delivery${promo.minOrder > 0 ? ` · ${t("min_aed")} ${promo.minOrder}` : ''}`
                 : `AED ${promo.value} ${t("off")}${promo.minOrder > 0 ? ` · ${t("min_aed")} ${promo.minOrder}` : ''}`}
             >
-              <span className='promo-chip-code'>{promo.code}</span>
+              <span className='promo-chip-code'>{promo.name || promo.code}</span>
               <span className='promo-chip-meta'>
-                {promo.type === 'percent' ? `${promo.value}% ${t("off")}` : `AED ${promo.value} ${t("off")}`}
+                {promo.type === 'percent' ? `${promo.value}% ${t("off")}` : promo.type === 'free-delivery' ? 'Free Delivery' : `AED ${promo.value} ${t("off")}`}
                 {promo.minOrder > 0 ? ` · ${t("min_aed")} ${promo.minOrder}` : ''}
               </span>
             </button>

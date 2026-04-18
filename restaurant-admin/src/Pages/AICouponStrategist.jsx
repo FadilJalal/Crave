@@ -89,7 +89,7 @@ export default function AICouponStrategist() {
           
           <div style={{ position: "relative", zIndex: 1 }}>
             <h4 style={{ fontSize: 13, fontWeight: 900, color: "#ff4e2a", textTransform: "uppercase", letterSpacing: 2, margin: "0 0 12px" }}>Neural Growth Engine</h4>
-            <h1 style={{ fontSize: 38, fontWeight: 900, margin: 0, letterSpacing: "-1.5px", color: dark ? "#f8fafc" : "#0f172a" }}>
+            <h1 style={{ fontSize: 38, fontWeight: 900, margin: 0, letterSpacing: "-1.5px", color: "#f8fafc" }}>
               Coupon Growth Lab
             </h1>
             <p style={{ color: dark ? "rgba(248,250,252,0.6)" : "#64748b", fontSize: 16, marginTop: 8, maxWidth: 600 }}>

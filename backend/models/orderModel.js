@@ -95,6 +95,11 @@ const orderSchema = new mongoose.Schema(
 
     stripeSessionId: { type: String, default: null },
     inventoryDeducted: { type: Boolean, default: false },
+    deliveryPreference: {
+      type: String,
+      enum: ["express", "shared"],
+      default: "express",
+    },
   },
   { timestamps: true }
 );
@@ -105,6 +110,7 @@ orderSchema.index({ userId: 1 });
 orderSchema.index({ restaurantId: 1 });
 orderSchema.index({ createdAt: -1 }); // For sorting by date
 orderSchema.index({ status: 1 }); // For filtering by status
+orderSchema.index({ deliveryPreference: 1, status: 1, isBatched: 1, createdAt: -1 }); // For shared matching
 
 const orderModel =
   mongoose.models.order || mongoose.model("order", orderSchema);

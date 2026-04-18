@@ -4,6 +4,7 @@ import { api } from "../utils/api";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
+import { useTheme } from "../ThemeContext";
 
 const extractQuantityFromName = (name) => {
     if (!name) return 1;
@@ -24,6 +25,7 @@ const extractQuantityFromName = (name) => {
 };
 
 export default function Inventory() {
+  const { dark } = useTheme();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -512,7 +514,7 @@ export default function Inventory() {
         {`
           .inventory-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 20px;
             margin-top: 24px;
             padding-bottom: 60px;
@@ -549,6 +551,28 @@ export default function Inventory() {
           .inv-card.low-stock { 
             border-color: #fee2e2; 
             background: #fffcfc; 
+          }
+
+          [data-theme="dark"] .inv-card {
+            background: #1e293b;
+            border-color: rgba(255, 255, 255, 0.08);
+            color: #f1f5f9;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+          }
+          
+          [data-theme="dark"] .inv-card:hover {
+            border-color: #ff4e2a;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+          }
+
+          [data-theme="dark"] .inv-card.selected {
+            background: rgba(255, 78, 42, 0.05);
+            border-color: #ff4e2a;
+          }
+
+          [data-theme="dark"] .inv-card.low-stock {
+            background: rgba(239, 68, 68, 0.03);
+            border-color: rgba(239, 68, 68, 0.2);
           }
           
           .action-navbar {
@@ -776,7 +800,7 @@ export default function Inventory() {
         {loading ? (
           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 100 }}><h2>Updating...</h2></div>
         ) : filteredItems.length === 0 ? (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 100, border: '2px dashed #e5e7eb', borderRadius: 24, background: '#f9fafb' }}><h2>No items found</h2></div>
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 100, border: `2px dashed ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`, borderRadius: 24, background: dark ? 'rgba(255,255,255,0.02)' : '#f9fafb' }}><h2>No items found</h2></div>
         ) : filteredItems.map(item => {
           const isLow = item.currentStock <= item.minimumStock;
           const isOut = item.currentStock === 0;
@@ -790,19 +814,19 @@ export default function Inventory() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', minHeight: 42 }}>
                   <div style={{ flex: 1, paddingRight: 10 }}>
                       <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.3px', marginBottom: 2, lineHeight: 1.2 }}>{item.itemName}</div>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', background: '#eff6ff', color: '#2563eb', borderRadius: 6, fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', background: dark ? 'rgba(37, 99, 235, 0.1)' : '#eff6ff', color: dark ? '#60a5fa' : '#2563eb', borderRadius: 6, fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>
                           {item.category.replace('_', ' ')}
                       </div>
                   </div>
               </div>
 
               <div className="stock-ctrl">
-                  <button onClick={() => updateStock(item._id, -1)} style={{ width: 28, height: 28, border: '1px solid #e2e8f0', background: 'white', fontWeight: 900, borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>-</button>
+                  <button onClick={() => updateStock(item._id, -1)} style={{ width: 28, height: 28, border: `1px solid ${dark ? 'rgba(255,255,255,0.15)' : '#e2e8f0'}`, background: dark ? 'rgba(255,255,255,0.05)' : 'white', fontWeight: 900, borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'inherit' }}>-</button>
                   <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1 }}>{item.currentStock}</div>
                       <div style={{ fontSize: 9, fontWeight: 800, color: '#64748b' }}>{item.unit}</div>
                   </div>
-                  <button onClick={() => updateStock(item._id, 1)} style={{ width: 28, height: 28, border: '1px solid #e2e8f0', background: 'white', fontWeight: 900, borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>+</button>
+                  <button onClick={() => updateStock(item._id, 1)} style={{ width: 28, height: 28, border: `1px solid ${dark ? 'rgba(255,255,255,0.15)' : '#e2e8f0'}`, background: dark ? 'rgba(255,255,255,0.05)' : 'white', fontWeight: 900, borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'inherit' }}>+</button>
               </div>
 
               <div style={{ marginBottom: 12 }}>
@@ -816,7 +840,7 @@ export default function Inventory() {
                           item.linkedMenuItems.slice(0, 3).map((link, idx) => {
                               const dishName = link.foodId?.name || 'Dish';
                               return (
-                                  <span key={idx} style={{ fontSize: 10, fontWeight: 700, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '2px 6px', borderRadius: 6, color: '#475569', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <span key={idx} style={{ fontSize: 10, fontWeight: 700, background: dark ? 'rgba(255,255,255,0.03)' : '#f8fafc', border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`, padding: '2px 6px', borderRadius: 6, color: dark ? '#94a3b8' : '#475569', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                       {dishName} {link.quantityPerOrder > 1 ? `(${link.quantityPerOrder})` : ''}
                                   </span>
                               );
@@ -840,18 +864,47 @@ export default function Inventory() {
                   </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
-                  <div>
-                      <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 800 }}>Unit Cost / Total Value</div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                          <div style={{ fontSize: 16, fontWeight: 900, color: '#1e293b' }}>AED {item.unitCost} <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>/ {item.unit}</span></div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#ff4e2a', background: '#fff1f0', padding: '1px 6px', borderRadius: 4 }}>
-                              Total: AED {Number((item.unitCost * item.currentStock).toFixed(2))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}`, paddingTop: 16 }}>
+                  <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.5px', marginBottom: 8 }}>Financials</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                              <span style={{ fontSize: 13, fontWeight: 950, color: dark ? '#f1f5f9' : '#1e293b' }}>AED {item.unitCost}</span>
+                              <span style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>/ {item.unit}</span>
+                          </div>
+                          <div style={{ 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: 6, 
+                              fontSize: 10, 
+                              fontWeight: 800, 
+                              color: '#ff4e2a', 
+                              background: dark ? 'rgba(255, 78, 42, 0.12)' : '#fff1f0', 
+                              padding: '4px 12px', 
+                              borderRadius: 8,
+                              width: 'fit-content'
+                          }}>
+                              <span style={{ opacity: 0.6 }}>Stock Value:</span>
+                              <span>AED {Number((item.unitCost * item.currentStock).toFixed(2)).toLocaleString()}</span>
                           </div>
                       </div>
                   </div>
-                  <button onClick={() => handleManageLinks(item)} style={{ cursor: 'pointer', border: 'none', background: '#ff4e2a', color: 'white', fontSize: 10, fontWeight: 900, padding: '4px 10px', borderRadius: 8 }}>
-                      {item.linkedMenuItems?.length > 0 ? 'Edit Links' : 'Add Link'}
+                  <button 
+                      onClick={() => handleManageLinks(item)} 
+                      style={{ 
+                          cursor: 'pointer', 
+                          border: `1px solid ${dark ? 'rgba(255, 78, 42, 0.4)' : 'transparent'}`, 
+                          background: '#ff4e2a', 
+                          color: 'white', 
+                          fontSize: 11, 
+                          fontWeight: 900, 
+                          padding: '10px 16px', 
+                          borderRadius: 12,
+                          boxShadow: '0 4px 12px rgba(255, 78, 42, 0.2)',
+                          transition: 'all 0.2s'
+                      }}
+                  >
+                      {item.linkedMenuItems?.length > 0 ? 'Edit Recipes' : 'Link Dish'}
                   </button>
               </div>
 

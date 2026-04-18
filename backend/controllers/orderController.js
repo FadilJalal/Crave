@@ -320,6 +320,7 @@ const placeOrder = async (req, res) => {
       paymentMethod: "stripe",
       promoCode: req.body.promoCode || null,
       discount: req.body.discount || 0,
+      deliveryPreference: req.body.deliveryPreference || "express",
     });
 
     await newOrder.save();
@@ -368,6 +369,26 @@ const placeOrder = async (req, res) => {
           if (invRes.success) newOrder.inventoryDeducted = true;
         } catch (invErr) {
           console.error("[placeOrder][savedCard] Inventory deduction failed:", invErr.message);
+        }
+
+        // ── 🤝 Retroactive Pioneer Discount ──────────────────────────────
+        if (sharedDeliveryApplied.isShared && sharedDeliveryApplied.matchedOrderId) {
+          try {
+            const pioneerOrder = await orderModel.findById(sharedDeliveryApplied.matchedOrderId);
+            if (pioneerOrder && !pioneerOrder.isSharedDelivery) {
+              const originalFee = pioneerOrder.deliveryFee || 0;
+              const pioneerSharedFee = actualDeliveryFee;
+              const pioneerSavings = round2(Math.max(0, originalFee - pioneerSharedFee));
+              pioneerOrder.isSharedDelivery = true;
+              pioneerOrder.sharedMatchedOrderId = newOrder._id;
+              pioneerOrder.sharedSavings = pioneerSavings;
+              pioneerOrder.deliveryFee = pioneerSharedFee;
+              await pioneerOrder.save();
+              console.log(`[placeOrder] Pioneer order ${pioneerOrder._id} retroactively discounted: ${originalFee} → ${pioneerSharedFee} AED`);
+            }
+          } catch (e) {
+            console.error("[placeOrder] Pioneer retroactive update failed:", e);
+          }
         }
 
         await newOrder.save();
@@ -473,6 +494,7 @@ const placeOrderCod = async (req, res) => {
       splitCardTotal: req.body.splitCardTotal || 0,
       splitCashDue:   req.body.splitCashDue   || 0,
       splitCardCount: req.body.splitCardCount  || 0,
+      deliveryPreference: req.body.deliveryPreference || "express",
     });
 
     await newOrder.save();
@@ -498,7 +520,29 @@ const placeOrderCod = async (req, res) => {
       console.error("[placeOrderCod] Flash deal claiming failed:", e);
     }
 
-    res.json({ success: true, message: "Order Placed Successfully" });
+    // ── 🤝 Retroactive Pioneer Discount ──────────────────────────────────
+    // If this order matched with a pioneer (Customer A), update their order too
+    if (sharedDeliveryApplied.isShared && sharedDeliveryApplied.matchedOrderId) {
+      try {
+        const pioneerOrder = await orderModel.findById(sharedDeliveryApplied.matchedOrderId);
+        if (pioneerOrder && !pioneerOrder.isSharedDelivery) {
+          const originalFee = pioneerOrder.deliveryFee || 0;
+          const pioneerSharedFee = actualDeliveryFee; // Same discounted fee
+          const pioneerSavings = round2(Math.max(0, originalFee - pioneerSharedFee));
+          
+          pioneerOrder.isSharedDelivery = true;
+          pioneerOrder.sharedMatchedOrderId = newOrder._id;
+          pioneerOrder.sharedSavings = pioneerSavings;
+          pioneerOrder.deliveryFee = pioneerSharedFee;
+          await pioneerOrder.save();
+          console.log(`[placeOrderCod] Pioneer order ${pioneerOrder._id} retroactively discounted: ${originalFee} → ${pioneerSharedFee} AED`);
+        }
+      } catch (e) {
+        console.error("[placeOrderCod] Pioneer retroactive update failed:", e);
+      }
+    }
+
+    res.json({ success: true, message: "Order Placed Successfully", orderId: newOrder._id });
   } catch (error) {
     console.error("[placeOrderCod] Error:", error.message);
     res.status(500).json({ success: false, message: error.message || "Error placing order" });
@@ -506,7 +550,7 @@ const placeOrderCod = async (req, res) => {
 };
 
 // =====================================
-// SHARED DELIVERY QUOTE (MVP)
+// SHARED DELIVERY QUOTE (Double Opt-In)
 // =====================================
 const quoteSharedDelivery = async (req, res) => {
   try {
@@ -542,20 +586,24 @@ const quoteSharedDelivery = async (req, res) => {
           standardFee: null,
           sharedFee: null,
           savings: 0,
+          pioneerDiscountAed: 0,
         },
       });
     }
 
     const standardFee = round2(calcDeliveryFee(restaurantDoc.deliveryTiers, radiusCheck.distKm ?? 0));
+    const pioneerDiscountAed = Number(restaurantDoc?.sharedDelivery?.pioneerDiscountAed ?? 3);
+
     if (standardFee <= 0) {
       return res.json({
         success: true,
         data: {
           eligible: false,
-          reason: "Delivery is already free for this order, so shared delivery discount is not applicable.",
+          reason: "Delivery is already free for this order.",
           standardFee,
           sharedFee: null,
           savings: 0,
+          pioneerDiscountAed: 0,
         },
       });
     }
@@ -578,18 +626,23 @@ const quoteSharedDelivery = async (req, res) => {
           standardFee,
           sharedFee: null,
           savings: 0,
+          pioneerDiscountAed,
         },
       });
     }
 
+    // Match against orders that are currently waiting (either just placed or being prepared)
+    // Both must have opted into shared delivery (deliveryPreference: "shared")
     const matchSince = new Date(Date.now() - sharedConfig.matchWindowMin * 60 * 1000);
     const candidates = await orderModel
       .find({
         _id: { $ne: req.body.orderId || null },
         userId: { $ne: userId },
-        status: "Food Processing",
+        status: { $in: ["Order Placed", "Food Processing"] },
+        deliveryPreference: "shared",
         payment: true,
         isBatched: false,
+        isSharedDelivery: false, // Don't match already-matched orders
         createdAt: { $gte: matchSince },
       })
       .select("_id restaurantId address deliveryFee createdAt")
@@ -600,10 +653,11 @@ const quoteSharedDelivery = async (req, res) => {
         success: true,
         data: {
           eligible: false,
-          reason: "No nearby active order found for shared delivery right now.",
+          reason: "No nearby shared delivery orders found right now. You'll still save by opting in!",
           standardFee,
           sharedFee: null,
           savings: 0,
+          pioneerDiscountAed,
         },
       });
     }
@@ -625,6 +679,7 @@ const quoteSharedDelivery = async (req, res) => {
           standardFee,
           sharedFee: null,
           savings: 0,
+          pioneerDiscountAed,
         },
       });
     }
@@ -680,10 +735,11 @@ const quoteSharedDelivery = async (req, res) => {
         success: true,
         data: {
           eligible: false,
-          reason: `No compatible nearby route within ${sharedConfig.maxDropDistanceKm} km drop distance found.`,
+          reason: `No compatible route within ${sharedConfig.maxDropDistanceKm} km found. Opt in to save when a neighbor orders!`,
           standardFee,
           sharedFee: null,
           savings: 0,
+          pioneerDiscountAed,
         },
       });
     }
@@ -696,6 +752,7 @@ const quoteSharedDelivery = async (req, res) => {
         sharedFee: best.sharedFee,
         savings: best.savings,
         matchedOrderId: best.matchedOrderId,
+        pioneerDiscountAed,
         constraints: {
           maxDropDistanceKm: sharedConfig.maxDropDistanceKm,
           maxPickupDistanceKm: sharedConfig.maxPickupDistanceKm,

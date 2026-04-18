@@ -23,6 +23,7 @@ export default function Menu() {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [sortBy, setSortBy] = useState("az");
+  const [priceRange, setPriceRange] = useState("all");
   const [deletingCat, setDeletingCat] = useState(false);
   const { dark } = useTheme();
 
@@ -257,11 +258,13 @@ export default function Menu() {
   const activeFilterCount = [
     search.trim() !== "",
     catFilter !== "all",
+    priceRange !== "all",
   ].filter(Boolean).length;
 
   const clearFilters = () => {
     setSearch("");
     setCatFilter("all");
+    setPriceRange("all");
     setSortBy("az");
   };
 
@@ -270,7 +273,13 @@ export default function Menu() {
     let result = foods.filter(f => {
       const matchesCat    = catFilter === "all" || f.category === catFilter;
       const matchesSearch = !q || f.name.toLowerCase().includes(q) || f.category?.toLowerCase().includes(q);
-      return matchesCat && matchesSearch;
+      
+      let matchesPrice = true;
+      if (priceRange === "low") matchesPrice = f.price < 30;
+      else if (priceRange === "mid") matchesPrice = f.price >= 30 && f.price <= 70;
+      else if (priceRange === "high") matchesPrice = f.price > 70;
+
+      return matchesCat && matchesSearch && matchesPrice;
     });
     result.sort((a, b) => {
       if (sortBy === "az")      return a.name.localeCompare(b.name);
@@ -280,7 +289,7 @@ export default function Menu() {
       return 0;
     });
     return result;
-  }, [foods, search, catFilter, sortBy]);
+  }, [foods, search, catFilter, sortBy, priceRange]);
 
   const selectStyle = {
     width: "100%", padding: "9px 12px", borderRadius: 10,
@@ -362,7 +371,7 @@ export default function Menu() {
 
             <div>
               <label style={labelStyle}>Price Range</label>
-              <select style={selectStyle} defaultValue="all">
+              <select value={priceRange} onChange={e => setPriceRange(e.target.value)} style={selectStyle}>
                 <option value="all">Any Price</option>
                 <option value="low">Under AED 30</option>
                 <option value="mid">AED 30 - 70</option>
@@ -419,6 +428,8 @@ export default function Menu() {
             const isIngOut = linkedIngs.some(i => i.currentStock <= 0);
             const isIngLow = linkedIngs.some(i => i.currentStock <= i.minimumStock);
             const outIngCount = linkedIngs.filter(i => i.currentStock <= 0).length;
+
+            const isFlashDealActuallyLive = f.isFlashDeal && (!f.flashDealExpiresAt || new Date(f.flashDealExpiresAt) > new Date());
 
             return (
               <div key={f._id} style={{ 
@@ -491,11 +502,11 @@ export default function Menu() {
                      </button>
                      <button onClick={() => openDealManager(f)} style={{ 
                        flex: 1, height: 36, borderRadius: 10, border: "none", 
-                       background: f.isFlashDeal ? "rgba(255,48,8,0.1)" : "rgba(148,163,184,0.1)", 
-                       color: f.isFlashDeal ? "#FF3008" : softText, 
+                       background: isFlashDealActuallyLive ? "rgba(255,48,8,0.1)" : "rgba(148,163,184,0.1)", 
+                       color: isFlashDealActuallyLive ? "#FF3008" : softText, 
                        fontWeight: 900, fontSize: 11, cursor: "pointer" 
                      }}>
-                       ⚡ {f.isFlashDeal ? "DEAL LIVE" : "DEAL"}
+                       ⚡ {isFlashDealActuallyLive ? "DEAL LIVE" : "DEAL"}
                      </button>
                   </div>
 

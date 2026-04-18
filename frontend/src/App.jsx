@@ -24,6 +24,7 @@ import Language from './pages/Language/Language';
 import Settings from './pages/Settings/Settings';
 import Profile from './pages/Profile/Profile';
 import FoodChat from './components/FoodChat/FoodChat';
+import SharedDeliveryWaiting from './pages/SharedDeliveryWaiting/SharedDeliveryWaiting';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from "./StripeProvider.jsx";
 import { useTheme } from './Context/ThemeContext';
@@ -75,6 +76,7 @@ const App = () => {
             <Route path='/order' element={<div className="app-container"><PlaceOrder /></div>} />
             <Route path='/myorders' element={<div className="app-container"><MyOrders /></div>} />
             <Route path='/order/track/:orderId' element={<div className="app-container"><OrderTracking /></div>} />
+            <Route path='/order/shared-waiting/:orderId' element={<div className="app-container"><SharedDeliveryWaiting /></div>} />
             <Route path='/verify' element={<div className="app-container"><Verify /></div>} />
             <Route path='/restaurants' element={<div className="app-container"><Restaurants /></div>} />
             <Route path='/restaurants/:id' element={<div className="app-container"><RestaurantMenu /></div>} />

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { useTheme } from "../ThemeContext";
+import { toast } from "react-toastify";
 
 const SEGMENT_COLORS = {
   VIP: "#10b981",
@@ -139,11 +140,11 @@ export default function AICustomerSegmentation() {
         return res.data.script;
       }
 
-      alert(res.data?.message || "Failed to generate AI script.");
+      toast.error(res.data?.message || "Failed to generate AI script.");
       return "";
     } catch (error) {
       console.error("Failed to generate campaign script:", error);
-      alert("Failed to generate AI script.");
+      toast.error("Failed to generate AI script.");
       return "";
     } finally {
       setScriptLoadingKey("");
@@ -167,13 +168,13 @@ export default function AICustomerSegmentation() {
       });
 
       if (res.data?.success) {
-        alert(res.data?.message || `Campaign created for ${segmentType} customers.`);
+        toast.success(res.data?.message || `Campaign created for ${segmentType} customers.`);
       } else {
-        alert(res.data?.message || "Campaign failed.");
+        toast.error(res.data?.message || "Campaign failed.");
       }
     } catch (error) {
       console.error("Failed to create campaign:", error);
-      alert("Failed to create campaign.");
+      toast.error("Failed to create campaign.");
     }
     setSendingKey("");
   };
@@ -325,6 +326,118 @@ export default function AICustomerSegmentation() {
                 </article>
               ))}
             </section>
+
+             {/* PRECISE CAMPAIGN PLAYBOOK REDO */}
+             <section 
+                className="card" 
+                style={{ 
+                  padding: 32, 
+                  borderRadius: 28,
+                  position: "relative",
+                  overflow: "hidden",
+                  background: dark ? "rgba(15,23,42,0.6)" : "#fff",
+                  boxShadow: dark ? "0 24px 60px rgba(0,0,0,0.5)" : "0 15px 40px rgba(15,23,42,0.08)",
+                  border: dark ? "1px solid rgba(255,255,255,0.05)" : "1px solid #eef2f7"
+                }}
+             >
+                {/* Visual Accent */}
+                <div style={{
+                  position: "absolute", top: -20, right: -20, width: 200, height: 200,
+                  borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)", filter: "blur(20px)"
+                }} />
+
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+                   <div style={{ fontSize: 32 }}>🚀</div>
+                   <div>
+                      <h3 style={{ margin: 0, fontSize: 26, fontWeight: 950, letterSpacing: "-0.5px" }}>Campaign Playbook</h3>
+                      <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--text-secondary)", fontWeight: 600 }}>
+                         Deploy high-resonance AI campaigns to specific behavioral clusters.
+                      </p>
+                   </div>
+                   {!isEnterprise && (
+                      <div style={{ 
+                        marginLeft: "auto", background: "#f59e0b", color: "#fff", 
+                        padding: "6px 14px", borderRadius: 12, fontSize: 11, fontWeight: 900,
+                        textTransform: "uppercase", letterSpacing: 1
+                      }}>Enterprise Feature</div>
+                   )}
+                </div>
+
+                <div style={{ 
+                  marginBottom: 14, 
+                  padding: "16px 20px", 
+                  borderRadius: 20, 
+                  background: dark ? "rgba(255,255,255,0.03)" : "#f8fafc",
+                  border: dark ? "1px solid rgba(255,255,255,0.08)" : "1px solid #eef2f7"
+                }}>
+                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 900, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                         Strategy Message Signal
+                      </span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#10b981", background: "rgba(16,185,129,0.1)", padding: "4px 10px", borderRadius: 100 }}>
+                         Live Draft
+                      </span>
+                   </div>
+                   <textarea
+                      value={campaignMessage}
+                      onChange={(e) => setCampaignMessage(e.target.value)}
+                      placeholder="Insert your custom campaign logic... or use AI Write below to auto-generate based on segment data."
+                      style={{
+                        width: "100%", minHeight: 100, borderRadius: 12, border: "none",
+                        background: "transparent", color: dark ? "#fff" : "#111827",
+                        fontSize: 15, fontWeight: 600, outline: "none", resize: "none",
+                        fontFamily: "inherit", lineHeight: 1.6
+                      }}
+                   />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+                   {segmentCards.map((item, idx) => (
+                     <article
+                       key={idx}
+                       style={{
+                         padding: 24, borderRadius: 24,
+                         background: dark ? `${item.color}0a` : `${item.color}05`,
+                         border: `1.5px solid ${item.color}25`,
+                         position: "relative", overflow: "hidden"
+                       }}
+                     >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+                           <div style={{ width: 48, height: 48, borderRadius: 14, background: `${item.color}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
+                              {item.emoji}
+                           </div>
+                           <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: 18, fontWeight: 900 }}>{item.type}</div>
+                              <div style={{ fontSize: 12, color: item.color, fontWeight: 800 }}>{item.customersCount} active targets</div>
+                           </div>
+                        </div>
+
+                        <p style={{ fontSize: 14, color: "var(--text-secondary)", fontWeight: 600, lineHeight: 1.5, marginBottom: 20 }}>
+                           {item.description}
+                        </p>
+
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                           <button 
+                             className="btn btn-outline" 
+                             onClick={() => generateCampaignScript(item.type, false, true)}
+                             disabled={scriptLoadingKey !== ""}
+                             style={{ flex: 1, padding: "10px", fontSize: 12, borderRadius: 12, border: `1px solid ${item.color}40`, color: item.color }}
+                           >
+                             {scriptLoadingKey === `${item.type}:all` ? "Writing..." : "✨ AI Script"}
+                           </button>
+                           <button 
+                             className="btn" 
+                             onClick={() => sendCampaign(item.type, false)}
+                             disabled={sendingKey !== "" || !isEnterprise}
+                             style={{ flex: 2, padding: "10px", fontSize: 13, borderRadius: 12, background: item.color, color: "#fff", fontWeight: 900, boxShadow: `0 8px 20px ${item.color}25` }}
+                           >
+                             {sendingKey === `${item.type}:all` ? "Dispatching..." : `Send to All ${item.type}`}
+                           </button>
+                        </div>
+                     </article>
+                   ))}
+                </div>
+             </section>
 
             <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 18 }}>
               {segmentCards.map((segment, idx) => (
@@ -480,136 +593,6 @@ export default function AICustomerSegmentation() {
                 </table>
               </div>
             </section>
-
-            {isEnterprise ? (
-            <section className="card" style={{ padding: 24, borderRadius: 20 }}>
-              <h3 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 900 }}>🚀 Campaign Playbook</h3>
-              <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>
-                Start a campaign for each segment, or message only top supporters directly.
-              </p>
-
-              <div
-                style={{
-                  marginBottom: 14,
-                  padding: 12,
-                  borderRadius: 12,
-                  border: dark ? "1px solid rgba(255,255,255,0.12)" : "1px solid #d1d5db",
-                  background: dark ? "rgba(255,255,255,0.04)" : "#f8fafc",
-                }}
-              >
-                <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-secondary)", marginBottom: 6 }}>
-                  Campaign Message (optional, used for all quick actions below)
-                </div>
-                <textarea
-                  value={campaignMessage}
-                  onChange={(e) => setCampaignMessage(e.target.value)}
-                  placeholder="Example: Thanks for ordering with us! Enjoy 20% off this week with code CRAVE20."
-                  style={{
-                    width: "100%",
-                    minHeight: 78,
-                    borderRadius: 10,
-                    border: dark ? "1px solid rgba(255,255,255,0.14)" : "1px solid #d1d5db",
-                    background: dark ? "#000000" : "#ffffff",
-                    color: dark ? "#ffffff" : "#111827",
-                    padding: "10px 12px",
-                    fontFamily: "inherit",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    resize: "vertical",
-                    outline: "none",
-                  }}
-                />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
-                {segmentCards.map((item, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: 14,
-                      borderRadius: 14,
-                      border: `1px solid ${item.color}66`,
-                      background: dark ? `${item.color}1a` : `${item.color}14`,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <h4 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: dark ? "#f8fafc" : "#0f172a" }}>
-                        {item.emoji} {item.type} Campaign
-                      </h4>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: item.color, background: dark ? "rgba(15,23,42,0.55)" : "#ffffff", borderRadius: 999, padding: "4px 9px" }}>
-                        {item.customersCount} users
-                      </span>
-                    </div>
-
-                    <p style={{ margin: "8px 0 12px", fontSize: 13, lineHeight: 1.45, color: dark ? "rgba(248,250,252,0.9)" : "#1f2937", fontWeight: 600 }}>
-                      {item.description || `Send an offer to ${item.type} customers.`}
-                    </p>
-
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button
-                        className="btn btn-outline"
-                        onClick={() => exportSegment(item.type)}
-                        disabled={sendingKey !== "" || scriptLoadingKey !== ""}
-                        style={{ fontSize: 12, padding: "7px 12px" }}
-                      >
-                        📊 Export CSV
-                      </button>
-
-                      <button
-                        className="btn btn-outline"
-                        onClick={() => generateCampaignScript(item.type, false, true)}
-                        disabled={sendingKey !== "" || scriptLoadingKey !== ""}
-                        style={{ fontSize: 12, padding: "7px 12px" }}
-                      >
-                        {scriptLoadingKey === `${item.type}:all` ? "Writing..." : "✨ AI Write Script"}
-                      </button>
-
-                      <button
-                        className="btn"
-                        onClick={() => sendCampaign(item.type, false)}
-                        disabled={sendingKey !== "" || scriptLoadingKey !== ""}
-                        style={{ fontSize: 12, padding: "7px 12px" }}
-                      >
-                        {sendingKey === `${item.type}:all` ? "Sending..." : `Send to All ${item.type}`}
-                      </button>
-
-                      <button
-                        className="btn btn-outline"
-                        onClick={() => sendCampaign(item.type, true)}
-                        disabled={sendingKey !== "" || scriptLoadingKey !== ""}
-                        style={{ fontSize: 12, padding: "7px 12px" }}
-                      >
-                        {sendingKey === `${item.type}:top` ? "Sending..." : "Send to Top Supporters"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-            ) : (
-            <section className="card" style={{ padding: 24, borderRadius: 20, border: dark ? "1px solid rgba(251,191,36,0.45)" : "1px solid #fcd34d", background: dark ? "linear-gradient(135deg, rgba(251,191,36,0.12), rgba(249,115,22,0.10))" : "linear-gradient(135deg, #fffbeb, #fff7ed)" }}>
-              <h3 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900, color: dark ? "#fde68a" : "#92400e" }}>🔒 Campaign Playbook (Pro Subscription)</h3>
-              <p style={{ margin: 0, fontSize: 14, color: dark ? "#fef3c7" : "#78350f", fontWeight: 700 }}>
-                This section is available only for active Pro (Enterprise) subscription. Upgrade to unlock AI script generation, top supporter campaigns, and one-click segment messaging.
-              </p>
-              <a
-                href="/subscription"
-                style={{
-                  display: "inline-block",
-                  marginTop: 14,
-                  padding: "9px 14px",
-                  borderRadius: 10,
-                  fontWeight: 800,
-                  fontSize: 13,
-                  textDecoration: "none",
-                  background: dark ? "#f59e0b" : "#d97706",
-                  color: "#ffffff",
-                }}
-              >
-                View Pro Plans
-              </a>
-            </section>
-            )}
           </>
         )}
       </div>

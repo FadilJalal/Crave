@@ -944,6 +944,39 @@ router.post("/create-campaign", restaurantAuth, requireFeature("aiCustomerSegmen
       });
     }
 
+    // ── 18b. AUTO-ACTIVATE PROMO CODES (EXTRACT FROM MESSAGE) ──
+    const codeMatch = finalMessage.match(/code\s*:?\s*([A-Z0-9]{4,})/i);
+    const discountMatch = finalMessage.match(/(\d+)\s*%/);
+    
+    if (codeMatch) {
+      const extractedCode = codeMatch[1].toUpperCase();
+      const extractedDiscount = discountMatch ? Number(discountMatch[1]) : 20; // Default to 20 if unclear
+
+      try {
+        const promoModel = (await import("../models/promoModel.js")).default;
+        
+        // Check if code exists for this restaurant
+        const exists = await promoModel.findOne({ restaurantId: req.restaurantId, code: extractedCode });
+        
+        if (!exists) {
+          await promoModel.create({
+            restaurantId: req.restaurantId,
+            code: extractedCode,
+            name: `${segmentType} Campaign Promo`,
+            type: "percent",
+            value: extractedDiscount,
+            minOrder: 0,
+            isActive: true,
+            isPublic: false, // Don't show targeted AI promos to everyone in the cart
+            expiresAt: new Date(Date.now() + 7 * 864e5), // Default 7 days expiry for campaigns
+          });
+          console.log(`[Campaign] Auto-activated promo code: ${extractedCode} (${extractedDiscount}%)`);
+        }
+      } catch (promoErr) {
+        console.error("[Campaign] Failed to auto-activate promo:", promoErr);
+      }
+    }
+
     await campaignModel.create({
       restaurantId: req.restaurantId,
       type: "general",

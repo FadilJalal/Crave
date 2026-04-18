@@ -6,7 +6,6 @@ import Header from '../../components/Header/Header'
 import HeaderMarquee from '../../components/HeaderMarquee/HeaderMarquee'
 import TopRestaurants from '../../components/TopRestaurants/TopRestaurants'
 import FoodDisplay from '../../components/FoodDisplay/FoodDisplay'
-import FlashDeals from '../../components/FlashDeals/FlashDeals'
 import SmartTopPick from '../../components/SmartTopPick/SmartTopPick'
 import MoodPicker from '../../components/MoodPicker/MoodPicker'
 import { StoreContext } from '../../Context/StoreContext'
@@ -15,11 +14,15 @@ const Home = () => {
   const { t } = useTranslation();
   const [category, setCategory] = useState("All")
   const navigate = useNavigate()
-  const { cartItems, currency, getTotalCartAmount } = useContext(StoreContext)
+  const { cartItems, currency, getTotalCartAmount, food_list } = useContext(StoreContext)
 
   const totalItems = useMemo(() => {
-    return Object.values(cartItems || {}).reduce((sum, entry) => sum + (entry.quantity || 0), 0)
-  }, [cartItems])
+    if (!cartItems || !food_list.length) return 0;
+    return Object.values(cartItems).reduce((sum, entry) => {
+      const exists = food_list.some(f => f._id === entry.itemId);
+      return exists ? sum + (entry.quantity || 0) : sum;
+    }, 0);
+  }, [cartItems, food_list])
 
   const subtotal = getTotalCartAmount()
 
@@ -28,7 +31,6 @@ const Home = () => {
       <Header />
       <HeaderMarquee />
       <SmartTopPick />
-      <FlashDeals />
       <TopRestaurants />
       <MoodPicker />
       <FoodDisplay category={category} />

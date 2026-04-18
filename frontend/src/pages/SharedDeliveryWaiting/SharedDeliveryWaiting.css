@@ -1,0 +1,209 @@
+.sdw-page {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.sdw-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 48px 40px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.08);
+}
+
+/* ─── Radar Animation ─── */
+.sdw-radar {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 28px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sdw-radar-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2.5px solid var(--brand);
+  opacity: 0;
+  animation: sdw-pulse 2s ease-out infinite;
+}
+
+.sdw-radar-pulse-2 {
+  animation-delay: 0.8s;
+}
+
+@keyframes sdw-pulse {
+  0% { transform: scale(0.5); opacity: 0.6; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+.sdw-radar-icon {
+  font-size: 48px;
+  z-index: 1;
+  animation: sdw-bounce 2s ease-in-out infinite;
+}
+
+@keyframes sdw-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* ─── Text ─── */
+.sdw-title {
+  font-family: var(--font-display, 'DM Sans', sans-serif);
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.sdw-title-success {
+  color: #16a34a;
+}
+
+.sdw-subtitle {
+  font-size: 14px;
+  color: var(--text-3);
+  margin: 0 0 28px;
+  line-height: 1.6;
+}
+
+/* ─── Timer ─── */
+.sdw-timer-wrap {
+  margin-bottom: 28px;
+}
+
+.sdw-timer-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.sdw-timer-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand), #f59e0b);
+  border-radius: 10px;
+  transition: width 1s linear;
+}
+
+.sdw-timer-text {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.sdw-timer-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+/* ─── Info Items ─── */
+.sdw-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.sdw-info-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  background: var(--bg-soft, #f8fafc);
+  padding: 10px 16px;
+  border-radius: 12px;
+}
+
+.sdw-info-icon {
+  font-size: 16px;
+}
+
+/* ─── Buttons ─── */
+.sdw-skip {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+
+.sdw-skip:hover {
+  background: var(--bg-soft, #f1f5f9);
+  color: var(--text);
+}
+
+.sdw-cta {
+  width: 100%;
+  padding: 16px;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  box-shadow: 0 4px 16px rgba(255,48,8,0.25);
+  margin-top: 8px;
+}
+
+.sdw-cta:hover {
+  background: var(--brand-dark);
+  transform: translateY(-1px);
+}
+
+/* ─── Success / Expired Icons ─── */
+.sdw-success-icon,
+.sdw-expired-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+/* ─── Savings Badge ─── */
+.sdw-savings-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  color: #16a34a;
+  font-weight: 800;
+  font-size: 16px;
+  padding: 12px 24px;
+  border-radius: 50px;
+  border: 1.5px solid #bbf7d0;
+  margin-bottom: 24px;
+}
+
+/* ─── Dark Mode ─── */
+[data-theme="dark"] .sdw-info-item {
+  background: rgba(255,255,255,0.04);
+}
+
+[data-theme="dark"] .sdw-savings-badge {
+  background: rgba(22,163,74,0.15);
+  border-color: rgba(22,163,74,0.3);
+}

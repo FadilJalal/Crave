@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api, BASE_URL } from "../utils/api";
 import { useTheme } from "../ThemeContext";
+import { toast } from "react-toastify";
 
 export default function EditFood() {
   const { id } = useParams();
@@ -40,7 +41,7 @@ export default function EditFood() {
         if (res.data?.success && Array.isArray(res.data.data)) {
           const food = res.data.data.find((f) => f._id === id);
           if (!food) {
-            alert("Item not found");
+            toast.error("Item not found");
             navigate("/menu");
             return;
           }
@@ -52,11 +53,11 @@ export default function EditFood() {
           // ✅ Load existing customizations
           setCustomizations(food.customizations || []);
         } else {
-          alert(res.data?.message || "Failed to load item");
+          toast.error(res.data?.message || "Failed to load item");
           navigate("/menu");
         }
       } catch (err) {
-        alert(err?.response?.data?.message || "Failed to load item");
+        toast.error(err?.response?.data?.message || "Failed to load item");
         navigate("/menu");
       }
     };
@@ -199,7 +200,7 @@ export default function EditFood() {
       });
 
       if (!res.data?.success) {
-        alert(res.data?.message || "Failed to update food");
+        toast.error(res.data?.message || "Failed to update food");
         return;
       }
 
@@ -212,10 +213,10 @@ export default function EditFood() {
         }))
       });
 
-      alert("✅ Food updated");
+      toast.success("✅ Food updated");
       navigate("/menu");
     } catch (err) {
-      alert(err?.response?.data?.message || "Failed to update food");
+      toast.error(err?.response?.data?.message || "Failed to update food");
     } finally {
       setLoading(false);
     }
