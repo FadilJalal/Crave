@@ -277,7 +277,6 @@ export default function Settings() {
   const [sharedDropKm, setSharedDropKm] = useState(2);
   const [sharedPickupKm, setSharedPickupKm] = useState(2);
   const [sharedWindowMin, setSharedWindowMin] = useState(12);
-  const [pioneerDiscountAed, setPioneerDiscountAed] = useState(3);
 
   const [deliveryTiers,  setDeliveryTiers]  = useState([
     { upToKm: 3,    fee: 5  },
@@ -325,10 +324,11 @@ export default function Settings() {
         setPrepTime(r.avgPrepTime ?? 15);
         setDeliveryRadius(r.deliveryRadius ?? 10);
         setMinimumOrder(r.minimumOrder ?? 0);
-        setSharedDropKm(r.sharedDelivery?.maxDropDistanceKm ?? 2);
-        setSharedPickupKm(r.sharedDelivery?.maxPickupDistanceKm ?? 2);
-        setSharedWindowMin(r.sharedDelivery?.matchWindowMin ?? 12);
-        setPioneerDiscountAed(r.sharedDelivery?.pioneerDiscountAed ?? 3);
+        if (r.sharedDelivery) {
+            setSharedDropKm(r.sharedDelivery.maxDropDistanceKm ?? 3);
+            setSharedPickupKm(r.sharedDelivery.maxPickupDistanceKm ?? 1);
+            setSharedWindowMin(r.sharedDelivery.matchWindowMin ?? 10);
+        }
 
         if (r.deliveryTiers?.length) setDeliveryTiers(r.deliveryTiers);
 
@@ -414,7 +414,6 @@ export default function Settings() {
           maxDropDistanceKm: sharedDropKm,
           maxPickupDistanceKm: sharedPickupKm,
           matchWindowMin: sharedWindowMin,
-          pioneerDiscountAed,
         },
       };
       console.log("[Settings] Saving payload:", payload);
@@ -440,7 +439,6 @@ export default function Settings() {
                 maxDropDistanceKm: sharedDropKm,
                 maxPickupDistanceKm: sharedPickupKm,
                 matchWindowMin: sharedWindowMin,
-                pioneerDiscountAed,
               },
               address,
               ...(loc?.lat != null && loc?.lng != null ? { location: loc } : {}),
@@ -818,19 +816,6 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 32 }}>
-                    <div>
-                      <h4 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 900 }}>Pioneer Discount</h4>
-                      <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>Incentive for first customer who opts into shared delivery</p>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <input type="number" value={pioneerDiscountAed} onChange={e => {
-                        const val = e.target.value;
-                        setPioneerDiscountAed(val === "" ? "" : Number(val));
-                      }} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "1.5px solid var(--border)", fontWeight: 800, background: "transparent" }} />
-                      <span style={{ fontWeight: 800, color: "var(--muted)" }}>AED</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}

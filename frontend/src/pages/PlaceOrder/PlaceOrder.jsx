@@ -578,52 +578,34 @@ const PlaceOrder = () => {
               <div className='po-sum-row po-sum-total'><span>{t("total")}</span><span>{currency}{finalTotal.toFixed(2)}</span></div>
             </div>
             <div className='po-delivery-mode-box'>
-              <p className='po-delivery-mode-title'>{t("delivery_type")}</p>
-              <div className='po-delivery-mode-opts'>
-                <button
-                  type='button'
-                  className={`po-delivery-mode-opt ${deliveryMode === 'standard' ? 'active' : ''}`}
-                  onClick={() => setDeliveryMode('standard')}
-                >
-                  <span style={{display:'flex',alignItems:'center',gap:6}}>⚡ Express</span>
-                  <strong>{currency}{standardDeliveryFee.toFixed(2)}</strong>
-                </button>
-
-                <button
-                  type='button'
-                  className={`po-delivery-mode-opt ${deliveryMode === 'shared' ? 'active' : ''}`}
-                  onClick={() => setDeliveryMode('shared')}
-                >
-                  <span style={{display:'flex',alignItems:'center',gap:6}}>
+                <p className='po-delivery-mode-title'>{t("delivery_type")}</p>
+                <div className='po-delivery-pills'>
+                  <button
+                    type='button'
+                    className={`po-pill ${deliveryMode === 'standard' ? 'po-pill-active' : ''}`}
+                    onClick={() => setDeliveryMode('standard')}
+                  >
+                    ⚡ Express
+                  </button>
+                  <button
+                    type='button'
+                    className={`po-pill ${deliveryMode === 'shared' ? 'po-pill-active' : ''}`}
+                    onClick={() => setDeliveryMode('shared')}
+                  >
                     🤝 Shared
-                    {sharedQuote?.eligible && <span style={{fontSize:10,background:'#16a34a',color:'#fff',borderRadius:20,padding:'2px 8px',fontWeight:800,marginLeft:4}}>MATCH</span>}
-                  </span>
-                  <strong style={{display:'flex',alignItems:'center',gap:6}}>
-                    {sharedQuoteLoading
-                      ? t("checking")
-                      : sharedQuote?.eligible
-                        ? <><span style={{textDecoration:'line-through',color:'var(--text-3)',fontWeight:500,fontSize:12}}>{currency}{standardDeliveryFee.toFixed(2)}</span> {currency}{Number(sharedQuote.sharedFee).toFixed(2)}</>
-                        : `${currency}${standardDeliveryFee.toFixed(2)}`
+                    {sharedQuote?.eligible && <span className='po-pill-badge'>MATCH</span>}
+                  </button>
+                </div>
+
+                {deliveryMode === 'shared' && (
+                  <p className='po-shared-hint'>
+                    {sharedQuote?.eligible 
+                      ? `🎉 Match found! Save ${currency}${Number(sharedQuote.savings).toFixed(2)}`
+                      : `🔍 We'll search for a partner for 2 min after you place your order`
                     }
-                  </strong>
-                </button>
+                  </p>
+                )}
               </div>
-
-              {deliveryMode === 'shared' && (
-                <p className='po-shared-note'>
-                  {sharedQuote?.eligible 
-                    ? `🎉 Match found! You'll save ${currency}${Number(sharedQuote.savings).toFixed(2)} on delivery`
-                    : `🔍 After placing your order, we'll search for a delivery partner for 2 minutes. If matched, both of you get a discount!`
-                  }
-                </p>
-              )}
-
-              {deliveryMode === 'standard' && sharedQuote?.eligible && (
-                <p className='po-shared-note po-shared-note-muted'>
-                  💡 A neighbor chose shared delivery! Switch to save {currency}{Number(sharedQuote.savings).toFixed(2)}.
-                </p>
-              )}
-            </div>
             {eta && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 12,

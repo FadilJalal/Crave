@@ -32,9 +32,10 @@ const SharedDeliveryWaiting = () => {
           setOrder(o);
 
           // If already matched, show immediately
-          if (o.isSharedDelivery && o.sharedMatchedOrderId) {
+          if (o.isSharedDelivery || o.sharedMatchedOrderId) {
             setMatched(true);
             setSavings(o.sharedSavings || 0);
+            setOrder(o);
             return;
           }
 

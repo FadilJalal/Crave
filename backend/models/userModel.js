@@ -17,6 +17,15 @@ const userSchema = new mongoose.Schema({
                 expYear: { type: Number },
                 created: { type: Date, default: Date.now }
             }
+        ],
+        walletBalance: { type: Number, default: 0 },
+        walletHistory: [
+            {
+                type: { type: String, enum: ['credit', 'debit'] },
+                amount: { type: Number },
+                description: { type: String },
+                date: { type: Date, default: Date.now }
+            }
         ]
 }, { minimize: false })
 

@@ -25,6 +25,7 @@ import Settings from './pages/Settings/Settings';
 import Profile from './pages/Profile/Profile';
 import FoodChat from './components/FoodChat/FoodChat';
 import SharedDeliveryWaiting from './pages/SharedDeliveryWaiting/SharedDeliveryWaiting';
+import Wallet from './pages/Wallet/Wallet';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from "./StripeProvider.jsx";
 import { useTheme } from './Context/ThemeContext';
@@ -87,6 +88,7 @@ const App = () => {
             <Route path='/language' element={<div className="app-container"><Language /></div>} />
             <Route path='/settings' element={<div className="app-container"><Settings /></div>} />
             <Route path='/profile' element={<div className="app-container"><Profile /></div>} />
+            <Route path='/wallet' element={<div className="app-container"><Wallet /></div>} />
           </Routes>
         </ErrorBoundary>
       </div>

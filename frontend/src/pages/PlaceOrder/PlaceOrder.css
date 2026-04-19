@@ -37,75 +37,71 @@
 
 .po-delivery-mode-box {
 	border: 1px solid var(--border);
-	border-radius: var(--radius-md);
-	padding: 12px;
-	margin-bottom: 14px;
+	border-radius: var(--radius-sm);
+	padding: 10px 12px;
+	margin-bottom: 12px;
 	background: var(--bg-soft);
 }
 
 .po-delivery-mode-title {
-	margin: 0 0 10px;
-	font-size: 12px;
+	margin: 0 0 8px;
+	font-size: 11px;
 	font-weight: 700;
-	color: var(--text-2);
+	color: var(--text-3);
 	text-transform: uppercase;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.05em;
 }
 
-.po-delivery-mode-opts {
-		display: flex;
-		gap: 12px;
-		flex-wrap: wrap;
-}
-
-@media (max-width: 520px) {
-	.po-delivery-mode-opts {
-		flex-direction: column;
-		gap: 10px;
-	}
-}
-
-.po-delivery-mode-opt {
-	border: 1.5px solid var(--border);
-	border-radius: var(--radius-sm);
-	padding: 14px 14px 14px 16px;
-	background: var(--card);
-	color: var(--text);
+.po-delivery-pills {
 	display: flex;
-	flex-direction: row;
-	justify-content: space-between;
-	align-items: center;
-	font-size: 14px;
-	font-weight: 600;
-	cursor: pointer;
-	min-height: 48px;
-	transition: border-color 0.18s, background 0.18s;
+	gap: 8px;
 }
-.po-delivery-mode-opt.active {
+
+.po-pill {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	padding: 8px 12px;
+	border: 1.5px solid var(--border);
+	border-radius: 50px;
+	background: var(--card);
+	color: var(--text-2);
+	font-size: 13px;
+	font-weight: 700;
+	font-family: var(--font-body);
+	cursor: pointer;
+	transition: all 0.18s;
+	white-space: nowrap;
+}
+
+.po-pill:hover {
+	border-color: var(--brand);
+}
+
+.po-pill-active {
 	border-color: var(--brand);
 	background: var(--brand-soft);
-}
-
-.po-delivery-mode-opt:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
-}
-
-.po-delivery-mode-opt strong {
-	font-size: 13px;
 	color: var(--text);
 }
 
-.po-shared-note {
-	margin: 10px 0 0;
-	font-size: 12px;
-	color: #16a34a;
-	font-weight: 700;
+.po-pill-badge {
+	font-size: 9px;
+	background: #16a34a;
+	color: #fff;
+	border-radius: 20px;
+	padding: 1px 6px;
+	font-weight: 800;
+	letter-spacing: 0.03em;
 }
 
-.po-shared-note-muted {
+.po-shared-hint {
+	margin: 8px 0 0;
+	font-size: 11px;
 	color: var(--text-3);
 	font-weight: 500;
+	line-height: 1.4;
 }
 
 .po-submit { width: 100%; padding: 15px; background: var(--brand); color: #fff; border: none; border-radius: 50px; font-size: 15px; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: background 0.2s, transform 0.15s; box-shadow: 0 4px 16px rgba(255,48,8,0.25); }
@@ -118,9 +114,4 @@
 /* ── Dark Mode ── */
 [data-theme="dark"] .po-field input:focus {
   background: var(--bg);
-}
-[data-theme="dark"] .po-delivery-mode-opt.unavailable {
-  background: rgba(255,255,255,0.03);
-  border-color: rgba(255,255,255,0.06);
-  color: var(--text-3);
 }

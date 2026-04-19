@@ -32,6 +32,14 @@ const StoreContextProvider = (props) => {
     }, 0);
   }, [cartItems, food_list]);
 
+  // Track location changes so delivery fee recalculates
+  const [locationKey, setLocationKey] = useState(0);
+  useEffect(() => {
+    const onLocChange = () => setLocationKey(k => k + 1);
+    window.addEventListener('crave_location_changed', onLocChange);
+    return () => window.removeEventListener('crave_location_changed', onLocChange);
+  }, []);
+
   // Calculate delivery fee dynamically from restaurant tiers + customer location
   const deliveryCharge = useMemo(() => {
     const firstEntry = Object.values(cartItems).find(e => e.quantity > 0 && food_list.some(f => f._id === e.itemId));
@@ -65,7 +73,7 @@ const StoreContextProvider = (props) => {
       if (tier.upToKm === null || distKm <= tier.upToKm) return tier.fee;
     }
     return sorted[sorted.length - 1]?.fee ?? 5;
-  }, [cartItems, food_list]);
+  }, [cartItems, food_list, locationKey]);
 
   // cartKey = "itemId" for plain items, "itemId::Size:Large|Drink:Pepsi" for customized
 
@@ -417,8 +425,27 @@ const StoreContextProvider = (props) => {
 
   // Fetch addresses on login
   useEffect(() => {
-    if (token) fetchAddresses();
+    if (token) {
+        fetchAddresses();
+        fetchWalletBalance();
+    }
   }, [token]);
+
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletHistory, setWalletHistory] = useState([]);
+  
+  const fetchWalletBalance = async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get(url + "/api/wallet", { headers: { token } });
+      if (res.data.success) {
+        setWalletBalance(res.data.balance || 0);
+        setWalletHistory(res.data.history || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch wallet:", error);
+    }
+  };
 
   // Sync navbar location with default address on login or address change
   useEffect(() => {
@@ -470,6 +497,8 @@ const StoreContextProvider = (props) => {
     favourites, isFavourite, addFavourite, removeFavourite,
     // Address management
     addresses, defaultAddress, fetchAddresses, addAddress, deleteAddress, setDefaultAddressIndex, setDefaultAddress,
+    // Wallet
+    walletBalance, walletHistory, fetchWalletBalance
   };
 
   return (

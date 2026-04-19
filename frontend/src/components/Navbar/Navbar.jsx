@@ -493,7 +493,12 @@ const Navbar = ({ setShowLogin }) => {
                     </svg>
                     {t('my_orders') || 'My Orders'}
                   </button>
-                                    {/* ...existing menu items... */}
+                  <button className='nb-dd-item' onClick={() => { navigate('/wallet'); setOpenProfile(false); }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" />
+                    </svg>
+                    {t('wallet') || 'Wallet'}
+                  </button>
                   <button className='nb-dd-item' onClick={() => { navigate('/payment-methods'); setOpenProfile(false); }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="2" y="7" width="20" height="10" rx="2" /><path d="M2 11h20" />

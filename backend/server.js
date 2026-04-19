@@ -29,6 +29,7 @@ import aiRestaurantRouter from "./routes/aiRestaurantRoute.js";
 import aiAdminRouter from "./routes/aiAdminRoute.js";
 import inventoryRouter from "./routes/inventoryRoute.js";
 import cardRoute from "./routes/cardRoute.js";
+import walletRouter from "./routes/walletRoute.js";
 
 // ── Validate critical environment variables ──────────────────────────────────
 const requiredEnvVars = ["MONGO_URL", "JWT_SECRET"];
@@ -190,6 +191,7 @@ app.use("/api/ai/admin",         aiAdminRouter);
 app.use("/api/inventory",        inventoryRouter);
 app.use("/api/card",             cardRoute);
 app.use("/api/cards",            cardRoute);
+app.use("/api/wallet",           walletRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {
