@@ -184,6 +184,13 @@ const OrderTracking = () => {
               ))}
             </ul>
             <div className="ot-divider" />
+            <div className="sdw-savings-badge">
+              {order?.sharedRole === 'matcher' ? `Matched & Saved!` : `Instant Cashback: ${currency}${order?.sharedSavings.toFixed(2)}`}
+            </div>
+            
+            <div style={{ marginTop: '10px', fontSize: '14px', fontWeight: 600, color: '#166534' }}>
+               📍 You are Stop #{order?.deliverySequence || 1} on the delivery route.
+            </div>
             <div className="ot-total-row ot-total-bold">
               <span>{t("total")}</span>
               <span>{currency}{displayTotal.toFixed(2)}</span>
@@ -232,6 +239,39 @@ const OrderTracking = () => {
 
           {/* LEFT: status + stepper + order details */}
           <div className="ot-left">
+
+            {/* --- Shared Delivery Bonus Banner --- */}
+            {order?.deliveryPreference === 'shared' && (
+              <div style={{
+                background: order?.isSharedDelivery ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+                border: order?.isSharedDelivery ? '1.5px solid #22c55e' : '1.5px solid #f97316',
+                borderRadius: 'var(--radius-lg)',
+                padding: '16px 20px',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                animation: 'fadeUp 0.4s ease'
+              }}>
+                <div style={{ fontSize: '28px' }}>{order?.isSharedDelivery ? '🤝' : '🔍'}</div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontWeight: 800, color: order?.isSharedDelivery ? '#166534' : '#9a3412', fontSize: '15px' }}>
+                    {order?.isSharedDelivery 
+                      ? `Shared Delivery Matched! (Stop ${order?.deliverySequence || 1})` 
+                      : 'Shared Delivery Active'}
+                  </p>
+                  <p style={{ margin: 0, color: order?.isSharedDelivery ? '#15803d' : '#c2410c', fontSize: '13px', fontWeight: 500, lineHeight: 1.4 }}>
+                    {order?.isSharedDelivery 
+                      ? (order?.sharedRole === 'matcher'
+                          ? `A neighbor is ordering from the same area. Since you joined a partner, your ${currency}${order?.sharedSavings.toFixed(2)} savings were applied upfront!`
+                          : `A neighbor joined your delivery! ${currency}${order?.sharedSavings.toFixed(2)} has been credited to your Crave Wallet.`)
+                      : `We're still looking for a neighbor nearby. If found within the first 10 mins, you'll get 50% cashback automatically!`
+                    }
+                  </p>
+                </div>
+                {order?.isSharedDelivery && <div style={{ background: '#22c55e', color: '#fff', padding: '4px 10px', borderRadius: '50px', fontSize: '11px', fontWeight: 900 }}>SAVED</div>}
+              </div>
+            )}
 
             {/* Hero */}
             <div className={`ot-hero ${isDelivered ? 'ot-hero-done' : ''} ${pulsing ? 'ot-pulse' : ''}`}>

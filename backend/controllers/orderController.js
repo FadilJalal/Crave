@@ -31,9 +31,9 @@ function calcDeliveryFee(tiers, distKm) {
   return sorted[sorted.length - 1]?.fee ?? FLAT_DELIVERY;
 }
 const frontend_URL = process.env.FRONTEND_URL || "http://localhost:5174";
-const SHARED_MAX_DROP_DISTANCE_KM = Number(process.env.SHARED_MAX_DROP_DISTANCE_KM ?? 2);
-const SHARED_MAX_PICKUP_DISTANCE_KM = Number(process.env.SHARED_MAX_PICKUP_DISTANCE_KM ?? 2);
-const SHARED_MATCH_WINDOW_MIN = Number(process.env.SHARED_MATCH_WINDOW_MIN ?? 12);
+const SHARED_MAX_DROP_DISTANCE_KM = Number(process.env.SHARED_MAX_DROP_DISTANCE_KM ?? 5);
+const SHARED_MAX_PICKUP_DISTANCE_KM = Number(process.env.SHARED_MAX_PICKUP_DISTANCE_KM ?? 5);
+const SHARED_MATCH_WINDOW_MIN = Number(process.env.SHARED_MATCH_WINDOW_MIN ?? 20);
 const SHARED_MIN_FEE = Number(process.env.SHARED_MIN_FEE ?? 2);
 const DEBUG_RADIUS_LOGS = process.env.DEBUG_RADIUS_LOGS === "true";
 const DEBUG_ORDER_LOGS = process.env.DEBUG_ORDER_LOGS === "true";
@@ -321,6 +321,9 @@ const placeOrder = async (req, res) => {
       promoCode: req.body.promoCode || null,
       discount: req.body.discount || 0,
       deliveryPreference: req.body.deliveryPreference || "express",
+      sharedRole: req.body.deliveryPreference === "shared" ? (sharedDeliveryApplied.isShared ? "matcher" : "pioneer") : null,
+      distanceFromRestaurant: radiusCheck.distKm || 0,
+      deliverySequence: 1, // Default to 1 (will be updated if matched and farther)
     });
 
     await newOrder.save();
@@ -377,27 +380,45 @@ const placeOrder = async (req, res) => {
             const pioneerOrder = await orderModel.findById(sharedDeliveryApplied.matchedOrderId);
             if (pioneerOrder && !pioneerOrder.isSharedDelivery) {
               const originalFee = pioneerOrder.deliveryFee || 0;
-              const pioneerSharedFee = actualDeliveryFee;
-              const pioneerSavings = round2(Math.max(0, originalFee - pioneerSharedFee));
+              const pioneerSavings = round2(originalFee / 2); // Split the pioneer's original fee
+              
               pioneerOrder.isSharedDelivery = true;
               pioneerOrder.sharedMatchedOrderId = newOrder._id;
+              pioneerOrder.sharedRole = 'pioneer'; // Explicitly set role when matched
               pioneerOrder.sharedSavings = pioneerSavings;
-              pioneerOrder.deliveryFee = pioneerSharedFee;
+              pioneerOrder.deliveryFee = originalFee / 2; // Reduce their fee in DB for records
+              
+              // Nearest Order First Logic
+              const pioneerDist = pioneerOrder.distanceFromRestaurant || 0;
+              const matcherDist = newOrder.distanceFromRestaurant || 0;
+              if (matcherDist < pioneerDist) {
+                 newOrder.deliverySequence = 1;
+                 pioneerOrder.deliverySequence = 2;
+              } else {
+                 pioneerOrder.deliverySequence = 1;
+                 newOrder.deliverySequence = 2;
+              }
+
               await pioneerOrder.save();
+              await newOrder.save(); // Save the sequence change to matcher too
               
               if (pioneerSavings > 0) {
                  await userModel.findByIdAndUpdate(pioneerOrder.userId, {
                     $inc: { walletBalance: pioneerSavings },
                     $push: {
-                        walletHistory: { type: 'credit', amount: pioneerSavings, description: 'Shared Delivery Match Savings' }
+                        walletHistory: { 
+                          type: 'credit', 
+                          amount: pioneerSavings, 
+                          description: 'Shared Delivery Match — Wallet Refund' 
+                        }
                     }
                  });
               }
               
-              console.log(`[placeOrder] Pioneer order ${pioneerOrder._id} retroactively discounted. Credited ${pioneerSavings} to wallet.`);
+              console.log(`[placeOrder] Pioneer order ${pioneerOrder._id} matched with ${newOrder._id}. Credited ${pioneerSavings} to wallet.`);
             }
           } catch (e) {
-            console.error("[placeOrder] Pioneer retroactive update failed:", e);
+            console.error("[placeOrder] Pioneer match update failed:", e);
           }
         }
 
@@ -505,6 +526,9 @@ const placeOrderCod = async (req, res) => {
       splitCashDue:   req.body.splitCashDue   || 0,
       splitCardCount: req.body.splitCardCount  || 0,
       deliveryPreference: req.body.deliveryPreference || "express",
+      sharedRole: req.body.deliveryPreference === "shared" ? (sharedDeliveryApplied.isShared ? "matcher" : "pioneer") : null,
+      distanceFromRestaurant: radiusCheck.distKm || 0,
+      deliverySequence: 1,
     });
 
     await newOrder.save();
@@ -537,31 +561,47 @@ const placeOrderCod = async (req, res) => {
         const pioneerOrder = await orderModel.findById(sharedDeliveryApplied.matchedOrderId);
         if (pioneerOrder && !pioneerOrder.isSharedDelivery) {
           const originalFee = pioneerOrder.deliveryFee || 0;
-          const pioneerSharedFee = actualDeliveryFee; // Same discounted fee
-          const pioneerSavings = round2(Math.max(0, originalFee - pioneerSharedFee));
+          const pioneerSavings = round2(originalFee / 2);
           
           pioneerOrder.isSharedDelivery = true;
           pioneerOrder.sharedMatchedOrderId = newOrder._id;
+          pioneerOrder.sharedRole = 'pioneer'; 
           pioneerOrder.sharedSavings = pioneerSavings;
-          pioneerOrder.deliveryFee = pioneerSharedFee;
-          // In COD, they haven't paid yet, but we will still credit their wallet 
-          // as requested and let them pay the full driver fee OR we reduce fee and no wallet.
-          // Wait, the new logic: split 50/50, and COD also gets wallet credit. Oh wait! If they are paying COD, they just pay the lower amount. So no wallet credit needed. No, the prompt says "if the delievery fees is 4 both the customer pays 2". For COD, we can just update the deliveryFee to 2 and they pay 2. Let's do wallet credit only if payment is already true. COD usually pays later. But let me implement wallet credit everywhere for consistency if we want it to act like a reward instead.
-          // Wait, if it's COD, we're reducing `deliveryFee`, so their `amount` to pay driver drops. We won't give them a wallet credit AND a discount. If we give wallet, we should not lower their COD amount. Let's just follow previous logic: COD gets fee reduced in DB so they pay less to driver. Prepaid gets wallet credit.
+          pioneerOrder.deliveryFee = originalFee / 2;
           
+          // Nearest Order First Logic
+          const pioneerDist = pioneerOrder.distanceFromRestaurant || 0;
+          const matcherDist = newOrder.distanceFromRestaurant || 0;
+          if (matcherDist < pioneerDist) {
+             newOrder.deliverySequence = 1;
+             pioneerOrder.deliverySequence = 2;
+          } else {
+             pioneerOrder.deliverySequence = 1;
+             newOrder.deliverySequence = 2;
+          }
+
           await pioneerOrder.save();
+          await newOrder.save();
           
-          // Only credit wallet if they already paid (Stripe)
-          if (pioneerOrder.payment && pioneerSavings > 0) {
+          // For COD, if they haven't paid, we still credit wallet as an incentive 
+          // (or they just pay the halved fee upon delivery). 
+          // User redesign: "Customer A pays full and waits... Customer A gets other half credited to Crave Wallet"
+          if (pioneerSavings > 0) {
               await userModel.findByIdAndUpdate(pioneerOrder.userId, {
                   $inc: { walletBalance: pioneerSavings },
-                  $push: { walletHistory: { type: 'credit', amount: pioneerSavings, description: 'Shared Delivery Match Savings' } }
+                  $push: { 
+                    walletHistory: { 
+                      type: 'credit', 
+                      amount: pioneerSavings, 
+                      description: 'Shared Delivery Match — Wallet Refund' 
+                    } 
+                  }
               });
           }
-          console.log(`[placeOrderCod] Pioneer order ${pioneerOrder._id} matched. COD fee reduced / Wallet Credited.`);
+          console.log(`[placeOrderCod] Pioneer order ${pioneerOrder._id} matched. Wallet Credited.`);
         }
       } catch (e) {
-        console.error("[placeOrderCod] Pioneer retroactive update failed:", e);
+        console.error("[placeOrderCod] Pioneer matching update failed:", e);
       }
     }
 
@@ -655,9 +695,10 @@ const quoteSharedDelivery = async (req, res) => {
     const matchSince = new Date(Date.now() - sharedConfig.matchWindowMin * 60 * 1000);
     const candidates = await orderModel
       .find({
+        restaurantId: restaurantId, // Bug 3 Fix: Match same restaurant only
         _id: { $ne: req.body.orderId || null },
         userId: { $ne: userId },
-        status: { $in: ["Order Placed", "Food Processing"] },
+        status: { $in: ["Order Placed", "Food Processing"] }, // Redesign: Both placed and accepted can match
         deliveryPreference: "shared",
         payment: true,
         isBatched: false,
@@ -921,7 +962,7 @@ const verifyOrder = async (req, res) => {
                 const pioneerOrder = await orderModel.findById(order.sharedMatchedOrderId);
                 if (pioneerOrder && !pioneerOrder.isSharedDelivery) {
                     const originalFee = pioneerOrder.deliveryFee || 0;
-                    const pioneerSharedFee = order.deliveryFee; // Customer B's fee is the split fee
+                    const pioneerSharedFee = round2(originalFee / 2); // Split the pioneer's original fee
                     const pioneerSavings = round2(Math.max(0, originalFee - pioneerSharedFee));
                     
                     pioneerOrder.isSharedDelivery = true;
@@ -933,7 +974,13 @@ const verifyOrder = async (req, res) => {
                     if (pioneerOrder.payment && pioneerSavings > 0) {
                          await userModel.findByIdAndUpdate(pioneerOrder.userId, {
                             $inc: { walletBalance: pioneerSavings },
-                            $push: { walletHistory: { type: 'credit', amount: pioneerSavings, description: 'Shared Delivery Match Savings' } }
+                            $push: { 
+                              walletHistory: { 
+                                type: 'credit', 
+                                amount: pioneerSavings, 
+                                description: 'Shared Delivery Match — Wallet Refund' 
+                              } 
+                            }
                          });
                     }
                     console.log(`[verifyOrder] Pioneer order ${pioneerOrder._id} retroactively discounted. Credited ${pioneerSavings} to wallet.`);
@@ -1000,8 +1047,8 @@ const restaurantUpdateStatus = async (req, res) => {
     // ── Unified Operations: Deduct inventory ──
     if ((status === "Order Accepted" || status === "Food Processing") && !order.inventoryDeducted) {
       try {
-        const res = await deductInventoryForOrder(restaurantId, order.items, String(order._id));
-        if (res.success) order.inventoryDeducted = true;
+        const invResult = await deductInventoryForOrder(restaurantId, order.items, String(order._id));
+        if (invResult.success) order.inventoryDeducted = true;
       } catch (e) {
         console.error("[restaurantUpdateStatus] Deduction error:", e);
       }

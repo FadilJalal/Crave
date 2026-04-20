@@ -77,37 +77,29 @@ const PlaceOrder = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load saved profile and cards from backend
+  // Load saved cards on login
   useEffect(() => {
     if (!token) return;
-    axios.get(url + '/api/user/profile', { headers: { token } })
-      .then(res => {
-        if (res.data.success) {
-          const user = res.data.user;
-          // Use default address if available
-          let selected = user.savedAddresses?.find(a => a.isDefault) || user.savedAddresses?.[0] || {};
-          setData(prev => ({
-            ...prev,
-            phone: user.phone || prev.phone,
-            street:    selected.street    || prev.street,
-            building:  selected.building  || prev.building,
-            apartment: selected.apartment || prev.apartment,
-            area:      selected.area      || prev.area,
-            city:      selected.city      || prev.city,
-            country:   selected.country   || prev.country,
-            zipcode:   selected.zipcode   || prev.zipcode,
-          }));
-        }
-      })
-      .catch(() => {});
-
-    // Fetch saved cards from backend using token (GET)
     axios.get(url + '/api/cards/list', { headers: { token } })
       .then(res => setSavedCards(res.data.cards || []))
       .catch(() => setSavedCards([]));
-
     setUseNewCard(false);
   }, [token]);
+
+  // Sync with defaultAddress from context whenever it changes
+  useEffect(() => {
+    if (!defaultAddress) return;
+    setData(prev => ({
+      ...prev,
+      street:    defaultAddress.street    || prev.street,
+      building:  defaultAddress.building  || prev.building,
+      apartment: defaultAddress.apartment || prev.apartment,
+      area:      defaultAddress.area      || prev.area,
+      city:      defaultAddress.city      || prev.city,
+      country:   defaultAddress.country   || prev.country,
+      zipcode:   defaultAddress.zipcode   || prev.zipcode,
+    }));
+  }, [defaultAddress]);
 
   // Fetch AI ETA
   useEffect(() => {
@@ -578,6 +570,31 @@ const PlaceOrder = () => {
               <div className='po-sum-row po-sum-total'><span>{t("total")}</span><span>{currency}{finalTotal.toFixed(2)}</span></div>
             </div>
             <div className='po-delivery-mode-box'>
+                {/* --- Redesign: Shared Delivery Match Banner --- */}
+                {sharedQuote?.eligible && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                    border: '1.5px solid #22c55e',
+                    borderRadius: '16px',
+                    padding: '16px',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    boxShadow: '0 4px 12px rgba(34, 197, 94, 0.1)'
+                  }}>
+                    <div style={{ fontSize: '24px' }}>🎉</div>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 800, color: '#166534', fontSize: '14.5px' }}>
+                        Match Found! Neighbor is waiting.
+                      </p>
+                      <p style={{ margin: 0, color: '#15803d', fontSize: '12.5px', fontWeight: 500 }}>
+                        Share the delivery and pay only <span style={{fontWeight:800}}>{currency}{Number(sharedQuote.sharedFee).toFixed(2)}</span> instead of {currency}{Number(sharedQuote.standardFee).toFixed(2)}!
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <p className='po-delivery-mode-title'>{t("delivery_type")}</p>
                 <div className='po-delivery-pills'>
                   <button
@@ -593,15 +610,15 @@ const PlaceOrder = () => {
                     onClick={() => setDeliveryMode('shared')}
                   >
                     🤝 Shared
-                    {sharedQuote?.eligible && <span className='po-pill-badge'>MATCH</span>}
+                    {sharedQuote?.eligible && <span className='po-pill-badge' style={{ background: '#22c55e' }}>MATCH</span>}
                   </button>
                 </div>
 
                 {deliveryMode === 'shared' && (
-                  <p className='po-shared-hint'>
+                  <p className='po-shared-hint' style={{ color: sharedQuote?.eligible ? '#166534' : '#6b7280', fontWeight: 600 }}>
                     {sharedQuote?.eligible 
-                      ? `🎉 Match found! Save ${currency}${Number(sharedQuote.savings).toFixed(2)}`
-                      : `🔍 We'll search for a partner for 2 min after you place your order`
+                      ? `✨ Partner found! You save ${currency}${Number(sharedQuote.savings).toFixed(2)} instantly.`
+                      : `🎁 Opt in — if we find a partner, you'll get ${currency}${(selectedDeliveryFee/2).toFixed(2)} back in your wallet!`
                     }
                   </p>
                 )}

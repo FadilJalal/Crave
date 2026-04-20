@@ -8,7 +8,9 @@ import TopRestaurants from '../../components/TopRestaurants/TopRestaurants'
 import FoodDisplay from '../../components/FoodDisplay/FoodDisplay'
 import SmartTopPick from '../../components/SmartTopPick/SmartTopPick'
 import MoodPicker from '../../components/MoodPicker/MoodPicker'
+import CraveLivePulse from '../../components/CraveLivePulse/CraveLivePulse'
 import { StoreContext } from '../../Context/StoreContext'
+import { useEffect } from 'react'
 
 const Home = () => {
   const { t } = useTranslation();
@@ -26,14 +28,40 @@ const Home = () => {
 
   const subtotal = getTotalCartAmount()
 
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    const revealed = document.querySelectorAll('.reveal');
+    revealed.forEach(el => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <>
       <Header />
       <HeaderMarquee />
-      <SmartTopPick />
-      <TopRestaurants />
-      <MoodPicker />
-      <FoodDisplay category={category} />
+      <div className="reveal-on-scroll reveal">
+        <CraveLivePulse />
+      </div>
+      <div className="reveal-on-scroll reveal">
+        <SmartTopPick />
+      </div>
+      <div className="reveal-on-scroll reveal">
+        <TopRestaurants />
+      </div>
+      <div className="reveal-on-scroll reveal">
+        <MoodPicker />
+      </div>
+      <div className="reveal-on-scroll reveal">
+        <FoodDisplay category={category} />
+      </div>
       <div className="app-container">
       </div>
 

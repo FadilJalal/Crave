@@ -46,6 +46,22 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    
+    sharedRole: {
+      type: String,
+      enum: ["pioneer", "matcher", null],
+      default: null,
+    },
+
+    distanceFromRestaurant: {
+      type: Number,
+      default: 0,
+    },
+
+    deliverySequence: {
+      type: Number,
+      default: 1, // 1 = First stop, 2 = Second stop
+    },
 
     address: {
       type: Object,

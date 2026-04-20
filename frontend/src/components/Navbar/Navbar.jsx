@@ -70,6 +70,22 @@ const Navbar = ({ setShowLogin }) => {
     } catch {}
   }, [location]);
 
+  // Sync Navbar label when location is changed elsewhere (e.g. from default address in StoreContext)
+  useEffect(() => {
+    const syncLocation = () => {
+      try {
+        const saved = localStorage.getItem('crave_location');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // Only update if label actually changed to avoid unnecessary re-renders
+          setLocation(prev => prev.label !== parsed.label ? parsed : prev);
+        }
+      } catch {}
+    };
+    window.addEventListener('crave_location_changed', syncLocation);
+    return () => window.removeEventListener('crave_location_changed', syncLocation);
+  }, []);
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', onScroll);

@@ -1,20 +1,50 @@
 /* ── Food Card ── */
 .fi-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s ease, border-color 0.25s;
-  animation: fadeUp 0.4s ease both;
+  width: 100%;
+  margin: auto;
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
+  height: 100%;
+  position: relative;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-glow);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s, border-color 0.3s;
+  overflow: hidden;
 }
-.fi-card:hover { transform: translateY(-5px); box-shadow: 0 12px 28px rgba(0,0,0,0.10); border-color: transparent; }
 
-/* Image */
-.fi-img-wrap { position: relative; aspect-ratio: 4/3; overflow: hidden; flex-shrink: 0; }
-.fi-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.35s; display: block; }
-.fi-card:hover .fi-img { transform: scale(1.05); }
+.fi-card:hover {
+  transform: translateY(-8px) scale(1.02) perspective(1000px) rotateX(2deg);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 78, 42, 0.3);
+}
+
+[data-theme="dark"] .fi-card:hover {
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 78, 42, 0.5);
+}
+
+.fi-img-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 0.72;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.fi-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fi-card:hover .fi-img {
+  transform: scale(1.1) rotate(-1deg);
+}
 
 /* Restaurant badge */
 .fi-rest-badge {

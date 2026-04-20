@@ -16,9 +16,9 @@ const SharedDeliveryWaiting = () => {
   const [expired, setExpired] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null); // in seconds
   const [savings, setSavings] = useState(0);
+  const [pollingReady, setPollingReady] = useState(false);
   const pollRef = useRef(null);
   const timerRef = useRef(null);
-  const startedRef = useRef(false);
 
   // Fetch order + restaurant config to get the match window
   useEffect(() => {
@@ -50,7 +50,7 @@ const SharedDeliveryWaiting = () => {
           const elapsed = Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000);
           const remaining = Math.max(0, matchWindowSec - elapsed);
           setTimeLeft(remaining);
-          startedRef.current = true;
+          setPollingReady(true);
         } else {
           navigate('/myorders');
         }
@@ -87,7 +87,7 @@ const SharedDeliveryWaiting = () => {
 
   // Poll for match
   useEffect(() => {
-    if (!startedRef.current || !token || matched || expired) return;
+    if (!pollingReady || !token || matched || expired) return;
 
     pollRef.current = setInterval(async () => {
       try {
@@ -106,7 +106,7 @@ const SharedDeliveryWaiting = () => {
     }, POLL_INTERVAL);
 
     return () => clearInterval(pollRef.current);
-  }, [startedRef.current, token, matched, expired]);
+  }, [pollingReady, token, matched, expired]);
 
   // Cleanup
   useEffect(() => {
@@ -136,9 +136,9 @@ const SharedDeliveryWaiting = () => {
               <div className="sdw-radar-icon">🤝</div>
             </div>
 
-            <h2 className="sdw-title">Finding Your Delivery Partner</h2>
+            <h2 className="sdw-title">Finding Your Partner...</h2>
             <p className="sdw-subtitle">
-              Looking for a neighbor ordering from the same restaurant...
+              Waiting for a delivery partner... If someone nearby orders, you'll get {currency}{(order?.deliveryFee/2 || 0).toFixed(2)} credited to your Crave Wallet!
             </p>
 
             <div className="sdw-timer-wrap">
@@ -172,16 +172,21 @@ const SharedDeliveryWaiting = () => {
         {matched && (
           <>
             <div className="sdw-success-icon">🎉</div>
-            <h2 className="sdw-title sdw-title-success">Match Found!</h2>
+            <h2 className="sdw-title sdw-title-success">Match Found! 🎉</h2>
             <p className="sdw-subtitle">
-              A neighbor is ordering from the same area. Your deliveries will be bundled!
+              {order?.sharedRole === 'matcher'
+                ? `A neighbor is ordering from the same area. Since you joined a partner, your delivery savings were applied upfront!`
+                : `A neighbor joined your delivery! ${currency}${order?.sharedSavings.toFixed(2)} has been credited to your Crave Wallet.`
+              }
             </p>
 
-            {savings > 0 && (
-              <div className="sdw-savings-badge">
-                You saved {currency}{savings.toFixed(2)} on delivery!
-              </div>
-            )}
+            <div className="sdw-savings-badge">
+              {order?.sharedRole === 'matcher' ? `Matched & Saved!` : `Instant Cashback: ${currency}${order?.sharedSavings.toFixed(2)}`}
+            </div>
+
+            <div style={{ marginTop: '10px', fontSize: '15px', fontWeight: 700, color: '#166534', background: '#f0fdf4', padding: '8px 12px', borderRadius: '8px', border: '1px solid #dcfce7' }}>
+               📍 Your Delivery Sequence: Stop #{order?.deliverySequence || 1}
+            </div>
 
             <button className="sdw-cta" onClick={() => navigate(`/order/track/${orderId}`)}>
               Track My Order →
@@ -195,7 +200,7 @@ const SharedDeliveryWaiting = () => {
             <div className="sdw-expired-icon">⏰</div>
             <h2 className="sdw-title">No Match Found</h2>
             <p className="sdw-subtitle">
-              No one nearby ordered during the search window. Your order will be delivered normally — don't worry, your food is on its way!
+              No match found this time — your order is on its way normally! don't worry, your food is on its way!
             </p>
 
             <button className="sdw-cta" onClick={() => navigate(`/order/track/${orderId}`)}>

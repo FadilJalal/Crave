@@ -41,8 +41,12 @@ orderRouter.get("/track/:orderId", authMiddleware, async (req, res) => {
       return res.json({ success: false, message: "Order not found" });
     }
 
-    // Make sure the order belongs to the logged-in user
-    if (String(order.userId) !== String(req.body.userId)) {
+    // Bug Fix: ownership check for GET requests
+    const jwt = (await import('jsonwebtoken')).default;
+    const decoded = jwt.verify(req.headers.token, process.env.JWT_SECRET);
+    const requestUserId = decoded.id;
+
+    if (String(order.userId) !== String(requestUserId)) {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 

@@ -19,11 +19,18 @@ const Verify = () => {
       try {
         const trackRes = await axios.get(`${url}/api/order/track/${orderId}`, { headers: { token: localStorage.getItem("token") } });
         if (trackRes.data.success) {
-           const order = trackRes.data.data;
-           if (order.deliveryPreference === 'shared' && !order.isSharedDelivery) {
-              navigate(`/order/shared-waiting/${orderId}`);
-              return;
-           }
+            const order = trackRes.data.data;
+            if (order.deliveryPreference === 'shared') {
+               if (order.isSharedDelivery || order.sharedMatchedOrderId) {
+                 // Matcher or already matched Pioneer — go straight to tracking
+                 navigate(`/order/track/${orderId}`);
+                 return;
+               } else {
+                 // Pioneer waiting for match — go to radar
+                 navigate(`/order/shared-waiting/${orderId}`);
+                 return;
+               }
+            }
         }
       } catch (e) {
         console.error("Verify redirect check failed:", e);

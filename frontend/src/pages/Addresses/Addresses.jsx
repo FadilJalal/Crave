@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import "./Addresses.css";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { StoreContext } from "../../Context/StoreContext";
 
 // Fix Leaflet marker icon issue with Vite
 import L from 'leaflet';
@@ -19,19 +20,12 @@ L.Icon.Default.mergeOptions({
 
 export default function Addresses() {
   const { t } = useTranslation();
-  const [addresses, setAddresses] = useState(() => {
-    try {
-      const saved = localStorage.getItem("crave_addresses");
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem("crave_addresses", JSON.stringify(addresses));
-  }, [addresses]);
+  const { 
+    addresses, 
+    addAddress, 
+    deleteAddress, 
+    setDefaultAddressIndex, 
+  } = useContext(StoreContext);
 
   const [form, setForm] = useState({
     street: "",
@@ -136,39 +130,31 @@ export default function Addresses() {
   };
 
   /* ===== Add Address ===== */
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (adding) return;
-
     if (!form.street || !form.city) return;
 
     setAdding(true);
-
-    setAddresses((prev) => [
-      ...prev,
-      { ...form, location: coords, isDefault: prev.length === 0 },
-    ]);
-
-    setForm({
-      street: "",
-      area: "",
-      city: "",
-      building: "",
-    });
-    setCoords({ lat: null, lng: null });
-
-    setAdding(false);
+    try {
+      // Use global context function instead of local state
+      await addAddress({ ...form, location: coords });
+      
+      setForm({
+        street: "",
+        area: "",
+        city: "",
+        building: "",
+      });
+      setCoords({ lat: null, lng: null });
+    } catch (err) {
+      console.error("Failed to add address:", err);
+    } finally {
+      setAdding(false);
+    }
   };
 
-  const setDefaultAddressIndex = (idx) => {
-    setAddresses((prev) =>
-      prev.map((a, i) => ({ ...a, isDefault: i === idx }))
-    );
-  };
-
-  const deleteAddress = (idx) => {
-    setAddresses((prev) => prev.filter((_, i) => i !== idx));
-  };
+  // Note: functions are already bound to context state, no local logic needed here.
 
   return (
     <main className="addresses-page-main">
