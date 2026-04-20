@@ -1,4 +1,5 @@
 import { useState, useContext, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Heart } from 'lucide-react';
 import './FoodItem.css';
@@ -28,7 +29,7 @@ function getDietTags(name, desc, cat) {
 const FoodItem = (props) => {
   const { t, i18n } = useTranslation();
   const {
-    image, name, name_en, name_ar, price, description, desc_en, desc_ar, id, restaurantId, customizations = [], dealTag = null, restaurantOpen = true, restaurantActive = true, avgRating = 0, ratingCount = 0, inStock = true, forceFavourite
+    image, name, name_en, name_ar, price, regularPrice, description, desc_en, desc_ar, id, restaurantId, customizations = [], dealTag = null, isFlashDeal = false, restaurantOpen = true, restaurantActive = true, avgRating = 0, ratingCount = 0, inStock = true, forceFavourite
   } = props;
   const { cartItems, addToCart, removeFromCart, getItemCount, url, currency, favourites = [], isFavourite, addFavourite, removeFavourite, food_list } = useContext(StoreContext);
 
@@ -306,7 +307,14 @@ const FoodItem = (props) => {
             </div>
           )}
           <div className='fi-footer'>
-            <p className='fi-price'>{currency}{price}</p>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <p className='fi-price'>{currency}{price}</p>
+              {isFlashDeal && regularPrice > price && (
+                <span style={{ fontSize: 13, textDecoration: 'line-through', opacity: 0.5, fontWeight: 700, color: dark ? '#cbd5e1' : '#64748b' }}>
+                    {currency}{regularPrice}
+                </span>
+              )}
+            </div>
             <div className='fi-footer-right'>
               {hasCustomizations && <span className='fi-customizable-badge'>{t('customizable')}</span>}
               <p className='fi-delivery'>🕐 20-30 {t('min')}</p>
@@ -315,44 +323,70 @@ const FoodItem = (props) => {
         </div>
       </div>
 
-      {showCustomize && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(4px)' }}
-          onClick={() => setShowCustomize(false)}>
-          <div style={{ background: modalSurface, borderRadius: 24, width: '100%', maxWidth: 460, maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.35)', border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : 'transparent'}` }}
-            onClick={e => e.stopPropagation()}>
-
-            <div style={{ padding: '22px 24px 16px', borderBottom: `1px solid ${modalBorder}`, position: 'sticky', top: 0, background: modalSurface, borderRadius: '24px 24px 0 0', zIndex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      {showCustomize && createPortal(
+        <div 
+          style={{ 
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 99999, 
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(8px)' 
+          }}
+          onClick={() => setShowCustomize(false)}
+        >
+          <div 
+            className="fi-modal-content"
+            style={{ 
+              background: modalSurface, borderRadius: 24, width: '100%', maxWidth: 460, 
+              maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.45)', 
+              border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : 'transparent'}`, 
+              animation: 'modalFadeUp 0.3s ease' 
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ padding: '24px 24px 16px', borderBottom: `1px solid ${modalBorder}`, position: 'sticky', top: 0, background: modalSurface, borderRadius: '24px 24px 0 0', zIndex: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, color: modalText }}>{name}</h3>
-                  <p style={{ margin: 0, fontSize: 13, color: modalMuted }}>Customize your order</p>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 900, color: modalText, letterSpacing: '-0.5px' }}>{displayName}</h3>
+                  <p style={{ margin: 0, fontSize: 13, color: modalMuted }}>{t('customize_your_order') || 'Customize your order'}</p>
                 </div>
-                <button onClick={() => setShowCustomize(false)}
-                  style={{ background: dark ? '#1f2937' : '#f3f4f6', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: dark ? '#cbd5e1' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                <button 
+                  onClick={() => setShowCustomize(false)}
+                  style={{ background: dark ? '#1f2937' : '#f3f4f6', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', fontSize: 18, color: dark ? '#cbd5e1' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                >
+                  ✕
+                </button>
               </div>
             </div>
 
-            <div style={{ padding: '20px 24px' }}>
+            {/* Content */}
+            <div style={{ padding: '24px' }}>
               {customizations.map((group, gi) => (
-                <div key={gi} style={{ marginBottom: 24 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                    <span style={{ fontWeight: 800, fontSize: 15, color: modalText }}>{group.title}</span>
-                    {group.required && <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: '#fff1f1', border: '1px solid #fca5a5', padding: '2px 8px', borderRadius: 20 }}>Required</span>}
-                    {group.multiSelect && <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: 20 }}>Choose multiple</span>}
+                <div key={gi} style={{ marginBottom: 28 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                    <span style={{ fontWeight: 900, fontSize: 16, color: modalText }}>{group.title}</span>
+                    {group.required && <span style={{ fontSize: 10, fontWeight: 900, color: '#dc2626', background: '#ffebeb', border: '1px solid rgba(220,38,38,0.2)', padding: '2px 10px', borderRadius: 20, textTransform: 'uppercase' }}>Required</span>}
+                    {group.multiSelect && <span style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', background: '#eff6ff', border: '1px solid rgba(29,78,216,0.2)', padding: '2px 10px', borderRadius: 20, textTransform: 'uppercase' }}>Choose Many</span>}
                   </div>
                   {group.options.map((opt, oi) => {
                     const sel = selections[gi];
                     const isSelected = group.multiSelect ? (sel || []).includes(opt.label) : sel === opt.label;
                     return (
-                      <div key={oi} onClick={() => handleSelect(gi, opt.label, group.multiSelect)}
-                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 12, marginBottom: 8, border: `2px solid ${isSelected ? '#ff4e2a' : optionBorder}`, background: isSelected ? optionSelectedBg : optionBg, cursor: 'pointer', transition: 'all 0.15s' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 18, height: 18, borderRadius: group.multiSelect ? 4 : '50%', border: `2px solid ${isSelected ? '#ff4e2a' : (dark ? '#64748b' : '#d1d5db')}`, background: isSelected ? '#ff4e2a' : optionBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
-                            {isSelected && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                      <div 
+                        key={oi} 
+                        onClick={() => handleSelect(gi, opt.label, group.multiSelect)}
+                        style={{ 
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                          padding: '14px 18px', borderRadius: 16, marginBottom: 10, 
+                          border: `2px solid ${isSelected ? '#ff4e2a' : optionBorder}`, 
+                          background: isSelected ? optionSelectedBg : optionBg, cursor: 'pointer', transition: 'all 0.2s' 
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ width: 20, height: 20, borderRadius: group.multiSelect ? 6 : '50%', border: `2px solid ${isSelected ? '#ff4e2a' : (dark ? '#475569' : '#d1d5db')}`, background: isSelected ? '#ff4e2a' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+                            {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"/></svg>}
                           </div>
-                          <span style={{ fontWeight: 600, fontSize: 14, color: modalText }}>{opt.label}</span>
+                          <span style={{ fontWeight: 700, fontSize: 15, color: modalText }}>{opt.label}</span>
                         </div>
-                        {opt.extraPrice > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: modalMuted }}>+{currency}{opt.extraPrice}</span>}
+                        {opt.extraPrice > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: isSelected ? '#ff4e2a' : modalMuted }}>+{currency}{opt.extraPrice}</span>}
                       </div>
                     );
                   })}
@@ -360,21 +394,42 @@ const FoodItem = (props) => {
               ))}
             </div>
 
-            <div style={{ padding: '0 24px 24px', position: 'sticky', bottom: 0, background: modalSurface }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: `1px solid ${modalBorder}`, marginBottom: 12, fontSize: 14, fontWeight: 700, color: modalText }}>
+            {/* Footer */}
+            <div style={{ padding: '0 24px 24px', position: 'sticky', bottom: 0, background: modalSurface, zIndex: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderTop: `1px solid ${modalBorder}`, marginBottom: 16, fontSize: 16, fontWeight: 900, color: modalText }}>
                 <span>Total</span>
                 <span>{currency}{totalPrice.toFixed(2)}</span>
               </div>
-              <button onClick={handleAddToCart}
-                style={{ width: '100%', padding: '14px', borderRadius: 50, background: 'linear-gradient(135deg, #ff4e2a, #ff6a3d)', color: '#fff', border: 'none', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 8px 20px rgba(255,78,42,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <button 
+                onClick={handleAddToCart}
+                className="fi-modal-submit"
+                style={{ width: '100%', padding: '16px', borderRadius: 50, background: 'linear-gradient(135deg, #ff3008, #ff6b35)', color: '#fff', border: 'none', fontWeight: 900, fontSize: 16, cursor: 'pointer', boxShadow: '0 10px 25px rgba(255,48,8,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, transition: 'all 0.3s' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
                   <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
                 {t('add_to_cart_btn')} · {currency}{totalPrice.toFixed(2)}
               </button>
             </div>
           </div>
-        </div>
+          <style>{`
+            @keyframes modalFadeUp {
+              from { opacity: 0; transform: translateY(20px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .fi-modal-submit:hover { transform: scale(1.02); filter: brightness(1.1); box-shadow: 0 14px 32px rgba(255,48,8,0.45); }
+            .fi-modal-submit:active { transform: scale(0.98); }
+            
+            /* Hide scrollbar for the modal content */
+            .fi-modal-content {
+              scrollbar-width: none;
+              -ms-overflow-style: none;
+            }
+            .fi-modal-content::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+        </div>,
+        document.body
       )}
     </>
   );

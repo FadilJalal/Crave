@@ -51,7 +51,7 @@ const TopRestaurants = () => {
                 <div className="tr-header">
                     <div className="tr-title-wrap">
                         <span className="tr-badge">{t('local_favorites')}</span>
-                        <h2 className="tr-title">{t('top_picks_near_you')}</h2>
+                        <h2 className="tr-title">TOP <span style={{ color: '#ff0000' }}>RESTAURANTS</span> NEAR ME</h2>
                     </div>
                     <Link to="/restaurants" className="tr-view-all">
                         <span>{t('view_all')}</span>

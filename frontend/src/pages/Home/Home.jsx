@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './Home.css'
 import Header from '../../components/Header/Header'
-import HeaderMarquee from '../../components/HeaderMarquee/HeaderMarquee'
 import TopRestaurants from '../../components/TopRestaurants/TopRestaurants'
 import FoodDisplay from '../../components/FoodDisplay/FoodDisplay'
 import SmartTopPick from '../../components/SmartTopPick/SmartTopPick'
 import MoodPicker from '../../components/MoodPicker/MoodPicker'
-import CraveLivePulse from '../../components/CraveLivePulse/CraveLivePulse'
+import FlashDeals from '../../components/FlashDeals/FlashDeals'
+import HeaderMarquee from '../../components/HeaderMarquee/HeaderMarquee'
 import { StoreContext } from '../../Context/StoreContext'
 import { useEffect } from 'react'
 
@@ -47,9 +47,11 @@ const Home = () => {
     <>
       <Header />
       <HeaderMarquee />
+
       <div className="reveal-on-scroll reveal">
-        <CraveLivePulse />
+        <FlashDeals />
       </div>
+
       <div className="reveal-on-scroll reveal">
         <SmartTopPick />
       </div>

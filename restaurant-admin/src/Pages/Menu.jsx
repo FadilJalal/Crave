@@ -581,7 +581,7 @@ export default function Menu() {
               background: isDealActive ? "rgba(255,48,8,0.08)" : (dark ? "rgba(255,255,255,0.04)" : "#f9fafb"),
               padding: "14px 16px", borderRadius: 14,
               border: `2px solid ${isDealActive ? "#FF3008" : "var(--border)"}`,
-              transition: "all 0.2s", marginBottom: 20
+              transition: "all 0.2s", marginBottom: 12
             }}>
               <input type="checkbox" checked={isDealActive}
                 onChange={e => setIsDealActive(e.target.checked)}
@@ -595,6 +595,16 @@ export default function Menu() {
                 </div>
               </div>
             </label>
+
+            {isDealActive && dealExpiresAt && new Date(dealExpiresAt) < new Date() && (
+              <div style={{ 
+                background: "#fef2f2", color: "#dc2626", padding: "10px 14px", 
+                borderRadius: 12, fontSize: 12, fontWeight: 800, marginBottom: 20,
+                border: "1px solid #fee2e2", display: "flex", alignItems: "center", gap: 8
+              }}>
+                <span style={{ fontSize: 16 }}>⚠️</span> DEAL EXPIRED: Update the end time to show on menu.
+              </div>
+            )}
 
             {/* Config fields — only show when active */}
             {isDealActive && (

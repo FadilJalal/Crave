@@ -47,7 +47,7 @@ const FoodDisplay = ({ category }) => {
             <span className='fd-badge'>{t('curated_selection')}</span>
             <h2 className='fd-title'>
               {category === 'All' ? (
-                t('top_picks_near_you')
+                <>TOP <span style={{ color: '#ff0000' }}>PICKS</span> NEAR YOU</>
               ) : category}
             </h2>
             <p className='fd-count'>{shuffledFiltered.length} {t("items_available")}</p>

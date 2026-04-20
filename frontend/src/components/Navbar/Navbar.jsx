@@ -17,7 +17,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 
 const Navbar = ({ setShowLogin }) => {
   const { t } = useTranslation();
-  const { token, setToken, setCartItems, food_list, cartItems, url, currency } = useContext(StoreContext);
+  const { token, setToken, setCartItems, food_list, cartItems, url, currency, addresses } = useContext(StoreContext);
   const { notifications, unreadCount, markAllRead, clearAll } = useContext(NotificationContext);
   const { dark, toggle } = useContext(ThemeContext);
   const navigate = useNavigate();
@@ -40,6 +40,11 @@ const Navbar = ({ setShowLogin }) => {
 
   const [locOpen, setLocOpen] = useState(false);
   const [locTab, setLocTab] = useState('search');
+  useEffect(() => {
+    if (token && addresses.length > 0 && locOpen) {
+      setLocTab('saved');
+    }
+  }, [token, addresses.length, locOpen]);
   const [locQuery, setLocQuery] = useState('');
   const [locSuggestions, setLocSuggestions] = useState([]);
   const [locLoading, setLocLoading] = useState(false);
@@ -314,9 +319,52 @@ const Navbar = ({ setShowLogin }) => {
           {locOpen && (
             <div className='nb-loc-dropdown'>
               <div className='nb-loc-tabs'>
-                <button className={`nb-loc-tab ${locTab === 'search' ? 'nb-loc-tab-active' : ''}`} onClick={() => setLocTab('search')}>🔍 {t("search")}</button>
-                <button className={`nb-loc-tab ${locTab === 'map' ? 'nb-loc-tab-active' : ''}`} onClick={() => setLocTab('map')}>🗺️ {t("pick_on_map")}</button>
+                {token && addresses.length > 0 && (
+                  <button className={`nb-loc-tab ${locTab === 'saved' ? 'nb-loc-tab-active' : ''}`} onClick={() => setLocTab('saved')}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                    {t("saved")}
+                  </button>
+                )}
+                <button className={`nb-loc-tab ${locTab === 'search' ? 'nb-loc-tab-active' : ''}`} onClick={() => setLocTab('search')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  {t("search")}
+                </button>
+                <button className={`nb-loc-tab ${locTab === 'map' ? 'nb-loc-tab-active' : ''}`} onClick={() => setLocTab('map')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {t("pick_on_map")}
+                </button>
               </div>
+
+              {locTab === 'saved' && token && addresses.length > 0 && (
+                <div className='nb-loc-saved-list'>
+                  <div className='nb-loc-section-label'>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+                    {t("your_addresses") || "Your Addresses"}
+                  </div>
+                  {addresses.map((addr, i) => (
+                    <button key={i} className='nb-loc-suggestion nb-loc-saved-item' onClick={() => {
+                      const label = [addr.street, addr.city].filter(Boolean).join(', ');
+                      setLocation({ 
+                        label, 
+                        lat: addr.location?.lat || 25.3463, 
+                        lng: addr.location?.lng || 55.4209 
+                      });
+                      setLocOpen(false);
+                    }}>
+                      <div className={`nb-loc-icon ${addr.isDefault ? 'active' : ''}`}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                        </svg>
+                      </div>
+                      <div className='nb-loc-info'>
+                        <span className='nb-loc-main-addr'>{addr.street}, {addr.city}</span>
+                        <span className='nb-loc-sub-addr'>{addr.area} {addr.building && `• ${addr.building}`}</span>
+                      </div>
+                      {addr.isDefault && <span className='nb-loc-def-badge'>DEF</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {locTab === 'search' && (<>
                 <div className='nb-loc-search'>

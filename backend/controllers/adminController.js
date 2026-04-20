@@ -86,21 +86,57 @@ export const getAdminStats = async (req, res) => {
     const now = new Date();
     const todayStart = new Date(); todayStart.setHours(0,0,0,0);
 
-    const [totalRestaurants, totalOrders, totalUsers, todayOrders, allOrders, activeRestaurants] = await Promise.all([
+    const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const nextWeek = new Date(); nextWeek.setDate(nextWeek.getDate() + 7);
+
+    const [
+      totalRestaurants, 
+      totalOrders, 
+      totalUsers, 
+      todayOrders, 
+      allOrders, 
+      activeRestaurants,
+      upcomingRenewalsList,
+      recentRestaurants
+    ] = await Promise.all([
       restaurantModel.countDocuments({}),
       orderModel.countDocuments({ status: { $ne: "Cancelled" } }),
       userModel.countDocuments({}),
       orderModel.countDocuments({ createdAt: { $gte: todayStart }, status: { $ne: "Cancelled" } }),
       orderModel.find({ status: { $ne: "Cancelled" } }, "amount"),
-      restaurantModel.find({ "subscription.status": "active" }, "subscription.price"),
+      restaurantModel.find({ "subscription.status": "active" }).select("name subscription"),
+      restaurantModel.find({ 
+        "subscription.status": "active", 
+        "subscription.endDate": { $lte: nextWeek, $gte: now } 
+      }).select("name subscription.endDate logo"),
+      restaurantModel.find().sort({ createdAt: -1 }).limit(5).select("name logo createdAt"),
     ]);
+
+    // Calculate Idle Restaurants (Active subscription but 0 orders in 7 days)
+    const activeIds = activeRestaurants.map(r => r._id);
+    const restaurantsWithOrders = await orderModel.distinct("restaurantId", { 
+      createdAt: { $gte: sevenDaysAgo },
+      restaurantId: { $in: activeIds }
+    });
+    const idleCount = activeIds.length - restaurantsWithOrders.length;
 
     const totalRevenue = allOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
     const mrr = activeRestaurants.reduce((sum, r) => sum + (r.subscription?.price || 0), 0);
 
     return res.json({
       success: true,
-      data: { totalRestaurants, totalOrders, totalUsers, todayOrders, totalRevenue: Math.round(totalRevenue), mrr },
+      data: { 
+        totalRestaurants, 
+        totalOrders, 
+        totalUsers, 
+        todayOrders, 
+        totalRevenue: Math.round(totalRevenue), 
+        mrr,
+        upcomingRenewals: upcomingRenewalsList,
+        recentRestaurants,
+        idleRestaurants: idleCount,
+        activeSubscriptions: activeRestaurants.length
+      },
     });
   } catch (err) {
     console.log(err);

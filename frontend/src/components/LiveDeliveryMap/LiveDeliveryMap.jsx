@@ -167,6 +167,8 @@ export default function LiveDeliveryMap({ order }) {
   const firstStopNotifiedRef = useRef(false);
   const [renderedProgress, setRenderedProgress] = useState(0);
   const mountedRef = useRef(true);
+  const initialFitDoneRef = useRef(false);
+  const prevStatusRef = useRef(order?.status);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -291,20 +293,21 @@ export default function LiveDeliveryMap({ order }) {
 
       // Fit bounds to show all points — tighter padding so it zooms in on the route
       const fitAll = () => {
-        if (!mountedRef.current || !mapRef.current || !mapRef.current._container) return;
+        if (!mountedRef.current || !mapRef.current || !mapRef.current._container || initialFitDoneRef.current) return;
         try {
           const bounds = L.latLngBounds(allPoints);
           if (routeRef.current && routeRef.current.length > 1) {
             bounds.extend(routeRef.current);
           }
           mapRef.current.fitBounds(bounds.pad(0.15), { animate: false });
+          initialFitDoneRef.current = true;
         } catch (e) {}
       };
 
-      if (allPoints.length > 1) {
+      if (allPoints.length > 1 && !initialFitDoneRef.current) {
         fitAll();
-        setTimeout(fitAll, 600); // Ensure fit after layout settles
-        setTimeout(fitAll, 1200); // Final check
+        setTimeout(fitAll, 600); 
+        setTimeout(fitAll, 1200); 
       }
 
       // ── Road routing via OSRM ──────────────────────────────────────────
@@ -428,15 +431,18 @@ export default function LiveDeliveryMap({ order }) {
         routeRef.current = null;
         firstStopProgressRef.current = null;
         firstStopNotifiedRef.current = false;
+        initialFitDoneRef.current = false;
         setRenderedProgress(0);
       }
     };
-  }, [customerCoords, firstOrderCoords, order?.status]);
+  }, [customerCoords, firstOrderCoords]); // Removed order?.status dependency
 
   // Logic to animate progress slowly from 0 to a target point when "Out for Delivery"
   useEffect(() => {
     if (!order?.status) return;
     const s = order.status.toLowerCase().trim();
+    const prevS = prevStatusRef.current?.toLowerCase().trim();
+    prevStatusRef.current = order.status;
     
     if (s === 'delivered') {
       setRenderedProgress(1);
@@ -444,22 +450,23 @@ export default function LiveDeliveryMap({ order }) {
     }
 
     if (s === 'out for delivery') {
+      // If we just entered this status, start animation. 
+      // If we were already in it, don't reset to 0.
+      if (prevS === 'out for delivery' && renderedProgress > 0) return;
+
       let start = null;
       let frameId = null;
-      const duration = 180000; // 3 minutes to go through the route (slower, more realistic)
+      const duration = 180000; 
       
       const step = (timestamp) => {
         if (!start) start = timestamp;
         const elapsed = timestamp - start;
-        
-        // Slower approach as it gets closer to the house
         const rawProgress = elapsed / duration;
         let progress;
         
         if (rawProgress < 0.95) {
           progress = rawProgress;
         } else {
-          // Slow down significantly for the last few meters (idle phase)
           progress = 0.95 + (Math.min(0.04, (rawProgress - 0.95) * 0.1));
         }
         

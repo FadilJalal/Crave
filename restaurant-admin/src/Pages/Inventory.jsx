@@ -42,6 +42,8 @@ export default function Inventory() {
   const [menuItems, setMenuItems] = useState([]);
   const [linkingItem, setLinkingItem] = useState(null);
   const [selectedLinks, setSelectedLinks] = useState([]); // [{ foodId, quantityPerOrder }]
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [loggingItem, setLoggingItem] = useState(null);
   const [linkSearch, setLinkSearch] = useState("");
   
   // Bulk Selection & Filtering States
@@ -129,12 +131,18 @@ export default function Inventory() {
     }
   };
 
-  const updateStock = async (id, delta) => {
+  const updateStock = async (id, delta, silent = true) => {
     try {
-      await api.patch(`/api/inventory/${id}/stock`, { delta });
-      loadInventory();
+      if (!silent) setLoading(true);
+      await api.patch(`/api/inventory/${id}/stock`, { adjustment: delta });
+      
+      // Update local state without full reload or global spinner
+      const res = await api.get("/api/inventory");
+      if (res.data?.success) setItems(res.data.data);
     } catch (err) {
       toast.error("Update failed");
+    } finally {
+      if (!silent) setLoading(false);
     }
   };
 
@@ -144,6 +152,7 @@ export default function Inventory() {
     if (statusFilter === "low") return item.currentStock <= item.minimumStock && item.currentStock > 0;
     if (statusFilter === "out") return item.currentStock === 0;
     if (statusFilter === "high") return item.currentStock >= item.maximumStock;
+    if (statusFilter === "unlinked") return !item.linkedMenuItems || item.linkedMenuItems.length === 0;
     return true;
   });
 
@@ -452,8 +461,11 @@ export default function Inventory() {
 
   const updateLinkQuantity = (foodId, qty) => {
     setSelectedLinks(prev => prev.map(l => {
-        const currentId = typeof l.foodId === 'object' ? String(l.foodId._id) : String(l.foodId);
-        return currentId === String(foodId) ? { ...l, quantityPerOrder: parseFloat(qty) || 0 } : l;
+        const lid = typeof l.foodId === 'object' ? String(l.foodId._id) : String(l.foodId);
+        if (lid === String(foodId)) {
+            return { ...l, quantityPerOrder: qty };
+        }
+        return l;
     }));
   };
 
@@ -524,6 +536,11 @@ export default function Inventory() {
           @media (max-width: 1000px) { .inventory-grid { grid-template-columns: repeat(2, 1fr); } }
           @media (max-width: 700px) { .inventory-grid { grid-template-columns: 1fr; } }
 
+          .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+          .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background: ${dark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'}; border-radius: 10px; }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ff4e2a; }
+
           .inv-card {
             background: white;
             border-radius: 16px;
@@ -538,8 +555,8 @@ export default function Inventory() {
           }
 
           .inv-card:hover { 
-            transform: translateY(-4px); 
-            box-shadow: 0 12px 24px -10px rgba(0,0,0,0.1);
+            transform: translateY(-6px); 
+            box-shadow: 0 14px 30px -10px rgba(0,0,0,0.12);
             border-color: #ff4e2a;
           }
 
@@ -730,6 +747,12 @@ export default function Inventory() {
             gap: 12px;
           }
 
+          [data-theme="dark"] .drop-zone {
+            background: rgba(255,255,255,0.03);
+            border-color: rgba(255,255,255,0.1);
+            color: #f1f5f9;
+          }
+
           .preview-table {
             width: 100%;
             border-collapse: collapse;
@@ -775,10 +798,10 @@ export default function Inventory() {
 
       <div className="action-navbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                <input type="checkbox" style={{ width: 16, height: 16, accentColor: '#ff4e2a' }} checked={filteredItems.length > 0 && selectedIds.length === filteredItems.length} onChange={(e) => handleSelectAll(e.target.checked)} />
-                Select ALL
-             </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                                 <input type="checkbox" style={{ width: 16, height: 16, accentColor: '#ff4e2a', cursor: 'pointer' }} checked={filteredItems.length > 0 && selectedIds.length === filteredItems.length} onChange={(e) => handleSelectAll(e.target.checked)} />
+                                 Select ALL
+                              </label>
              {selectedIds.length > 0 && (
                  <>
                     <div style={{ width: 1, height: 20, background: '#e5e7eb' }} />
@@ -788,9 +811,9 @@ export default function Inventory() {
              )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-             {['all', 'low', 'out', 'high'].map((f) => (
+             {['all', 'low', 'out', 'unlinked'].map((f) => (
                  <button key={f} className={`filter-pill ${statusFilter === f ? 'active' : ''}`} onClick={() => setStatusFilter(f)}>
-                     {f === 'all' ? 'All Items' : f === 'low' ? 'Low Stock' : f === 'out' ? 'Out of Stock' : 'High Stock'}
+                     {f === 'all' ? 'All Items' : f === 'low' ? 'Low Stock' : f === 'out' ? 'Out of Stock' : 'Unlinked Items'}
                  </button>
              ))}
         </div>
@@ -808,109 +831,101 @@ export default function Inventory() {
           const isSelected = selectedIds.includes(item._id);
 
           return (
-            <div key={item._id} className={`inv-card ${isSelected ? 'selected' : ''} ${isOut ? 'low-stock' : isLow ? 'low-stock' : ''}`}>
+            <div key={item._id} className={`inv-card ${isSelected ? 'selected' : ''} ${isOut ? 'low-stock' : isLow ? 'low-stock' : ''}`} style={{ padding: '20px 18px' }}>
               <input type="checkbox" className="card-checkbox" checked={isSelected} onChange={() => toggleSelect(item._id)} />
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', minHeight: 42 }}>
-                  <div style={{ flex: 1, paddingRight: 10 }}>
-                      <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.3px', marginBottom: 2, lineHeight: 1.2 }}>{item.itemName}</div>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', background: dark ? 'rgba(37, 99, 235, 0.1)' : '#eff6ff', color: dark ? '#60a5fa' : '#2563eb', borderRadius: 6, fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>
-                          {item.category.replace('_', ' ')}
+              {/* 1. Header Area - Compact */}
+              <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 18, fontWeight: 1000, letterSpacing: '-0.5px', marginBottom: 4, color: dark ? '#f8fafc' : '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.itemName}</div>
+                  <div style={{ 
+                    display: 'inline-flex', 
+                    padding: '2px 8px', 
+                    background: item.category === 'food_ingredient' ? (dark ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff') : (dark ? 'rgba(139, 92, 246, 0.15)' : '#f5f3ff'), 
+                    color: item.category === 'food_ingredient' ? (dark ? '#60a5fa' : '#2563eb') : (dark ? '#a78bfa' : '#7c3aed'), 
+                    borderRadius: 6, 
+                    fontSize: 9, 
+                    fontWeight: 900, 
+                    textTransform: 'uppercase'
+                  }}>
+                      {item.category.replace('_', ' ')}
+                  </div>
+              </div>
+
+              {/* 2. Primary Stock Control - Shrunk */}
+              <div style={{ background: dark ? 'rgba(0,0,0,0.2)' : '#f8fafc', padding: '12px 14px', borderRadius: 16, marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <button 
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); updateStock(item._id, -1); }} 
+                        style={{ width: 28, height: 28, border: 'none', background: dark ? 'rgba(255,255,255,0.08)' : 'white', borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >–</button>
+                      <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 26, fontWeight: 1000, color: dark ? 'white' : '#000', lineHeight: 1 }}>{item.currentStock}</div>
+                          <div style={{ fontSize: 10, fontWeight: 900, color: '#64748b', marginTop: 2 }}>{item.unit}</div>
                       </div>
+                      <button 
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); updateStock(item._id, 1); }} 
+                        style={{ width: 28, height: 28, border: 'none', background: dark ? 'rgba(255,255,255,0.08)' : 'white', borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >+</button>
+                  </div>
+                  <div className="progress-bar" style={{ height: 4, background: dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0' }}>
+                    <div className="progress-fill" style={{ 
+                      width: `${stockPercentage}%`, 
+                      background: isOut ? '#ef4444' : isLow ? '#f97316' : '#22c55e'
+                    }} />
                   </div>
               </div>
 
-              <div className="stock-ctrl">
-                  <button onClick={() => updateStock(item._id, -1)} style={{ width: 28, height: 28, border: `1px solid ${dark ? 'rgba(255,255,255,0.15)' : '#e2e8f0'}`, background: dark ? 'rgba(255,255,255,0.05)' : 'white', fontWeight: 900, borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'inherit' }}>-</button>
-                  <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1 }}>{item.currentStock}</div>
-                      <div style={{ fontSize: 9, fontWeight: 800, color: '#64748b' }}>{item.unit}</div>
-                  </div>
-                  <button onClick={() => updateStock(item._id, 1)} style={{ width: 28, height: 28, border: `1px solid ${dark ? 'rgba(255,255,255,0.15)' : '#e2e8f0'}`, background: dark ? 'rgba(255,255,255,0.05)' : 'white', fontWeight: 900, borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'inherit' }}>+</button>
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                  <div className="progress-bar"><div className="progress-fill" style={{ width: `${stockPercentage}%`, background: isOut ? '#ef4444' : isLow ? '#f97316' : '#22c55e' }} /></div>
-              </div>
-
-              <div style={{ marginBottom: 16, minHeight: 44 }}>
-                  <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Linked Recipes</div>
+              {/* 3. Linked Recipes Section - Tight */}
+              <div style={{ marginBottom: 16, minHeight: 50 }}>
+                  <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 950, marginBottom: 6, letterSpacing: '0.6px' }}>LINKED RECIPIES</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                       {(item.linkedMenuItems || []).length > 0 ? (
-                          item.linkedMenuItems.slice(0, 3).map((link, idx) => {
-                              const dishName = link.foodId?.name || 'Dish';
-                              return (
-                                  <span key={idx} style={{ fontSize: 10, fontWeight: 700, background: dark ? 'rgba(255,255,255,0.03)' : '#f8fafc', border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`, padding: '2px 6px', borderRadius: 6, color: dark ? '#94a3b8' : '#475569', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      {dishName} {link.quantityPerOrder > 1 ? `(${link.quantityPerOrder})` : ''}
-                                  </span>
-                              );
-                          })
+                          item.linkedMenuItems.slice(0, 2).map((link, idx) => (
+                              <span key={idx} style={{ fontSize: 9, fontWeight: 800, background: dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6', padding: '3px 8px', borderRadius: 6, color: dark ? '#cbd5e1' : '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <span style={{ opacity: 0.9 }}>{(link.foodId?.name || 'Dish').slice(0, 14)}</span>
+                                  <span style={{ color: link.quantityPerOrder > 1 ? '#ff4e2a' : (dark ? '#94a3b8' : '#64748b'), fontWeight: 900 }}>({link.quantityPerOrder})</span>
+                              </span>
+                          ))
                       ) : (
-                          <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>No recipes linked</span>
+                          <div style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>No links</div>
                       )}
-                      {(item.linkedMenuItems || []).length > 3 && (
-                          <span style={{ 
-                            fontSize: 9, 
-                            fontWeight: 800, 
-                            color: item.linkedMenuItems.length > 15 ? '#ef4444' : '#f97316', 
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 2
-                          }} onClick={() => handleManageLinks(item)}>
-                              {item.linkedMenuItems.length > 15 ? '🚨' : ''} +{item.linkedMenuItems.length - 3} more
+                      {(item.linkedMenuItems || []).length > 2 && (
+                          <span style={{ fontSize: 9, fontWeight: 900, color: '#ff4e2a', background: dark ? 'rgba(255, 78, 42, 0.1)' : '#fff1f0', padding: '3px 8px', borderRadius: 6 }} onClick={() => handleManageLinks(item)}>
+                              +{item.linkedMenuItems.length - 2} more
                           </span>
                       )}
                   </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}`, paddingTop: 16 }}>
-                  <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.5px', marginBottom: 8 }}>Financials</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                              <span style={{ fontSize: 13, fontWeight: 950, color: dark ? '#f1f5f9' : '#1e293b' }}>AED {item.unitCost}</span>
-                              <span style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>/ {item.unit}</span>
-                          </div>
-                          <div style={{ 
-                              display: 'inline-flex', 
-                              alignItems: 'center', 
-                              gap: 6, 
-                              fontSize: 10, 
-                              fontWeight: 800, 
-                              color: '#ff4e2a', 
-                              background: dark ? 'rgba(255, 78, 42, 0.12)' : '#fff1f0', 
-                              padding: '4px 12px', 
-                              borderRadius: 8,
-                              width: 'fit-content'
-                          }}>
-                              <span style={{ opacity: 0.6 }}>Stock Value:</span>
-                              <span>AED {Number((item.unitCost * item.currentStock).toFixed(2)).toLocaleString()}</span>
-                          </div>
+              {/* 4. Financial Status Area - Compact */}
+              <div style={{ background: dark ? 'rgba(255,255,255,0.015)' : '#fdfdfd', border: `1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#f1f5f9'}`, borderRadius: 14, padding: '12px', marginBottom: 18 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <div>
+                          <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 950, textTransform: 'uppercase', marginBottom: 2 }}>COST</div>
+                          <div style={{ fontSize: 13, fontWeight: 950 }}>AED {item.unitCost}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 950, textTransform: 'uppercase', marginBottom: 2 }}>VALUE</div>
+                          <div style={{ fontSize: 13, fontWeight: 950, color: '#ff4e2a' }}>AED {Number((item.unitCost * item.currentStock).toFixed(2)).toLocaleString()}</div>
                       </div>
                   </div>
                   <button 
-                      onClick={() => handleManageLinks(item)} 
-                      style={{ 
-                          cursor: 'pointer', 
-                          border: `1px solid ${dark ? 'rgba(255, 78, 42, 0.4)' : 'transparent'}`, 
-                          background: '#ff4e2a', 
-                          color: 'white', 
-                          fontSize: 11, 
-                          fontWeight: 900, 
-                          padding: '10px 16px', 
-                          borderRadius: 12,
-                          boxShadow: '0 4px 12px rgba(255, 78, 42, 0.2)',
-                          transition: 'all 0.2s'
-                      }}
+                    onClick={() => handleManageLinks(item)}
+                    style={{ width: '100%', padding: '7px', background: '#ff4e2a', color: 'white', border: 'none', borderRadius: 10, fontSize: 11, fontWeight: 950, cursor: 'pointer' }}
                   >
-                      {item.linkedMenuItems?.length > 0 ? 'Edit Recipes' : 'Link Dish'}
+                    LINK RECIPES
                   </button>
               </div>
 
-              <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                  <button className="card-action-btn" style={{ padding: '8px', fontSize: 12, flex: 1.5 }} onClick={() => handleEdit(item)}>Edit Item</button>
-                  <button className="card-action-btn" style={{ padding: '8px', fontSize: 12, borderColor: '#fee2e2', color: '#dc2626' }} onClick={() => confirmDelete(item)}>Delete</button>
+              {/* 5. Footer Actions */}
+              <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
+                  <button className="card-action-btn" style={{ flex: 2, padding: '7px', fontSize: 11, background: dark ? '#334155' : '#f1f5f9', border: 'none' }} onClick={() => handleEdit(item)}>Edit Unit</button>
+                  <button className="card-action-btn" style={{ flex: 2, padding: '7px', fontSize: 11, borderColor: '#10b981', color: '#10b981' }} onClick={() => { setLoggingItem(item); setShowLogModal(true); }}>View Log</button>
+                  <button className="card-action-btn" style={{ width: 32, flex: 'none', padding: 0, borderColor: '#fee2e2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => confirmDelete(item)}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                  </button>
               </div>
             </div>
           );
@@ -1033,20 +1048,20 @@ export default function Inventory() {
                                 onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove('active'); }}
                                 onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove('active'); handleFileUpload(e.dataTransfer.files[0]); }}
                             >
-                                <div className="drop-icon">📂</div>
-                                <h3 style={{ margin: 0, fontWeight: 900 }}>Click or drag file here</h3>
-                                <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Supports .csv, .xlsx, or .xls</p>
+                                <div className="drop-icon" style={{ fontSize: 40 }}>📂</div>
+                                <h3 style={{ margin: 0, fontWeight: 900, color: dark ? '#f1f5f9' : 'inherit' }}>Click or drag file here</h3>
+                                <p style={{ margin: 0, fontSize: 13, color: dark ? '#94a3b8' : '#6b7280' }}>Supports .csv, .xlsx, or .xls</p>
                                 <input type="file" id="bulk-file" hidden accept=".csv,.xlsx,.xls" onChange={(e) => handleFileUpload(e)} />
                             </div>
                             
-                            <div style={{ background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0' }}>
-                                <h4 style={{ margin: '0 0 12px', fontWeight: 900, fontSize: 14 }}>Tips for a successful import:</h4>
-                                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#4b5563', lineHeight: 1.6 }}>
+                            <div style={{ background: dark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid', borderColor: dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0' }}>
+                                <h4 style={{ margin: '0 0 12px', fontWeight: 900, fontSize: 14, color: dark ? '#f1f5f9' : 'inherit' }}>Tips for a successful import:</h4>
+                                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: dark ? '#94a3b8' : '#4b5563', lineHeight: 1.6 }}>
                                     <li>Ensure your columns match: <strong>itemName, category, unit, currentStock, unitCost</strong></li>
                                     <li>If the <strong>itemName</strong> already exists, we will update the existing stock.</li>
                                     <li>Categories should be: <strong>food_ingredient, beverage, packaging, equipment</strong>.</li>
                                 </ul>
-                                <button onClick={downloadTemplate} className="btn btn-sm btn-outline" style={{ marginTop: 20, width: '100%', background: 'white' }}>
+                                <button onClick={downloadTemplate} className="btn btn-sm btn-outline" style={{ marginTop: 20, width: '100%', background: dark ? 'transparent' : 'white', color: dark ? '#f1f5f9' : 'inherit', borderColor: dark ? 'rgba(255,255,255,0.2)' : '#e5e7eb' }}>
                                     📥 Download Blank Template
                                 </button>
                             </div>
@@ -1055,6 +1070,66 @@ export default function Inventory() {
                   </div>
               </div>
           </div>
+      )}
+
+      {showLogModal && loggingItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+          <div className="card" style={{ width: '100%', maxWidth: 750, padding: 32, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Deduction History</h2>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>Tracking stock usage for <strong>{loggingItem.itemName}</strong></p>
+              </div>
+              <button onClick={() => setShowLogModal(false)} className="btn btn-sm btn-outline" style={{ borderRadius: '50%', width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            </div>
+
+            <div className="custom-scrollbar" style={{ overflowY: 'auto', flex: 1, paddingRight: 10, minHeight: 0 }}>
+              {(!loggingItem.deductionLog || loggingItem.deductionLog.length === 0) ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', background: dark ? 'rgba(255,255,255,0.02)' : '#f8fafc', borderRadius: 16, border: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}` }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>📜</div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>No deductions recorded</h3>
+                  <p style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>History will appear here after orders are placed.</p>
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px' }}>
+                  <thead>
+                    <tr style={{ textAlign: 'left', fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 900 }}>
+                      <th style={{ padding: '0 12px 8px' }}>Order</th>
+                      <th style={{ padding: '0 12px 8px' }}>Trigger</th>
+                      <th style={{ padding: '0 12px 8px' }}>Date</th>
+                      <th style={{ padding: '0 12px 8px', textAlign: 'right' }}>Deducted</th>
+                      <th style={{ padding: '0 12px 8px', textAlign: 'right' }}>Result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...loggingItem.deductionLog].reverse().map((log, idx) => (
+                      <tr key={idx} style={{ background: dark ? 'rgba(255,255,255,0.03)' : '#f9fafb', borderRadius: 12 }}>
+                        <td style={{ padding: '14px 12px', borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}>
+                          <div style={{ fontSize: 13, fontWeight: 900, color: '#ff4e2a' }}>#{log.orderId?.slice(-6).toUpperCase() || 'MANUAL'}</div>
+                        </td>
+                        <td style={{ padding: '14px 12px' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700 }}>{log.foodName || 'Inventory Adj.'}</div>
+                          <div style={{ fontSize: 10, color: '#64748b' }}>Qty Ordered: {log.qtyOrdered || 1}</div>
+                        </td>
+                        <td style={{ padding: '14px 12px' }}>
+                          <div style={{ fontSize: 12 }}>{new Date(log.date).toLocaleDateString()}</div>
+                          <div style={{ fontSize: 10, color: '#64748b' }}>{new Date(log.date).toLocaleTimeString()}</div>
+                        </td>
+                        <td style={{ padding: '14px 12px', textAlign: 'right', color: '#dc2626', fontWeight: 900 }}>
+                          -{log.qtyDeducted} <span style={{ fontSize: 10 }}>{loggingItem.unit}</span>
+                        </td>
+                        <td style={{ padding: '14px 12px', textAlign: 'right', borderTopRightRadius: 12, borderBottomRightRadius: 12 }}>
+                          <div style={{ fontSize: 12, fontWeight: 800 }}>{log.stockAfter} {loggingItem.unit}</div>
+                          <div style={{ fontSize: 9, opacity: 0.5 }}>From {log.stockBefore}</div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {showDeleteModal && deletingItem && (
@@ -1136,8 +1211,8 @@ export default function Inventory() {
               <div className="card" style={{ width: '100%', maxWidth: 700, padding: 32, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
                    <div style={{ marginBottom: 24, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ flex: 1 }}>
-                          <h2 style={{ margin: 0, fontWeight: 900, color: '#0f172a' }}>Recipe Linking: {linkingItem.itemName}</h2>
-                          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+                          <h2 style={{ margin: 0, fontWeight: 900, color: dark ? '#f1f5f9' : '#0f172a' }}>Recipe Linking: {linkingItem.itemName}</h2>
+                          <p style={{ margin: '4px 0 0', fontSize: 13, color: dark ? '#94a3b8' : '#64748b', fontWeight: 500 }}>
                              Manage how much <strong>{linkingItem.itemName}</strong> is deducted per menu item.
                           </p>
                       </div>
@@ -1150,36 +1225,57 @@ export default function Inventory() {
                         className="input" 
                         value={linkSearch} 
                         onChange={(e) => setLinkSearch(e.target.value)}
-                        style={{ background: '#f9fafb', flex: 1 }}
+                        style={{ background: dark ? 'rgba(255,255,255,0.05)' : '#f9fafb', flex: 1, borderColor: dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb', color: dark ? 'white' : 'inherit' }}
                       />
-
                   </div>
 
-                  <div style={{ flex: 1, overflowY: 'auto', paddingRight: 8, marginBottom: 24 }}>
+                  <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', paddingRight: 8, marginBottom: 24 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                           {menuItems.filter(f => f.name.toLowerCase().includes(linkSearch.toLowerCase())).map(food => {
                               const foodIdStr = String(food._id);
-                              const link = selectedLinks.find(l => String(l.foodId) === foodIdStr);
+                              const link = selectedLinks.find(l => {
+                                  const lid = typeof l.foodId === 'object' ? String(l.foodId._id) : String(l.foodId);
+                                  return lid === foodIdStr;
+                              });
                               const isLinked = !!link;
 
                               return (
-                                  <div key={foodIdStr} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: isLinked ? '#f0f9ff' : '#f9fafb', border: '1px solid', borderColor: isLinked ? '#bae6fd' : '#e5e7eb', borderRadius: 12 }}>
+                                  <div key={foodIdStr} style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between', 
+                                    padding: '12px 16px', 
+                                    background: isLinked ? (dark ? 'rgba(255, 78, 42, 0.1)' : '#f0f9ff') : (dark ? 'rgba(255,255,255,0.03)' : '#f9fafb'), 
+                                    border: '1px solid', 
+                                    borderColor: isLinked ? '#ff4e2a' : (dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'), 
+                                    borderRadius: 12 
+                                  }}>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
                                           <input type="checkbox" checked={isLinked} onChange={() => toggleLink(foodIdStr)} style={{ width: 18, height: 18, accentColor: '#ff4e2a' }} />
                                           <div>
-                                              <div style={{ fontWeight: 800, fontSize: 14 }}>{food.name}</div>
-                                              <div style={{ fontSize: 11, color: '#6b7280' }}>AED {food.price}</div>
+                                              <div style={{ fontWeight: 800, fontSize: 14, color: dark ? '#f1f5f9' : '#1e293b' }}>{food.name}</div>
+                                              <div style={{ fontSize: 11, color: dark ? '#94a3b8' : '#6b7280' }}>AED {food.price}</div>
                                           </div>
                                       </div>
                                       {isLinked && (
                                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                              <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280' }}>Qty / Order:</span>
+                                              <span style={{ fontSize: 11, fontWeight: 700, color: dark ? '#94a3b8' : '#6b7280' }}>Qty / Order:</span>
                                               <input 
                                                 type="number" 
                                                 step="0.001"
                                                 value={link.quantityPerOrder}
                                                 onChange={(e) => updateLinkQuantity(foodIdStr, e.target.value)}
-                                                style={{ width: 80, padding: '6px 10px', borderRadius: 8, border: '1px solid #bae6fd', fontSize: 13, fontWeight: 800 }}
+                                                style={{ 
+                                                  width: 80, 
+                                                  padding: '6px 10px', 
+                                                  borderRadius: 8, 
+                                                  border: '1px solid',
+                                                  borderColor: dark ? 'rgba(255,255,255,0.1)' : '#bae6fd', 
+                                                  background: dark ? 'rgba(0,0,0,0.2)' : 'white',
+                                                  color: dark ? 'white' : 'black',
+                                                  fontSize: 13, 
+                                                  fontWeight: 800 
+                                                }}
                                               />
                                               <span style={{ fontSize: 11, fontWeight: 700 }}>{linkingItem.unit}</span>
                                           </div>
@@ -1188,14 +1284,14 @@ export default function Inventory() {
                               );
                           })}
                           {menuItems.filter(f => f.name.toLowerCase().includes(linkSearch.toLowerCase())).length === 0 && (
-                              <div style={{ textAlign: 'center', padding: 20, color: '#6b7280' }}>No menu items found matching "{linkSearch}"</div>
+                              <div style={{ textAlign: 'center', padding: 20, color: dark ? '#94a3b8' : '#6b7280' }}>No menu items found matching "{linkSearch}"</div>
                           )}
                       </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
                       <button className="btn" style={{ flex: 1 }} onClick={saveLinks}>Save All Links</button>
-                      <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setShowLinkModal(false)}>Cancel</button>
+                      <button className="btn btn-outline" style={{ flex: 1, borderColor: dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb' }} onClick={() => { setShowLinkModal(false); setLinkSearch(""); }}>Cancel</button>
                   </div>
               </div>
           </div>

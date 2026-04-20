@@ -317,13 +317,43 @@ const RestaurantMenu = () => {
                 const foodDescKey = `desc_${item._id}`;
                 const name = t(foodNameKey) !== foodNameKey ? t(foodNameKey) : item.name;
                 const description = t(foodDescKey) !== foodDescKey ? t(foodDescKey) : item.description;
+
+                // ⚡ FLASH DEAL LOGIC
+                // Resolve flash deal state based on expiration
+                const now = Date.now();
+                const expiry = item.flashDealExpiresAt ? new Date(item.flashDealExpiresAt) : null;
+                
+                const isManualFlash = item.isFlashDeal === true || item.isFlashDeal === "true" || item.isFlashDeal === 1;
+                const isCategoricalFlash = item.category && /flash/i.test(item.category);
+                const hasDiscount = item.salePrice && item.salePrice < item.price;
+                const isCandidate = isManualFlash || isCategoricalFlash || hasDiscount;
+
+                // Add 1 hour buffer like in StoreContext/FlashDeals components
+                const isExpired = expiry && (expiry.getTime() + 3600000) <= now;
+                const isOngoingDeal = isCandidate && !isExpired;
+                
+                let dealTag = null;
+                let currentPrice = item.price;
+
+                if (isOngoingDeal) {
+                    currentPrice = item.salePrice || item.price;
+                    const discount = Math.round(((item.price - currentPrice) / item.price) * 100);
+                    dealTag = {
+                        label: `⚡ ${discount}% OFF`,
+                        bg: 'linear-gradient(135deg, #ff3008, #ff6b35)',
+                        color: 'white',
+                        border: 'none'
+                    };
+                }
+
                 return (
                   <FoodItem
                     key={item._id}
                     id={item._id}
                     name={name}
                     description={description}
-                    price={item.price}
+                    price={currentPrice}
+                    regularPrice={item.price}
                     image={item.image}
                     restaurantId={item.restaurantId}
                     customizations={item.customizations || []}
@@ -332,6 +362,8 @@ const RestaurantMenu = () => {
                     inStock={item.inStock !== false}
                     restaurantOpen={openStatus}
                     restaurantActive={restaurantActive}
+                    dealTag={dealTag}
+                    isFlashDeal={isOngoingDeal}
                   />
                 );
               })}

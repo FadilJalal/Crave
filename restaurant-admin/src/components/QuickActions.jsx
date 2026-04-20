@@ -8,7 +8,7 @@ export default function QuickActions({ dark = false }) {
     { id: 2, title: "Orders", sub: "Manage active orders", icon: "📦", route: "/orders" },
     { id: 3, title: "Analytics", sub: "Performance growth", icon: "📈", route: "/analytics" },
     { id: 4, title: "Menu", sub: "Full item listing", icon: "📜", route: "/menu" },
-
+    { id: 5, title: "Inventory", sub: "Stock & Recipes", icon: "🥫", route: "/inventory" },
     { id: 6, title: "Reviews", sub: "Customer feedback", icon: "💬", route: "/reviews" },
     { id: 7, title: "Coupons", sub: "Discounts & promos", icon: "🎟️", route: "/coupons" },
     { id: 8, title: "Finance", sub: "Earnings & payouts", icon: "💰", route: "/finance" },
@@ -34,7 +34,7 @@ export default function QuickActions({ dark = false }) {
         <h3 style={{ margin: 0, fontSize: 13, fontWeight: 950, color: dark ? "rgba(255,255,255,0.4)" : "#64748b", textTransform: "uppercase", letterSpacing: "1px" }}>
           Quick Management
         </h3>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--orange)", opacity: 0.8 }}>8 Rapid Actions Available</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--orange)", opacity: 0.8 }}>9 Rapid Actions Available</span>
       </div>
       
       <div className="qa-grid-container">

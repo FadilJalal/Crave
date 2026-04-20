@@ -442,7 +442,7 @@
   position: absolute;
   top: calc(100% + 10px);
   left: 0;
-  width: 340px;
+  width: 380px;
   background: var(--card);
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
@@ -665,31 +665,138 @@
 /* Location tab switcher */
 .nb-loc-tabs {
   display: flex;
+  background: var(--bg);
+  padding: 4px;
+  gap: 4px;
   border-bottom: 1px solid var(--border);
 }
 
 .nb-loc-tab {
   flex: 1;
-  padding: 10px;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 10px 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
   font-family: var(--font-body);
   border: none;
-  background: none;
+  border-radius: 10px;
+  background: transparent;
   cursor: pointer;
   color: var(--text-3);
-  transition: all 0.15s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.nb-loc-tab svg {
+  opacity: 0.6;
+  transition: transform 0.2s;
 }
 
 .nb-loc-tab:hover {
-  color: var(--brand);
-  background: var(--brand-soft);
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .nb-loc-tab-active {
-  color: var(--brand);
-  border-bottom: 2px solid var(--brand);
-  background: var(--brand-soft);
+  color: #ff4e2a;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.nb-loc-tab-active svg {
+  opacity: 1;
+  color: #ff4e2a;
+  transform: scale(1.1);
+}
+
+[data-theme="dark"] .nb-loc-tab-active {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ff4e2a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.nb-loc-saved-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.nb-loc-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 14px 8px;
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.nb-loc-saved-item {
+  padding: 12px 14px !important;
+  align-items: center !important;
+  gap: 14px !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.02) !important;
+}
+
+.nb-loc-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.nb-loc-icon.active {
+  background: rgba(255, 78, 42, 0.1);
+  color: #ff4e2a;
+}
+
+.nb-loc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.nb-loc-main-addr {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nb-loc-sub-addr {
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nb-loc-def-badge {
+  font-size: 9px;
+  font-weight: 900;
+  background: rgba(255, 78, 42, 0.1);
+  color: #ff4e2a;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
 }
 
 /* Map picker */

@@ -259,6 +259,15 @@ export default function RestaurantLayout({ children }) {
         .ra-sidebar {
           background: #0b1220;
           color: #fff;
+          padding-top: 20px;
+        }
+        .brand {
+          padding: 24px 20px;
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 20px;
+          border-bottom: 1px solid rgba(255,255,255,0.08);
         }
         .nav-group {
           margin-bottom: 8px;
@@ -465,7 +474,7 @@ export default function RestaurantLayout({ children }) {
           </div>
         )}
 
-        <div className="container" style={{ paddingTop: 5 }}>
+        <div className="container" style={{ padding: "30px 40px" }}>
           {children}
         </div>
       </main>

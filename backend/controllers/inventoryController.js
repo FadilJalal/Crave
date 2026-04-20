@@ -34,6 +34,37 @@ const extractQuantityFromName = (name = "") => {
         return parseFloat(leadingMatch[1]) || 1;
     }
 
+    return null;
+};
+
+const parseIngredientQuantity = (itemName, ingredientsStr, dishName) => {
+    if (ingredientsStr) {
+        // Look for "Item Name:Quantity" in comma separated string
+        const parts = ingredientsStr.split(",").map(p => p.trim());
+        for (const part of parts) {
+            const [name, qty] = part.split(":").map(s => s.trim());
+            if (name && itemName.toLowerCase().includes(name.toLowerCase())) {
+                // If quantity is provided explicitly (e.g. "Dip Cups:3"), use it
+                if (qty) {
+                    const numericQty = parseFloat(qty);
+                    if (!isNaN(numericQty)) return numericQty;
+                }
+                // If ingredient is MENTIONED but has no number (e.g. "Potatoes"), 
+                // it almost always means 1 unit per order. DO NOT fallback to dish name count.
+                return 1;
+            }
+        }
+    }
+    
+    // Fallback if no ingredients string or no match in it:
+    // Only use dish name quantity if the inventory item name itself is mentioned in the dish name
+    // (e.g. "20pcs Chicken" and inventory item is "Chicken")
+    const lowerItem = itemName.toLowerCase();
+    const lowerDish = dishName.toLowerCase();
+    if (lowerDish.includes(lowerItem)) {
+        return extractQuantityFromName(dishName) || 1;
+    }
+
     return 1;
 };
 
@@ -502,8 +533,8 @@ const bulkImportInventory = async (req, res) => {
                          return new RegExp(`\\b${normalizedSearch}\\b`, "i").test(fName);
                       });
                      if (match) {
-                         const qty = extractQuantityFromName(match.name);
-                         updates.linkedMenuItems = [{ foodId: match._id, quantityPerOrder: qty }];
+                          const qty = parseIngredientQuantity(itemName, match.ingredients, match.name);
+                          updates.linkedMenuItems = [{ foodId: match._id, quantityPerOrder: qty }];
                          linkedCount++;
                      }
                  }
@@ -542,7 +573,7 @@ const bulkImportInventory = async (req, res) => {
                         return new RegExp(`\\b${normalizedSearch}\\b`, 'i').test(fName);
                     });
                     if (match) {
-                        const qty = extractQuantityFromName(match.name);
+                        const qty = parseIngredientQuantity(itemName, match.ingredients, match.name);
                         linkedMenuItems = [{ foodId: match._id, quantityPerOrder: qty }];
                         linkedCount++;
                     }
@@ -1033,9 +1064,9 @@ const syncAllLinks = async (req, res) => {
                     if (link.quantityPerOrder === 1) {
                         const food = menuFoods.find(f => String(f._id) === String(link.foodId));
                         if (food) {
-                            const correctQty = extractQuantityFromName(food.name);
-                            if (correctQty > 1) {
-                                link.quantityPerOrder = correctQty;
+                             const correctQty = parseIngredientQuantity(item.itemName, food.ingredients, food.name);
+                             if (correctQty !== link.quantityPerOrder) {
+                                 link.quantityPerOrder = correctQty;
                                 repairedCount++;
                                 changed = true;
                             }
@@ -1048,12 +1079,12 @@ const syncAllLinks = async (req, res) => {
             // - It has no links
             // - It has too many links (explosion)
             // - It has 1 link but the quantity seems wrong (e.g. dish says "15pcs" but link says "1")
-            let needsSync = !item.linkedMenuItems || item.linkedMenuItems.length === 0 || excessiveLinks;
+            let needsSync = !item.linkedMenuItems || item.linkedMenuItems.length === 0;
             
             if (!needsSync && item.linkedMenuItems.length > 0) {
                 for (const link of item.linkedMenuItems) {
                     const dishName = link.foodId?.name || "";
-                    const detectedQty = extractQuantityFromName(dishName);
+                    const detectedQty = parseIngredientQuantity(item.itemName, link.foodId?.ingredients, dishName);
                     if (detectedQty !== link.quantityPerOrder) {
                         needsSync = true;
                         break;
@@ -1099,17 +1130,14 @@ const syncAllLinks = async (req, res) => {
                 });
 
                 // If we found reliable matches, update. 
-                // IF we were repairing an "explosion" and found 0 reliable matches, clear it!
                 if (matches.length < 15) {
-                    const newLinks = matches.map(m => ({ 
-                        foodId: m._id, 
-                        quantityPerOrder: extractQuantityFromName(m.name) 
-                    }));
+                     const newLinks = matches.map(m => ({ 
+                         foodId: m._id, 
+                         quantityPerOrder: parseIngredientQuantity(item.itemName, m.ingredients, m.name)
+                     }));
                     item.linkedMenuItems = newLinks;
                     syncedCount++;
                     changed = true;
-                } else if (matches.length >= 15 && excessiveLinks) {
-                    // Still too many matches, do nothing to avoid pollution
                 }
             }
 

@@ -475,7 +475,7 @@ const StoreContextProvider = (props) => {
         }
 
         const loc = {
-          label: [defaultAddress.street, defaultAddress.area, defaultAddress.city].filter(Boolean).join(', '),
+          label: [defaultAddress.street, defaultAddress.city].filter(Boolean).join(', '),
           lat: lat || 25.3463, // Fallback to Sharjah default instead of 0
           lng: lng || 55.4209
         };

@@ -72,49 +72,66 @@ export default function Sidebar() {
         </div>
 
         {/* Nav */}
-        <nav className="nav">
-          <NavLink to="/dashboard" end>
-            📊 Dashboard
-          </NavLink>
-          <NavLink to="/restaurants" end>
-            ➕ Add Restaurant
-          </NavLink>
-          <NavLink to="/restaurants/list" end>
-            📍 Restaurant List
-          </NavLink>
-          <NavLink to="/subscriptions" end>
-            💳 Subscriptions
-          </NavLink>
-          <NavLink to="/broadcast" end>
-            📣 Broadcast
-          </NavLink>
-          <NavLink to="/messages" end>
-            💬 Messages
-          </NavLink>
+        <nav className="as-nav">
+          <div className="nav-group">
+            <span className="nav-group-label">MGMT</span>
+            <NavLink to="/dashboard" end className="nav-item">
+              <span className="nav-icon">📊</span>
+              <span className="nav-text">Dashboard</span>
+            </NavLink>
+          </div>
+
+          <div className="nav-group">
+            <span className="nav-group-label">INFRASTRUCTURE</span>
+            <NavLink to="/restaurants" end className="nav-item">
+              <span className="nav-icon">✨</span>
+              <span className="nav-text">Add Restaurant</span>
+            </NavLink>
+            <NavLink to="/restaurants/list" end className="nav-item">
+              <span className="nav-icon">📍</span>
+              <span className="nav-text">Restaurant List</span>
+            </NavLink>
+          </div>
+
+          <div className="nav-group">
+            <span className="nav-group-label">COMMUNICATIONS</span>
+            <NavLink to="/broadcast" end className="nav-item">
+              <span className="nav-icon">📣</span>
+              <span className="nav-text">Broadcast</span>
+            </NavLink>
+            <NavLink to="/messages" end className="nav-item">
+              <span className="nav-icon">💬</span>
+              <span className="nav-text">Support Inbox</span>
+            </NavLink>
+          </div>
+
+          <div className="nav-group">
+            <span className="nav-group-label">FINANCE</span>
+            <NavLink to="/subscriptions" end className="nav-item">
+              <span className="nav-icon">💳</span>
+              <span className="nav-text">Subscriptions</span>
+            </NavLink>
+          </div>
         </nav>
       </div>
 
-      <div style={{ display: "grid", gap: 8, width: "100%" }}>
-        <button
+      <div className="as-sidebar-footer">
+        <button 
+          className="as-theme-toggle" 
           onClick={toggle}
-          style={{
-            width: "100%",
-            padding: "10px 14px",
-            borderRadius: 12,
-            border: "1px solid var(--sidebar-toggle-border)",
-            background: "var(--sidebar-toggle-bg)",
-            color: "var(--sidebar-toggle-text)",
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: "pointer",
-            fontFamily: "inherit",
-          }}
+          title={dark ? "Switch to Light Cloud" : "Enter Midnight Mode"}
         >
-          {dark ? "☀️ Light Mode" : "🌙 Dark Mode"}
+          <div className="toggle-track">
+            <div className={`toggle-thumb ${dark ? 'dark' : ''}`}>
+               {dark ? '🌙' : '☀️'}
+            </div>
+            <span className="toggle-text">{dark ? 'MIDNIGHT' : 'CLOUD'}</span>
+          </div>
         </button>
 
-        <button className="btn-outline logout-btn" onClick={logout}>
-          Logout
+        <button className="as-logout-btn" onClick={logout}>
+          <span className="nav-icon">🔌</span>
+          LOGOUT SYSTEM
         </button>
       </div>
     </aside>

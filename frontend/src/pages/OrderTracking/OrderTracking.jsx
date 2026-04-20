@@ -376,7 +376,7 @@ const OrderTracking = () => {
           {/* RIGHT: map — sticky so it stays visible while scrolling left */}
           <div className="ot-right">
             <h3 className="ot-section-label">📍 {t("live_delivery_map")}</h3>
-            <LiveDeliveryMap key={order.status} order={order} />
+            <LiveDeliveryMap order={order} />
           </div>
 
         </div>
