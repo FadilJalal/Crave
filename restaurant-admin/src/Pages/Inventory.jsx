@@ -1109,6 +1109,14 @@ export default function Inventory() {
                   <input className="input" type="number" step="0.01" required value={formData.currentStock} onChange={e => setFormData({...formData, currentStock: e.target.value})} />
                 </div>
                 <div className="field">
+                  <label className="label">MINIMUM STOCK (ALERT)</label>
+                  <input className="input" type="number" step="0.01" required value={formData.minimumStock} onChange={e => setFormData({...formData, minimumStock: e.target.value})} />
+                </div>
+                <div className="field">
+                  <label className="label">MAXIMUM STOCK</label>
+                  <input className="input" type="number" step="0.01" required value={formData.maximumStock} onChange={e => setFormData({...formData, maximumStock: e.target.value})} />
+                </div>
+                <div className="field">
                   <label className="label">UNIT COST (AED)</label>
                   <input className="input" type="number" step="0.01" required value={formData.unitCost} onChange={e => setFormData({...formData, unitCost: e.target.value})} />
                 </div>
