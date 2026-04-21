@@ -1206,4 +1206,78 @@ router.post("/custom-coupon-strategy", restaurantAuth, async (req, res) => {
   }
 });
 
+// ── 20. LABOR & SHIFT OPTIMIZATION ─────────────────────────────────────────
+router.get("/labor-optimization", restaurantAuth, async (req, res) => {
+  try {
+    const orders = await orderModel.find({ restaurantId: req.restaurantId, status: { $ne: "Cancelled" } }).select("amount createdAt").lean();
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    if (orders.length < 10) {
+      const mockForecast = dayNames.map(day => ({
+        day,
+        predictedOrders: Math.floor(Math.random() * 30) + 40,
+        staffNeeded: Math.floor(Math.random() * 2) + 3
+      }));
+      return res.json({ 
+        success: true, 
+        data: { 
+          forecast: mockForecast, 
+          isSimulation: true,
+          insights: [
+            "Weekend peak expected; ensure full kitchen crew by 6:00 PM.",
+            "Mondays typically high for deliveries; optimize prep for quick dispatch.",
+            "Projected surge in large groups on Friday; check table configuration."
+          ],
+          heatmap: Array.from({ length: 15 }, (_, i) => ({
+            hour: `${String(i + 8).padStart(2, '0')}:00`,
+            load: [20, 35, 60, 85, 95, 70, 50, 45, 65, 80, 100, 90, 60, 40, 20][i],
+            recommendation: Math.ceil([2, 3, 4, 5, 6, 5, 4, 3, 4, 5, 7, 6, 4, 3, 2][i])
+          }))
+        } 
+      });
+    }
+
+    const hourlyCounts = Array(24).fill(0);
+    const dailyCounts = Array(7).fill(0);
+    orders.forEach(o => {
+      const d = new Date(o.createdAt);
+      hourlyCounts[d.getHours()]++;
+      dailyCounts[d.getDay()]++;
+    });
+
+    const totalDays = Math.max(1, Math.ceil((Date.now() - new Date(orders[0].createdAt)) / 864e5));
+    const forecast = dailyCounts.map((count, i) => ({
+      day: dayNames[i],
+      predictedOrders: Math.round(count / (totalDays / 7) || 1),
+      staffNeeded: Math.max(2, Math.ceil((count / totalDays) / 2)) // 2 orders per hour per staff avg
+    }));
+
+    const heatmap = hourlyCounts.slice(8, 23).map((count, i) => {
+      const hour = i + 8;
+      return {
+        hour: `${String(hour).padStart(2, '0')}:00`,
+        load: Math.round((count / Math.max(1, Math.max(...hourlyCounts))) * 100),
+        recommendation: Math.max(1, Math.ceil((count / totalDays) / 1.5))
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        forecast,
+        heatmap,
+        isSimulation: false,
+        insights: [
+          `Historical peak at ${hourlyCounts.indexOf(Math.max(...hourlyCounts))}:00 suggests maximum deployment during this window.`,
+          `${dayNames[dailyCounts.indexOf(Math.max(...dailyCounts))]} is your highest volume day by an average of ${Math.round((Math.max(...dailyCounts) / (Math.min(...dailyCounts) || 1)) * 10) / 10}x.`,
+          "Staff productivity optimization: Consider overlapping shifts at 11:30 AM and 5:30 PM."
+        ]
+      }
+    });
+  } catch (e) {
+    console.error("[ai/labor-optimization]", e);
+    res.json({ success: false, message: "Labor optimization analysis failed" });
+  }
+});
+
 export default router;

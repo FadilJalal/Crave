@@ -59,6 +59,7 @@ export const FEATURE_DESCRIPTIONS = {
   aiInsights: "AI-powered sales forecasts and insights",
   aiCustomerSegmentation: "Behavioral customer segmentation & targeting",
   aiReviewReply: "AI-powered automated review responses",
+  aiLaborOptimization: "AI-driven staff scheduling and labor optimization",
   
   // Analytics
   analytics: "Advanced analytics and reporting dashboard",

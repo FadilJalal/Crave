@@ -19,7 +19,9 @@ import Customers from "./Pages/Customers";
 import Messages from "./Pages/Messages";
 import Reviews from "./Pages/Reviews";
 import AIInsights from "./Pages/AIInsights";
+import AILaborOptimizer from "./Pages/AILaborOptimizer";
 import AICustomerSegmentation from "./Pages/AICustomerSegmentation";
+import LaborManagement from "./Pages/LaborManagement";
 import Inventory from "./Pages/Inventory";
 import InventoryAnalytics from "./Pages/InventoryAnalytics";
 import ProtectedFeature from "./components/ProtectedFeature";
@@ -31,7 +33,7 @@ import ReviewReply from "./Pages/ReviewReply";
 export default function App() {
   return (
     <>
-      <ToastContainer theme="dark" position="top-right" autoClose={3000} />
+      <ToastContainer theme="dark" position="top-center" autoClose={3000} />
       <Routes>
         {/* ✅ MUST be public */}
         <Route path="/login" element={<Login />} />
@@ -54,10 +56,12 @@ export default function App() {
         <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
         <Route path="/inventory/analytics" element={<ProtectedRoute><InventoryAnalytics /></ProtectedRoute>} />
         <Route path="/ai-insights" element={<ProtectedRoute><ProtectedFeature featureName="aiInsights"><AIInsights /></ProtectedFeature></ProtectedRoute>} />
+        <Route path="/ai-labor-optimizer" element={<ProtectedRoute><ProtectedFeature featureName="aiLaborOptimization"><AILaborOptimizer /></ProtectedFeature></ProtectedRoute>} />
         <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><AICustomerSegmentation /></ProtectedFeature></ProtectedRoute>} />
         <Route path="/coupons" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><Promos /></ProtectedFeature></ProtectedRoute>} />
         <Route path="/review-reply" element={<ProtectedRoute><ReviewReply /></ProtectedRoute>} />
 
+        <Route path="/labor" element={<ProtectedRoute><LaborManagement /></ProtectedRoute>} />
         <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
 
         <Route path="/" element={<Navigate to="/login" replace />} />

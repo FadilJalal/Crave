@@ -7,8 +7,10 @@ import { useTheme } from "../ThemeContext";
 
 import { useNotifications } from "../context/NotificationContext";
 import NotificationCenter from "./NotificationCenter";
+import { toast } from "react-toastify";
 
 export default function RestaurantLayout({ children }) {
+  const { dark } = useTheme();
   const sidebarRef = useRef(null);
   const sidebarScrollRef = useRef(0);
   const location = useLocation();
@@ -16,6 +18,7 @@ export default function RestaurantLayout({ children }) {
   const [sub, setSub] = useState(null);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 980);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [lockedFeature, setLockedFeature] = useState(null);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 980px)");
@@ -185,6 +188,7 @@ export default function RestaurantLayout({ children }) {
   const canAiSegmentation = !subForFeatures || hasFeatureAccess(subForFeatures, "aiCustomerSegmentation");
   const canAiReviewReply = !subForFeatures || hasFeatureAccess(subForFeatures, "aiReviewReply");
   const canAiMarketing = !subForFeatures || hasFeatureAccess(subForFeatures, "aiMarketingCampaigns");
+  const canAiLabor = !subForFeatures || hasFeatureAccess(subForFeatures, "aiLaborOptimization");
 
   const link = (to, label) => {
     const isOrders = to === "/orders";
@@ -212,14 +216,16 @@ export default function RestaurantLayout({ children }) {
   const linkOrDisabled = (to, label, allowed, reason) => {
     if (allowed) return link(to, label);
     return (
-      <span
+      <div
         key={to}
         className="nav-link-disabled"
-        title={reason || "Not available on your current plan"}
-        aria-disabled="true"
+        onClick={() => setLockedFeature({ label, to })}
       >
-        {label}
-      </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span>{label}</span>
+        </div>
+        <span className="pro-pill">PRO</span>
+      </div>
     );
   };
 
@@ -264,90 +270,132 @@ export default function RestaurantLayout({ children }) {
           padding-top: 20px;
         }
         .brand {
-          padding: 24px 20px;
+          padding: 32px 24px;
           display: flex;
           align-items: center;
-          gap: 15px;
-          margin-bottom: 20px;
-          border-bottom: 1px solid rgba(255,255,255,0.08);
+          gap: 12px;
+          margin-bottom: 8px;
+        }
+        .brand-logo {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          object-fit: cover;
+        }
+        .brand-name {
+          font-size: 18px;
+          font-weight: 800;
+          color: #fff;
+          margin: 0;
+          line-height: 1.1;
+        }
+        .brand-subtitle {
+          font-size: 11px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.4);
+          text-transform: uppercase;
+          margin-top: 2px;
+        }
+        .nav-item-primary {
+          margin: 0 12px 16px;
+        }
+        .nav-item-primary a {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 16px;
+          border-radius: 10px;
+          color: rgba(255,255,255,0.7);
+          font-weight: 700;
+          font-size: 14px;
+          text-decoration: none;
+          transition: all 0.2s;
+        }
+        .nav-item-primary a:hover {
+          color: #fff;
+          background: rgba(255,255,255,0.05);
+        }
+        .nav-item-primary a.active {
+          color: #fff;
+          background: #6366f1;
         }
         .nav-group {
-          margin-bottom: 8px;
-          border-radius: 12px;
-          transition: background 0.3s ease, margin 0.3s ease;
-        }
-        .nav-group.expanded {
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          margin: 4px 6px;
+          margin-bottom: 4px;
         }
         .nav-group-header {
           width: 100%;
           display: flex;
           align-items: center;
-          padding: 12px 16px;
+          padding: 12px 20px;
           background: transparent;
           border: none;
-          color: rgba(255, 255, 255, 0.7);
+          color: rgba(255, 255, 255, 0.4);
           cursor: pointer;
           font-weight: 800;
-          font-size: 13px;
+          font-size: 11px;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
-          transition: all 0.2s ease;
-        }
-        .nav-group.expanded .nav-group-header {
-          color: #fff;
-          background: rgba(255, 255, 255, 0.03);
-          padding-left: 16px;
-        }
-        .nav-group-icon {
-          margin-right: 12px;
-          font-size: 16px;
-        }
-        .nav-group-label {
-          flex: 1;
-          text-align: left;
-        }
-        .nav-group-arrow {
-          font-size: 18px;
-          transition: transform 0.3s ease;
-          opacity: 0.5;
-        }
-        .nav-group.expanded .nav-group-arrow {
-          transform: rotate(90deg);
-          opacity: 1;
-          color: var(--primary);
+          letter-spacing: 0.8px;
         }
         .nav-group-content {
-          padding: 4px 0 8px;
-          display: none;
-        }
-        .nav-group.expanded .nav-group-content {
-          display: block;
-          max-height: 2000px;
-          opacity: 1;
+          padding-bottom: 8px;
         }
         .nav-group-content a, .nav-group-content .nav-link-disabled {
-          display: block;
-          padding: 10px 16px 10px 44px;
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 16px 10px 48px;
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.5);
           text-decoration: none;
           font-weight: 600;
           transition: all 0.2s;
+          border-radius: 8px;
+          margin: 0 12px;
         }
         .nav-group-content a:hover {
           color: #fff;
           background: rgba(255, 255, 255, 0.05);
         }
         .nav-group-content a.active {
-          color: var(--sidebar-active-text);
-          background: var(--sidebar-active-bg);
-          border: 1px solid var(--sidebar-active-border);
-          border-radius: 8px;
-          margin: 0 8px;
-          font-weight: 800;
+          color: #fff;
+          background: rgba(255, 255, 255, 0.08);
+        }
+        .nav-link-disabled {
+          cursor: pointer;
+          opacity: 0.45;
+        }
+        .nav-link-disabled:hover {
+          opacity: 0.8;
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .pro-pill {
+          font-size: 9px;
+          font-weight: 900;
+          background: rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.6);
+          padding: 1px 5px;
+          border-radius: 4px;
+        }
+        .logout-container {
+          padding: 24px;
+          border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .btn-logout {
+          width: 100%;
+          padding: 12px;
+          border-radius: 10px;
+          background: transparent;
+          border: 1px solid rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.5);
+          font-weight: 700;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-logout:hover {
+          border-color: rgba(255,255,255,0.2);
+          color: #fff;
+          background: rgba(255,255,255,0.03);
         }
       `}</style>
       {isMobile && sidebarOpen && <button className="ra-overlay" aria-label="Close menu" onClick={() => setSidebarOpen(false)} />}
@@ -359,21 +407,25 @@ export default function RestaurantLayout({ children }) {
       >
         <div className="brand">
           {restaurantLogo ? (
-            <img src={restaurantLogo} alt="Logo" style={{ width: 42, height: 42, borderRadius: 10, objectFit: "cover", border: "1px solid rgba(0,0,0,0.08)", flexShrink: 0 }}
+            <img src={restaurantLogo} alt="Logo" className="brand-logo"
               onError={e => { e.currentTarget.style.display = "none"; }} />
           ) : (
-            <div className="brand-badge" style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: 18, flexShrink: 0 }}>
+            <div className="brand-logo" style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "#6366f1", color: "white", fontWeight: 900, fontSize: 16 }}>
               {restaurantName.charAt(0).toUpperCase()}
             </div>
           )}
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>{restaurantName}</h1>
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--sidebar-muted)" }}>Restaurant Control Panel</p>
+            <h1 className="brand-name">{restaurantName}</h1>
+            <p className="brand-subtitle">Control Center</p>
           </div>
         </div>
 
         <nav className="nav">
-          {link("/dashboard", "📊 Dashboard")}
+          <div className="nav-item-primary">
+            {link("/dashboard", "📊 Dashboard")}
+          </div>
+
+          <div className="nav-groups-container">
 
           {navGroup("management", "⚡", "Management", [
             linkOrDisabled("/menu", "🍽️ Menu & Dishes", canMenu),
@@ -381,12 +433,14 @@ export default function RestaurantLayout({ children }) {
             linkOrDisabled("/bulk-upload", "📦 Bulk Quick Upload", canBulk),
             link("/orders", "🧾 Active Orders"),
             link("/inventory", "📦 Inventory & Stock"),
+            link("/labor", "👷 Staff & Labor"),
           ])}
 
           {navGroup("growth", "🚀", "Growth & AI", [
             linkOrDisabled("/coupons", "🏷️ AI Promo Generator", canAiPromo),
             linkOrDisabled("/email-campaign", "📧 AI Campaigns", canAiMarketing),
             linkOrDisabled("/ai-insights", "🧠 AI Insights", canAiInsights),
+            linkOrDisabled("/ai-labor-optimizer", "🕒 AI Labor Optimizer", canAiLabor),
             linkOrDisabled("/ai-customer-segmentation", "👥 AI Segmentation", canAiSegmentation),
             linkOrDisabled("/review-reply", "💬 Review Reply AI", canAiReviewReply),
           ])}
@@ -404,10 +458,14 @@ export default function RestaurantLayout({ children }) {
             link("/settings", "⚙️ Settings"),
             link("/subscription", "💳 Subscription"),
           ])}
+          </div>
         </nav>
 
-        <div style={{ padding: "12px 0 16px", flexShrink: 0, borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: 4 }}>
-          <button className="btn btn-outline logout" onClick={logout}>Logout</button>
+        <div className="logout-container">
+          <button className="btn-logout" onClick={logout}>
+            <span>🚪</span>
+            <span>Logout System</span>
+          </button>
         </div>
       </aside>
 
@@ -479,6 +537,102 @@ export default function RestaurantLayout({ children }) {
           {children}
         </div>
       </main>
+
+      {/* Premium Feature Locked Modal */}
+      {lockedFeature && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center",
+          background: dark ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0.4)", 
+          backdropFilter: "blur(12px)", padding: 20
+        }} onClick={() => setLockedFeature(null)}>
+          <div 
+            style={{
+              background: dark ? "#0b1220" : "#ffffff", 
+              borderRadius: 32, width: "100%", maxWidth: 440,
+              padding: 40, textAlign: "center", 
+              border: dark ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,0,0,0.05)",
+              boxShadow: dark ? "0 30px 60px rgba(0,0,0,0.5)" : "0 20px 40px rgba(0,0,0,0.1)", 
+              position: "relative",
+              animation: "modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <style>{`
+              @keyframes modalFadeIn {
+                from { opacity: 0; transform: scale(0.9) translateY(20px); }
+                to { opacity: 1; transform: scale(1) translateY(0); }
+              }
+            `}</style>
+            <div style={{ fontSize: 72, marginBottom: 28, filter: "drop-shadow(0 10px 20px rgba(0,0,0,0.1))" }}>🚀</div>
+            <h3 style={{ 
+              fontSize: 28, 
+              fontWeight: 950, 
+              color: dark ? "#fff" : "#1e293b", 
+              marginBottom: 14,
+              letterSpacing: "-0.5px"
+            }}>
+              Enterprise Exclusive
+            </h3>
+            <p style={{ 
+              fontSize: 16, 
+              color: dark ? "rgba(255,255,255,0.6)" : "#64748b", 
+              lineHeight: 1.6, 
+              marginBottom: 36,
+              padding: "0 10px"
+            }}>
+              The <strong style={{ color: dark ? "#fff" : "#1e293b" }}>{lockedFeature.label.replace(/[^a-zA-Z0-9 ]/g, '').trim()}</strong> tool is 
+              exclusive to our Enterprise tier. Upgrade now to unlock advanced AI capabilities.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <button 
+                onClick={() => {
+                  setLockedFeature(null);
+                  window.location.href = "/subscription";
+                }}
+                style={{
+                  padding: "18px", borderRadius: 18, border: "none",
+                  background: "linear-gradient(135deg, #6366f1, #a855f7)",
+                  color: "#fff", fontWeight: 900, fontSize: 16, cursor: "pointer",
+                  boxShadow: "0 10px 25px rgba(99, 102, 241, 0.4)",
+                  transition: "transform 0.2s ease"
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.02)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+              >
+                View Plans & Pricing
+              </button>
+              <button 
+                onClick={() => setLockedFeature(null)}
+                style={{
+                  padding: "14px", borderRadius: 18, 
+                  border: dark ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e2e8f0",
+                  background: "transparent", 
+                  color: dark ? "rgba(255,255,255,0.5)" : "#94a3b8", 
+                  fontWeight: 700, fontSize: 14, cursor: "pointer",
+                  transition: "all 0.2s ease"
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = dark ? "rgba(255,255,255,0.03)" : "#f8fafc"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                Maybe Later
+              </button>
+            </div>
+            <button 
+              onClick={() => setLockedFeature(null)}
+              style={{
+                position: "absolute", top: 24, right: 24, background: "none",
+                border: "none", color: dark ? "rgba(255,255,255,0.2)" : "#cbd5e1", 
+                cursor: "pointer", fontSize: 22, transition: "color 0.2s ease"
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = dark ? "#fff" : "#1e293b"}
+              onMouseLeave={e => e.currentTarget.style.color = dark ? "rgba(255,255,255,0.2)" : "#cbd5e1"}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
