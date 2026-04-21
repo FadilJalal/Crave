@@ -183,6 +183,8 @@ export default function RestaurantLayout({ children }) {
   const canAiPromo = !subForFeatures || hasFeatureAccess(subForFeatures, "aiPromoGenerator");
   const canAiInsights = !subForFeatures || hasFeatureAccess(subForFeatures, "aiInsights");
   const canAiSegmentation = !subForFeatures || hasFeatureAccess(subForFeatures, "aiCustomerSegmentation");
+  const canAiReviewReply = !subForFeatures || hasFeatureAccess(subForFeatures, "aiReviewReply");
+  const canAiMarketing = !subForFeatures || hasFeatureAccess(subForFeatures, "aiMarketingCampaigns");
 
   const link = (to, label) => {
     const isOrders = to === "/orders";
@@ -383,11 +385,10 @@ export default function RestaurantLayout({ children }) {
 
           {navGroup("growth", "🚀", "Growth & AI", [
             linkOrDisabled("/coupons", "🏷️ AI Promo Generator", canAiPromo),
-
-            link("/email-campaign", "📧 AI Campaigns"),
+            linkOrDisabled("/email-campaign", "📧 AI Campaigns", canAiMarketing),
             linkOrDisabled("/ai-insights", "🧠 AI Insights", canAiInsights),
             linkOrDisabled("/ai-customer-segmentation", "👥 AI Segmentation", canAiSegmentation),
-            link("/review-reply", "💬 Review Reply AI"),
+            linkOrDisabled("/review-reply", "💬 Review Reply AI", canAiReviewReply),
           ])}
 
           {navGroup("finance", "💰", "Finance & Data", [

@@ -57,81 +57,141 @@ export default function Broadcast() {
   };
 
   const accentColor = TYPES.find(t => t.key === type)?.color || "#111827";
-  const inp = { padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--border)", fontSize: 14, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", background: "white" };
-  const lbl = { fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 6 };
 
   return (
-    <div style={{ maxWidth: 860 }}>
+    <div className="dash animate-fade-in" style={{ maxWidth: 1100 }}>
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Broadcast Email</h1>
-        <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 14 }}>
-          Send a message to all {restaurantCount !== null ? restaurantCount : "..."} restaurant owners on the platform
-        </p>
+      <div className="dash-header">
+        <div>
+          <div className="dash-kicker">NETWORK COMMUNICATIONS</div>
+          <h1 className="dash-title">Broadcast <span style={{ color: '#ff4e2a' }}>Engine</span></h1>
+          <p className="dash-subtitle">
+            Deploy platform-wide announcements to all {restaurantCount !== null ? restaurantCount : <span style={{ display: 'inline-block', width: 20, height: 12, background: 'var(--border)', borderRadius: 4 }} />} active restaurant entities.
+          </p>
+        </div>
+        <div className="dash-actions">
+           <div className="pill pill-ok">TRANSMISSION READY</div>
+        </div>
       </div>
 
       {/* Result */}
       {result && (
-        <div style={{ background: result.success ? "#f0fdf4" : "#fef2f2", border: `1px solid ${result.success ? "#bbf7d0" : "#fecaca"}`, color: result.success ? "#15803d" : "#dc2626", borderRadius: 12, padding: "12px 18px", marginBottom: 20, fontSize: 14, fontWeight: 700 }}>
-          {result.success ? "✅" : "❌"} {result.message}
+        <div className={`dash-panel ${result.success ? 'success-glow' : 'error-glow'}`} style={{ padding: '12px 20px', marginBottom: '24px', fontWeight: 800, fontSize: '13px' }}>
+          {result.success ? "✅ BROADCAST DEPLOYED SUCCESSFULLY" : "❌ TRANSMISSION FAILURE: " + result.message}
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+      <div className="dash-row" style={{ alignItems: 'flex-start', gap: '32px' }}>
 
-        {/* Left: composer */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Left: composer (STABLE WIDTH) */}
+        <div style={{ flex: '0 0 520px', display: "flex", flexDirection: "column", gap: 24 }}>
 
           {/* Type */}
-          <div>
-            <label style={lbl}>MESSAGE TYPE</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="dash-panel" style={{ padding: '24px' }}>
+            <div className="dash-panel-head" style={{ marginBottom: '16px' }}>
+               <div>
+                  <h3 className="dash-panel-title">📡 MESSAGE TYPE</h3>
+               </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {TYPES.map(t => (
-                <div key={t.key} onClick={() => applyTemplate(t.key)} style={{ padding: "10px 14px", borderRadius: 12, cursor: "pointer", border: `2px solid ${type === t.key ? t.color : "var(--border)"}`, background: type === t.key ? t.color + "0f" : "white", display: "flex", alignItems: "center", gap: 12, transition: "all .15s" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: t.color, flexShrink: 0 }} />
+                <div 
+                  key={t.key} 
+                  onClick={() => applyTemplate(t.key)} 
+                  className={`as-glass-card ${type === t.key ? 'active' : ''}`}
+                  style={{ 
+                    padding: "12px", 
+                    cursor: "pointer", 
+                    border: `1px solid ${type === t.key ? t.color : 'var(--border)'}`,
+                    background: type === t.key ? `${t.color}15` : 'transparent',
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: 10,
+                    transition: "all .2s"
+                  }}
+                >
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: t.color, boxShadow: type === t.key ? `0 0 10px ${t.color}` : 'none' }} />
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 13, color: "#111827" }}>{t.label}</div>
-                    <div style={{ fontSize: 11, color: "var(--muted)" }}>{t.desc}</div>
+                    <div style={{ fontWeight: 800, fontSize: '11px', color: 'var(--text)', textTransform: 'uppercase' }}>{t.label}</div>
+                    <div style={{ fontSize: '9px', color: "var(--muted)" }}>{t.desc}</div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div><label style={lbl}>SUBJECT LINE</label><input style={inp} value={subject} onChange={e => setSubject(e.target.value)} placeholder="Email subject..." /></div>
-          <div><label style={lbl}>HEADING</label><input style={inp} value={heading} onChange={e => setHeading(e.target.value)} placeholder="Main heading..." /></div>
-          <div><label style={lbl}>MESSAGE</label><textarea style={{ ...inp, minHeight: 120, resize: "vertical" }} value={body} onChange={e => setBody(e.target.value)} placeholder="Write your message..." /></div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div><label style={lbl}>BUTTON TEXT</label><input style={inp} value={ctaText} onChange={e => setCtaText(e.target.value)} placeholder="e.g. Learn More" /></div>
-            <div><label style={lbl}>BUTTON LINK</label><input style={inp} value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} placeholder="https://..." /></div>
+          <div className="dash-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+             <div className="field">
+                <label className="label">SUBJECT LINE</label>
+                <input className="input" value={subject} onChange={e => setSubject(e.target.value)} placeholder="Email subject..." />
+             </div>
+             <div className="field">
+                <label className="label">HEADING</label>
+                <input className="input" value={heading} onChange={e => setHeading(e.target.value)} placeholder="Main heading..." />
+             </div>
+             <div className="field">
+                <label className="label">MESSAGE CONTENT</label>
+                <textarea className="input" style={{ minHeight: 180, resize: "none" }} value={body} onChange={e => setBody(e.target.value)} placeholder="Write your message..." />
+             </div>
+             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="field">
+                  <label className="label">CTA LABEL</label>
+                  <input className="input" value={ctaText} onChange={e => setCtaText(e.target.value)} placeholder="e.g. Learn More" />
+                </div>
+                <div className="field">
+                  <label className="label">CTA DESTINATION</label>
+                  <input className="input" value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} placeholder="https://..." />
+                </div>
+             </div>
           </div>
 
           <button
+            className="as-logout-btn"
             onClick={handleSend}
             disabled={sending || !subject || !heading || !body}
-            style={{ padding: 13, borderRadius: 12, border: "none", background: (sending || !subject || !heading || !body) ? "#e5e7eb" : `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)`, color: (sending || !subject || !heading || !body) ? "#9ca3af" : "white", fontWeight: 900, fontSize: 15, cursor: sending ? "not-allowed" : "pointer", fontFamily: "inherit" }}
+            style={{ 
+              height: '56px',
+              background: (sending || !subject || !heading || !body) ? "var(--border)" : accentColor,
+              color: "#fff",
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              boxShadow: (sending || !subject || !heading || !body) ? 'none' : `0 10px 20px -5px ${accentColor}44`
+            }}
           >
-            {sending ? "Sending…" : `📣 Send to ${restaurantCount ?? "..."} restaurants`}
+            {sending ? "TRANSMITTING..." : `📡 TRANSMIT TO ${restaurantCount ?? "..."} ENTITIES`}
           </button>
         </div>
 
-        {/* Right: preview */}
-        <div>
-          <label style={lbl}>LIVE PREVIEW</label>
-          <div style={{ border: "1px solid #e5e7eb", borderRadius: 16, overflow: "hidden" }}>
-            <div style={{ background: accentColor, padding: "20px 24px" }}>
-              <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>
-                {TYPES.find(t => t.key === type)?.label} · Crave Platform
-              </div>
-              <div style={{ color: "white", fontWeight: 900, fontSize: 18, lineHeight: 1.3 }}>{heading || "Your heading here"}</div>
+        {/* Right: preview (STABLE STICKY) */}
+        <div style={{ flex: 1, position: 'sticky', top: '24px' }}>
+          <div className="dash-panel-head" style={{ marginBottom: '16px', paddingLeft: '5px' }}>
+              <h3 className="dash-panel-title">👀 LIVE TRANSMISSION PREVIEW</h3>
+          </div>
+          
+          <div className="as-glass-card shadow-lg" style={{ overflow: "hidden", border: '1px solid var(--border)', background: 'var(--card)' }}>
+            <div style={{ background: accentColor, padding: "32px 24px", textAlign: 'center' }}>
+               <div style={{ padding: '8px 14px', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', display: 'inline-block', fontSize: '9px', fontWeight: 900, color: '#fff', letterSpacing: '1px', marginBottom: '16px' }}>
+                  {TYPES.find(t => t.key === type)?.label} · OFFICIAL BROADCAST
+               </div>
+               <h2 style={{ color: "white", fontWeight: 900, fontSize: 24, lineHeight: 1.2, margin: 0 }}>{heading || "Your heading here"}</h2>
             </div>
-            <div style={{ padding: 24, background: "white" }}>
-              <p style={{ fontSize: 13, color: "#374151", fontWeight: 700, margin: "0 0 10px" }}>Hi Restaurant Name,</p>
-              <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, margin: "0 0 20px", whiteSpace: "pre-line" }}>{body || "Your message..."}</p>
-              {ctaText && <div style={{ display: "inline-block", background: accentColor, color: "white", padding: "10px 22px", borderRadius: 8, fontWeight: 800, fontSize: 14 }}>{ctaText}</div>}
+            
+            <div style={{ padding: 40, background: "var(--card)" }}>
+              <p style={{ fontSize: 13, color: "var(--text)", fontWeight: 800, margin: "0 0 12px" }}>Hi Restaurant Owner,</p>
+              <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.8, margin: "0 0 24px", whiteSpace: "pre-line" }}>{body || "Your message..."}</p>
+              
+              {ctaText && (
+                <div style={{ textAlign: 'center', marginTop: '40px' }}>
+                  <div style={{ display: "inline-block", background: accentColor, color: "white", padding: "14px 32px", borderRadius: "14px", fontWeight: 900, fontSize: 13, boxShadow: `0 8px 25px -8px ${accentColor}` }}>{ctaText}</div>
+                </div>
+              )}
             </div>
-            <div style={{ padding: "14px 24px", background: "#f9fafb", borderTop: "1px solid #f3f4f6" }}>
-              <p style={{ fontSize: 11, color: "#9ca3af", margin: 0 }}>Sent to all restaurant partners by Crave platform admin.</p>
+
+            <div style={{ padding: "24px", background: "rgba(0,0,0,0.03)", borderTop: "1px solid var(--border)", textAlign: 'center' }}>
+               <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--text)', marginBottom: '4px' }}>Crave.</div>
+               <p style={{ fontSize: 10, color: "var(--muted)", margin: 0 }}>You are receiving this as an active partner of the Crave ecosystem.</p>
             </div>
           </div>
         </div>

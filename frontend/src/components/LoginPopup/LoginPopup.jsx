@@ -5,6 +5,7 @@ import './LoginPopup.css';
 import { StoreContext } from '../../Context/StoreContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { GoogleLogin } from '@react-oauth/google';
 
 const LoginPopup = ({ setShowLogin }) => {
   const { t, i18n } = useTranslation();
@@ -91,6 +92,28 @@ const LoginPopup = ({ setShowLogin }) => {
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Network error');
     } finally { setLoading(false); }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    try {
+      const resp = await axios.post(`${url}/api/user/google-login`, {
+        idToken: credentialResponse.credential
+      });
+      if (resp.data.success) {
+        setToken(resp.data.token);
+        localStorage.setItem('token', resp.data.token);
+        await loadCartData(resp.data.token, true);
+        toast.success('Signed in with Google!');
+        setShowLogin(false);
+      } else {
+        toast.error(resp.data.message || 'Google login failed');
+      }
+    } catch (err) {
+      toast.error('Google authentication error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const tabs = [
@@ -180,6 +203,23 @@ const LoginPopup = ({ setShowLogin }) => {
                 {loading ? t("please_wait") : mode === 'admin' ? t("admin_login") : mode === 'restaurant' ? t("restaurant_login") : isLogin ? t("sign_in") : t("create_account")}
               </button>
             </form>
+
+            {mode === 'user' && (
+              <div style={{ marginTop: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                  <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+                  <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>OR CONTINUE WITH</span>
+                  <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', minHeight: '44px' }}>
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => toast.error('Google Login Failed')}
+                    useOneTap
+                  />
+                </div>
+              </div>
+            )}
           </>
         )}
 

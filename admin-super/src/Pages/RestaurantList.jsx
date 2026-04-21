@@ -3,7 +3,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { BACKEND_URL } from "../config";
 import { MapPin, Search, Power, Trash2, Clock, RefreshCcw, Utensils, Pencil, KeyRound } from "lucide-react";
-import { api } from "../utils/api";
+import { api, BASE_URL } from "../utils/api";
 
 export default function RestaurantList() {
   const [restaurants, setRestaurants] = useState([]);
@@ -198,90 +198,112 @@ export default function RestaurantList() {
   const handleResetBackdrop = (e) => { if (resetModalRef.current && !resetModalRef.current.contains(e.target)) closeReset(); };
 
   return (
-    <div style={s.container}>
-      <div style={s.headerRow}>
+    <div className="dash animate-fade-in">
+      <div className="dash-header">
         <div>
-          <h1 style={s.h1}>Restaurant List</h1>
-          <p style={s.sub}>Manage your restaurant partners.</p>
+          <div className="dash-kicker">INFRASTRUCTURE MANAGEMENT</div>
+          <h1 className="dash-title">Restaurant <span style={{ color: '#ff4e2a' }}>Partners</span></h1>
+          <p className="dash-subtitle">Audit, manage, and monitor your platform's culinary network.</p>
         </div>
-        <button style={s.refreshBtn} onClick={fetchRestaurants} disabled={loading}>
-          <RefreshCcw size={16} /> {loading ? "Refreshing..." : "Refresh"}
-        </button>
+        <div className="dash-actions">
+           <button className="btn-outline" onClick={fetchRestaurants} disabled={loading}>
+             {loading ? <RefreshCcw size={14} className="animate-spin" /> : <RefreshCcw size={14} />} 
+             SYNC DIRECTORY
+           </button>
+        </div>
       </div>
 
-      <div style={s.filtersCard}>
-        <div style={s.filtersGrid}>
-          <div>
-            <div style={s.label}>Search</div>
-            <div style={s.searchBox}>
-              <Search size={15} />
-              <input style={s.searchInput} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, email, address..." />
+      <div className="as-glass-card" style={{ padding: '24px', marginBottom: '24px' }}>
+        <div className="rl-filter-grid">
+          <div className="field">
+            <label className="label">GLOBAL SEARCH</label>
+            <div className="search-wrap">
+              <Search size={16} className="search-icon" />
+              <input 
+                className="input" 
+                value={q} 
+                onChange={(e) => setQ(e.target.value)} 
+                placeholder="Name, email, address..."
+              />
             </div>
           </div>
-          <div>
-            <div style={s.label}>Status</div>
-            <select style={s.select} value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+          <div className="field">
+            <label className="label">LIVELIHOOD STATUS</label>
+            <select className="select" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="all">Display All Partners</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
             </select>
           </div>
-          <div>
-            <div style={s.label}>Location</div>
-            <select style={s.select} value={location} onChange={(e) => setLocation(e.target.value)}>
-              {locations.map((loc) => <option key={loc} value={loc}>{loc}</option>)}
+          <div className="field">
+            <label className="label">LOCATIONAL RADIUS</label>
+            <select className="select" value={location} onChange={(e) => setLocation(e.target.value)}>
+              {locations.map((loc) => <option key={loc} value={loc}>{loc === 'all' ? 'All Coverage' : loc}</option>)}
             </select>
           </div>
-          <button style={s.clearBtn} onClick={() => { setQ(""); setStatus("all"); setLocation("all"); }}>Clear</button>
+          <button className="as-logout-btn" style={{ padding: '10px 20px', fontSize: '11px' }} onClick={() => { setQ(""); setStatus("all"); setLocation("all"); }}>
+            RESET FILTERS
+          </button>
         </div>
       </div>
 
-      <div style={{ marginTop: 24 }}>
-        <div style={s.table}>
-          <div style={{ ...s.row, ...s.head }}>
-            <div>RESTAURANT</div><div>ADDRESS</div><div>STATUS</div><div>PREP</div>
-            <div style={{ textAlign: "right" }}>ACTIONS</div>
-          </div>
+      <div className="dash-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border)' }}>
+        <div className="rl-table-head">
+          <div className="rl-col-main">RESTAURANT ENTITY</div>
+          <div className="rl-col-addr">DEPLOYMENT ZONE</div>
+          <div className="rl-col-status">PULSE</div>
+          <div className="rl-col-prep">PREP</div>
+          <div className="rl-col-actions">COMMAND</div>
+        </div>
 
+        <div className="rl-table-body">
           {filtered.length === 0 && (
-            <div style={{ padding: "32px", textAlign: "center", color: "#94a3b8" }}>No restaurants found.</div>
+            <div style={{ padding: "80px 20px", textAlign: "center", color: "var(--muted)" }}>
+               <Utensils size={40} style={{ marginBottom: '15px', opacity: 0.2 }} />
+               <p style={{ fontWeight: 600 }}>No entities matching current resonance.</p>
+            </div>
           )}
 
           {filtered.map((r) => (
-            <div key={r._id} style={s.row}>
-              <div style={s.nameCell}>
-                <div style={s.logoWrapper}>
-                  {r.logo ? (
-                    <img src={`${BACKEND_URL}/images/${r.logo}`} alt={r.name} style={s.logoImg}
-                      onError={(e) => { e.target.src = "https://via.placeholder.com/40?text=R"; }} />
-                  ) : <Utensils size={20} color="#94a3b8" />}
+            <div key={r._id} className="rl-table-row">
+              <div className="rl-col-main">
+                <div className="rl-logo-outer">
+                   <img 
+                     src={`${BASE_URL}/images/${r.logo}`} 
+                     alt={r.name}
+                     onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML='<span style="font-size:18px">🏪</span>'; }}
+                   />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 800, color: "#1e293b" }}>{r.name}</div>
-                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{r.email}</div>
+                   <div className="rl-name">{r.name}</div>
+                   <div className="rl-email">{r.email}</div>
                 </div>
               </div>
 
-              <div style={{ fontSize: 13, color: "#64748b", display: "flex", alignItems: "center", gap: 4 }}>
-                <MapPin size={12} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.address}</span>
+              <div className="rl-col-addr">
+                <MapPin size={14} className="muted" />
+                <span>{r.address}</span>
               </div>
 
-              <div>
-                <span style={{ ...s.badge, background: r.isActive ? "#e6fff5" : "#fff1f1", color: r.isActive ? "#00c853" : "#ff5252" }}>
-                  {r.isActive ? "ACTIVE" : "INACTIVE"}
-                </span>
+              <div className="rl-col-status">
+                <div className={`rl-status-pill ${r.isActive ? 'active' : 'inactive'}`}>
+                   <div className="status-dot"></div>
+                   <span>{r.isActive ? "ACTIVE" : "INACTIVE"}</span>
+                </div>
               </div>
 
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#475569", display: "flex", alignItems: "center", gap: 4 }}>
-                <Clock size={14} /> {r.avgPrepTime}m
+              <div className="rl-col-prep">
+                 <Clock size={14} />
+                 <span>{r.avgPrepTime}m</span>
               </div>
 
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button style={{ ...s.actionBtn, color: "#3b82f6" }} onClick={() => openEdit(r)} title="Edit"><Pencil size={17} /></button>
-                <button style={{ ...s.actionBtn, color: "#f59e0b" }} onClick={() => openReset(r)} title="Reset password"><KeyRound size={17} /></button>
-                <button style={{ ...s.actionBtn, color: r.isActive ? "#64748b" : "#ff4e2a" }} onClick={() => toggleActive(r._id)} title="Toggle"><Power size={17} /></button>
-                <button style={{ ...s.actionBtn, color: "#ef4444" }} onClick={() => removeRestaurant(r._id)} title="Delete"><Trash2 size={17} /></button>
+              <div className="rl-col-actions">
+                <button className="rl-act-btn edit" onClick={() => openEdit(r)} title="Edit Identity"><Pencil size={15} /></button>
+                <button className="rl-act-btn pass" onClick={() => openReset(r)} title="Rotate Security"><KeyRound size={15} /></button>
+                <button className={`rl-act-btn toggle ${r.isActive ? 'on' : 'off'}`} onClick={() => toggleActive(r._id)} title="Switch Power">
+                   <Power size={15} />
+                </button>
+                <button className="rl-act-btn delete" onClick={() => removeRestaurant(r._id)} title="Terminate Entity"><Trash2 size={15} /></button>
               </div>
             </div>
           ))}

@@ -14,11 +14,13 @@ import { toast } from "react-toastify";
 import "./Dashboard.css";
 
 const STATUS_CONFIG = {
-  "Order Placed": { color: "#EF4444", bg: "#fef2f2", label: "New Order" },
-  "Order Accepted": { color: "#059669", bg: "#ecfdf5", label: "Accepted" },
-  "Food Processing": { color: "#EAB308", bg: "#FEFCE8", label: "Preparing" },
-  "Out for Delivery": { color: "#3B82F6", bg: "#EFF6FF", label: "On the way" },
-  "Delivered": { color: "#22C55E", bg: "#F0FDF4", label: "Delivered" },
+  "Order Placed": { color: "#EF4444", bg: "#fef2f2", label: "New Order", icon: "🔔" },
+  "Order Accepted": { color: "#059669", bg: "#ecfdf5", label: "Accepted", icon: "✅" },
+  "Food Processing": { color: "#EAB308", bg: "#FEFCE8", label: "Preparing", icon: "🍳" },
+  "Out for Delivery": { color: "#3B82F6", bg: "#EFF6FF", label: "On the way", icon: "🛵" },
+  "Ready": { color: "#3B82F6", bg: "#EFF6FF", label: "Ready", icon: "📦" },
+  "Delivered": { color: "#22C55E", bg: "#F0FDF4", label: "Delivered", icon: "🏁" },
+  "Pending": { color: "#6B7280", bg: "#F3F4F6", label: "Pending", icon: "🔔" },
 };
 
 const QuickOrderStatus = ({ orders, onUpdate, dark }) => {
@@ -44,14 +46,11 @@ const QuickOrderStatus = ({ orders, onUpdate, dark }) => {
 
   const getActionButton = (order) => {
     const status = order.status;
-  const getActionButton = (order) => {
-    const status = order.status;
     if (status === "Order Placed") return { label: "Accept Order", next: "Order Accepted", color: "#059669", icon: "✅" };
     if (status === "Order Accepted") return { label: "Start Prep", next: "Food Processing", color: "#EAB308", icon: "🍳" };
     if (status === "Food Processing") return { label: "Start Delivery", next: "Out for Delivery", color: "#3b82f6", icon: "🛵" };
     if (status === "Out for Delivery") return { label: "Complete Order", next: "Delivered", color: "#10b981", icon: "🏁" };
     return null;
-  };
   };
 
   return (
@@ -109,7 +108,7 @@ const QuickOrderStatus = ({ orders, onUpdate, dark }) => {
                     width: 48, height: 48, borderRadius: 14, background: config.bg, color: config.color,
                     display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900
                   }}>
-                    {status === "Food Processing" ? "🍳" : status === "Out for delivery" ? "🛵" : status === "Ready" ? "📦" : "🔔"}
+                    {config.icon}
                   </div>
                   
                   <div style={{ minWidth: 0 }}>

@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
-import { Plus, Mail, Lock, MapPin, LocateFixed, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Plus, Mail, Lock, MapPin, LocateFixed, Image as ImageIcon, Loader2, Utensils } from "lucide-react";
 import { api } from "../utils/api";
 import "leaflet/dist/leaflet.css";
 
@@ -184,168 +184,206 @@ export default function AddRestaurant() {
   );
 
   return (
-    <div style={styles.container}>
-      <header style={styles.headerRow}>
+    <div className="dash animate-fade-in">
+      <header className="dash-header">
         <div>
-          <h1 style={styles.title}>Partner Onboarding</h1>
-          <p style={styles.subtitle}>Register a new Crave restaurant partner.</p>
+          <div className="dash-kicker">SYSTEM EXPANSION MODULE</div>
+          <h1 className="dash-title">Partner <span style={{ color: '#ff4e2a' }}>Onboarding</span></h1>
+          <p className="dash-subtitle">Register and deploy a new Crave restaurant entity to the network.</p>
         </div>
-        <button style={styles.secondaryBtn} onClick={() => navigate("/restaurants/list")}>
-          View Active Partners
-        </button>
+        <div className="dash-actions">
+          <button className="btn-outline" onClick={() => navigate("/restaurants/list")}>
+            DIRECTORY OVERVIEW
+          </button>
+        </div>
       </header>
 
-      <div style={styles.card}>
-        <form onSubmit={handleSubmit}>
-          <div style={styles.sectionHeader}>
-            <Plus size={18} color="#ff4e2a" />
-            <h2 style={styles.sectionTitle}>Brand Identity</h2>
-          </div>
+      <div className="dash-row" style={{ alignItems: 'flex-start' }}>
+        <div style={{ flex: 1.2 }}>
+          <form onSubmit={handleSubmit} className="dash-panel" style={{ padding: '32px' }}>
+            <div className="dash-panel-head" style={{ marginBottom: '24px' }}>
+               <div>
+                  <h3 className="dash-panel-title">📡 OPERATIONAL IDENTITY</h3>
+                  <p className="dash-panel-sub">Brand credentials and access keys</p>
+               </div>
+               <div className="pill">SECURE ENTRY</div>
+            </div>
 
-          <div style={styles.grid}>
-            <FormField label="Legal Restaurant Name">
-              <input
-                style={styles.input}
-                name="name"
-                placeholder="e.g., Al Safadi"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-              />
-            </FormField>
-
-            <FormField label="Business Email">
-              <div style={styles.iconInputWrapper}>
-                <Mail size={16} color="#94a3b8" />
-                <input
-                  style={styles.inputBare}
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-            </FormField>
-
-            <FormField label="Admin Password">
-              <div style={styles.iconInputWrapper}>
-                <Lock size={16} color="#94a3b8" />
-                <input
-                  style={styles.inputBare}
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-            </FormField>
-          </div>
-
-          <div style={styles.sectionHeader}>
-            <MapPin size={18} color="#ff4e2a" />
-            <h2 style={styles.sectionTitle}>Location Details</h2>
-          </div>
-
-          <div style={styles.grid}>
-            <div style={{ position: "relative" }}>
-              <FormField label="Street Address (UAE Search)">
-                <div style={styles.iconInputWrapper}>
-                  <MapPin size={16} color="#94a3b8" />
-                  <input
-                    style={styles.inputBare}
-                    name="address"
-                    placeholder="Search street, road, or area..."
-                    value={formData.address}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
+              <div className="field">
+                <label className="label">LEGAL ENTITY NAME</label>
+                <div className="search-wrap">
+                   <div style={{ position: 'absolute', left: '12px', color: 'var(--muted)' }}><Utensils size={15}/></div>
+                   <input
+                    className="input"
+                    style={{ paddingLeft: '40px' }}
+                    name="name"
+                    placeholder="e.g., Al Safadi"
+                    value={formData.name}
                     onChange={handleInputChange}
-                    autoComplete="off"
                     required
                   />
-                  {isSearching && <Loader2 size={14} className="animate-spin" color="#ff4e2a" />}
                 </div>
-              </FormField>
+              </div>
 
-              {addressResults.length > 0 && (
-                <div style={styles.dropdown}>
-                  {addressResults.map((r) => {
-                    const street = r.address.road || r.address.pedestrian || "";
-                    const suburb = r.address.suburb || r.address.neighbourhood || "";
-                    const city = r.address.city || r.address.state || "";
-                    const label = [street, suburb, city].filter(Boolean).join(", ");
-                    return (
-                      <div
-                        key={r.place_id}
-                        style={styles.dropdownItem}
-                        onClick={() => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            address: label || r.display_name,
-                            lat: parseFloat(r.lat),
-                            lng: parseFloat(r.lon),
-                          }));
-                          setAddressResults([]);
-                        }}
-                      >
-                        <div style={{ fontWeight: 600, fontSize: "13px" }}>
-                          {street || r.display_name.split(",")[0]}
-                        </div>
-                        <div style={{ fontSize: "11px", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {r.display_name}
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="field">
+                <label className="label">ADMINISTRATIVE EMAIL</label>
+                <div className="search-wrap">
+                  <div style={{ position: 'absolute', left: '12px', color: 'var(--muted)' }}><Mail size={15}/></div>
+                  <input
+                    className="input"
+                    style={{ paddingLeft: '40px' }}
+                    type="email"
+                    name="email"
+                    placeholder="partner@crave.com"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                  />
                 </div>
-              )}
+              </div>
+
+              <div className="field" style={{ gridColumn: 'span 2' }}>
+                <label className="label">SECURE ACCESS KEY (PASSWORD)</label>
+                <div className="search-wrap">
+                  <div style={{ position: 'absolute', left: '12px', color: 'var(--muted)' }}><Lock size={15}/></div>
+                  <input
+                    className="input"
+                    style={{ paddingLeft: '40px' }}
+                    type="password"
+                    name="password"
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+              </div>
             </div>
 
-            <FormField label="Geolocation Sync">
-              <button type="button" style={styles.actionBtn} onClick={handleLocationDetection}>
-                <LocateFixed size={16} /> Fetch Current GPS
-              </button>
-            </FormField>
-          </div>
-
-          <div style={styles.mapContainer}>
-            <MapContainer center={markerPosition} zoom={13} style={{ height: "100%", width: "100%" }}>
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
-                maxZoom={20}
-              />
-              <MapUpdater center={{ lat: formData.lat, lng: formData.lng }} />
-              <MapClickSetter onPick={(lat, lng) => setFormData((p) => ({ ...p, lat, lng }))} />
-              <Marker
-                position={markerPosition}
-                draggable
-                eventHandlers={{
-                  dragend: (e) => {
-                    const { lat, lng } = e.target.getLatLng();
-                    setFormData((p) => ({ ...p, lat, lng }));
-                  },
-                }}
-              >
-                <Popup>Storefront PIN</Popup>
-              </Marker>
-            </MapContainer>
-          </div>
-
-          <div style={styles.footer}>
-            <div style={styles.logoUploadSection}>
-              <label style={styles.uploadBox}>
-                <ImageIcon size={18} />
-                <span>{logo ? "Change Logo" : "Upload Brand Logo"}</span>
-                <input type="file" accept="image/*" onChange={handleLogoChange} hidden />
-              </label>
-              {logoPreview && <img src={logoPreview} alt="Preview" style={styles.previewImg} />}
+            <div className="dash-panel-head" style={{ marginBottom: '24px' }}>
+               <div>
+                  <h3 className="dash-panel-title">📍 DEPLOYMENT PARAMETERS</h3>
+                  <p className="dash-panel-sub">Geospatial sync and location data</p>
+               </div>
+               <div className="pill">SYNC ACTIVE</div>
             </div>
 
-            <button type="submit" style={styles.submitBtn} disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : "REGISTER RESTAURANT"}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ position: "relative" }}>
+                <div className="field">
+                  <label className="label">STREET ADDRESS (UAE NETWORK SEARCH)</label>
+                  <div className="search-wrap">
+                    <div style={{ position: 'absolute', left: '12px', color: 'var(--muted)' }}><MapPin size={15}/></div>
+                    <input
+                      className="input"
+                      style={{ paddingLeft: '40px' }}
+                      name="address"
+                      placeholder="Search street, road, or area..."
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      autoComplete="off"
+                      required
+                    />
+                    <div style={{ position: 'absolute', right: '12px' }}>
+                       {isSearching && <Loader2 size={14} className="animate-spin" color="#ff4e2a" />}
+                    </div>
+                  </div>
+                </div>
+
+                {addressResults.length > 0 && (
+                  <div className="as-glass-card" style={{ position: 'absolute', top: '75px', left: 0, right: 0, zIndex: 1000, overflow: 'hidden' }}>
+                    {addressResults.map((r) => {
+                      const street = r.address.road || r.address.pedestrian || "";
+                      const suburb = r.address.suburb || r.address.neighbourhood || "";
+                      const city = r.address.city || r.address.state || "";
+                      const label = [street, suburb, city].filter(Boolean).join(", ");
+                      return (
+                        <div
+                          key={r.place_id}
+                          className="rl-table-row"
+                          style={{ padding: '12px 16px', gridTemplateColumns: '1fr', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              address: label || r.display_name,
+                              lat: parseFloat(r.lat),
+                              lng: parseFloat(r.lon),
+                            }));
+                            setAddressResults([]);
+                          }}
+                        >
+                          <div style={{ fontWeight: 800, fontSize: "13px", color: 'var(--text)' }}>
+                            {street || r.display_name.split(",")[0]}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {r.display_name}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="field">
+                <label className="label">GEOLOCATION RADIUS SYNC</label>
+                <button type="button" className="btn-outline" style={{ justifyContent: 'center', width: '100%', height: '45px' }} onClick={handleLocationDetection}>
+                  <LocateFixed size={16} /> SYCHRONIZE CURRENT GPS
+                </button>
+              </div>
+            </div>
+
+            <div className="footer-actions" style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '40px', borderTop: '1px solid var(--border)', paddingTop: '32px' }}>
+               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <label className="as-glass-card" style={{ padding: '12px 16px', borderStyle: 'dashed', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <ImageIcon size={18} className="muted" />
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--muted)' }}>{logo ? "ID: LOADED" : "UPLOAD LOGO"}</span>
+                    <input type="file" accept="image/*" onChange={handleLogoChange} hidden />
+                  </label>
+                  {logoPreview && <img src={logoPreview} alt="Preview" style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)' }} />}
+               </div>
+
+               <button type="submit" className="as-logout-btn" style={{ flex: 1.5, background: '#ff4e2a', color: '#fff', height: '50px' }} disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : "🚀 DEPLOY RESTAURANT ENTITY"}
+               </button>
+            </div>
+          </form>
+        </div>
+
+        <div style={{ flex: 0.8 }}>
+          <div className="dash-panel" style={{ height: '640px', overflow: 'hidden', padding: 0 }}>
+             <div className="dash-panel-head" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
+                <div>
+                   <h3 className="dash-panel-title">📍 SPATIAL VERIFICATION</h3>
+                   <p className="dash-panel-sub">Precision Storefront Placement</p>
+                </div>
+                <div className="pill pill-ok">LIVE FEED</div>
+             </div>
+             <div style={{ height: 'calc(100% - 85px)', width: '100%', filter: 'grayscale(0.2) contrast(1.1)' }}>
+                <MapContainer center={markerPosition} zoom={13} style={{ height: "100%", width: "100%" }}>
+                  <TileLayer
+                    attribution='&copy; CARTO'
+                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+                  />
+                  <MapUpdater center={{ lat: formData.lat, lng: formData.lng }} />
+                  <MapClickSetter onPick={(lat, lng) => setFormData((p) => ({ ...p, lat, lng }))} />
+                  <Marker
+                    position={markerPosition}
+                    draggable
+                    eventHandlers={{
+                      dragend: (e) => {
+                        const { lat, lng } = e.target.getLatLng();
+                        setFormData((p) => ({ ...p, lat, lng }));
+                      },
+                    }}
+                  >
+                    <Popup>Precision Storefront PIN</Popup>
+                  </Marker>
+                </MapContainer>
+             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

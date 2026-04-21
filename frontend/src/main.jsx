@@ -10,6 +10,7 @@ import { ThemeProvider } from './Context/ThemeContext';
 // NEW
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
@@ -17,9 +18,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <StoreContextProvider>
       <ThemeProvider>
-        <Elements stripe={stripePromise}>
-          <App />
-        </Elements>
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+          <Elements stripe={stripePromise}>
+            <App />
+          </Elements>
+        </GoogleOAuthProvider>
       </ThemeProvider>
     </StoreContextProvider>
   </BrowserRouter>,

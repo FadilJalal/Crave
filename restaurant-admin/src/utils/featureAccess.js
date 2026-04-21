@@ -44,6 +44,7 @@ export const FEATURE_DESCRIPTIONS = {
   // Marketing
   broadcasts: "Send promotional broadcast messages to all customers",
   emailCampaigns: "Create and schedule targeted email campaigns",
+  aiMarketingCampaigns: "AI-powered targeted marketing campaigns and suggestions",
   
   // Advanced Inventory
   inventory: "Real-time inventory tracking and management",
@@ -57,6 +58,7 @@ export const FEATURE_DESCRIPTIONS = {
   aiPromoGenerator: "AI-generated promo campaign suggestions",
   aiInsights: "AI-powered sales forecasts and insights",
   aiCustomerSegmentation: "Behavioral customer segmentation & targeting",
+  aiReviewReply: "AI-powered automated review responses",
   
   // Analytics
   analytics: "Advanced analytics and reporting dashboard",

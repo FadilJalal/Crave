@@ -40,6 +40,7 @@ const DEFAULT_PLANS = {
       promoCodes: true,
       broadcasts: false,
       emailCampaigns: false,
+      aiMarketingCampaigns: false,
       // Advanced
       inventory: false,
       inventoryAnalytics: false,
@@ -47,6 +48,7 @@ const DEFAULT_PLANS = {
       aiPromoGenerator: false,
       aiInsights: false,
       aiCustomerSegmentation: false,
+      aiReviewReply: false,
       analytics: false,
     },
   },
@@ -69,6 +71,7 @@ const DEFAULT_PLANS = {
       promoCodes: true,
       broadcasts: true,
       emailCampaigns: true,
+      aiMarketingCampaigns: true,
       // Advanced
       inventory: true,
       inventoryAnalytics: true,
@@ -76,6 +79,7 @@ const DEFAULT_PLANS = {
       aiPromoGenerator: true,
       aiInsights: true,
       aiCustomerSegmentation: true,
+      aiReviewReply: true,
       analytics: true,
     },
   },
@@ -92,12 +96,14 @@ const featureLabelMap = {
   promoCodes: "Promo Codes",
   broadcasts: "Broadcast Messages",
   emailCampaigns: "Email Campaigns",
+  aiMarketingCampaigns: "AI Marketing Suite",
   inventory: "Inventory Management",
   inventoryAnalytics: "Inventory Analytics",
   customers: "Customer Analytics",
   aiPromoGenerator: "AI Promo Generator",
   aiInsights: "AI Insights & Forecasts",
   aiCustomerSegmentation: "Customer Segmentation",
+  aiReviewReply: "AI Review Automator",
   analytics: "Advanced Analytics Dashboard",
 };
 
