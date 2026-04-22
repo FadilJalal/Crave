@@ -245,13 +245,25 @@ export default function RestaurantLayout({ children }) {
     setExpandedSections(prev => ({ ...prev, [sec]: !prev[sec] }));
   };
 
-  const navGroup = (id, icon, label, children) => {
+  const navGroup = (id, icon, label, children, count = 0) => {
     const isExpanded = expandedSections[id];
     return (
       <div className={`nav-group ${isExpanded ? "expanded" : ""}`} key={id}>
         <button className="nav-group-header" onClick={() => toggleSection(id)}>
-          <span className="nav-group-icon">{icon}</span>
-          <span className="nav-group-label">{label}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+            <span className="nav-group-icon">{icon}</span>
+            <span className="nav-group-label">{label}</span>
+            {count > 0 && (
+              <span style={{
+                background: "#ef4444", color: "white", fontSize: 9, fontWeight: 900,
+                minWidth: 16, height: 16, borderRadius: 8, display: "flex",
+                alignItems: "center", justifyContent: "center", padding: "0 4px",
+                boxShadow: "0 0 8px rgba(239, 68, 68, 0.4)", marginLeft: 6
+              }}>
+                {count}
+              </span>
+            )}
+          </div>
           <span className={`nav-group-arrow ${isExpanded ? "open" : ""}`}>›</span>
         </button>
         <div className="nav-group-content">
@@ -305,7 +317,7 @@ export default function RestaurantLayout({ children }) {
           gap: 10px;
           padding: 12px 16px;
           border-radius: 10px;
-          color: rgba(255,255,255,0.7);
+          color: #fff;
           font-weight: 700;
           font-size: 14px;
           text-decoration: none;
@@ -329,7 +341,7 @@ export default function RestaurantLayout({ children }) {
           padding: 12px 20px;
           background: transparent;
           border: none;
-          color: rgba(255, 255, 255, 0.4);
+          color: #fff;
           cursor: pointer;
           font-weight: 800;
           font-size: 11px;
@@ -345,7 +357,7 @@ export default function RestaurantLayout({ children }) {
           justify-content: space-between;
           padding: 10px 16px 10px 48px;
           font-size: 13px;
-          color: rgba(255, 255, 255, 0.5);
+          color: rgba(255, 255, 255, 0.9);
           text-decoration: none;
           font-weight: 600;
           transition: all 0.2s;
@@ -434,7 +446,7 @@ export default function RestaurantLayout({ children }) {
             link("/orders", "🧾 Active Orders"),
             link("/inventory", "📦 Inventory & Stock"),
             link("/labor", "👷 Staff & Labor"),
-          ])}
+          ], orders.filter(o => o.status === "Order Placed").length)}
 
           {navGroup("growth", "🚀", "Growth & AI", [
             linkOrDisabled("/coupons", "🏷️ AI Promo Generator", canAiPromo),

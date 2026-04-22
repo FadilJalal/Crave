@@ -8,6 +8,7 @@ import FoodDisplay from '../../components/FoodDisplay/FoodDisplay'
 import SmartTopPick from '../../components/SmartTopPick/SmartTopPick'
 import MoodPicker from '../../components/MoodPicker/MoodPicker'
 import FlashDeals from '../../components/FlashDeals/FlashDeals'
+import HealthGoalRibbon from '../../components/HealthGoalRibbon/HealthGoalRibbon'
 import HeaderMarquee from '../../components/HeaderMarquee/HeaderMarquee'
 import { StoreContext } from '../../Context/StoreContext'
 import { useEffect } from 'react'
@@ -60,6 +61,9 @@ const Home = () => {
       </div>
       <div className="reveal-on-scroll reveal">
         <MoodPicker />
+      </div>
+      <div className="reveal-on-scroll reveal">
+        <HealthGoalRibbon />
       </div>
       <div className="reveal-on-scroll reveal">
         <FoodDisplay category={category} />

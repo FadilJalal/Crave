@@ -29,7 +29,7 @@ router.post("/add", restaurantAuth, async (req, res) => {
       role,
       hourlyWage: Number(hourlyWage) || 0,
       phone: phone || "",
-      status: status || "Active",
+      status: status || "Shift Ended",
       restaurantId: req.restaurantId
     });
 
@@ -38,6 +38,39 @@ router.post("/add", restaurantAuth, async (req, res) => {
   } catch (error) {
     console.error("[staff/add]", error);
     res.json({ success: false, message: "Failed to add staff" });
+  }
+});
+
+// Update Staff Status (Punch Card)
+router.post("/status", restaurantAuth, async (req, res) => {
+  try {
+    const { id, status } = req.body;
+    
+    if (!["Clocked In", "On Break", "Shift Ended", "On Leave", "Terminated"].includes(status)) {
+      return res.json({ success: false, message: "Invalid status" });
+    }
+
+    const typeMap = {
+      "Clocked In": "in",
+      "Shift Ended": "out",
+      "On Break": "break_start"
+    };
+
+    const updated = await staffModel.findOneAndUpdate(
+      { _id: id, restaurantId: req.restaurantId },
+      { 
+        status,
+        $push: { clockEvents: { type: typeMap[status] || "in", time: new Date() } }
+      },
+      { new: true }
+    );
+
+    if (!updated) return res.json({ success: false, message: "Staff not found" });
+
+    res.json({ success: true, message: `Staff is now ${status}`, data: updated });
+  } catch (error) {
+    console.error("[staff/status]", error);
+    res.json({ success: false, message: "Failed to update status" });
   }
 });
 

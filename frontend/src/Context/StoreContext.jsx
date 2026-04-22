@@ -423,11 +423,61 @@ const StoreContextProvider = (props) => {
     } catch { toast.error("Failed to set default address"); }
   };
 
+  const [healthGoal, setHealthGoal] = useState("None");
+  const [nutritionMatches, setNutritionMatches] = useState({});
+
+  const fetchHealthProfile = async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get(url + "/api/user/health-profile", { headers: { token } });
+      if (res.data.success) {
+        setHealthGoal(res.data.profile.healthGoal || "None");
+      }
+    } catch {}
+  };
+
+  const updateHealthProfile = async (newGoal) => {
+    if (!token) return;
+    try {
+      const res = await axios.post(url + "/api/user/health-profile", { healthGoal: newGoal }, { headers: { token } });
+      if (res.data.success) {
+        setHealthGoal(newGoal);
+        // Clear cached matches when goal changes
+        setNutritionMatches({});
+      }
+    } catch {
+      toast.error("Failed to update health goal");
+    }
+  };
+
+  // Run a nutrition scan when needed (e.g. when menu loads or health goal changes)
+  const runNutritionScan = async () => {
+    if (!token || healthGoal === "None" || !food_list.length) return;
+    try {
+      const itemIds = food_list.slice(0, 50).map(f => f._id);
+      const res = await axios.post(url + "/api/ai/nutrition-scan", { items: itemIds }, { headers: { token } });
+      if (res.data.success) {
+        const matchMap = {};
+        res.data.matches.forEach(m => {
+          matchMap[m.foodId] = { score: m.score, reason: m.reason };
+        });
+        setNutritionMatches(matchMap);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (token && healthGoal !== "None" && food_list.length) {
+      runNutritionScan();
+    }
+  }, [token, healthGoal, food_list.length]);
+
   // Fetch addresses on login
   useEffect(() => {
     if (token) {
         fetchAddresses();
         fetchWalletBalance();
+        fetchHealthProfile();
     }
   }, [token]);
 
@@ -498,7 +548,9 @@ const StoreContextProvider = (props) => {
     // Address management
     addresses, defaultAddress, fetchAddresses, addAddress, deleteAddress, setDefaultAddressIndex, setDefaultAddress,
     // Wallet
-    walletBalance, walletHistory, fetchWalletBalance
+    walletBalance, walletHistory, fetchWalletBalance,
+    // Health Profile
+    healthGoal, nutritionMatches, updateHealthProfile, fetchHealthProfile
   };
 
   return (

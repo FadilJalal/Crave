@@ -1,13 +1,25 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { User, Lock, Bell, ChevronRight, Mail, Phone, Smartphone, MapPin, CreditCard, LogOut } from "lucide-react";
+import { User, Lock, Bell, ChevronRight, Mail, Phone, Smartphone, MapPin, CreditCard, LogOut, Heart, Activity, Leaf, ShieldAlert } from "lucide-react";
+import { StoreContext } from "../../context/StoreContext";
 import "./Settings.css";
 
 const Settings = () => {
 	const { t, i18n } = useTranslation();
+	const { healthGoal, updateHealthProfile, token } = React.useContext(StoreContext);
 	const [notifications, setNotifications] = useState({ email: true, sms: false, push: true });
 	const navigate = useNavigate();
+
+	const GOALS = [
+		{ id: "None", label: "None", icon: "✖️", color: "#64748b" },
+		{ id: "Keto", label: "Keto", icon: "🥩", color: "#f59e0b" },
+		{ id: "Vegan", label: "Vegan", icon: "🌿", color: "#10b981" },
+		{ id: "High Protein", label: "High Protein", icon: "💪", color: "#3b82f6" },
+		{ id: "Low Carb", label: "Low Carb", icon: "🥣", color: "#8b5cf6" },
+		{ id: "Low Sodium", label: "Low Sodium", icon: "🧂", color: "#ef4444" },
+		{ id: "Weight Loss", label: "Weight Loss", icon: "📉", color: "#ec4899" },
+	];
 
 	const handleToggle = (type) => {
 		setNotifications(prev => ({ ...prev, [type]: !prev[type] }));

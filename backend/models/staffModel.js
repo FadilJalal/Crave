@@ -5,7 +5,15 @@ const staffSchema = new mongoose.Schema({
     role: { type: String, required: true },
     hourlyWage: { type: Number, required: true },
     phone: { type: String, default: "" },
-    status: { type: String, default: "Active", enum: ["Active", "On Leave", "Terminated"] },
+    status: { 
+        type: String, 
+        default: "Shift Ended", 
+        enum: ["Clocked In", "On Break", "Shift Ended", "On Leave", "Terminated"] 
+    },
+    clockEvents: [{ 
+        type: { type: String, enum: ["in", "out", "break_start", "break_end"] },
+        time: { type: Date, default: Date.now }
+    }],
     
     restaurantId: {
         type: mongoose.Schema.Types.ObjectId,

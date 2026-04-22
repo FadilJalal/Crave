@@ -170,6 +170,11 @@ const QuickOrderStatus = ({ orders, onUpdate, dark }) => {
       
       <style>{`
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse-green {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+          70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
       `}</style>
     </div>
   );
@@ -219,6 +224,7 @@ export default function Dashboard() {
   const [foods, setFoods] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [staff, setStaff] = useState([]);
   const [reviews, setReviews] = useState({ data: [], avgRating: 0, total: 0 });
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -257,6 +263,7 @@ export default function Dashboard() {
         api.get("/api/restaurantadmin/foods"),
         api.get("/api/inventory"),
         api.get("/api/order/restaurant/list"),
+        api.get("/api/staff/list"),
         api.get("/api/subscription/mine"),
         api.get("/api/review/restaurant-admin/list"),
       ]);
@@ -276,7 +283,8 @@ export default function Dashboard() {
         }
         setOrders(incoming || []);
       }
-      if (s.data?.success) setSub(s.data.data);
+      if (s.data?.success) setStaff(s.data.data || []);
+      if (subRes.data?.success) setSub(subRes.data.data);
       if (r.data?.success) setReviews({
         data: r.data.data || [],
         avgRating: r.data.avgRating || 0,
@@ -317,7 +325,7 @@ export default function Dashboard() {
   const today = new Date().toDateString();
   const activeOrders = useMemo(() => orders.filter(o => (o.status || "").toLowerCase() !== "cancelled"), [orders]);
   const todayOrders = useMemo(() => activeOrders.filter(o => new Date(o.createdAt).toDateString() === today), [activeOrders, today]);
-  const pendingOrders = useMemo(() => activeOrders.filter(o => o.status === "Food Processing" || o.status === "Pending"), [activeOrders]);
+  const pendingOrders = useMemo(() => activeOrders.filter(o => o.status === "Order Placed"), [activeOrders]);
   const todayRevenue = useMemo(() => todayOrders.reduce((s, o) => s + (o.amount || 0), 0), [todayOrders]);
   const completedOrders = useMemo(() => activeOrders.filter(o => o.status === "Delivered").length, [activeOrders]);
   const completionRate = activeOrders.length === 0 ? 0 : Math.round((completedOrders / activeOrders.length) * 100);
@@ -398,6 +406,46 @@ export default function Dashboard() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 24 }}>
           <TopItems foods={foods} bestSellers={analytics?.bestSellers || []} dark={dark} />
           <ActivityFeed activities={activityData} dark={dark} />
+        </div>
+
+        {/* --- Who's on the Floor Widget --- */}
+        <div style={{ marginTop: 40 }}>
+           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+             <div>
+               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: dark ? "white" : "#111827", letterSpacing: "-0.5px" }}>Who's on the Floor</h3>
+               <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--muted)", fontWeight: 500 }}>Live workforce status</p>
+             </div>
+             <button onClick={() => navigate("/staff")} style={{ background: "none", border: "none", color: "#ff4e2a", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Workforce Hub →</button>
+           </div>
+           
+           <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              {staff.filter(s => s.status === "Clocked In" || s.status === "On Break").length === 0 ? (
+                <div style={{ padding: "20px", background: dark ? "rgba(255,255,255,0.02)" : "#f8fafc", borderRadius: 16, border: "1px dashed var(--border)", color: "var(--muted)", fontSize: 13, width: "100%", textAlign: "center" }}>
+                   No staff currently clocked in.
+                </div>
+              ) : (
+                staff.filter(s => s.status === "Clocked In" || s.status === "On Break").map(s => (
+                  <div key={s._id} style={{ 
+                    padding: "10px 16px", borderRadius: 12, background: dark ? "var(--sidebar-bg)" : "white",
+                    border: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.02)"
+                  }}>
+                    <div style={{ position: "relative" }}>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: dark ? "rgba(255,255,255,0.1)" : "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900 }}>{s.name.charAt(0)}</div>
+                      <div style={{ 
+                        position: "absolute", bottom: -2, right: -2, width: 10, height: 10, borderRadius: "50%",
+                        background: s.status === "Clocked In" ? "#10b981" : "#f59e0b", border: `2px solid ${dark ? "#111827" : "#fff"}`,
+                        animation: s.status === "Clocked In" ? "pulse-green 2s infinite" : "none"
+                      }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800 }}>{s.name}</div>
+                      <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>{s.role}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+           </div>
         </div>
 
         {/* --- Quick Order Management --- */}

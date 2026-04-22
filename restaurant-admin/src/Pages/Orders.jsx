@@ -8,40 +8,40 @@ import "./Orders.css";
 const STATUS_OPTIONS = ["Order Placed", "Order Accepted", "Food Processing", "Out for delivery", "Delivered", "Cancelled"];
 
 const STATUS_BADGE_CLASS = {
-  "Order Placed":    "ao-badge ao-badge-placed",
-  "Order Accepted":  "ao-badge ao-badge-accepted",
+  "Order Placed": "ao-badge ao-badge-placed",
+  "Order Accepted": "ao-badge ao-badge-accepted",
   "Food Processing": "ao-badge ao-badge-processing",
-  "Out for Delivery":"ao-badge ao-badge-delivery",
-  "Out for delivery":"ao-badge ao-badge-delivery",
-  "Delivered":       "ao-badge ao-badge-delivered",
-  "Cancelled":       "ao-badge ao-badge-cancelled",
+  "Out for Delivery": "ao-badge ao-badge-delivery",
+  "Out for delivery": "ao-badge ao-badge-delivery",
+  "Delivered": "ao-badge ao-badge-delivered",
+  "Cancelled": "ao-badge ao-badge-cancelled",
 };
 
 const STATUS_ACCENT_CLASS = {
-  "Order Placed":    "ao-card-accent accent-new",
-  "Order Accepted":  "ao-card-accent accent-processing",
+  "Order Placed": "ao-card-accent accent-new",
+  "Order Accepted": "ao-card-accent accent-processing",
   "Food Processing": "ao-card-accent accent-processing",
-  "Out for Delivery":"ao-card-accent accent-processing",
-  "Out for delivery":"ao-card-accent accent-processing",
-  "Delivered":       "ao-card-accent accent-delivered",
-  "Cancelled":       "ao-card-accent accent-cancelled",
+  "Out for Delivery": "ao-card-accent accent-processing",
+  "Out for delivery": "ao-card-accent accent-processing",
+  "Delivered": "ao-card-accent accent-delivered",
+  "Cancelled": "ao-card-accent accent-cancelled",
 };
 
 const STATUS_COLORS = {
-  "Order Placed":    { bg: "#fef2f2", color: "#b91c1c", border: "#fecaca" },
-  "Order Accepted":  { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" },
+  "Order Placed": { bg: "#fef2f2", color: "#b91c1c", border: "#fecaca" },
+  "Order Accepted": { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" },
   "Food Processing": { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
-  "Out for Delivery":{ bg: "#faf5ff", color: "#7c3aed", border: "#ddd6fe" },
-  "Delivered":       { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
-  "Cancelled":       { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" },
+  "Out for Delivery": { bg: "#faf5ff", color: "#7c3aed", border: "#ddd6fe" },
+  "Delivered": { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
+  "Cancelled": { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" },
 };
 
 const DATE_PRESETS = [
-  { label: "All Time",    value: "all" },
-  { label: "Today",       value: "today" },
-  { label: "Yesterday",   value: "yesterday" },
+  { label: "All Time", value: "all" },
+  { label: "Today", value: "today" },
+  { label: "Yesterday", value: "yesterday" },
   { label: "Last 7 days", value: "7days" },
-  { label: "Last 30 days",value: "30days" },
+  { label: "Last 30 days", value: "30days" },
 ];
 
 function isInDateRange(dateStr, preset) {
@@ -51,32 +51,32 @@ function isInDateRange(dateStr, preset) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (preset === "today") return d >= today;
   if (preset === "yesterday") { const y = new Date(today); y.setDate(y.getDate() - 1); return d >= y && d < today; }
-  if (preset === "7days")  { const t = new Date(today); t.setDate(t.getDate() - 7);  return d >= t; }
+  if (preset === "7days") { const t = new Date(today); t.setDate(t.getDate() - 7); return d >= t; }
   if (preset === "30days") { const t = new Date(today); t.setDate(t.getDate() - 30); return d >= t; }
   return true;
 }
 
 export default function Orders() {
   const { dark } = useTheme();
-  const [orders,    setOrders]    = useState([]);
+  const [orders, setOrders] = useState([]);
   const [inventory, setInventory] = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [expanded,  setExpanded]  = useState({});
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState({});
   const [soundEnabled, setSoundEnabled] = useState(() => {
     try { return localStorage.getItem("crave_sound") !== "off"; } catch { return true; }
   });
   const [lastRefresh, setLastRefresh] = useState(null);
-  const knownIdsRef  = useRef(null);
-  const audioCtxRef  = useRef(null);
-  const intervalRef  = useRef(null);
+  const knownIdsRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const intervalRef = useRef(null);
 
-  const [search,      setSearch]      = useState("");
-  const [statusFilter,setStatusFilter]= useState("all");
-  const [datePreset,  setDatePreset]  = useState("all");
-  const [payFilter,   setPayFilter]   = useState("all");
-  const [sortBy,      setSortBy]      = useState("newest");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [datePreset, setDatePreset] = useState("all");
+  const [payFilter, setPayFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
   const [showFilters, setShowFilters] = useState(true);
-  const [cityFilter,  setCityFilter]  = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
 
   const orderRefs = useRef({});
 
@@ -103,7 +103,7 @@ export default function Orders() {
   };
 
   useEffect(() => {
-    try { localStorage.setItem("crave_sound", soundEnabled ? "on" : "off"); } catch {}
+    try { localStorage.setItem("crave_sound", soundEnabled ? "on" : "off"); } catch { }
   }, [soundEnabled]);
 
   const playAlert = useCallback(() => {
@@ -123,7 +123,7 @@ export default function Orders() {
         osc.stop(ctx.currentTime + start + dur + 0.05);
       };
       beep(880, 0, 0.12); beep(1100, 0.15, 0.12); beep(1320, 0.30, 0.18);
-    } catch {}
+    } catch { }
   }, [soundEnabled]);
 
   const loadOrders = useCallback(async (isBackground = false) => {
@@ -198,17 +198,17 @@ export default function Orders() {
       );
     }
     if (statusFilter !== "all") result = result.filter(o => o.status === statusFilter);
-    if (payFilter !== "all")    result = result.filter(o => payFilter === "paid" ? o.payment : !o.payment);
-    if (cityFilter !== "all")   result = result.filter(o => o.address?.city === cityFilter);
-    if (datePreset !== "all")   result = result.filter(o => isInDateRange(o.createdAt, datePreset));
+    if (payFilter !== "all") result = result.filter(o => payFilter === "paid" ? o.payment : !o.payment);
+    if (cityFilter !== "all") result = result.filter(o => o.address?.city === cityFilter);
+    if (datePreset !== "all") result = result.filter(o => isInDateRange(o.createdAt, datePreset));
 
     result.sort((a, b) => {
       const aD = a.status === "Delivered", bD = b.status === "Delivered";
       if (aD !== bD) return aD ? 1 : -1;
-      if (sortBy === "newest")  return new Date(b.createdAt) - new Date(a.createdAt);
-      if (sortBy === "oldest")  return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortBy === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortBy === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
       if (sortBy === "highest") return (b.amount || 0) - (a.amount || 0);
-      if (sortBy === "lowest")  return (a.amount || 0) - (b.amount || 0);
+      if (sortBy === "lowest") return (a.amount || 0) - (b.amount || 0);
       return 0;
     });
     return result;
@@ -225,7 +225,7 @@ export default function Orders() {
   const getPayBadge = (order) => {
     const method = order.paymentMethod || (order.payment ? "stripe" : "cod");
     if (method === "split") return { cls: "ao-badge ao-badge-split", label: "Split" };
-    if (method === "cod")   return { cls: "ao-badge ao-badge-cod",   label: "COD" };
+    if (method === "cod") return { cls: "ao-badge ao-badge-cod", label: "COD" };
     return { cls: "ao-badge ao-badge-paid", label: "Paid Online" };
   };
 
@@ -251,8 +251,8 @@ export default function Orders() {
             className={`ao-btn ao-btn-icon ${soundEnabled ? "ao-sound-btn-on" : ""}`}
           >
             {soundEnabled
-              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
-              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" /></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" /></svg>
             }
           </button>
 
@@ -262,7 +262,7 @@ export default function Orders() {
             className={`ao-btn ${showFilters ? "ao-btn-active" : ""}`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+              <line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="11" y1="18" x2="13" y2="18" />
             </svg>
             Filters
             {activeFilterCount > 0 && <span className="ao-filter-badge">{activeFilterCount}</span>}
@@ -271,7 +271,7 @@ export default function Orders() {
           {/* Refresh */}
           <button onClick={() => loadOrders(false)} className="ao-btn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+              <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
             </svg>
             Refresh
           </button>
@@ -287,7 +287,7 @@ export default function Orders() {
               <div className="ao-field-label">Search</div>
               <div className="ao-search-wrap">
                 <svg className="ao-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
                 <input
                   value={search} onChange={e => setSearch(e.target.value)}
@@ -356,7 +356,7 @@ export default function Orders() {
             {activeFilterCount > 0 && (
               <button onClick={clearFilters} className="ao-clear-btn">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
                 Clear filters
               </button>
@@ -374,7 +374,7 @@ export default function Orders() {
         <div className="ao-empty">
           <div className="ao-empty-icon">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </div>
           <p className="ao-empty-title">{orders.length === 0 ? "No orders yet" : "No orders match your filters"}</p>
@@ -386,15 +386,15 @@ export default function Orders() {
       ) : (
         <div className="list">
           {filtered.map((order) => {
-            const isOpen     = expanded[order._id];
-            const addr       = order.address || {};
-            const isShared   = !!order.isSharedDelivery;
-            const isNew      = new Date(order.createdAt) > new Date(Date.now() - 10 * 60 * 1000);
-            const subtotal   = (order.amount || 0) - (order.deliveryFee || 0);
-            const payBadge   = getPayBadge(order);
-            const accentCls  = STATUS_ACCENT_CLASS[order.status] || "ao-card-accent";
-            const statusCls  = STATUS_BADGE_CLASS[order.status] || "ao-badge ao-badge-processing";
-            const statusStyle= STATUS_COLORS[order.status] || STATUS_COLORS["Food Processing"];
+            const isOpen = expanded[order._id];
+            const addr = order.address || {};
+            const isShared = !!order.isSharedDelivery;
+            const isNew = new Date(order.createdAt) > new Date(Date.now() - 10 * 60 * 1000);
+            const subtotal = (order.amount || 0) - (order.deliveryFee || 0);
+            const payBadge = getPayBadge(order);
+            const accentCls = STATUS_ACCENT_CLASS[order.status] || "ao-card-accent";
+            const statusCls = STATUS_BADGE_CLASS[order.status] || "ao-badge ao-badge-processing";
+            const statusStyle = STATUS_COLORS[order.status] || STATUS_COLORS["Food Processing"];
 
             return (
               <div
@@ -422,7 +422,7 @@ export default function Orders() {
                       )}
                       {order.createdAt && (
                         <span className="ao-badge" style={{ background: "transparent", color: "var(--text-secondary)", border: "none", padding: "0 4px", gap: 4 }}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                           {new Date(order.createdAt).toLocaleString("en-AE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                         </span>
                       )}
@@ -437,7 +437,7 @@ export default function Orders() {
                     <div className="ao-customer-row">
                       <span className="ao-customer-name">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.5 }}>
-                          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
                         </svg>
                         {addr.firstName} {addr.lastName}
                         {(addr.area || addr.city) && ` — ${addr.area || addr.city}`}
@@ -445,7 +445,7 @@ export default function Orders() {
                       {addr.phone && (
                         <span className="ao-customer-phone">
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.5 }}>
-                            <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+                            <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
                           </svg>
                           {addr.phone}
                         </span>
@@ -457,8 +457,8 @@ export default function Orders() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
                         <span className="ao-shared-tag">
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                            <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
                           </svg>
                           2-stop shared route
                         </span>
@@ -486,7 +486,7 @@ export default function Orders() {
                   <div className="ao-card-right">
                     <span className="ao-order-amount">AED {order.amount}</span>
                     <svg className={`ao-chevron ${isOpen ? "open" : ""}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="6 9 12 15 18 9"/>
+                      <polyline points="6 9 12 15 18 9" />
                     </svg>
                   </div>
                 </div>
@@ -506,7 +506,7 @@ export default function Orders() {
                           <div key={i} className="ao-item-card">
                             {isOut && order.status !== "Delivered" && order.status !== "Cancelled" && (
                               <div className="ao-stock-warn">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
                                 STOCK ALERT: Linked ingredients out of stock!
                               </div>
                             )}
@@ -590,14 +590,14 @@ export default function Orders() {
                       <div className="ao-section-label">Delivery Address</div>
                       <div className="ao-address-card">
                         <div className="ao-address-name">{addr.firstName} {addr.lastName}</div>
-                        {addr.building  && <div className="ao-address-line"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>{addr.building}</div>}
-                        {addr.apartment && <div className="ao-address-line"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>{addr.apartment}</div>}
-                        {addr.street    && <div className="ao-address-line"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>{addr.street}</div>}
-                        {addr.area      && <div className="ao-address-line"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>{addr.area}</div>}
-                        {(addr.city || addr.state) && <div className="ao-address-line"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3h18v18H3z"/></svg>{[addr.city, addr.state].filter(Boolean).join(", ")}</div>}
+                        {addr.building && <div className="ao-address-line"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" /></svg>{addr.building}</div>}
+                        {addr.apartment && <div className="ao-address-line"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>{addr.apartment}</div>}
+                        {addr.street && <div className="ao-address-line"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>{addr.street}</div>}
+                        {addr.area && <div className="ao-address-line"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>{addr.area}</div>}
+                        {(addr.city || addr.state) && <div className="ao-address-line"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3h18v18H3z" /></svg>{[addr.city, addr.state].filter(Boolean).join(", ")}</div>}
                         <div className="ao-address-contacts">
-                          {addr.phone && <span className="ao-address-line" style={{ fontSize: 13 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>{addr.phone}</span>}
-                          {addr.email && <span className="ao-address-line" style={{ fontSize: 13 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>{addr.email}</span>}
+                          {addr.phone && <span className="ao-address-line" style={{ fontSize: 13 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" /></svg>{addr.phone}</span>}
+                          {addr.email && <span className="ao-address-line" style={{ fontSize: 13 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>{addr.email}</span>}
                         </div>
                         {addr.deliveryNotes && (
                           <div className="ao-delivery-note">
@@ -623,7 +623,7 @@ export default function Orders() {
                             onClick={(e) => { e.stopPropagation(); updateStatus(order._id, "Order Accepted"); }}
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <polyline points="20 6 9 17 4 12"/>
+                              <polyline points="20 6 9 17 4 12" />
                             </svg>
                             Accept Order
                           </button>

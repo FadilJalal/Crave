@@ -6,8 +6,10 @@ import {
   Users, 
   Plus, 
   Trash2,
-  Briefcase
+  Briefcase,
+  AlertTriangle
 } from "lucide-react";
+import ConfirmationModal from "../components/ConfirmationModal";
 
 export default function LaborManagement() {
   const { dark } = useTheme();
@@ -16,6 +18,7 @@ export default function LaborManagement() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newStaff, setNewStaff] = useState({ name: "", role: "Waiter", hourlyWage: "", phone: "" });
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
 
   useEffect(() => {
     loadStaffData();
@@ -48,12 +51,23 @@ export default function LaborManagement() {
     }
   };
 
+  const handleUpdateStatus = async (id, newStatus) => {
+    try {
+      const res = await api.post("/api/staff/status", { id, status: newStatus });
+      if (res.data.success) {
+        setStaffList(staffList.map(s => s._id === id ? { ...s, status: newStatus } : s));
+      }
+    } catch (err) {
+      console.error("Failed to update status", err);
+    }
+  };
+
   const handleRemoveStaff = async (id) => {
-    if (!window.confirm("Are you sure you want to remove this staff member?")) return;
     try {
       const res = await api.delete(`/api/staff/remove/${id}`);
       if (res.data.success) {
         setStaffList(staffList.filter(s => s._id !== id));
+        setConfirmDelete({ open: false, id: null });
       }
     } catch (err) {
       console.error("Failed to delete staff", err);
@@ -138,10 +152,37 @@ export default function LaborManagement() {
                  ) : (
                    staffList.map(staff => (
                      <tr key={staff._id} style={{ borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.04)" : "#f1f5f9"}` }}>
-                       <td style={tdStyle}>
-                         <div style={{ fontWeight: 800 }}>{staff.name}</div>
-                         <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{staff.phone || "No phone"}</div>
-                       </td>
+                        <td style={tdStyle}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <div style={{ position: "relative" }}>
+                              <div style={{ 
+                                width: 32, height: 32, borderRadius: "50%", 
+                                background: dark ? "rgba(255,255,255,0.05)" : "#f1f5f9",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                fontSize: 13, fontWeight: 900, color: accentColor
+                              }}>
+                                {staff.name.charAt(0)}
+                              </div>
+                              {staff.status === "Clocked In" && (
+                                <div style={{ 
+                                  position: "absolute", bottom: 0, right: 0, width: 10, height: 10, 
+                                  background: "#10b981", borderRadius: "50%", border: `2px solid ${dark ? "#0f172a" : "#fff"}`,
+                                  animation: "pulse-green 2s infinite"
+                                }} />
+                              )}
+                              {staff.status === "On Break" && (
+                                <div style={{ 
+                                  position: "absolute", bottom: 0, right: 0, width: 10, height: 10, 
+                                  background: "#f59e0b", borderRadius: "50%", border: `2px solid ${dark ? "#0f172a" : "#fff"}`
+                                }} />
+                              )}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 800 }}>{staff.name}</div>
+                              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{staff.phone || "No phone"}</div>
+                            </div>
+                          </div>
+                        </td>
                        <td style={tdStyle}>
                          <span style={{ 
                            background: dark ? "rgba(255,255,255,0.05)" : "#f1f5f9", 
@@ -151,17 +192,43 @@ export default function LaborManagement() {
                        <td style={tdStyle}>
                          <span style={{ fontWeight: 800 }}>AED {staff.hourlyWage}</span><span style={{ fontSize: 11, color: "var(--muted)" }}>/hr</span>
                        </td>
+                        <td style={tdStyle}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                             <div style={{ 
+                               display: "inline-flex",
+                               background: staff.status === "Clocked In" ? "rgba(16, 185, 129, 0.1)" : 
+                                          staff.status === "On Break" ? "rgba(245, 158, 11, 0.1)" : "rgba(148, 163, 184, 0.1)",
+                               color: staff.status === "Clocked In" ? "#10b981" : 
+                                      staff.status === "On Break" ? "#f59e0b" : "#94a3b8",
+                               padding: "4px 10px", borderRadius: 100, fontSize: 10, fontWeight: 900, textTransform: "uppercase",
+                               width: "fit-content"
+                             }}>
+                               {staff.status}
+                             </div>
+                             
+                             <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                                {["Clocked In", "On Break", "Shift Ended"].map(s => (
+                                  staff.status !== s && (
+                                    <button 
+                                      key={s}
+                                      onClick={() => handleUpdateStatus(staff._id, s)}
+                                      style={{ 
+                                        padding: "6px 12px", fontSize: 11, fontWeight: 800, borderRadius: 8,
+                                        background: s === "Clocked In" ? "#10b981" : s === "On Break" ? "#f59e0b" : "#94a3b8",
+                                        color: "white", border: "none",
+                                        cursor: "pointer", transition: "all 0.2s",
+                                        boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
+                                      }}
+                                    >
+                                      {s === "Clocked In" ? "PUNCH IN" : s === "On Break" ? "BREAK" : "FINISH"}
+                                    </button>
+                                  )
+                                ))}
+                             </div>
+                          </div>
+                        </td>
                        <td style={tdStyle}>
-                         <span style={{ 
-                           background: staff.status === "Active" ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
-                           color: staff.status === "Active" ? "#10b981" : "#ef4444",
-                           padding: "4px 10px", borderRadius: 100, fontSize: 11, fontWeight: 800, textTransform: "uppercase"
-                         }}>
-                           {staff.status}
-                         </span>
-                       </td>
-                       <td style={tdStyle}>
-                          <button onClick={() => handleRemoveStaff(staff._id)} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", padding: 6, opacity: 0.7 }}>
+                          <button onClick={() => setConfirmDelete({ open: true, id: staff._id })} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", padding: 6, opacity: 0.7 }}>
                             <Trash2 size={16} />
                           </button>
                        </td>
@@ -233,6 +300,22 @@ export default function LaborManagement() {
         </div>
       )}
 
+      <ConfirmationModal 
+        isOpen={confirmDelete.open}
+        onClose={() => setConfirmDelete({ open: false, id: null })}
+        onConfirm={() => handleRemoveStaff(confirmDelete.id)}
+        title="Remove Staff Member"
+        message="Are you sure you want to remove this staff member? This will delete all their records."
+        confirmText="Remove"
+      />
+
+      <style>{`
+        @keyframes pulse-green {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+          70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+      `}</style>
     </RestaurantLayout>
   );
 }

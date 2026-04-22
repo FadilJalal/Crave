@@ -1,7 +1,7 @@
 import { useState, useContext, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart } from 'lucide-react';
+import { Heart, Activity } from 'lucide-react';
 import './FoodItem.css';
 import { StoreContext } from '../../Context/StoreContext';
 import { useTheme } from '../../Context/ThemeContext';
@@ -31,7 +31,7 @@ const FoodItem = (props) => {
   const {
     image, name, name_en, name_ar, price, regularPrice, description, desc_en, desc_ar, id, restaurantId, customizations = [], dealTag = null, isFlashDeal = false, restaurantOpen = true, restaurantActive = true, avgRating = 0, ratingCount = 0, inStock = true, forceFavourite
   } = props;
-  const { cartItems, addToCart, removeFromCart, getItemCount, url, currency, favourites = [], isFavourite, addFavourite, removeFavourite, food_list } = useContext(StoreContext);
+  const { cartItems, addToCart, removeFromCart, getItemCount, url, currency, favourites = [], isFavourite, addFavourite, removeFavourite, food_list, healthGoal, nutritionMatches } = useContext(StoreContext);
 
   // Support forceFavourite prop for Favourites page
   // (already destructured above)
@@ -141,6 +141,14 @@ const FoodItem = (props) => {
 
           <img className='fi-img' src={image?.startsWith('http') ? image : url + '/images/' + image} alt={name}
             onError={e => { e.target.src = 'https://via.placeholder.com/300x200?text=Food'; }} />
+
+          {/* Health-Sync Badge */}
+          {healthGoal !== "None" && nutritionMatches?.[id] && nutritionMatches[id].score > 0 && (
+            <div className="fi-health-match-badge" title={nutritionMatches[id].reason}>
+              <Activity size={10} className="fi-health-pulse" />
+              <span>{nutritionMatches[id].score}% {healthGoal}</span>
+            </div>
+          )}
 
           {/* Heart icon for favourites */}
           <button

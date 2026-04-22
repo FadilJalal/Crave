@@ -189,3 +189,39 @@
   border-color: rgba(245,158,11,0.25);
   color: #fbbf24;
 }
+
+/* Health Match Badge */
+.fi-health-match-badge {
+    position: absolute;
+    top: 50px;
+    left: 10px;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: #059669;
+    color: white;
+    border-radius: 50px;
+    font-size: 10px;
+    font-weight: 800;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+    animation: slideInLeft 0.5s ease;
+    cursor: help;
+}
+
+.fi-health-pulse {
+    animation: ot-ping 1.5s infinite;
+}
+
+@keyframes slideInLeft {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes ot-ping {
+    75%, 100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}

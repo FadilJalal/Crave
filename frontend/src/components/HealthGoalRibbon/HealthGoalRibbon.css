@@ -1,0 +1,220 @@
+.hr-section {
+    padding: 60px 0;
+    background: transparent;
+}
+
+.hr-container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 0 40px;
+}
+
+.hr-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.hr-badge-ai {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.25);
+    text-transform: uppercase;
+}
+
+.hr-ai-icon-pulse { animation: hr-ping 1.5s infinite; }
+
+.hr-title {
+    font-size: 42px;
+    font-weight: 900;
+    color: var(--text);
+    margin-bottom: 12px;
+    letter-spacing: -1.5px;
+    font-family: 'Bebas Neue', sans-serif;
+}
+
+.hr-sub {
+    font-size: 15px;
+    color: var(--text-3);
+    max-width: 550px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+/* Main Card */
+.hr-card-main {
+    background: #f8f9fa;
+    border-radius: 40px;
+    padding: 40px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.05);
+    position: relative;
+}
+
+/* Search Bar */
+.hr-search-bar {
+    display: flex;
+    background: white;
+    padding: 8px;
+    border-radius: 20px;
+    margin-bottom: 35px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.hr-search-bar input {
+    flex: 1;
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    outline: none;
+    background: transparent;
+}
+
+.hr-search-bar input::placeholder {
+    color: #cbd5e1;
+}
+
+.hr-find-btn {
+    background: #111827;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 14px;
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.hr-find-btn:hover {
+    background: var(--brand);
+    transform: scale(1.02);
+}
+
+/* Grid of Cards */
+.hr-goals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 16px;
+}
+
+.hr-goal-card {
+    background: white;
+    border: 1px solid transparent;
+    border-radius: 24px;
+    padding: 24px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.hr-goal-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.06);
+    background: white;
+}
+
+.hr-goal-card.active {
+    background: white;
+    border-color: var(--accent);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+}
+
+.hr-goal-card.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 20%;
+    right: 20%;
+    height: 4px;
+    background: var(--accent);
+    border-radius: 50px 50px 0 0;
+}
+
+.goal-emoji {
+    font-size: 32px;
+}
+
+.goal-label {
+    font-size: 11.5px;
+    font-weight: 900;
+    color: #1f2937;
+    letter-spacing: 0.5px;
+}
+
+.goal-check {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    color: var(--accent);
+    animation: fadeIn 0.3s;
+}
+
+/* Footer */
+.hr-footer {
+    margin-top: 35px;
+    display: flex;
+    justify-content: center;
+}
+
+.hr-status-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    padding: 8px 20px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 900;
+    color: #94a3b8;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.hr-pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: hr-pulse 2s infinite;
+}
+
+@keyframes hr-ping { 75%, 100% { transform: scale(1.8); opacity: 0; } }
+
+@keyframes hr-pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Dark Mode */
+[data-theme="dark"] .hr-card-main { background: #111827; border-color: rgba(255,255,255,0.05); }
+[data-theme="dark"] .hr-search-bar { background: #1f2937; border-color: rgba(255,255,255,0.1); }
+[data-theme="dark"] .hr-search-bar input { color: white; }
+[data-theme="dark"] .hr-goal-card { background: #1f2937; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+[data-theme="dark"] .hr-goal-card:hover { background: #374151; }
+[data-theme="dark"] .hr-goal-card .goal-label { color: #e2e8f0; }
+[data-theme="dark"] .hr-status-pill { background: #1f2937; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+
+@media (max-width: 768px) {
+    .hr-goals-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .hr-card-main { padding: 25px; }
+    .hr-title { font-size: 32px; }
+}

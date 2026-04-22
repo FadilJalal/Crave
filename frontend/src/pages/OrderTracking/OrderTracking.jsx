@@ -8,11 +8,11 @@ import { toast } from 'react-toastify';
 import './OrderTracking.css';
 
 const STEPS = (t) => [
-  { key: 'Placed',      label: "Order Placed",       icon: '🧾', desc: "Your order has been received", eta: null },
-  { key: 'Accepted',    label: "Order Accepted",     icon: '✅', desc: "Restaurant has confirmed your order", eta: null },
-  { key: 'Food Processing', label: "Food Processing", icon: '🍳', desc: "Chef is cooking your meal", eta: '15–25 min' },
-  { key: 'Out for Delivery',label: "Out for Delivery", icon: '🛵', desc: "Courier is on the way", eta: '10–20 min' },
-  { key: 'Delivered',   label: "Delivered",          icon: '🏁', desc: "Enjoy your meal!", eta: null },
+  { key: 'Placed',      label: "Order Secured",    icon: '🧾', desc: "We've sent your request to the kitchen", color: "#6366f1" },
+  { key: 'Accepted',    label: "In the Queue",     icon: '📋', desc: "Restaurant is prepping ingredients", color: "#8b5cf6" },
+  { key: 'Food Processing', label: "Cooking",      icon: '🔥', desc: "The Chef is fire-grilling your meal", color: "#f59e0b" },
+  { key: 'Out for Delivery',label: "Dispatched",     icon: '🛵', desc: "Courier is navigating your route", color: "#10b981" },
+  { key: 'Delivered',   label: "Arrival",          icon: '🏁', desc: "Enjoy your Crave experience!", color: "#06b6d4" },
 ];
 
 const playNotificationSound = () => {
@@ -286,26 +286,29 @@ const OrderTracking = () => {
               <div className="ot-order-id-badge">#{String(order._id).slice(-6).toUpperCase()}</div>
             </div>
 
-            {/* Stepper */}
-            <div className="ot-stepper">
+            {/* Pipeline Stepper */}
+            <div className="ot-pipeline">
+              <div className="ot-pipeline-track">
+                <div className="ot-pipeline-line" />
+                <div className="ot-pipeline-progress" style={{ width: `${(step / 4) * 100}%` }} />
+              </div>
+              
               {STEPS(t).map((s, idx) => {
                 const done    = idx <= step;
-                const active  = idx === step && !isDelivered;
-                const lineActive = idx < step;
+                const active  = idx === step;
                 return (
-                  <React.Fragment key={s.key}>
-                    <div className="ot-step" style={{ minWidth: 80 }}>
-                      <div className={`ot-dot ${done ? 'ot-dot-done' : ''} ${active ? 'ot-dot-current' : ''}`} style={{ width: 42, height: 42, fontSize: 18 }}>
-                        {done ? (active ? s.icon : '✓') : <span className="ot-dot-num">{idx + 1}</span>}
-                      </div>
-                      <p className={`ot-step-label ${done ? 'ot-label-done' : ''}`} style={{ fontSize: 13, fontWeight: 900, marginTop: 12 }}>{s.label}</p>
+                  <div key={s.key} className={`ot-pipeline-step ${done ? 'done' : ''} ${active ? 'active' : ''}`}>
+                    <div className="ot-pipeline-icon-wrap" style={{ 
+                      "--step-color": s.color,
+                      transform: active ? 'scale(1.2)' : 'scale(1)',
+                      boxShadow: active ? `0 0 20px ${s.color}66` : 'none'
+                    }}>
+                       <span className="ot-pipeline-icon">{s.icon}</span>
+                       {active && <div className="ot-pipeline-pulse" style={{ background: s.color }} />}
                     </div>
-                    {idx < STEPS(t).length - 1 && (
-                      <div className={`ot-line ${lineActive ? 'ot-line-active' : ''}`}>
-                        {lineActive && <div className="ot-line-fill" />}
-                      </div>
-                    )}
-                  </React.Fragment>
+                    <div className="ot-pipeline-label">{s.label}</div>
+                    {active && <div className="ot-pipeline-desc-pop">{s.desc}</div>}
+                  </div>
                 );
               })}
             </div>

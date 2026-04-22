@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 import { useTheme } from "../ThemeContext";
+import ConfirmationModal from "../components/ConfirmationModal";
 
 const extractQuantityFromName = (name) => {
     if (!name) return 1;
@@ -30,6 +31,8 @@ export default function Inventory() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  
+  const [confirmConfig, setConfirmConfig] = useState({ open: false, onConfirm: () => {}, title: "", message: "", type: "danger" });
   
   // New States for Features
   const [showImportModal, setShowImportModal] = useState(false);
@@ -166,20 +169,28 @@ export default function Inventory() {
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} items? This cannot be undone.`)) return;
-    setIsBulkDeleting(true);
-    try {
-      const res = await api.post("/api/inventory/bulk-delete", { ids: selectedIds });
-      if (res.data?.success) {
-        setSelectedIds([]);
-        loadInventory();
-        toast.success("Items deleted successfully");
+    setConfirmConfig({
+      open: true,
+      title: "Delete Items",
+      message: `Are you sure you want to delete ${selectedIds.length} items? This cannot be undone.`,
+      type: "danger",
+      onConfirm: async () => {
+        setIsBulkDeleting(true);
+        try {
+          const res = await api.post("/api/inventory/bulk-delete", { ids: selectedIds });
+          if (res.data?.success) {
+            setSelectedIds([]);
+            loadInventory();
+            toast.success("Items deleted successfully");
+          }
+        } catch (err) {
+          toast.error("Bulk delete failed");
+        } finally {
+          setIsBulkDeleting(false);
+          setConfirmConfig({ ...confirmConfig, open: false });
+        }
       }
-    } catch (err) {
-      toast.error("Bulk delete failed");
-    } finally {
-      setIsBulkDeleting(false);
-    }
+    });
   };
 
   // --- Bulk Import Logic ---
@@ -503,9 +514,6 @@ export default function Inventory() {
   };
 
   const handleSyncAllLinks = async () => {
-    const confirm = window.confirm("This will scan all your inventory and automatically link them to menu items based on your recipes. Existing links will not be changed. Proceed?");
-    if (!confirm) return;
-
     setLoading(true);
     try {
       const res = await api.post("/api/inventory/sync-all-links");
@@ -527,14 +535,12 @@ export default function Inventory() {
           .inventory-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
+            grid-auto-rows: 1fr;
             gap: 20px;
             margin-top: 24px;
             padding-bottom: 60px;
             align-items: stretch;
           }
-          
-          @media (max-width: 1000px) { .inventory-grid { grid-template-columns: repeat(2, 1fr); } }
-          @media (max-width: 700px) { .inventory-grid { grid-template-columns: 1fr; } }
 
           .custom-scrollbar::-webkit-scrollbar { width: 6px; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -548,19 +554,14 @@ export default function Inventory() {
             border: 1.5px solid #f3f4f6;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            display: flex;
-            flex-direction: column;
+            display: flex !important;
+            flex-direction: column !important;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
-            height: 100%;
+            height: 100% !important;
+            min-height: 480px;
           }
 
           .inv-card:hover { 
-            transform: translateY(-6px); 
-            box-shadow: 0 14px 30px -10px rgba(0,0,0,0.12);
-            border-color: #ff4e2a;
-          }
-
-          .inv-card.selected { 
             border-color: #ff4e2a; 
             background: #fffafa;
           }
@@ -783,7 +784,13 @@ export default function Inventory() {
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <button className="btn btn-outline" onClick={downloadTemplate}>📥 Template</button>
-          <button className="btn btn-outline" style={{ borderColor: '#6366f1', color: '#6366f1' }} onClick={handleSyncAllLinks}>🔄 Sync All Links</button>
+          <button className="btn btn-outline" style={{ borderColor: '#6366f1', color: '#6366f1' }} onClick={() => setConfirmConfig({
+            open: true,
+            onConfirm: handleSyncAllLinks,
+            title: "Sync Inventory Links",
+            message: "This will scan all your inventory and automatically link them to menu items based on your recipes. Proceed?",
+            type: "info"
+          })}>🔄 Sync All Links</button>
           <button className="btn btn-outline" style={{ borderColor: '#ff4e2a', color: '#ff4e2a' }} onClick={() => { fetchMenuItems(); setShowImportModal(true); }}>Bulk Upload</button>
           <button className="btn" onClick={() => { setEditingItem(null); setShowAddModal(true); }}>+ Add Item</button>
         </div>
@@ -819,7 +826,14 @@ export default function Inventory() {
         </div>
       </div>
 
-      <div className="inventory-grid">
+      <div className="inventory-grid" style={{ 
+        display: 'flex', 
+        flexWrap: 'wrap',
+        gap: '24px', 
+        marginTop: '24px', 
+        paddingBottom: '60px',
+        alignItems: 'stretch'
+      }}>
         {loading ? (
           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 100 }}><h2>Updating...</h2></div>
         ) : filteredItems.length === 0 ? (
@@ -831,7 +845,19 @@ export default function Inventory() {
           const isSelected = selectedIds.includes(item._id);
 
           return (
-            <div key={item._id} className={`inv-card ${isSelected ? 'selected' : ''} ${isOut ? 'low-stock' : isLow ? 'low-stock' : ''}`} style={{ padding: '20px 18px' }}>
+            <div 
+              key={item._id} 
+              className={`inv-card ${isSelected ? 'selected' : ''} ${isOut ? 'low-stock' : isLow ? 'low-stock' : ''}`} 
+              style={{ 
+                padding: '20px 18px',
+                display: 'flex',
+                flexDirection: 'column',
+                height: 'auto',
+                minHeight: '520px',
+                width: 'calc(33.33% - 16px)',
+                flexShrink: 0
+              }}
+            >
               <input type="checkbox" className="card-checkbox" checked={isSelected} onChange={() => toggleSelect(item._id)} />
               
               {/* 1. Header Area - Compact */}
@@ -860,7 +886,7 @@ export default function Inventory() {
                         style={{ width: 28, height: 28, border: 'none', background: dark ? 'rgba(255,255,255,0.08)' : 'white', borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >–</button>
                       <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: 26, fontWeight: 1000, color: dark ? 'white' : '#000', lineHeight: 1 }}>{item.currentStock}</div>
+                          <div style={{ fontSize: 26, fontWeight: 1000, color: dark ? 'white' : '#000', lineHeight: 1 }}>{Number(Number(item.currentStock).toFixed(2)).toLocaleString()}</div>
                           <div style={{ fontSize: 10, fontWeight: 900, color: '#64748b', marginTop: 2 }}>{item.unit}</div>
                       </div>
                       <button 
@@ -877,8 +903,8 @@ export default function Inventory() {
                   </div>
               </div>
 
-              {/* 3. Linked Recipes Section - Tight */}
-              <div style={{ marginBottom: 16, minHeight: 50 }}>
+              {/* 3. Linked Recipes Section - Expanded to fill middle */}
+              <div style={{ marginBottom: 16, flex: 1 }}>
                   <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 950, marginBottom: 6, letterSpacing: '0.6px' }}>LINKED RECIPIES</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                       {(item.linkedMenuItems || []).length > 0 ? (
@@ -899,33 +925,34 @@ export default function Inventory() {
                   </div>
               </div>
 
-              {/* 4. Financial Status Area - Compact */}
-              <div style={{ background: dark ? 'rgba(255,255,255,0.015)' : '#fdfdfd', border: `1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#f1f5f9'}`, borderRadius: 14, padding: '12px', marginBottom: 18 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <div>
-                          <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 950, textTransform: 'uppercase', marginBottom: 2 }}>COST</div>
-                          <div style={{ fontSize: 13, fontWeight: 950 }}>AED {item.unitCost}</div>
+              {/* 4 & 5. Bottom Anchored Content */}
+              <div style={{ marginTop: 'auto' }}>
+                  <div style={{ background: dark ? 'rgba(255,255,255,0.015)' : '#fdfdfd', border: `1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#f1f5f9'}`, borderRadius: 14, padding: '12px', marginBottom: 18 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                          <div>
+                              <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 950, textTransform: 'uppercase', marginBottom: 2 }}>COST</div>
+                              <div style={{ fontSize: 13, fontWeight: 950 }}>AED {item.unitCost}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 950, textTransform: 'uppercase', marginBottom: 2 }}>VALUE</div>
+                              <div style={{ fontSize: 13, fontWeight: 950, color: '#ff4e2a' }}>AED {Number((item.unitCost * item.currentStock).toFixed(2)).toLocaleString()}</div>
+                          </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 950, textTransform: 'uppercase', marginBottom: 2 }}>VALUE</div>
-                          <div style={{ fontSize: 13, fontWeight: 950, color: '#ff4e2a' }}>AED {Number((item.unitCost * item.currentStock).toFixed(2)).toLocaleString()}</div>
-                      </div>
+                      <button 
+                        onClick={() => handleManageLinks(item)}
+                        style={{ width: '100%', padding: '7px', background: '#ff4e2a', color: 'white', border: 'none', borderRadius: 10, fontSize: 11, fontWeight: 950, cursor: 'pointer' }}
+                      >
+                        LINK RECIPES
+                      </button>
                   </div>
-                  <button 
-                    onClick={() => handleManageLinks(item)}
-                    style={{ width: '100%', padding: '7px', background: '#ff4e2a', color: 'white', border: 'none', borderRadius: 10, fontSize: 11, fontWeight: 950, cursor: 'pointer' }}
-                  >
-                    LINK RECIPES
-                  </button>
-              </div>
 
-              {/* 5. Footer Actions */}
-              <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
-                  <button className="card-action-btn" style={{ flex: 2, padding: '7px', fontSize: 11, background: dark ? '#334155' : '#f1f5f9', border: 'none' }} onClick={() => handleEdit(item)}>Edit Unit</button>
-                  <button className="card-action-btn" style={{ flex: 2, padding: '7px', fontSize: 11, borderColor: '#10b981', color: '#10b981' }} onClick={() => { setLoggingItem(item); setShowLogModal(true); }}>View Log</button>
-                  <button className="card-action-btn" style={{ width: 32, flex: 'none', padding: 0, borderColor: '#fee2e2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => confirmDelete(item)}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                  </button>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="card-action-btn" style={{ flex: 2, padding: '7px', fontSize: 11, background: dark ? '#334155' : '#f1f5f9', border: 'none' }} onClick={() => handleEdit(item)}>Edit Unit</button>
+                      <button className="card-action-btn" style={{ flex: 2, padding: '7px', fontSize: 11, borderColor: '#10b981', color: '#10b981' }} onClick={() => { setLoggingItem(item); setShowLogModal(true); }}>View Log</button>
+                      <button className="card-action-btn" style={{ width: 32, flex: 'none', padding: 0, borderColor: '#fee2e2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => confirmDelete(item)}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                      </button>
+                  </div>
               </div>
             </div>
           );
@@ -1296,6 +1323,14 @@ export default function Inventory() {
               </div>
           </div>
       )}
+      <ConfirmationModal 
+        isOpen={confirmConfig.open}
+        onClose={() => setConfirmConfig({ ...confirmConfig, open: false })}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        type={confirmConfig.type}
+      />
     </RestaurantLayout>
   );
 }

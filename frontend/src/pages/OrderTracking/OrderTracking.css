@@ -19,18 +19,133 @@
 .ot-eta { display: inline-block; margin-top: 5px; padding: 3px 10px; background: var(--brand-soft); color: var(--brand); border-radius: 50px; font-size: 11px; font-weight: 700; }
 .ot-order-id-badge { flex-shrink: 0; padding: 5px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 50px; font-size: 12px; font-weight: 800; color: var(--text-2); font-family: monospace; }
 
-/* Stepper */
-.ot-stepper { display: flex; align-items: flex-start; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 20px; margin-bottom: 12px; }
-.ot-step { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 64px; }
-.ot-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: var(--text-3); transition: all 0.3s; flex-shrink: 0; }
-.ot-dot-done { border-color: var(--brand); background: var(--brand); color: #fff; }
-.ot-dot-current { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); animation: pulse 1.5s infinite; }
-.ot-dot-num { font-size: 11px; color: var(--text-3); }
-.ot-step-label { font-size: 11px; color: var(--text-3); text-align: center; line-height: 1.3; font-weight: 500; }
-.ot-label-done { color: var(--brand); font-weight: 700; }
-.ot-line { flex: 1; height: 2px; background: var(--border); margin: 14px -6px 0; position: relative; overflow: hidden; }
-.ot-line-active { background: var(--brand); }
-.ot-line-fill { position: absolute; inset: 0; background: var(--brand); }
+/* Kitchen Pipeline Stepper */
+.ot-pipeline {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 40px 24px 24px;
+  margin-bottom: 20px;
+  /* Remove overflow: hidden to keep popovers visible, 
+     but ensure the line itself is bounded */
+}
+
+.ot-pipeline-track {
+  position: absolute;
+  top: 60px;
+  left: 45px;
+  right: 45px;
+  height: 4px;
+  z-index: 1;
+  /* This prevents any children from leaking out */
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.ot-pipeline-line {
+  position: absolute;
+  inset: 0;
+  background: var(--border);
+  z-index: 1;
+}
+
+.ot-pipeline-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #06b6d4);
+  z-index: 2;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+}
+
+.ot-pipeline-step {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 80px;
+  text-align: center;
+}
+
+.ot-pipeline-icon-wrap {
+  width: 44px;
+  height: 44px;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: all 0.5s ease;
+  position: relative;
+}
+
+.ot-pipeline-step.done .ot-pipeline-icon-wrap {
+  border-color: var(--step-color);
+  background: white;
+}
+
+.ot-pipeline-step.active .ot-pipeline-icon-wrap {
+  border-color: var(--step-color);
+  background: var(--step-color);
+  color: white;
+}
+
+.ot-pipeline-pulse {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  opacity: 0.3;
+  animation: ot-ping 1.5s infinite;
+}
+
+.ot-pipeline-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ot-pipeline-step.active .ot-pipeline-label {
+  color: var(--step-color);
+}
+
+.ot-pipeline-desc-pop {
+  position: absolute;
+  top: -30px;
+  width: 140px;
+  background: #1e293b;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 8px;
+  animation: fadeUp 0.3s ease;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.ot-pipeline-desc-pop::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px 4px 0;
+  border-style: solid;
+  border-color: #1e293b transparent transparent;
+}
 
 /* Map section */
 .ot-map-section { margin-bottom: 16px; }
@@ -107,7 +222,10 @@
 }
 @media (max-width: 640px) {
   .ot-cards { grid-template-columns: 1fr; }
-  .ot-step-label { display: none; }
+  .ot-pipeline { padding: 40px 10px 20px; }
+  .ot-pipeline-icon-wrap { width: 34px; height: 34px; font-size: 16px; }
+  .ot-pipeline-label { font-size: 9px; }
+  .ot-pipeline-track { top: 57px; left: 30px; right: 30px; }
   .ot-hero { flex-wrap: wrap; }
   .ot-order-id-badge { width: 100%; text-align: center; }
 }

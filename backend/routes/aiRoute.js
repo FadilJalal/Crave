@@ -715,4 +715,104 @@ router.post("/recommendations", async (req, res) => {
   }
 });
 
+// ── 11. AI NUTRITION SCAN (HEALTH-SYNC) ──────────────────────────────────
+router.post("/nutrition-scan", authMiddleware, async (req, res) => {
+  try {
+    const { items = [], userId } = req.body;
+    
+    // 1. Get User Health Profile
+    const user = await userModel.findById(userId).select("healthGoal allergies");
+    if (!user || user.healthGoal === "None") {
+      return res.json({ success: true, matches: [] }); // No goal set, no matches to show
+    }
+
+    const { healthGoal, allergies } = user;
+    const apiKey = extractGroqApiKey(req);
+
+    // 2. Logic-based pre-scoring
+    const foods = await foodModel.find({ _id: { $in: items } }).lean();
+    
+    // Batch process items
+    const matches = foods.map(f => {
+      const tags = getDietaryTags(f.name, f.description, (f.category || ""));
+      const text = `${f.name} ${f.description} ${f.category}`.toLowerCase();
+      
+      let score = 0;
+      let reason = "";
+
+      // Quick rules for scoring
+      if (healthGoal === "Vegan") {
+        if (tags.includes("vegan")) { score = 100; reason = "Certified Plant-Based"; }
+        else if (tags.includes("vegetarian")) { score = 40; reason = "Vegetarian (Contains Dairy)"; }
+      } else if (healthGoal === "Keto") {
+        if (tags.includes("keto")) { score = 95; reason = "Ideal Low-Carb Choice"; }
+        else if (/grilled|steam|boiled/i.test(text) && !/rice|bread|pasta|sugar/i.test(text)) { score = 75; reason = "Keto-friendly preparation"; }
+      } else if (healthGoal === "High Protein") {
+        if (/protein|chicken|beef|steak|fish|paneer|egg|lentil|tofu/i.test(text)) { score = 90; reason = "Excellent source of protein"; }
+      } else if (healthGoal === "Low Carb") {
+        if (!/rice|bread|pasta|noodle|potato|fries/i.test(text)) { score = 85; reason = "Naturally low in carbs"; }
+      }
+
+      // Allergy Check (Reduces score to 0 and adds warning)
+      const allergenFound = allergies.find(a => text.includes(a.toLowerCase()));
+      if (allergenFound) {
+        score = 0;
+        reason = `⚠️ CONTAINS ${allergenFound.toUpperCase()}`;
+      }
+
+      return { foodId: f._id, score, reason };
+    });
+
+    // 3. AI Enrichment (If API Key is present)
+    if (apiKey && matches.some(m => m.score > 50)) {
+       try {
+         const topMatches = matches.filter(m => m.score > 50).slice(0, 5);
+         const candidateNames = topMatches.map(m => {
+           const f = foods.find(food => String(food._id) === String(m.foodId));
+           return `${f.name}: ${f.description}`;
+         }).join("\n");
+
+         const prompt = [
+           `The user has a health goal of "${healthGoal}".`,
+           "Evaluate these foods and provide a professional nutrition 'reason' (max 6 words).",
+           "Explain why it fits the goal.",
+           "Foods:",
+           candidateNames,
+           "Return ONLY JSON: {\"reasons\":[{\"name\":\"FoodName\",\"reason\":\"string\"}]}"
+         ].join("\n");
+
+         const resp = await fetch(GROQ_CHAT_URL, {
+           method: "POST",
+           headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+           body: JSON.stringify({
+             model: "llama-3.1-8b-instant",
+             temperature: 0.3,
+             response_format: { type: "json_object" },
+             messages: [{ role: "system", content: "Nutrition expert role." }, { role: "user", content: prompt }],
+           }),
+         });
+
+         if (resp.ok) {
+           const aiData = await resp.json();
+           const parsed = JSON.parse(aiData?.choices?.[0]?.message?.content || '{"reasons":[]}');
+           (parsed.reasons || []).forEach(r => {
+              const match = matches.find(m => {
+                const f = foods.find(food => String(food._id) === String(m.foodId));
+                return f && f.name === r.name;
+              });
+              if (match) match.reason = r.reason;
+           });
+         }
+       } catch (err) {
+         console.warn("[ai/nutrition-scan] Groq enrichment failed");
+       }
+    }
+
+    res.json({ success: true, matches, goal: healthGoal });
+  } catch (e) {
+    console.error("[ai/nutrition-scan]", e);
+    res.json({ success: false, message: "Nutrition scan failed" });
+  }
+});
+
 export default router;

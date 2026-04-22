@@ -209,4 +209,40 @@ const setDefaultAddress = async (req, res) => {
   }
 };
 
-export { googleLogin, loginUser, registerUser, getProfile, updateProfile, getAddresses, addAddress, deleteAddress, setDefaultAddress };
+const getHealthProfile = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.body.userId).select("healthGoal allergies");
+    if (!user) return res.json({ success: false, message: "User not found" });
+    res.json({ success: true, profile: { healthGoal: user.healthGoal || "None", allergies: user.allergies || [] } });
+  } catch (error) {
+    res.json({ success: false, message: "Failed to load health profile" });
+  }
+};
+
+const updateHealthProfile = async (req, res) => {
+  try {
+    const { healthGoal, allergies } = req.body;
+    const update = {};
+    if (healthGoal !== undefined) update.healthGoal = healthGoal;
+    if (allergies !== undefined) update.allergies = allergies;
+
+    await userModel.findByIdAndUpdate(req.body.userId, update);
+    res.json({ success: true, message: "Health profile updated" });
+  } catch (error) {
+    res.json({ success: false, message: "Failed to update health profile" });
+  }
+};
+
+export {
+  googleLogin,
+  loginUser,
+  registerUser,
+  getProfile,
+  updateProfile,
+  getAddresses,
+  addAddress,
+  deleteAddress,
+  setDefaultAddress,
+  getHealthProfile,
+  updateHealthProfile
+};

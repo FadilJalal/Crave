@@ -5,6 +5,7 @@ import './FoodDisplay.css';
 import FoodItem from '../FoodItem/FoodItem';
 import { StoreContext } from '../../Context/StoreContext';
 import { isRestaurantOpen, mergeRestaurantFromDirectory } from '../../utils/restaurantHours';
+import { Sparkles, ArrowRight } from 'lucide-react';
 
 const computeTags = (food_list, t) => {
   const tags = {};
@@ -31,13 +32,32 @@ const computeTags = (food_list, t) => {
 
 const FoodDisplay = ({ category }) => {
   const { t } = useTranslation();
-  const { food_list = [], restaurantsById = {} } = useContext(StoreContext);
+  const { food_list = [], restaurantsById = {}, healthGoal, nutritionMatches } = useContext(StoreContext);
   const dealTags = useMemo(() => computeTags(food_list, t), [food_list, t]);
   const filtered = food_list.filter(item => category === 'All' || item.category === category);
 
-  const shuffledFiltered = useMemo(() => {
-    return [...filtered].sort(() => Math.random() - 0.5);
-  }, [filtered]);
+  const processedList = useMemo(() => {
+    let list = [...filtered];
+    
+    // If health goal is active, prioritize high scores
+    if (healthGoal !== "None" && Object.keys(nutritionMatches || {}).length > 0) {
+      list.sort((a, b) => {
+        const scoreA = nutritionMatches[a._id]?.score || 0;
+        const scoreB = nutritionMatches[b._id]?.score || 0;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return 0.5 - Math.random(); // Randomize for items with same score
+      });
+    } else {
+      list.sort(() => 0.5 - Math.random());
+    }
+    
+    return list;
+  }, [filtered, healthGoal, nutritionMatches]);
+
+  const hasMatches = useMemo(() => {
+    if (healthGoal === "None") return true;
+    return Object.values(nutritionMatches || {}).some(m => m.score > 50);
+  }, [healthGoal, nutritionMatches]);
 
   return (
     <div className='fd-wrap' id='food-display'>
@@ -50,7 +70,7 @@ const FoodDisplay = ({ category }) => {
                 <>TOP <span style={{ color: '#ff0000' }}>PICKS</span> NEAR YOU</>
               ) : category}
             </h2>
-            <p className='fd-count'>{shuffledFiltered.length} {t("items_available")}</p>
+            <p className='fd-count'>{processedList.length} {t("items_available")}</p>
           </div>
           <Link to="/restaurants" className="fd-view-all">
             <span>{t('explore_all')}</span>
@@ -59,20 +79,37 @@ const FoodDisplay = ({ category }) => {
             </svg>
           </Link>
         </div>
-        {shuffledFiltered.length === 0 ? (
+        {healthGoal !== "None" && !hasMatches && (
+          <div className="fd-no-match-alert">
+            <div className="fd-no-match-icon">🧬</div>
+            <div className="fd-no-match-text">
+              <h4>No direct {healthGoal} matches here.</h4>
+              <p>The AI suggests exploring other categories or customizing these items to fit your goal.</p>
+            </div>
+            <button className="fd-ai-help-btn" onClick={() => window.scrollTo(0, 0)}>Change Goal <ArrowRight size={14} /></button>
+          </div>
+        )}
+
+        {processedList.length === 0 ? (
           <div className='fd-empty'><div className='fd-empty-icon'>🍽️</div><p>{t("no_items_in_category")}</p></div>
         ) : (
           <div className='fd-grid'>
-            {shuffledFiltered.map(item => {
+            {processedList.map(item => {
               const merged = mergeRestaurantFromDirectory(item, restaurantsById);
+              const nMatch = nutritionMatches?.[item._id];
               return (
-              <FoodItem key={item._id} id={item._id} name={item.name} description={item.description}
-                price={item.price} image={item.image} restaurantId={item.restaurantId}
-                customizations={item.customizations || []} dealTag={dealTags[item._id] || null}
-                restaurantOpen={isRestaurantOpen(merged)}
-                restaurantActive={merged?.isActive !== false}
-                avgRating={item.avgRating || 0} ratingCount={item.ratingCount || 0}
-                inStock={item.inStock !== false} />
+              <div key={item._id} className={`fd-item-wrapper ${healthGoal !== "None" && nMatch?.score > 70 ? 'fd-hot-match' : ''}`}>
+                {healthGoal !== "None" && nMatch?.score > 80 && (
+                  <div className="fd-best-match-ribbon"><Sparkles size={10} /> BEST FOR {healthGoal.toUpperCase()}</div>
+                )}
+                <FoodItem id={item._id} name={item.name} description={item.description}
+                  price={item.price} image={item.image} restaurantId={item.restaurantId}
+                  customizations={item.customizations || []} dealTag={dealTags[item._id] || null}
+                  restaurantOpen={isRestaurantOpen(merged)}
+                  restaurantActive={merged?.isActive !== false}
+                  avgRating={item.avgRating || 0} ratingCount={item.ratingCount || 0}
+                  inStock={item.inStock !== false} />
+              </div>
             );})}
           </div>
         )}

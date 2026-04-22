@@ -9,6 +9,14 @@ const userSchema = new mongoose.Schema({
         savedAddresses: { type: Array, default: [] },
         cartData: { type: Object, default: {} },
         stripeCustomerId: { type: String, default: null },
+        
+        // 🥦 Health & Nutrition AI
+        healthGoal: { 
+            type: String, 
+            enum: ["None", "Keto", "Vegan", "High Protein", "Low Carb", "Low Sodium", "Weight Loss"],
+            default: "None" 
+        },
+        allergies: { type: [String], default: [] },
         savedCards: [
             {
                 paymentMethodId: { type: String, required: true },
