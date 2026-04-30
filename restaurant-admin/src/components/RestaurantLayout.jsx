@@ -403,6 +403,10 @@ export default function RestaurantLayout({ children }) {
           font-size: 13px;
           cursor: pointer;
           transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
         }
         .btn-logout:hover {
           border-color: rgba(255,255,255,0.2);
@@ -476,7 +480,7 @@ export default function RestaurantLayout({ children }) {
         <div className="logout-container">
           <button className="btn-logout" onClick={logout}>
             <span>🚪</span>
-            <span>Logout System</span>
+            <span>Logout</span>
           </button>
         </div>
       </aside>

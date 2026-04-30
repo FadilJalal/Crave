@@ -3,7 +3,7 @@ import { api } from "../utils/api";
 import { toast } from "react-toastify";
 
 const TYPES = [
-  { key: "announcement", label: "Announcement",  color: "#111827", desc: "General news or updates" },
+  { key: "announcement", label: "Announcement",  color: "var(--text)", desc: "General news or updates" },
   { key: "maintenance",  label: "Maintenance",   color: "#f59e0b", desc: "Downtime or system updates" },
   { key: "billing",      label: "Billing",       color: "#3b82f6", desc: "Payment or subscription info" },
   { key: "feature",      label: "New Feature",   color: "#8b5cf6", desc: "Announce new platform features" },
@@ -56,7 +56,7 @@ export default function Broadcast() {
     } finally { setSending(false); }
   };
 
-  const accentColor = TYPES.find(t => t.key === type)?.color || "#111827";
+  const accentColor = TYPES.find(t => t.key === type)?.color || "var(--text)";
 
   return (
     <div className="dash animate-fade-in" style={{ maxWidth: 1100 }}>

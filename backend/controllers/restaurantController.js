@@ -17,7 +17,7 @@ export const addRestaurant = async (req, res) => {
   try {
     let { name, email, password, address, location, avgPrepTime, lat, lng } = req.body;
 
-    console.log("[ADD] Request body:", { name, email, password, address, location, avgPrepTime, lat, lng });
+    console.log("[ADD] Request received to create restaurant:", { name, email });
 
     if (typeof location === "string") {
       try { location = JSON.parse(location); } catch { location = null; }
@@ -29,7 +29,7 @@ export const addRestaurant = async (req, res) => {
     console.log("[ADD] Parsed location:", { finalLat, finalLng, location });
 
     if (!name || !email || !password || !address?.trim()) {
-      console.log("[ADD] ❌ Missing fields - name:", name, "email:", email, "password:", password, "address:", address);
+      console.log("[ADD] ❌ Missing fields for restaurant creation");
       return res.json({ success: false, message: "Missing required fields" });
     }
     if (!Number.isFinite(finalLat) || !Number.isFinite(finalLng)) {

@@ -14,7 +14,11 @@
 6. [Testing](#testing)
 7. [API Documentation](#api-documentation)
 8. [Shared Delivery Algorithm](#shared-delivery-algorithm)
-9. [Troubleshooting](#troubleshooting)
+9. [AI Features & Academic Overview](#ai-features--academic-overview)
+10. [Testing](#testing-1)
+11. [Deployment](#deployment)
+12. [Final Year Report](#final-year-report)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -31,6 +35,14 @@
 - 📍 **Live Tracking**: Real-time order tracking with interactive map
 - 🎨 **Dark/Light Theme**: System-wide theme support
 - 💰 **Split Payments**: Flexible payment options (COD, Card, Split)
+
+### 📸 Screenshots
+*(Add your project screenshots in the `docs` folder and update these paths)*
+- **Homepage:** `![Homepage Demo](docs/homepage.png)`
+- **Customer Order Flow:** `![Order Flow](docs/order-flow.png)`
+- **Restaurant Admin Dashboard:** `![Admin Dashboard](docs/admin-dashboard.png)`
+- **Shared Delivery Map:** `![Shared Delivery Map](docs/shared-delivery.png)`
+- **AI Review Summary (Before/After):** `![AI Review Summary](docs/ai-review.png)`
 
 ---
 
@@ -163,7 +175,7 @@ STRIPE_SECRET=your-stripe-key
 
 # Start development server
 npm run server
-# Server runs on http://localhost:5000
+# Server runs on http://localhost:4000
 ```
 
 ### Frontend Setup
@@ -175,8 +187,8 @@ npm run dev
 # Frontend runs on http://localhost:5173
 ```
 
-### Restaurant Admin Setup
-
+### Restaurant Admin Dashboard (`restaurant-admin`)
+Used by restaurant owners to manage their specific menu, inventory, and orders.
 ```bash
 cd restaurant-admin
 npm install
@@ -184,8 +196,8 @@ npm run dev
 # Runs on http://localhost:5174
 ```
 
-### Super Admin Setup
-
+### Super Admin Dashboard (`admin-super`)
+Used by the platform owners (you) to manage ALL restaurants, users, and global platform analytics.
 ```bash
 cd admin-super
 npm install
@@ -266,6 +278,8 @@ node seedInventory.js     # Create sample inventory
 ### Unit Test Files
 - [backend/test-inventory.js](backend/test-inventory.js) - Inventory validation
 - Run with: `node test-inventory.js`
+- [backend/test-suite.js](backend/test-suite.js) - Core business logic suite (Order Placement, Payment, Shared Delivery Matching, Login Security, Inventory Deduction)
+- Run with: `node test-suite.js`
 
 ---
 
@@ -425,6 +439,48 @@ crave/
 │
 └── README.md                         ← This file
 ```
+
+---
+
+## 🤖 AI Features & Academic Overview
+Crave integrates AI as a core functional utility, not just a gimmick.
+
+### 1. Semantic Search & NLP
+- **What it does:** Converts natural language queries ("healthy spicy food under 30") into strict JSON parameters (dietary: ["healthy", "spicy"], maxPrice: 30) to query the database.
+- **Inputs/Outputs:** Takes user text string -> Outputs validated JSON via zero-shot prompting.
+- **Fallback:** If API key is missing or request fails, falls back to Regex and string matching.
+
+### 2. Review Summarization
+- **What it does:** Condenses dozens of unstructured textual reviews into structured Positive/Negative themes.
+- **Fallback:** If the API is missing, computes statistical averages instead and shows "Enable Groq API for AI summaries".
+
+### 3. Health-Sync
+- **What it does:** Cross-references user allergy/goal profiles against food descriptions to score compatibility.
+
+---
+
+## 🌐 Deployment
+To deploy this project to production, follow these best practices:
+
+**1. Database (MongoDB Atlas):**
+- Create a cluster on MongoDB Atlas.
+- Get the connection string and set it as `MONGO_URL` in your `.env`.
+
+**2. Backend (Render / Heroku / Vercel):**
+- Deploy the `backend` folder.
+- Ensure environment variables are set in the hosting provider.
+- Important: Set your CORS `ALLOWED_ORIGINS` to match your deployed frontend URLs.
+
+**3. Frontends (Vercel / Netlify):**
+- Deploy `frontend`, `restaurant-admin`, and `admin-super` separately.
+- In each frontend, configure the `VITE_API_URL` to point to the live backend URL.
+
+*Note: Never commit your real `.env` file. Use the provided `.env.example` as a template.*
+
+---
+
+## 📄 Final Year Report
+For a complete academic breakdown, architecture diagrams, ERDs, and methodology, please see the [FINAL_YEAR_REPORT.md](FINAL_YEAR_REPORT.md) included in the root directory.
 
 ---
 

@@ -3,7 +3,19 @@ import bcrypt from "bcrypt";
 import validator from "validator";
 import userModel from "../models/userModel.js";
 import { OAuth2Client } from "google-auth-library";
+import Joi from "joi";
 
+const registerSchema = Joi.object({
+  name: Joi.string().trim().min(2).max(50).required(),
+  email: Joi.string().trim().email().required(),
+  password: Joi.string()
+    .min(8)
+    .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\\$%\\^&\\*])'))
+    .required()
+    .messages({
+      'string.pattern.base': 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (!@#$%^&*)'
+    })
+});
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const createToken = (id) => {
@@ -69,18 +81,12 @@ const loginUser = async (req, res) => {
 const registerUser = async (req, res) => {
   const { name, email, password } = req.body;
   try {
-    if (!name || !email || !password) {
-      return res.json({ success: false, message: "All fields are required" });
+    const { error } = registerSchema.validate({ name, email, password });
+    if (error) {
+      return res.json({ success: false, message: error.details[0].message });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-
-    if (!validator.isEmail(normalizedEmail)) {
-      return res.json({ success: false, message: "Please enter a valid email" });
-    }
-    if (password.length < 8) {
-      return res.json({ success: false, message: "Password must be at least 8 characters" });
-    }
 
     const exists = await userModel.findOne({ email: normalizedEmail });
     if (exists) return res.json({ success: false, message: "User already exists" });

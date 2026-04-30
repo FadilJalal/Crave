@@ -88,7 +88,7 @@ export default function Dashboard() {
                   stats.upcomingRenewals.map(r => (
                     <div key={r._id} className="dash-item">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyCenter: 'center', overflow: 'hidden' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyCenter: 'center', overflow: 'hidden' }}>
                           <img 
                             src={`${BASE_URL}/images/${r.logo}`} 
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
@@ -120,7 +120,7 @@ export default function Dashboard() {
                 {stats?.recentRestaurants?.map(r => (
                   <div key={r._id} className="dash-item">
                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyCenter: 'center', overflow: 'hidden' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyCenter: 'center', overflow: 'hidden' }}>
                           <img 
                             src={`${BASE_URL}/images/${r.logo}`} 
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 

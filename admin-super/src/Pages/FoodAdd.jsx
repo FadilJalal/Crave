@@ -80,7 +80,7 @@ export default function FoodAdd() {
 
   return (
     <div style={styles.wrap}>
-      <h1 style={styles.h1}>Add Food</h1>
+      <h1 style={{ ...styles.h1, color: "var(--text)" }}>Add Food</h1>
 
       <form onSubmit={onSubmitHandler} style={styles.card}>
         <label style={styles.label}>Restaurant</label>
@@ -170,18 +170,19 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 10,
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.08)",
+    background: "var(--card)",
+    border: "1px solid var(--border)",
     borderRadius: 18,
     padding: 18,
+    color: "var(--text)",
   },
-  label: { fontSize: 12, opacity: 0.8, marginTop: 8 },
+  label: { fontSize: 12, color: "var(--muted)", marginTop: 8 },
   input: {
     padding: 12,
     borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.35)",
-    color: "white",
+    border: "1px solid var(--border)",
+    background: "var(--bg)",
+    color: "var(--text)",
     outline: "none",
   },
   row: { display: "flex", gap: 12, marginTop: 8 },
@@ -190,8 +191,8 @@ const styles = {
     padding: 14,
     borderRadius: 12,
     border: "none",
-    background: "white",
-    color: "#111",
+    background: "#ff4e2a",
+    color: "white",
     fontWeight: 900,
     cursor: "pointer",
   },

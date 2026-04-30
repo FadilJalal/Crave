@@ -5,11 +5,14 @@ import App from "./App";
 import "./index.css";
 import "leaflet/dist/leaflet.css";
 import { ThemeProvider } from "./ThemeContext";
+import { NotificationProvider } from "./context/NotificationContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <ThemeProvider>
-      <App />
+      <NotificationProvider>
+        <App />
+      </NotificationProvider>
     </ThemeProvider>
   </BrowserRouter>
 );

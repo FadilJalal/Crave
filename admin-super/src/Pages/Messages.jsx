@@ -114,7 +114,7 @@ export default function Messages() {
     finally { setReplying(false); }
   };
 
-  const inp = { padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--border)", fontSize: 14, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", background: "white" };
+  const inp = { padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--border)", fontSize: 14, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", background: "var(--card)", color: "var(--text)" };
   const lbl = { fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 6 };
 
   return (
@@ -122,7 +122,7 @@ export default function Messages() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Messages</h1>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "var(--text)" }}>Messages</h1>
           <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 14 }}>Communicate with restaurant owners</p>
         </div>
         <button onClick={() => setShowCompose(true)} style={{ padding: "10px 20px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#ff4e2a,#ff6a3d)", color: "white", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
@@ -133,7 +133,7 @@ export default function Messages() {
       <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 16, height: 600 }}>
 
         {/* Conversations list */}
-        <div style={{ background: "white", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 12, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
             Conversations
           </div>
@@ -148,7 +148,7 @@ export default function Messages() {
             ) : conversations.map(c => (
               <div key={c.restaurant._id}
                 onClick={() => openThread(c.restaurant._id, c.restaurant.name)}
-                style={{ padding: "12px 16px", cursor: "pointer", borderBottom: "1px solid #f3f4f6", background: selected?.id === String(c.restaurant._id) ? "#fff5f3" : "white", transition: "background .15s" }}
+                style={{ padding: "12px 16px", cursor: "pointer", borderBottom: "1px solid var(--border)", background: selected?.id === String(c.restaurant._id) ? "var(--orangeSoft)" : "transparent", transition: "background .15s" }}
                 onMouseEnter={e => { if (selected?.id !== String(c.restaurant._id)) e.currentTarget.style.background = "#fafafa"; }}
                 onMouseLeave={e => { if (selected?.id !== String(c.restaurant._id)) e.currentTarget.style.background = "white"; }}
               >
@@ -159,7 +159,7 @@ export default function Messages() {
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontWeight: 800, fontSize: 13, color: "#111827" }}>{c.restaurant.name}</span>
+                      <span style={{ fontWeight: 800, fontSize: 13, color: "var(--text)" }}>{c.restaurant.name}</span>
                       {c.unreadCount > 0 && (
                         <span style={{ background: "#ff4e2a", color: "white", fontSize: 10, fontWeight: 900, padding: "2px 6px", borderRadius: 999 }}>{c.unreadCount}</span>
                       )}
@@ -176,7 +176,7 @@ export default function Messages() {
         </div>
 
         {/* Thread */}
-        <div style={{ background: "white", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {!selected ? (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)" }}>
               <div style={{ textAlign: "center" }}>
@@ -188,7 +188,7 @@ export default function Messages() {
           ) : (
             <>
               {/* Thread header */}
-              <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", fontWeight: 800, fontSize: 15, color: "#111827" }}>
+              <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", fontWeight: 800, fontSize: 15, color: "var(--text)" }}>
                 {selected.name}
               </div>
 
@@ -202,8 +202,8 @@ export default function Messages() {
                   <div key={m._id} style={{ display: "flex", flexDirection: m.from === "admin" ? "row-reverse" : "row", gap: 8, alignItems: "flex-end" }}>
                     <div style={{
                       maxWidth: "70%", padding: "10px 14px", borderRadius: m.from === "admin" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                      background: m.from === "admin" ? "#ff4e2a" : "#f3f4f6",
-                      color: m.from === "admin" ? "white" : "#111827",
+                      background: m.from === "admin" ? "#ff4e2a" : "var(--bg)",
+                      color: m.from === "admin" ? "white" : "var(--text)",
                       fontSize: 14, lineHeight: 1.5,
                     }}>
                       {m.subject && <div style={{ fontWeight: 800, marginBottom: 4, fontSize: 13 }}>{m.subject}</div>}
@@ -243,7 +243,7 @@ export default function Messages() {
       {/* Compose modal */}
       {showCompose && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }} onClick={() => setShowCompose(false)}>
-          <div style={{ background: "white", borderRadius: 20, padding: 28, width: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: "var(--card)", borderRadius: 20, padding: 28, width: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", color: "var(--text)" }} onClick={e => e.stopPropagation()}>
             <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 800 }}>New Message</h2>
 
             <div style={{ marginBottom: 14 }}>
@@ -266,7 +266,7 @@ export default function Messages() {
               Also send by email
             </label>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setShowCompose(false)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1px solid var(--border)", background: "white", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={() => setShowCompose(false)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", color: "var(--text)", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Cancel</button>
               <button onClick={handleSend} disabled={sending || !compBody.trim()} style={{ flex: 2, padding: 12, borderRadius: 10, border: "none", background: sending || !compBody.trim() ? "#e5e7eb" : "linear-gradient(135deg,#ff4e2a,#ff6a3d)", color: sending || !compBody.trim() ? "#9ca3af" : "white", cursor: "pointer", fontWeight: 800, fontFamily: "inherit" }}>
                 {sending ? "Sending..." : "Send Message"}
               </button>

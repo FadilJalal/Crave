@@ -182,7 +182,7 @@ export default function Subscriptions() {
     r.status === filter || (filter === "expiring" && r.expiringSoon)
   );
 
-  const inp = { padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--border)", fontSize: 14, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", background: "white" };
+  const inp = { padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--border)", fontSize: 14, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", background: "var(--card)", color: "var(--text)" };
   const lbl = { fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 6 };
   const selectedPlanInfo = plans[form.plan];
   const selectedCurrentPlan = selected ? plans[normalizePlan(selected.plan)] : null;
@@ -191,10 +191,10 @@ export default function Subscriptions() {
     <div style={{ maxWidth: 1000 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Subscriptions</h1>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "var(--text)" }}>Subscriptions</h1>
           <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 14 }}>Manage restaurant plans and billing</p>
         </div>
-        <button onClick={fetchData} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "white", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit" }}>
+        <button onClick={fetchData} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", color: "var(--text)", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit" }}>
           ↻ Refresh
         </button>
       </div>
@@ -232,7 +232,7 @@ export default function Subscriptions() {
             </div>
             <button
               onClick={() => openPlanEditor(key)}
-              style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${p.color}66`, background: "white", color: p.color, cursor: "pointer", fontSize: 12, fontWeight: 800, fontFamily: "inherit" }}
+              style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${p.color}66`, background: "var(--card)", color: p.color, cursor: "pointer", fontSize: 12, fontWeight: 800, fontFamily: "inherit" }}
             >
               Edit Card
             </button>
@@ -243,7 +243,7 @@ export default function Subscriptions() {
       {/* Filter tabs */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {["all", "active", "trial", "expiring", "expired", "cancelled"].map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${filter === f ? "#111827" : "var(--border)"}`, background: filter === f ? "#111827" : "white", color: filter === f ? "white" : "var(--muted)" }}>
+          <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${filter === f ? "var(--text)" : "var(--border)"}`, background: filter === f ? "var(--text)" : "var(--card)", color: filter === f ? "var(--bg)" : "var(--muted)" }}>
             {f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
         ))}
@@ -256,13 +256,13 @@ export default function Subscriptions() {
           const st   = STATUS_STYLE[r.isExpired ? "expired" : r.status] || STATUS_STYLE.trial;
           const plan = plans[normalizePlan(r.plan)];
           return (
-            <div key={r._id} style={{ background: "white", border: "1px solid var(--border)", borderRadius: 16, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            <div key={r._id} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
               {r.logo
                 ? <img src={`${BACKEND_URL}/images/${r.logo}`} style={{ width: 40, height: 40, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
-                : <div style={{ width: 40, height: 40, borderRadius: 10, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🍽️</div>
+                : <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🍽️</div>
               }
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 800, fontSize: 14 }}>{r.name}</div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)" }}>{r.name}</div>
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                   {r.expiresAt ? `Expires ${new Date(r.expiresAt).toLocaleDateString("en-AE", { day: "numeric", month: "short", year: "numeric" })}` : "No expiry set"}
                   {r.expiringSoon && !r.isExpired && <span style={{ color: "#dc2626", fontWeight: 700 }}> · ⚠️ {r.daysLeft}d left</span>}
@@ -281,7 +281,7 @@ export default function Subscriptions() {
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => { const planKey = normalizePlan(r.plan); setSelected(r); setForm({ plan: planKey && plans[planKey] ? planKey : "basic", months: "1", notes: r.notes || "" }); }}
-                  style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: "#111827", color: "white", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit" }}>
+                  style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: "var(--text)", color: "var(--bg)", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit" }}>
                   Edit Subscription
                 </button>
                 {r.status === "active" && (
@@ -295,7 +295,7 @@ export default function Subscriptions() {
           );
         })}
         {!loading && filtered.length === 0 && (
-          <div style={{ textAlign: "center", padding: "40px", color: "var(--muted)", background: "white", border: "1px solid var(--border)", borderRadius: 14 }}>
+          <div style={{ textAlign: "center", padding: "40px", color: "var(--muted)", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14 }}>
             No restaurants match this filter.
           </div>
         )}
@@ -304,14 +304,14 @@ export default function Subscriptions() {
       {/* Assign plan modal */}
       {selected && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }} onClick={() => setSelected(null)}>
-          <div style={{ background: "white", borderRadius: 20, padding: 28, width: 420, boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: "var(--card)", borderRadius: 20, padding: 28, width: 420, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", color: "var(--text)" }} onClick={e => e.stopPropagation()}>
             <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800 }}>Edit Subscription</h2>
             <p style={{ margin: "0 0 12px", color: "var(--muted)", fontSize: 14 }}>{selected.name}</p>
 
-            <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
+            <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: "#6b7280", textTransform: "uppercase", marginBottom: 6 }}>Current Subscription</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#111827" }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)" }}>
                   {selectedCurrentPlan ? `${selectedCurrentPlan.name} · AED ${selectedCurrentPlan.price}/mo` : "No active plan"}
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: (STATUS_STYLE[selected.status] || STATUS_STYLE.trial).bg, color: (STATUS_STYLE[selected.status] || STATUS_STYLE.trial).color }}>
@@ -330,8 +330,8 @@ export default function Subscriptions() {
                     onClick={() => setForm(prev => ({ ...prev, plan: key }))}
                     style={{
                       borderRadius: 10,
-                      border: `1px solid ${isActive ? p.color : "#e5e7eb"}`,
-                      background: isActive ? p.bg : "#ffffff",
+                      border: `1px solid ${isActive ? p.color : "var(--border)"}`,
+                      background: isActive ? p.bg : "var(--card)",
                       padding: "10px 12px",
                       cursor: "pointer",
                       textAlign: "left",
@@ -365,16 +365,16 @@ export default function Subscriptions() {
                 <label style={lbl}>Notes (optional)</label>
                 <input style={inp} placeholder="e.g. Paid via bank transfer" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
               </div>
-              <div style={{ background: "#f9fafb", borderRadius: 10, padding: "12px 14px", marginBottom: 20, fontSize: 13 }}>
+              <div style={{ background: "var(--bg)", borderRadius: 10, padding: "12px 14px", marginBottom: 20, fontSize: 13 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "var(--muted)" }}>Plan</span><span style={{ fontWeight: 700 }}>{selectedPlanInfo?.name}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "var(--muted)" }}>Duration</span><span style={{ fontWeight: 700 }}>{form.months} month(s)</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e5e7eb", paddingTop: 8, marginTop: 4 }}>
                   <span style={{ fontWeight: 700 }}>Total</span>
-                  <span style={{ fontWeight: 900, color: "#111827" }}>AED {(selectedPlanInfo?.price || 0) * Number(form.months)}</span>
+                  <span style={{ fontWeight: 900, color: "var(--text)" }}>AED {(selectedPlanInfo?.price || 0) * Number(form.months)}</span>
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
-                <button type="button" onClick={() => setSelected(null)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1px solid var(--border)", background: "white", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Cancel</button>
+                <button type="button" onClick={() => setSelected(null)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", color: "var(--text)", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Cancel</button>
                 <button type="submit" disabled={saving} style={{ flex: 2, padding: 12, borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ff4e2a,#ff6a3d)", color: "white", cursor: "pointer", fontWeight: 800, fontFamily: "inherit", fontSize: 14 }}>
                   {saving ? "Saving..." : "Save Subscription"}
                 </button>
@@ -387,7 +387,7 @@ export default function Subscriptions() {
       {/* Plan card editor modal */}
       {editingPlanKey && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setEditingPlanKey(null)}>
-          <div style={{ background: "white", borderRadius: 20, padding: 24, width: 560, maxHeight: "85vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: "var(--card)", borderRadius: 20, padding: 24, width: 560, maxHeight: "85vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", color: "var(--text)" }} onClick={e => e.stopPropagation()}>
             <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 900 }}>Edit Plan Card</h2>
             <p style={{ margin: "0 0 16px", color: "var(--muted)", fontSize: 13 }}>
               Update plan title, price, description, and feature toggles from here.
@@ -441,18 +441,19 @@ export default function Subscriptions() {
                 placeholder="New feature key (e.g. tableReservations)"
                 value={newFeatureKey}
                 onChange={(e) => setNewFeatureKey(e.target.value)}
+                autoComplete="off"
               />
               <button
                 type="button"
                 onClick={addFeatureToEditor}
-                style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", background: "white", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}
+                style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", color: "var(--text)", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}
               >
                 Add
               </button>
             </div>
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button type="button" onClick={() => setEditingPlanKey(null)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1px solid var(--border)", background: "white", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>
+              <button type="button" onClick={() => setEditingPlanKey(null)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", color: "var(--text)", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>
                 Close
               </button>
               <button type="button" onClick={savePlanConfig} disabled={savingPlan} style={{ flex: 2, padding: 12, borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ff4e2a,#ff6a3d)", color: "white", cursor: "pointer", fontWeight: 800, fontFamily: "inherit", fontSize: 14 }}>

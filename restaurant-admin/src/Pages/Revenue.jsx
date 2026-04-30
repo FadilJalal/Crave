@@ -113,18 +113,19 @@ export default function Revenue() {
         return { gross, count, avgValue, netSettlement, trendData, predictedNextWeek, ledger, estimatedTax };
     }, [orders, timeframe, searchQuery]);
 
-    if (loading) return (
-        <div className="rev-loading-hub">
-            <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
-                <Activity size={48} />
-            </motion.div>
-            <p className="rev-loading-text">Synchronizing Financial Hub 3.0...</p>
-        </div>
-    );
+
 
     return (
         <RestaurantLayout>
-            <div className="rev-layout">
+            {loading ? (
+                <div className="rev-loading-hub">
+                    <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                        <Activity size={48} />
+                    </motion.div>
+                    <p className="rev-loading-text">Synchronizing Financial Hub 3.0...</p>
+                </div>
+            ) : (
+                <div className="rev-layout">
                 
                 {/* ── Enterprise HUD ── */}
                 <header className="rev-hud-header">
@@ -307,7 +308,8 @@ export default function Revenue() {
                     </table>
                 </div>
 
-            </div>
+                </div>
+            )}
 
             <style>{`
                 .rev-loading-text { font-weight: 900; letter-spacing: 2px; color: var(--rev-muted); text-transform: uppercase; margin-top: 16px; font-size: 11px; }

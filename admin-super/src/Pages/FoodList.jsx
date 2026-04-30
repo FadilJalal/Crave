@@ -78,7 +78,7 @@ export default function FoodList() {
 
   return (
     <div style={{ maxWidth: 1100 }}>
-      <h1 style={{ marginTop: 0 }}>Food List</h1>
+      <h1 style={{ marginTop: 0, color: "var(--text)" }}>Food List</h1>
 
       <div style={styles.table}>
         <div style={{ ...styles.row, ...styles.head }}>
@@ -91,7 +91,7 @@ export default function FoodList() {
         </div>
 
         {list.map((item) => (
-          <div key={item._id} style={styles.row}>
+          <div key={item._id} style={{ ...styles.row, color: "var(--text)" }}>
             <div>
               <img
                 src={getImgSrc(item.image)}
@@ -198,11 +198,13 @@ const styles = {
     marginTop: 12,
     borderRadius: 18,
     overflow: "hidden",
-    border: "1px solid rgba(255,255,255,0.08)",
+    border: "1px solid var(--border)",
+    background: "var(--card)",
   },
   head: {
-    background: "rgba(255,255,255,0.06)",
+    background: "var(--bg)",
     fontWeight: 800,
+    color: "var(--text)",
   },
   row: {
     display: "grid",
@@ -210,14 +212,14 @@ const styles = {
     gap: 12,
     padding: 14,
     alignItems: "center",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
+    borderBottom: "1px solid var(--border)",
   },
   x: {
     padding: "8px 12px",
     borderRadius: 10,
-    border: "1px solid rgba(255,255,255,0.15)",
-    background: "rgba(255,255,255,0.06)",
-    color: "white",
+    border: "1px solid var(--border)",
+    background: "var(--bg)",
+    color: "#ef4444",
     cursor: "pointer",
     fontWeight: 700,
   },
@@ -242,8 +244,8 @@ const styles = {
     backdropFilter: "blur(4px)",
   },
   modal: {
-    background: "#1a1a2e",
-    border: "1px solid rgba(255,255,255,0.12)",
+    background: "var(--card)",
+    border: "1px solid var(--border)",
     borderRadius: 20,
     padding: 28,
     width: "100%",
@@ -253,14 +255,15 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 6,
+    color: "var(--text)",
   },
-  label: { fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 8 },
+  label: { fontSize: 12, color: "var(--muted)", marginTop: 8 },
   input: {
     padding: 10,
     borderRadius: 10,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.35)",
-    color: "white",
+    border: "1px solid var(--border)",
+    background: "var(--bg)",
+    color: "var(--text)",
     outline: "none",
     width: "100%",
     boxSizing: "border-box",
@@ -270,8 +273,8 @@ const styles = {
     padding: 12,
     borderRadius: 12,
     border: "none",
-    background: "white",
-    color: "#111",
+    background: "#ff4e2a",
+    color: "white",
     fontWeight: 900,
     cursor: "pointer",
   },
@@ -279,9 +282,9 @@ const styles = {
     flex: 1,
     padding: 12,
     borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.15)",
+    border: "1px solid var(--border)",
     background: "transparent",
-    color: "white",
+    color: "var(--text)",
     fontWeight: 700,
     cursor: "pointer",
   },
