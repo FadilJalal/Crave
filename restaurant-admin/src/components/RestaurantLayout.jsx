@@ -448,6 +448,7 @@ export default function RestaurantLayout({ children }) {
             linkOrDisabled("/add-food", "➕ Add New Food", canMenu),
             linkOrDisabled("/bulk-upload", "📦 Bulk Quick Upload", canBulk),
             link("/orders", "🧾 Active Orders"),
+            link("/kds", "👨‍🍳 Kitchen Console (KDS)"),
             link("/inventory", "📦 Inventory & Stock"),
             link("/labor", "👷 Staff & Labor"),
           ], orders.filter(o => o.status === "Order Placed").length)}
@@ -497,6 +498,7 @@ export default function RestaurantLayout({ children }) {
               <h2 style={{ margin: 0, fontSize: 22, fontWeight: 950, letterSpacing: "-0.8px" }}>
                 {location.pathname === "/dashboard" ? "Dashboard Overview" :
                   location.pathname === "/orders" ? "Active Orders" :
+                  location.pathname === "/kds" ? "Kitchen Display System" :
                     location.pathname === "/inventory" ? "Inventory Management" : "Restaurant Admin"}
               </h2>
               <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>
@@ -549,7 +551,7 @@ export default function RestaurantLayout({ children }) {
           </div>
         )}
 
-        <div className="container" style={{ padding: "30px 40px" }}>
+        <div className="container" style={{ padding: location.pathname === "/kds" ? "20px" : "30px 40px" }}>
           {children}
         </div>
       </main>

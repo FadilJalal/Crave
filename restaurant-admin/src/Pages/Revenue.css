@@ -192,3 +192,35 @@
     .rev-enterprise-grid { grid-template-columns: 1fr 1fr; }
     .rev-insight-row { grid-template-columns: 1fr; }
 }
+@media print {
+    .ra-sidebar, .rev-hud-header, .rev-ai-sidebar, .rev-btn-ghost, .rev-btn-primary, .rev-search-box {
+        display: none !important;
+    }
+    .rev-layout {
+        padding: 0;
+        margin: 0;
+        max-width: 100%;
+        background: white !important;
+        color: black !important;
+    }
+    .rev-main-panel, .rev-ledger-container, .rev-stat-card {
+        border: 1px solid #ddd !important;
+        box-shadow: none !important;
+        margin-bottom: 20px !important;
+        background: white !important;
+        color: black !important;
+        break-inside: avoid;
+    }
+    .rev-stat-card {
+        padding: 20px !important;
+    }
+    .rev-stat-val, .rev-th, .rev-td {
+        color: black !important;
+    }
+    body {
+        background: white !important;
+    }
+    @page {
+        margin: 1cm;
+    }
+}

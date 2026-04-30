@@ -28,6 +28,7 @@ import ProtectedFeature from "./components/ProtectedFeature";
 import Login from "./Pages/Login";
 import Finance from "./Pages/Finance";
 import ReviewReply from "./Pages/ReviewReply";
+import KDS from "./Pages/KDS";
 
 
 export default function App() {
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><AICustomerSegmentation /></ProtectedFeature></ProtectedRoute>} />
         <Route path="/coupons" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><Promos /></ProtectedFeature></ProtectedRoute>} />
         <Route path="/review-reply" element={<ProtectedRoute><ReviewReply /></ProtectedRoute>} />
+        <Route path="/kds" element={<ProtectedRoute><KDS /></ProtectedRoute>} />
 
         <Route path="/labor" element={<ProtectedRoute><LaborManagement /></ProtectedRoute>} />
         <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />

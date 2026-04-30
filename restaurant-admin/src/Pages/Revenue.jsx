@@ -144,8 +144,8 @@ export default function Revenue() {
                         >
                             {TIMEFRAME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
-                        <button className="rev-btn-ghost"><FileText size={16} /> Reports</button>
-                        <button className="rev-btn-primary"><Download size={16} /> Export Ledger</button>
+                        <button className="rev-btn-ghost" onClick={() => window.print()}><FileText size={16} /> Audit Report</button>
+                        <button className="rev-btn-primary" onClick={() => toast.info("Ledger export starting...")}><Download size={16} /> Export Ledger</button>
                     </div>
                 </header>
 

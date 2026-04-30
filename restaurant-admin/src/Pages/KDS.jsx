@@ -83,26 +83,7 @@ export default function KDS() {
 
     return (
         <RestaurantLayout>
-            <div className={`kds-root ${dark ? "kds-dark" : "kds-light"}`}>
-                <header className="kds-header">
-                    <div className="kds-brand">
-                        <h1>Kitchen <span>Console</span></h1>
-                    </div>
-                    <div className="kds-metrics">
-                        <div className="metric-pill">
-                            <span className="pill-lbl">AVG PREP</span>
-                            <span className="pill-val">{stats.avgPrep}m</span>
-                        </div>
-                        {stats.bottlenecks[0] && (
-                            <div className="metric-pill pill-bottleneck">
-                                <span className="pill-lbl">SLOWEST</span>
-                                <span className="pill-val">{stats.bottlenecks[0].name}</span>
-                            </div>
-                        )}
-                        <div className="live-badge">LIVE · {new Date().toLocaleTimeString()}</div>
-                    </div>
-                </header>
-
+            <div className={`kds-root ${dark ? "kds-dark" : "kds-light"}`} style={{ height: 'calc(100vh - 150px)', width: '100%', margin: 0, display: 'flex', flexDirection: 'column' }}>
                 <div className="kds-board">
                     <div className="kds-column">
                         <div className="kds-col-head">
@@ -141,11 +122,21 @@ function OrderCard({ order, onAction, isReady }) {
     const elapsed = Math.floor((new Date() - new Date(order.createdAt)) / 60000);
     const isCritical = elapsed > 25;
     const isWarning = elapsed > 15;
+    
+    // AI Predicted Time (Simulation based on item complexity)
+    const predictedTime = useMemo(() => {
+        const base = 8;
+        const itemPenalty = order.items.length * 2;
+        return base + itemPenalty;
+    }, [order.items.length]);
 
     return (
         <div className={`kds-card ${isCritical ? 'is-critical' : isWarning ? 'is-warning' : ''} ${isReady ? 'is-ready' : ''}`}>
             <div className="card-top">
-                <span className="card-ref">#{order._id.slice(-5).toUpperCase()}</span>
+                <div>
+                   <span className="card-ref">#{order._id.slice(-5).toUpperCase()}</span>
+                   <div style={{ fontSize: 9, fontWeight: 800, color: 'var(--kds-accent)', marginTop: 2 }}>EST. {predictedTime} MIN</div>
+                </div>
                 <span className="card-timer">{elapsed}m</span>
             </div>
             <div className="card-main">

@@ -413,6 +413,12 @@ min-width: 0;
   border-color: #bfdbfe;
 }
 
+.ao-badge-ready {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #ffedd5;
+}
+
 .ao-badge-delivery {
   background: #faf5ff;
   color: #7c3aed;
@@ -968,6 +974,17 @@ min-width: 0;
 
 .ao-status-btn-active {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: scale(1.02);
+}
+
+.ao-status-completed {
+  background: #f8fafc;
+  opacity: 0.7;
+}
+
+[data-theme="dark"] .ao-status-completed {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
 /* ── Dark mode overrides ── */
@@ -996,6 +1013,11 @@ min-width: 0;
 [data-theme="dark"] .ao-badge-processing {
   background: rgba(29, 78, 216, 0.12);
   border-color: rgba(29, 78, 216, 0.25);
+}
+
+[data-theme="dark"] .ao-badge-ready {
+  background: rgba(194, 65, 12, 0.12);
+  border-color: rgba(194, 65, 12, 0.25);
 }
 
 [data-theme="dark"] .ao-badge-delivery {

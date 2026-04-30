@@ -5,12 +5,13 @@ import { toast } from "react-toastify";
 import { useTheme } from "../ThemeContext";
 import "./Orders.css";
 
-const STATUS_OPTIONS = ["Order Placed", "Order Accepted", "Food Processing", "Out for delivery", "Delivered", "Cancelled"];
+const STATUS_OPTIONS = ["Order Placed", "Order Accepted", "Food Processing", "Ready", "Out for delivery", "Delivered", "Cancelled"];
 
 const STATUS_BADGE_CLASS = {
   "Order Placed": "ao-badge ao-badge-placed",
   "Order Accepted": "ao-badge ao-badge-accepted",
   "Food Processing": "ao-badge ao-badge-processing",
+  "Ready": "ao-badge ao-badge-ready",
   "Out for Delivery": "ao-badge ao-badge-delivery",
   "Out for delivery": "ao-badge ao-badge-delivery",
   "Delivered": "ao-badge ao-badge-delivered",
@@ -31,6 +32,7 @@ const STATUS_COLORS = {
   "Order Placed": { bg: "#fef2f2", color: "#b91c1c", border: "#fecaca" },
   "Order Accepted": { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" },
   "Food Processing": { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
+  "Ready": { bg: "#fff7ed", color: "#c2410c", border: "#ffedd5" },
   "Out for Delivery": { bg: "#faf5ff", color: "#7c3aed", border: "#ddd6fe" },
   "Delivered": { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
   "Cancelled": { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" },
@@ -629,19 +631,27 @@ export default function Orders() {
                           </button>
                         ) : (
                           <div className="ao-status-grid">
-                            {["Order Accepted", "Food Processing", "Out for delivery", "Delivered"].map((s) => {
+                            {["Order Accepted", "Food Processing", "Ready", "Out for delivery", "Delivered"].map((s) => {
                               const st = STATUS_COLORS[s] || STATUS_COLORS["Food Processing"];
                               const active = order.status === s;
+                              const isCompleted = ["Order Accepted", "Food Processing", "Ready", "Out for delivery", "Delivered"].indexOf(order.status) >= ["Order Accepted", "Food Processing", "Ready", "Out for delivery", "Delivered"].indexOf(s);
+                              
                               return (
                                 <button
                                   key={s}
                                   onClick={(e) => { e.stopPropagation(); updateStatus(order._id, s); }}
-                                  className={`ao-status-btn ${active ? "ao-status-btn-active" : ""}`}
+                                  className={`ao-status-btn ${active ? "ao-status-btn-active" : ""} ${isCompleted ? "ao-status-completed" : ""}`}
                                   style={active ? {
                                     borderColor: st.color,
                                     background: st.bg,
                                     color: st.color,
-                                    boxShadow: `0 4px 12px ${st.color}22`,
+                                    boxShadow: `0 4px 12px ${st.color}44`,
+                                    fontWeight: 900
+                                  } : isCompleted ? {
+                                    background: "#f8fafc",
+                                    color: "#94a3b8",
+                                    borderColor: "#e2e8f0",
+                                    opacity: 0.8
                                   } : {}}
                                 >
                                   {active && "✓ "}{s}
