@@ -27,12 +27,12 @@ const statusIndex = (status) => {
   const s = (status || '').toLowerCase().trim();
   if (s === 'order accepted' || s === 'accepted') return 1;
   if (s === 'food processing')  return 2;
-  if (s === 'out for delivery') return 3;
+  if (s === 'ready' || s === 'out for delivery') return 3;
   if (s === 'delivered')        return 4;
   return 0;
 };
 
-const POLL_INTERVAL = 30000;
+const POLL_INTERVAL = 3000; // 3 seconds for near-instant status updates
 
 const isInDateRange = (dateStr, preset) => {
   if (preset === 'all') return true;

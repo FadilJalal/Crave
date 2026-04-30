@@ -116,6 +116,9 @@ const orderSchema = new mongoose.Schema(
       enum: ["express", "shared"],
       default: "express",
     },
+    // 🔥 Prep Tracking (KDS)
+    prepStartedAt: { type: Date, default: null },
+    prepCompletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

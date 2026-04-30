@@ -442,7 +442,7 @@ const PlaceOrder = () => {
 
             {payment === 'stripe' && (
               <div style={{ marginTop: 32 }}>
-                <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 12, letterSpacing: 0.3, color: '#1e293b' }}>{t("choose_a_card")}</div>
+                <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 12, letterSpacing: 0.3, color: 'var(--text)' }}>{t("choose_a_card")}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {savedCards.map(card => {
                     const isSelected = !useNewCard && selectedCardId === card.paymentMethodId;
@@ -456,17 +456,17 @@ const PlaceOrder = () => {
                         key={card.paymentMethodId}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
-                          border: isSelected ? '2px solid #ff4e2a' : '1.5px solid #e5e7eb',
+                          border: isSelected ? '2px solid #ff4e2a' : '1.5px solid var(--border)',
                           borderRadius: 14,
-                          background: isSelected ? '#fff6f0' : '#fff',
-                          boxShadow: isSelected ? '0 2px 8px 0 #ffedd5' : '0 1px 4px 0 #f3f4f6',
+                          background: isSelected ? 'rgba(255, 78, 42, 0.08)' : 'var(--card)',
+                          boxShadow: isSelected ? '0 2px 8px 0 rgba(255, 78, 42, 0.15)' : 'var(--shadow-sm)',
                           cursor: 'pointer',
                           position: 'relative',
                           transition: 'border 0.18s, box-shadow 0.18s, background 0.18s',
                           minHeight: 48,
                         }}
-                        onMouseEnter={e => e.currentTarget.style.background = isSelected ? '#fff6f0' : '#f9fafb'}
-                        onMouseLeave={e => e.currentTarget.style.background = isSelected ? '#fff6f0' : '#fff'}
+                        onMouseEnter={e => e.currentTarget.style.background = isSelected ? 'rgba(255, 78, 42, 0.12)' : 'var(--bg-soft)'}
+                        onMouseLeave={e => e.currentTarget.style.background = isSelected ? 'rgba(255, 78, 42, 0.08)' : 'var(--card)'}
                       >
                         <input
                           type="radio"
@@ -477,8 +477,8 @@ const PlaceOrder = () => {
                           style={{ accentColor: '#ff4e2a', marginRight: 2, width: 18, height: 18 }}
                         />
                         <span style={{ fontSize: 22, marginRight: 2 }}>{cardIcon}</span>
-                        <span style={{ fontWeight: 800, letterSpacing: 1, fontSize: 16, color: '#222' }}>{card.brand?.toUpperCase()} ****{card.last4}</span>
-                        <span style={{ fontSize: 13, color: '#6b7280', marginLeft: 10 }}>Exp: {card.expMonth}/{card.expYear}</span>
+                        <span style={{ fontWeight: 800, letterSpacing: 1, fontSize: 16, color: 'var(--text)' }}>{card.brand?.toUpperCase()} ****{card.last4}</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-3)', marginLeft: 10 }}>Exp: {card.expMonth}/{card.expYear}</span>
                         {isSelected && (
                           <span style={{ position: 'absolute', right: 18, top: 18, fontSize: 18, color: '#ff4e2a' }}>✔</span>
                         )}
@@ -488,10 +488,10 @@ const PlaceOrder = () => {
                   <label
                     style={{
                       display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
-                      border: useNewCard ? '2px solid #ff4e2a' : '1.5px dashed #e5e7eb',
+                      border: useNewCard ? '2px solid #ff4e2a' : '1.5px dashed var(--border)',
                       borderRadius: 14,
-                      background: useNewCard ? '#fff6f0' : '#fff',
-                      boxShadow: useNewCard ? '0 2px 8px 0 #ffedd5' : '0 1px 4px 0 #f3f4f6',
+                      background: useNewCard ? 'rgba(255, 78, 42, 0.08)' : 'var(--card)',
+                      boxShadow: useNewCard ? '0 2px 8px 0 rgba(255, 78, 42, 0.15)' : 'var(--shadow-sm)',
                       cursor: 'pointer',
                       position: 'relative',
                       transition: 'border 0.18s, box-shadow 0.18s, background 0.18s',
@@ -507,22 +507,22 @@ const PlaceOrder = () => {
                       style={{ accentColor: '#ff4e2a', marginRight: 2, width: 18, height: 18 }}
                     />
                     <span style={{ fontSize: 22, marginRight: 2 }}>➕</span>
-                    <span style={{ fontWeight: 800, letterSpacing: 1, fontSize: 16, color: '#222' }}>{t("pay_with_new_card")}</span>
+                    <span style={{ fontWeight: 800, letterSpacing: 1, fontSize: 16, color: 'var(--text)' }}>{t("pay_with_new_card")}</span>
                   </label>
                 </div>
                 {useNewCard && (
-                  <div style={{ marginTop: 16, background: '#fff', borderRadius: 14, padding: '14px 14px 10px', boxShadow: '0 1px 6px 0 #f3f4f6' }}>
-                    <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 8, color: '#1e293b' }}>{t("enter_card_details")}</div>
+                  <div style={{ marginTop: 16, background: 'var(--card)', borderRadius: 14, padding: '14px 14px 10px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)' }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 8, color: 'var(--text)' }}>{t("enter_card_details")}</div>
                     <div style={{ marginBottom: 10 }}>
                       <input
                         type="text"
                         placeholder="Name on Card"
                         value={newCardName}
                         onChange={e => setNewCardName(e.target.value)}
-                        style={{ width: '100%', padding: 10, borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: 14, marginBottom: 8 }}
+                        style={{ width: '100%', padding: 10, borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 14, marginBottom: 8, background: 'var(--bg)', color: 'var(--text)' }}
                       />
-                      <div style={{ border: '1.5px solid #e5e7eb', borderRadius: 8, padding: 10, background: '#f9fafb' }}>
-                        <CardElement options={{ style: { base: { fontSize: '15px', color: '#222', fontFamily: 'DM Sans, sans-serif', '::placeholder': { color: '#bdbdbd' } }, invalid: { color: '#dc2626' } } }} />
+                      <div style={{ border: '1.5px solid var(--border)', borderRadius: 8, padding: 10, background: 'var(--bg-soft)' }}>
+                        <CardElement options={{ style: { base: { fontSize: '15px', color: dark ? '#fff' : '#222', fontFamily: 'DM Sans, sans-serif', '::placeholder': { color: '#bdbdbd' } }, invalid: { color: '#dc2626' } } }} />
                       </div>
                     </div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 8 }}>

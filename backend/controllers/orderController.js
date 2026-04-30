@@ -914,6 +914,15 @@ const updateStatus = async (req, res) => {
     }
 
     order.status = status;
+
+    // ── KDS: Track Prep Times ──
+    if ((status === "Order Accepted" || status === "Food Processing") && !order.prepStartedAt) {
+      order.prepStartedAt = new Date();
+    }
+    if ((status === "Ready" || status === "Out for Delivery" || status === "Delivered") && order.prepStartedAt && !order.prepCompletedAt) {
+      order.prepCompletedAt = new Date();
+    }
+
     await order.save();
 
     res.json({ success: true, message: "Status Updated" });
@@ -1065,6 +1074,15 @@ const restaurantUpdateStatus = async (req, res) => {
     }
 
     order.status = status;
+
+    // ── KDS: Track Prep Times ──
+    if ((status === "Order Accepted" || status === "Food Processing") && !order.prepStartedAt) {
+      order.prepStartedAt = new Date();
+    }
+    if ((status === "Ready" || status === "Out for Delivery" || status === "Delivered") && order.prepStartedAt && !order.prepCompletedAt) {
+      order.prepCompletedAt = new Date();
+    }
+
     await order.save();
 
     res.json({ success: true, message: "Status Updated" });

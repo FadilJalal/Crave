@@ -36,12 +36,12 @@ const stepIndex = (status) => {
   const s = (status || '').toLowerCase().trim();
   if (s === 'order accepted' || s === 'accepted') return 1;
   if (s === 'food processing')  return 2;
-  if (s === 'out for delivery') return 3;
+  if (s === 'ready' || s === 'out for delivery') return 3;
   if (s === 'delivered')        return 4;
   return 0;
 };
 
-const POLL_INTERVAL = 10000; // 10 seconds (status-based tracking doesn't need 1s polling)
+const POLL_INTERVAL = 3000; // 3 seconds for "Perfect" real-time feel
 
 const getOrderItemsSubtotal = (order) =>
   (order?.items || []).reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.quantity) || 0)), 0);

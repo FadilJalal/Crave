@@ -1,0 +1,214 @@
+/* ============================================================
+   KDS ENTERPRISE - V5.0 
+   Clean, Unified, and Professional Grade
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@700&display=swap');
+
+.kds-root {
+    --kds-bg: #fdfdfd;
+    --kds-header: #ffffff;
+    --kds-card: #ffffff;
+    --kds-border: #e2e8f0;
+    --kds-text: #0f172a;
+    --kds-muted: #64748b;
+    --kds-accent: #6366f1;
+    --kds-warning: #f59e0b;
+    --kds-critical: #ef4444;
+    --kds-success: #10b981;
+    --kds-title-grad: linear-gradient(to right, #0f172a, #0284c7);
+
+    width: 100%;
+    height: calc(100vh - 100px); /* Adjusted for layout topbar */
+    display: flex;
+    flex-direction: column;
+    background: var(--kds-bg);
+    color: var(--kds-text);
+    font-family: 'Outfit', sans-serif;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.kds-root.kds-dark {
+    --kds-bg: #0b1220;
+    --kds-header: #111a2e;
+    --kds-card: #111a2e;
+    --kds-border: rgba(255,255,255,0.06);
+    --kds-text: #f8fafc;
+    --kds-muted: #94a3b8;
+    --kds-title-grad: linear-gradient(to right, #fff, #38bdf8);
+}
+
+/* ── Enterprise Header ── */
+.kds-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--kds-header);
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--kds-border);
+    flex-shrink: 0;
+}
+
+.kds-brand h1 {
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0;
+    background: var(--kds-title-grad);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+}
+
+.kds-metrics {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.metric-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(99, 102, 241, 0.05);
+    padding: 4px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+.kds-dark .metric-pill { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.05); }
+
+.pill-lbl { font-size: 8px; font-weight: 800; color: var(--kds-muted); text-transform: uppercase; }
+.pill-val { font-size: 12px; font-weight: 700; color: var(--kds-text); }
+
+.pill-bottleneck { border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); }
+.pill-bottleneck .pill-val { color: var(--kds-critical); }
+
+.live-badge {
+    background: var(--kds-success);
+    color: white;
+    font-size: 9px;
+    font-weight: 900;
+    padding: 2px 8px;
+    border-radius: 50px;
+    letter-spacing: 0.5px;
+}
+
+/* ── The Kanban Board ── */
+.kds-board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    flex: 1;
+    min-height: 0;
+    background: var(--kds-bg);
+    width: 100%;
+}
+
+.kds-column {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--kds-border);
+}
+
+.kds-column:last-child { border-right: none; }
+
+.kds-col-head {
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--kds-border);
+    background: #1e293b;
+    color: #ffffff;
+}
+
+.kds-root.kds-light .kds-col-head { background: #f1f5f9; color: #0f172a; }
+
+/* Status Specific Highlights */
+.kds-column:nth-child(1) .kds-col-head { border-top: 4px solid #3b82f6; }
+.kds-column:nth-child(2) .kds-col-head { border-top: 4px solid #6366f1; }
+.kds-column:nth-child(3) .kds-col-head { border-top: 4px solid #10b981; }
+
+.kds-col-head h2 { font-size: 14px; font-weight: 900; color: inherit; margin: 0; letter-spacing: 1px; }
+.count-tag { background: #f1f5f9; color: #64748b; padding: 1px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; }
+.kds-dark .count-tag { background: rgba(255,255,255,0.05); color: #94a3b8; }
+
+.kds-col-body {
+    padding: 12px;
+    overflow-y: auto;
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-auto-rows: min-content;
+    gap: 12px;
+    align-content: start;
+}
+
+/* ── Professional Card ── */
+.kds-card {
+    background: var(--kds-card);
+    border-radius: 14px;
+    border: 1px solid var(--kds-border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+
+.kds-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-color: var(--kds-accent); }
+
+.card-top {
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--kds-border);
+}
+
+.card-ref { font-size: 15px; font-weight: 800; color: var(--kds-text); }
+.card-timer { font-size: 13px; font-weight: 700; color: var(--kds-muted); }
+
+.is-warning .card-timer { color: var(--kds-warning); }
+.is-critical .card-timer { color: var(--kds-critical); }
+.is-ready { border-top: 4px solid var(--kds-success); }
+
+.card-main { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+
+.order-item { display: flex; gap: 10px; }
+.item-qty { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 800; color: var(--kds-accent); min-width: 30px; }
+.item-name { font-size: 16px; font-weight: 700; color: var(--kds-text); line-height: 1.2; }
+.item-selections { font-size: 11px; color: var(--kds-warning); font-weight: 700; background: rgba(245, 158, 11, 0.05); padding: 2px 6px; border-radius: 4px; margin-top: 2px; display: inline-block; }
+
+.card-foot { padding: 10px 14px; border-top: 1px solid var(--kds-border); }
+
+.action-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    background: var(--kds-accent);
+    color: #ffffff;
+    box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);
+}
+
+.kds-root.kds-light .action-btn { 
+    background: #6366f1; 
+    color: #ffffff; 
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+.action-btn:hover { 
+    filter: brightness(1.1); 
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4);
+}
+
+.btn-ready { background: var(--kds-success) !important; color: white !important; }
+.btn-ready:hover { filter: brightness(1.1); }
+
+.kds-scrollbar::-webkit-scrollbar { width: 4px; }
+.kds-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+.kds-dark .kds-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
