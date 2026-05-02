@@ -211,12 +211,11 @@ export default function AICouponStrategist() {
             </div>
           )}
         </div>
-      </div>
-
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .strategy-hover:hover { transform: translateY(-8px); boxShadow: 0 20px 40px rgba(0,0,0,0.12) !important; }
       `}</style>
+    </div>
     </RestaurantLayout>
   );
 }

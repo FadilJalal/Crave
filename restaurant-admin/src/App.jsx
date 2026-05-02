@@ -29,6 +29,7 @@ import Login from "./Pages/Login";
 import Finance from "./Pages/Finance";
 import ReviewReply from "./Pages/ReviewReply";
 import KDS from "./Pages/KDS";
+import AICouponStrategist from "./Pages/AICouponStrategist";
 
 
 export default function App() {
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="/ai-labor-optimizer" element={<ProtectedRoute><ProtectedFeature featureName="aiLaborOptimization"><AILaborOptimizer /></ProtectedFeature></ProtectedRoute>} />
         <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><AICustomerSegmentation /></ProtectedFeature></ProtectedRoute>} />
         <Route path="/coupons" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><Promos /></ProtectedFeature></ProtectedRoute>} />
+        <Route path="/coupon-strategist" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><AICouponStrategist /></ProtectedFeature></ProtectedRoute>} />
         <Route path="/review-reply" element={<ProtectedRoute><ReviewReply /></ProtectedRoute>} />
         <Route path="/kds" element={<ProtectedRoute><KDS /></ProtectedRoute>} />
 

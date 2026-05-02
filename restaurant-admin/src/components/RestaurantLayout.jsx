@@ -455,6 +455,7 @@ export default function RestaurantLayout({ children }) {
 
           {navGroup("growth", "🚀", "Growth & AI", [
             linkOrDisabled("/coupons", "🏷️ AI Promo Generator", canAiPromo),
+            linkOrDisabled("/coupon-strategist", "🧬 Coupon Growth Lab", canAiPromo),
             linkOrDisabled("/email-campaign", "📧 AI Campaigns", canAiMarketing),
             linkOrDisabled("/ai-insights", "🧠 AI Insights", canAiInsights),
             linkOrDisabled("/ai-labor-optimizer", "🕒 AI Labor Optimizer", canAiLabor),

@@ -165,9 +165,7 @@ export default function Promos() {
   return (
     <RestaurantLayout>
       <div style={{ background: theme.bg, color: theme.text, minHeight: "100vh", fontFamily: "'Outfit', sans-serif" }}>
-        
         <div style={{ padding: "40px" }}>
-            
             {/* HERO INTERFACE */}
             <div style={{ 
                 background: dark ? "rgba(99, 102, 241, 0.03)" : "#fff",
@@ -386,7 +384,6 @@ export default function Promos() {
                     )}
                 </div>
             </div>
-
         </div>
 
         {/* REFINEMENT MODAL */}
