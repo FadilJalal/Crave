@@ -3,331 +3,303 @@ import { useNavigate } from "react-router-dom";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { useTheme } from "../ThemeContext";
+import { toast } from "react-toastify";
 
-const SEGMENT_PALETTE = {
-  VIP: { main: "#fbbf24", soft: "rgba(251,191,36,0.1)", border: "rgba(251,191,36,0.3)" },
-  "At Risk": { main: "#f43f5e", soft: "rgba(244,63,94,0.1)", border: "rgba(244,63,94,0.3)" },
-  New: { main: "#a855f7", soft: "rgba(168,85,247,0.1)", border: "rgba(168,85,247,0.3)" },
-  Loyal: { main: "#3b82f6", soft: "rgba(59,130,246,0.1)", border: "rgba(59,130,246,0.3)" },
-  Regular: { main: "#64748b", soft: "rgba(100,116,139,0.1)", border: "rgba(100,116,139,0.3)" },
-  All: { main: "#06b6d4", soft: "rgba(6,182,212,0.1)", border: "rgba(6,182,212,0.3)" },
+const SEGMENT_META = {
+  VIP:      { color: "#f59e0b", bg: "rgba(245,158,11,0.08)",  border: "rgba(245,158,11,0.25)",  icon: "👑", label: "VIP" },
+  Loyal:    { color: "#3b82f6", bg: "rgba(59,130,246,0.08)",  border: "rgba(59,130,246,0.25)",  icon: "💎", label: "Loyal" },
+  Regular:  { color: "#8b5cf6", bg: "rgba(139,92,246,0.08)",  border: "rgba(139,92,246,0.25)",  icon: "🧑", label: "Regular" },
+  "At Risk":{ color: "#f97316", bg: "rgba(249,115,22,0.08)",  border: "rgba(249,115,22,0.25)",  icon: "⚠️", label: "At Risk" },
+  Lost:     { color: "#ef4444", bg: "rgba(239,68,68,0.08)",   border: "rgba(239,68,68,0.25)",   icon: "💔", label: "Lost" },
+  New:      { color: "#10b981", bg: "rgba(16,185,129,0.08)",  border: "rgba(16,185,129,0.25)",  icon: "🌱", label: "New" },
+  All:      { color: "#06b6d4", bg: "rgba(6,182,212,0.08)",   border: "rgba(6,182,212,0.25)",   icon: "🌐", label: "All" },
 };
+
+const QUICK_GOALS = [
+  { label: "Reactivate lost customers",  icon: "💔" },
+  { label: "Boost weekend sales",         icon: "🔥" },
+  { label: "Reward VIP customers",        icon: "👑" },
+  { label: "Clear slow-moving inventory", icon: "📦" },
+  { label: "Win back At Risk buyers",     icon: "⚠️" },
+];
+
+const Spinner = () => (
+  <span style={{ display:"inline-block", width:16, height:16, border:"2px solid #fff", borderTopColor:"transparent", borderRadius:"50%", animation:"cgl-spin 0.6s linear infinite" }} />
+);
 
 export default function AICouponStrategist() {
   const { dark } = useTheme();
   const navigate = useNavigate();
-  const [metrics, setMetrics] = useState(null);
-  const [strategies, setStrategies] = useState([]);
-  const [customGoal, setCustomGoal] = useState("");
-  const [customStrategy, setCustomStrategy] = useState(null);
+  const [metrics, setMetrics]             = useState(null);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [building, setBuilding] = useState(false);
+  const [strategies, setStrategies]       = useState([]);
+  const [generating, setGenerating]       = useState(false);
+  const [customGoal, setCustomGoal]       = useState("");
+  const [customStrategy, setCustomStrategy] = useState(null);
+  const [building, setBuilding]           = useState(false);
+  const [selected, setSelected]           = useState(null); // expanded strategy
 
-  useEffect(() => {
-    fetchMetrics();
-  }, []);
+  useEffect(() => { fetchMetrics(); }, []);
 
   const fetchMetrics = async () => {
+    setLoadingMetrics(true);
     try {
       const res = await api.get("/api/ai/restaurant/coupon-data");
-      if (res.data.success) setMetrics(res.data.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingMetrics(false);
-    }
+      if (res.data?.success) setMetrics(res.data.data);
+    } catch (e) { console.error(e); }
+    finally { setLoadingMetrics(false); }
   };
 
-  const generateStrategies = async () => {
+  const runAnalysis = async () => {
     setGenerating(true);
     setStrategies([]);
+    setCustomStrategy(null);
+    setSelected(null);
     try {
       const res = await api.post("/api/ai/restaurant/coupon-strategies");
-      if (res.data.success) setStrategies(res.data.strategies);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setGenerating(false);
-    }
+      if (res.data?.success) setStrategies(res.data.strategies || []);
+      else toast.error("AI analysis failed. Try again.");
+    } catch { toast.error("Network error during analysis."); }
+    finally { setGenerating(false); }
   };
 
-  const buildCustomStrategy = async () => {
+  const buildCustom = async () => {
     if (!customGoal.trim()) return;
     setBuilding(true);
     setCustomStrategy(null);
     try {
       const res = await api.post("/api/ai/restaurant/custom-coupon-strategy", { goal: customGoal });
-      if (res.data.success) setCustomStrategy(res.data.strategy);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setBuilding(false);
-    }
+      if (res.data?.success) setCustomStrategy(res.data.strategy);
+      else toast.error("Could not generate custom strategy.");
+    } catch { toast.error("Network error."); }
+    finally { setBuilding(false); }
   };
 
-  const applyCoupon = (strategy) => {
+  const pushToStorefront = (strategy) => {
     navigate("/coupons", { state: { suggestedDiscount: strategy.discount, suggestedTitle: strategy.title } });
   };
 
-  const pageBg = dark ? "#0a0a0c" : "#f8fafc";
-  const heroBg = "radial-gradient(circle at top right, rgba(242, 78, 30, 0.15), transparent 70%), linear-gradient(135deg, #111827 0%, #0f172a 100%)";
+  // ── Theme ──
+  const bg    = dark ? "#05070a" : "#f8fafc";
+  const card  = dark ? "rgba(255,255,255,0.025)" : "#ffffff";
+  const bord  = dark ? "rgba(255,255,255,0.07)" : "#e2e8f0";
+  const txt   = dark ? "#f1f5f9" : "#0f172a";
+  const muted = dark ? "#94a3b8" : "#64748b";
+  const surf  = dark ? "rgba(255,255,255,0.04)" : "#f8fafc";
+
+  const KPI = [
+    { icon: "👥", label: "Active Customers", value: metrics?.totalCustomers ?? "—", color: "#3b82f6" },
+    { icon: "💰", label: "Avg Ticket (AED)",  value: metrics?.avgOrderValue  ?? "—", color: "#f59e0b" },
+    { icon: "⚠️", label: "At-Risk Count",     value: metrics?.atRiskCount    ?? "—", color: "#f97316", alert: true },
+    { icon: "⚡", label: "Top Category",      value: metrics?.mostOrderedCategory ?? "—", color: "#10b981" },
+  ];
 
   return (
     <RestaurantLayout>
-      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", maxWidth: 1200, margin: "0 auto", padding: "0 24px 60px" }}>
-        
-        {/* Header Hero */}
-        <div style={{
-          position: "relative", borderRadius: 36, padding: "48px 48px 40px",
-          background: heroBg, marginBottom: 32,
-          boxShadow: dark ? "0 24px 60px rgba(0,0,0,0.4)" : "0 10px 30px rgba(0,0,0,0.05)",
-          border: dark ? "1px solid rgba(255,255,255,0.05)" : "none",
-          overflow: "hidden"
-        }}>
-          {dark && <div style={{ position: "absolute", top: -50, right: -50, width: 250, height: 250, background: "rgba(242, 78, 30, 0.1)", filter: "blur(60px)", borderRadius: "50%" }} />}
-          
-          <div style={{ position: "relative", zIndex: 1 }}>
-            <h4 style={{ fontSize: 13, fontWeight: 900, color: "#ff4e2a", textTransform: "uppercase", letterSpacing: 2, margin: "0 0 12px" }}>Neural Growth Engine</h4>
-            <h1 style={{ fontSize: 38, fontWeight: 900, margin: 0, letterSpacing: "-1.5px", color: "#f8fafc" }}>
-              Coupon Growth Lab
-            </h1>
-            <p style={{ color: dark ? "rgba(248,250,252,0.6)" : "#64748b", fontSize: 16, marginTop: 8, maxWidth: 600 }}>
-              AI analyzes your customers and suggests high-impact coupon strategies 
-              designed to boost retention and order frequency.
-            </p>
+      <div style={{ background: bg, color: txt, minHeight: "100vh", fontFamily: "'Outfit', sans-serif", padding: "40px" }}>
 
-            <div style={{ display: "flex", gap: 12, marginTop: 32 }}>
-              <button 
-                onClick={generateStrategies} 
+        {/* ── Header ── */}
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ fontSize: 11, fontWeight: 900, color: "#10b981", textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>
+            Neural Growth Engine · Growth &amp; AI
+          </div>
+          <h1 style={{ margin: 0, fontSize: 38, fontWeight: 950, letterSpacing: "-1.5px" }}>
+            Coupon <span style={{ color: "#10b981" }}>Growth Lab</span>
+          </h1>
+          <p style={{ margin: "8px 0 0", fontSize: 15, color: muted, fontWeight: 500, maxWidth: 580 }}>
+            AI analyzes your order data and synthesizes targeted coupon strategies designed to boost retention, reactivate churn, and unlock new revenue.
+          </p>
+        </div>
+
+        {/* ── KPI Row ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 32 }}>
+          {KPI.map((k, i) => (
+            <div key={i} style={{ background: card, border: `1px solid ${k.alert ? k.color + "44" : bord}`, borderRadius: 20, padding: "20px 22px", boxShadow: dark ? "0 8px 24px rgba(0,0,0,0.25)" : "0 2px 12px rgba(0,0,0,0.04)", position: "relative", overflow: "hidden" }}>
+              {k.alert && <div style={{ position: "absolute", top: 14, right: 14, width: 8, height: 8, borderRadius: "50%", background: k.color, boxShadow: `0 0 8px ${k.color}` }} />}
+              <div style={{ fontSize: 26, marginBottom: 10 }}>{k.icon}</div>
+              {loadingMetrics
+                ? <div style={{ height: 28, width: "60%", borderRadius: 8, background: surf, marginBottom: 6 }} />
+                : <div style={{ fontSize: 26, fontWeight: 950, letterSpacing: "-0.5px", color: k.color }}>{k.value}</div>
+              }
+              <div style={{ fontSize: 11, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: 1 }}>{k.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Main Grid: Custom Goal + Strategy Results ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 20, marginBottom: 28, alignItems: "start" }}>
+
+          {/* Left: AI Command Center */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+            {/* Run Analysis */}
+            <div style={{ background: card, border: `1px solid ${bord}`, borderRadius: 24, padding: 24, boxShadow: dark ? "0 12px 30px rgba(0,0,0,0.3)" : "0 4px 16px rgba(0,0,0,0.04)" }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: muted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Auto-Analysis</div>
+              <p style={{ fontSize: 13, color: muted, marginBottom: 20, lineHeight: 1.6 }}>
+                Let the AI scan your order history and generate 5 ready-to-deploy coupon strategies.
+              </p>
+              <button
+                onClick={runAnalysis}
                 disabled={generating}
-                style={{
-                  padding: "14px 28px", borderRadius: 16, border: "none",
-                  background: "linear-gradient(135deg, #10b981, #3b82f6)",
-                  color: "white", fontWeight: 800, fontSize: 15, cursor: "pointer",
-                  boxShadow: "0 10px 25px rgba(16, 185, 129, 0.25)",
-                  transition: "all 0.2s", display: "flex", alignItems: "center", gap: 10
-                }}
+                style={{ width: "100%", padding: "14px", borderRadius: 16, border: "none", background: "linear-gradient(135deg, #10b981, #3b82f6)", color: "#fff", fontWeight: 900, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 10px 28px rgba(16,185,129,0.25)", opacity: generating ? 0.7 : 1 }}
               >
-                {generating ? <Spinner /> : "✨ Run Strategic Analysis"}
+                {generating ? <><Spinner /> Analyzing...</> : "✨ Run Strategic Analysis"}
               </button>
             </div>
+
+            {/* Custom Goal */}
+            <div style={{ background: card, border: `1px solid ${bord}`, borderRadius: 24, padding: 24, boxShadow: dark ? "0 12px 30px rgba(0,0,0,0.3)" : "0 4px 16px rgba(0,0,0,0.04)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 12, background: "linear-gradient(135deg, #8b5cf6, #3b82f6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🧠</div>
+                <div>
+                  <div style={{ fontWeight: 900, fontSize: 15 }}>Custom Goal</div>
+                  <div style={{ fontSize: 12, color: muted }}>Describe your objective</div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+                {QUICK_GOALS.map((g, i) => (
+                  <button key={i} onClick={() => setCustomGoal(g.label)}
+                    style={{ padding: "6px 12px", borderRadius: 10, border: `1px solid ${customGoal === g.label ? "#8b5cf6" : bord}`, background: customGoal === g.label ? "#8b5cf620" : "transparent", color: customGoal === g.label ? "#8b5cf6" : muted, fontSize: 11, fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}>
+                    {g.icon} {g.label}
+                  </button>
+                ))}
+              </div>
+
+              <textarea
+                value={customGoal}
+                onChange={e => setCustomGoal(e.target.value)}
+                placeholder="e.g. 'I want to win back customers who haven't ordered in 3 weeks with a surprise offer'"
+                style={{ width: "100%", minHeight: 90, background: surf, border: `1px solid ${bord}`, borderRadius: 14, padding: "14px", color: txt, fontSize: 13, fontWeight: 600, outline: "none", resize: "none", fontFamily: "inherit", lineHeight: 1.6, boxSizing: "border-box" }}
+              />
+              <button
+                onClick={buildCustom}
+                disabled={building || !customGoal.trim()}
+                style={{ marginTop: 12, width: "100%", padding: "13px", borderRadius: 14, border: "none", background: dark ? "#1e293b" : "#0f172a", color: "#fff", fontWeight: 900, fontSize: 14, cursor: building || !customGoal.trim() ? "not-allowed" : "pointer", opacity: building || !customGoal.trim() ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              >
+                {building ? <><Spinner /> Synthesizing...</> : "⚡ Execute Request"}
+              </button>
+            </div>
+
+            {/* Custom Strategy Result */}
+            {customStrategy && (
+              <StrategyCard s={customStrategy} dark={dark} card={card} bord={bord} muted={muted} surf={surf} highlighted onApply={pushToStorefront} />
+            )}
           </div>
-        </div>
 
-        {/* 📊 Metrics Bento Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, marginBottom: 48 }}>
-          {loadingMetrics ? (
-            Array(4).fill(0).map((_, i) => <SkeletonCard key={i} dark={dark} />)
-          ) : (
-            <>
-              <MetricBox title="Active Customers" value={metrics?.totalCustomers || 0} unit="Unique" icon="👥" dark={dark} />
-              <MetricBox title="Avg Ticket Size" value={metrics?.avgOrderValue || 0} unit="AED" icon="💰" dark={dark} />
-              <MetricBox title="Retention Alert" value={metrics?.atRiskCount || 0} unit="At Risk" icon="⚠️" danger dark={dark} />
-              <MetricBox title="Engine Core" value={metrics?.mostOrderedCategory || "N/A"} unit="Popular" icon="⚡" dark={dark} />
-            </>
-          )}
-        </div>
-
-        {/* 📑 Strategies Results */}
-        <div style={{ marginBottom: 60 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>Proposed Strategies</h2>
-            <div style={{ flex: 1, height: 1, background: "var(--border)", opacity: 0.5 }} />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 24 }}>
+          {/* Right: Strategy Results */}
+          <div>
             {generating ? (
-              Array(4).fill(0).map((_, i) => <SkeletonStrategy dark={dark} key={i} />)
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+                {Array(5).fill(0).map((_, i) => (
+                  <div key={i} style={{ height: 280, borderRadius: 24, background: card, border: `1px solid ${bord}`, animation: "cgl-pulse 1.5s ease-in-out infinite", animationDelay: `${i * 0.1}s` }} />
+                ))}
+              </div>
             ) : strategies.length > 0 ? (
-              strategies.map((s, i) => (
-                <PremiumStrategyCard key={i} strategy={s} onApply={applyCoupon} dark={dark} />
-              ))
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                  <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Generated Strategies</h2>
+                  <div style={{ flex: 1, height: 1, background: bord }} />
+                  <span style={{ fontSize: 11, fontWeight: 900, color: "#10b981", background: "rgba(16,185,129,0.1)", padding: "4px 12px", borderRadius: 99, border: "1px solid rgba(16,185,129,0.25)" }}>
+                    {strategies.length} READY
+                  </span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+                  {strategies.map((s, i) => (
+                    <StrategyCard key={i} s={s} dark={dark} card={card} bord={bord} muted={muted} surf={surf} onApply={pushToStorefront}
+                      isExpanded={selected === i} onExpand={() => setSelected(selected === i ? null : i)} />
+                  ))}
+                </div>
+              </>
             ) : (
-              <div style={{ 
-                gridColumn: "1 / -1", padding: "80px 20px", textAlign: "center", 
-                background: dark ? "rgba(255,255,255,0.02)" : "#f8fafc",
-                borderRadius: 32, border: "2px dashed var(--border)"
-              }}>
-                <div style={{ fontSize: 40, marginBottom: 16 }}>🧬</div>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Laboratory Idle</h3>
-                <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>Select 'Run Strategic Analysis' to begin data harvesting.</p>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 360, background: card, border: `2px dashed ${bord}`, borderRadius: 28, padding: 40, textAlign: "center" }}>
+                <div style={{ fontSize: 56, marginBottom: 16 }}>🧬</div>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Laboratory Idle</h3>
+                <p style={{ color: muted, marginTop: 10, fontSize: 14, maxWidth: 320, lineHeight: 1.6 }}>
+                  Click <strong>"✨ Run Strategic Analysis"</strong> to generate AI-crafted coupon strategies based on your real order data.
+                </p>
+                <button onClick={runAnalysis} style={{ marginTop: 24, padding: "13px 28px", borderRadius: 16, border: "none", background: "linear-gradient(135deg, #10b981, #3b82f6)", color: "#fff", fontWeight: 900, fontSize: 14, cursor: "pointer", boxShadow: "0 10px 25px rgba(16,185,129,0.2)" }}>
+                  ✨ Start Analysis
+                </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* 🛠️ AI Command Center (Custom Builder) */}
-        <div style={{
-          background: dark ? "#111827" : "#fff",
-          borderRadius: 32, padding: "32px",
-          border: "1.5px solid var(--border)",
-          boxShadow: dark ? "0 30px 60px rgba(0,0,0,0.5)" : "0 15px 40px rgba(0,0,0,0.05)"
-        }}>
-          <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 24 }}>
-            <div style={{ 
-              width: 48, height: 48, borderRadius: 14, 
-              background: "linear-gradient(135deg, #8B5CF6, #3B82F6)",
-              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20
-            }}>🧠</div>
-            <div>
-              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>AI Command Center</h3>
-              <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>Inject specific business goals into the strategy engine.</p>
-            </div>
-          </div>
-
-          <div style={{ 
-            background: dark ? "rgba(0,0,0,0.3)" : "#f9fafb", 
-            borderRadius: 20, padding: "8px", border: "1px solid var(--border)",
-            display: "flex", gap: 8 
-          }}>
-            <input 
-              value={customGoal}
-              onChange={(e) => setCustomGoal(e.target.value)}
-              placeholder="Request specific strategy (e.g. 'Drive weekend breakfast orders' or 'Reactivate VIPs')"
-              style={{
-                flex: 1, background: "transparent", border: "none", outline: "none",
-                padding: "16px 20px", color: "inherit", fontSize: 15, fontWeight: 600
-              }}
-            />
-            <button 
-              onClick={buildCustomStrategy}
-              disabled={building || !customGoal.trim()}
-              style={{
-                background: dark ? "#f8fafc" : "#0f172a",
-                color: dark ? "#0f172a" : "#fff",
-                padding: "0 32px", borderRadius: 14, border: "none",
-                fontWeight: 800, cursor: "pointer", fontSize: 14,
-                opacity: (building || !customGoal.trim()) ? 0.5 : 1
-              }}
-            >
-              {building ? "Synthesizing..." : "Execute Request"}
-            </button>
-          </div>
-
-          {customStrategy && (
-            <div style={{ marginTop: 32, animation: "fadeIn 0.5s ease-out" }}>
-              <PremiumStrategyCard strategy={customStrategy} onApply={applyCoupon} dark={dark} highlighted />
-            </div>
-          )}
-        </div>
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .strategy-hover:hover { transform: translateY(-8px); boxShadow: 0 20px 40px rgba(0,0,0,0.12) !important; }
-      `}</style>
-    </div>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900;950&display=swap');
+          @keyframes cgl-spin { to { transform: rotate(360deg); } }
+          @keyframes cgl-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+          .cgl-card:hover { transform: translateY(-4px); }
+        `}</style>
+      </div>
     </RestaurantLayout>
   );
 }
 
-function MetricBox({ title, value, unit, icon, danger, dark }) {
-  return (
-    <div style={{
-      background: dark ? "rgba(255,255,255,0.03)" : "white",
-      borderRadius: 24, padding: "24px", 
-      border: `1px solid ${danger ? "rgba(244,63,94,0.3)" : "var(--border)"}`,
-      boxShadow: dark ? "0 8px 30px rgba(0,0,0,0.2)" : "0 4px 15px rgba(0,0,0,0.02)"
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-        <span style={{ fontSize: 24 }}>{icon}</span>
-        {danger && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f43f5e" }} />}
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 950, letterSpacing: "-1px", marginBottom: 4 }}>{value}</div>
-      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-        {title} <span style={{ opacity: 0.5, fontSize: 10 }}>({unit})</span>
-      </div>
-    </div>
-  );
-}
+// ── Strategy Card ────────────────────────────────────────────────────────────
+function StrategyCard({ s, dark, card, bord, muted, surf, highlighted, onApply, isExpanded, onExpand }) {
+  const meta = SEGMENT_META[s?.segment] || SEGMENT_META.All;
+  const [hovered, setHovered] = useState(false);
 
-function PremiumStrategyCard({ strategy, onApply, dark, highlighted }) {
-  const palette = SEGMENT_PALETTE[strategy.segment] || SEGMENT_PALETTE.Regular;
-  
   return (
-    <div className="strategy-hover" style={{
-      background: dark ? (highlighted ? "rgba(139, 92, 246, 0.08)" : "rgba(255,255,255,0.03)") : (highlighted ? "#f5f3ff" : "white"),
-      borderRadius: 28, padding: "28px",
-      border: `1px solid ${highlighted ? "#8B5CF6" : "var(--border)"}`,
-      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-      display: "flex", flexDirection: "column", height: "100%",
-      boxShadow: highlighted ? "0 20px 40px rgba(139, 92, 246, 0.15)" : "0 4px 15px rgba(0,0,0,0.03)"
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-        <span style={{ 
-          padding: "6px 16px", borderRadius: 99, fontSize: 11, fontWeight: 900,
-          background: palette.soft, color: palette.main, border: `1px solid ${palette.border}`,
-          textTransform: "uppercase", letterSpacing: "0.5px"
-        }}>{strategy.segment}</span>
-        <span style={{ fontSize: 11, fontWeight: 900, color: "var(--muted)", opacity: 0.5 }}>COUPON_STRAT_v1</span>
+    <div
+      className="cgl-card"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: highlighted ? meta.bg : card,
+        border: `1.5px solid ${highlighted || hovered ? meta.color + "60" : bord}`,
+        borderRadius: 24, padding: 24,
+        cursor: "pointer", transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
+        boxShadow: hovered ? `0 20px 40px rgba(0,0,0,${dark ? "0.4" : "0.08"}), 0 0 0 1px ${meta.color}22` : (dark ? "0 4px 16px rgba(0,0,0,0.2)" : "0 2px 12px rgba(0,0,0,0.04)"),
+        display: "flex", flexDirection: "column", gap: 16,
+        position: "relative", overflow: "hidden"
+      }}
+    >
+      {/* Accent bar */}
+      <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 3, background: `linear-gradient(90deg, ${meta.color}, ${meta.color}44)` }} />
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", paddingTop: 4 }}>
+        <span style={{ padding: "5px 12px", borderRadius: 99, fontSize: 11, fontWeight: 900, background: meta.bg, color: meta.color, border: `1px solid ${meta.border}`, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          {meta.icon} {s?.segment || "All"}
+        </span>
+        {highlighted && (
+          <span style={{ fontSize: 10, fontWeight: 900, color: "#8b5cf6", background: "rgba(139,92,246,0.1)", padding: "3px 10px", borderRadius: 99 }}>CUSTOM</span>
+        )}
       </div>
 
-      <h4 style={{ fontSize: 20, fontWeight: 900, margin: "0 0 16px", lineHeight: 1.2 }}>{strategy.title}</h4>
-      
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
-        <div style={{ background: dark ? "rgba(0,0,0,0.2)" : "#f9fafb", padding: "12px", borderRadius: 16 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", marginBottom: 4 }}>DISCOUNT</div>
-          <div style={{ fontSize: 16, fontWeight: 900, color: "#10b981" }}>{strategy.discount}</div>
+      {/* Title */}
+      <h4 style={{ margin: 0, fontSize: 17, fontWeight: 900, lineHeight: 1.3 }}>{s?.title || "Untitled Strategy"}</h4>
+
+      {/* Stats row */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ background: surf, borderRadius: 14, padding: "12px 14px" }}>
+          <div style={{ fontSize: 9, fontWeight: 900, color: muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Discount</div>
+          <div style={{ fontSize: 18, fontWeight: 950, color: "#10b981" }}>{s?.discount || "—"}</div>
         </div>
-        <div style={{ background: dark ? "rgba(0,0,0,0.2)" : "#f9fafb", padding: "12px", borderRadius: 16 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", marginBottom: 4 }}>OPTIMAL WINDOW</div>
-          <div style={{ fontSize: 14, fontWeight: 900 }}>{strategy.bestTime}</div>
+        <div style={{ background: surf, borderRadius: 14, padding: "12px 14px" }}>
+          <div style={{ fontSize: 9, fontWeight: 900, color: muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Best Window</div>
+          <div style={{ fontSize: 13, fontWeight: 800 }}>{s?.bestTime || "Anytime"}</div>
         </div>
       </div>
 
-      <div style={{ 
-        flex: 1, padding: "16px", borderRadius: 18, 
-        background: dark ? "rgba(255,255,255,0.02)" : "#f8fafc",
-        border: dark ? "1px solid rgba(255,255,255,0.05)" : "1px solid #edf2f7",
-        marginBottom: 24, display: "flex", gap: 12
-      }}>
-        <span style={{ fontSize: 18 }}>💡</span>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", fontWeight: 600, fontStyle: "italic", lineHeight: 1.5 }}>
-          {strategy.reason}
-        </p>
+      {/* Reason */}
+      <div style={{ background: surf, borderRadius: 14, padding: "14px 16px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
+        <p style={{ margin: 0, fontSize: 13, color: muted, fontWeight: 600, lineHeight: 1.6 }}>{s?.reason || "AI-recommended strategy based on customer behavior."}</p>
       </div>
 
-      <button 
-        onClick={() => onApply(strategy)}
-        style={{
-          width: "100%", padding: "16px", borderRadius: 18, 
-          border: "none",
-          background: dark ? "#334155" : "#0f172a",
-          color: "white", fontWeight: 800, fontSize: 14, cursor: "pointer",
-          transition: "background 0.2s"
-        }}
+      {/* CTA */}
+      <button
+        onClick={() => onApply(s)}
+        style={{ width: "100%", padding: "14px", borderRadius: 16, border: "none", background: meta.color, color: "#fff", fontWeight: 900, fontSize: 14, cursor: "pointer", boxShadow: `0 8px 20px ${meta.color}33`, transition: "opacity 0.2s" }}
+        onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
+        onMouseLeave={e => e.currentTarget.style.opacity = "1"}
       >
-        Push to Storefront
+        🚀 Push to Storefront
       </button>
-    </div>
-  );
-}
-
-function Spinner() {
-  return <div style={{ width: 16, height: 16, border: "2px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }}>
-    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-  </div>;
-}
-
-function SkeletonCard({ dark }) {
-  return (
-    <div style={{ background: dark ? "rgba(255,255,255,0.02)" : "#f5f5f5", borderRadius: 24, padding: "24px", height: 140 }}>
-      <div style={{ width: 30, height: 30, borderRadius: 8, background: dark ? "rgba(255,255,255,0.05)" : "#eee", marginBottom: 20 }}></div>
-      <div style={{ width: "60%", height: 30, borderRadius: 6, background: dark ? "rgba(255,255,255,0.05)" : "#eee", marginBottom: 8 }}></div>
-      <div style={{ width: "40%", height: 12, borderRadius: 4, background: dark ? "rgba(255,255,255,0.05)" : "#eee" }}></div>
-    </div>
-  );
-}
-
-function SkeletonStrategy({ dark }) {
-  return (
-    <div style={{ background: dark ? "rgba(255,255,255,0.02)" : "#f5f5f5", borderRadius: 28, padding: "28px", height: 320, border: "1px solid var(--border)" }}>
-      <div style={{ width: "30%", height: 20, borderRadius: 99, background: dark ? "rgba(255,255,255,0.05)" : "#eee", marginBottom: 24 }}></div>
-      <div style={{ width: "90%", height: 32, borderRadius: 8, background: dark ? "rgba(255,255,255,0.05)" : "#eee", marginBottom: 24 }}></div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
-        <div style={{ height: 50, borderRadius: 16, background: dark ? "rgba(255,255,255,0.05)" : "#eee" }}></div>
-        <div style={{ height: 50, borderRadius: 16, background: dark ? "rgba(255,255,255,0.05)" : "#eee" }}></div>
-      </div>
-      <div style={{ width: "100%", height: 80, borderRadius: 18, background: dark ? "rgba(255,255,255,0.05)" : "#eee" }}></div>
     </div>
   );
 }
