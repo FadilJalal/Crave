@@ -297,7 +297,7 @@ const MyOrders = () => {
               const isCancelled    = (order.status || '').toLowerCase().trim() === 'cancelled';
               const minutesElapsed = (Date.now() - new Date(order.createdAt).getTime()) / 60000;
               const secondsLeft    = Math.max(0, Math.round((5 * 60) - (minutesElapsed * 60)));
-              const isCancellable  = order.status === 'Food Processing' && minutesElapsed <= 5;
+              const isCancellable  = (order.status === 'Order Placed' || order.status === 'Food Processing') && minutesElapsed <= 5;
               const displayTotal   = getOrderDisplayTotal(order);
 
               const stripeClass = isDelivered ? 'stripe-delivered' : isCancelled ? 'stripe-cancelled' : '';

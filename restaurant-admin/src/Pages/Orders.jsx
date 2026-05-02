@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
+import socket, { connectRestaurantSocket, disconnectSocket } from "../utils/socket.js";
 import { toast } from "react-toastify";
 import { useTheme } from "../ThemeContext";
 import "./Orders.css";
@@ -70,8 +71,6 @@ export default function Orders() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const knownIdsRef = useRef(null);
   const audioCtxRef = useRef(null);
-  const intervalRef = useRef(null);
-
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [datePreset, setDatePreset] = useState("all");
@@ -177,8 +176,19 @@ export default function Orders() {
 
   useEffect(() => {
     loadOrders(false);
-    intervalRef.current = setInterval(() => loadOrders(true), 8000);
-    return () => clearInterval(intervalRef.current);
+
+    try {
+      const info = JSON.parse(localStorage.getItem("restaurantInfo"));
+      if (info && info._id) {
+        connectRestaurantSocket(info._id);
+        socket.on("newOrder", () => loadOrders(true));
+      }
+    } catch (err) {}
+
+    return () => {
+      socket.off("newOrder");
+      disconnectSocket();
+    };
   }, [loadOrders]);
 
   const allCities = useMemo(() => {

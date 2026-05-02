@@ -6,17 +6,12 @@ import reviewModel from "../models/reviewModel.js";
 import restaurantModel from "../models/restaurantModel.js";
 import userModel from "../models/userModel.js";
 import { analyzeSentiment, getDietaryTags, estimateCalories, MOOD_MAP } from "../utils/aiHelpers.js";
+import { groqChat, groqMoodChat } from "../utils/groqClient.js";
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
-const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"; // kept for rerankMoodWithGroq internal use
 
-const extractGroqApiKey = (req) => {
-  const headerKey = req.get("x-groq-api-key") || "";
-  const authKey = (req.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  const bodyKey = (req.body?.groqApiKey || "").trim();
-  const moodEnvKey = process.env.GROQ_MOOD_API_KEY || "";
-  return [headerKey, authKey, bodyKey, moodEnvKey].map((k) => String(k || "").trim()).find(Boolean) || "";
-};
 
 const rerankMoodWithGroq = async ({ foods, mood, cfg, apiKey }) => {
   const candidates = foods.slice(0, 40).map((f) => ({
@@ -87,7 +82,7 @@ router.post("/smart-search", async (req, res) => {
     const { query, restaurantId } = req.body;
     if (!query) return res.json({ success: false, message: "Query required" });
     const q = query.toLowerCase().trim();
-    const apiKey = extractGroqApiKey(req);
+    const apiKey = process.env.GROQ_MOOD_API_KEY || process.env.GROQ_API_KEY || "";
 
     let parsedParams = {
       maxPrice: null, minPrice: null,
@@ -116,23 +111,14 @@ router.post("/smart-search", async (req, res) => {
           `User Query: "${query}"`
         ].join("\n");
 
-        const resp = await fetch(GROQ_CHAT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model: "llama-3.1-8b-instant",
-            temperature: 0.1,
-            response_format: { type: "json_object" },
+        try {
+          const raw = await groqMoodChat({
             messages: [
               { role: "system", content: "Return valid JSON only." },
               { role: "user", content: prompt },
             ],
-          }),
-        });
-
-        if (resp.ok) {
-          const data = await resp.json();
-          const raw = data?.choices?.[0]?.message?.content || "{}";
+            temperature: 0.1,
+          });
           const aiParsed = JSON.parse(raw);
           parsedParams = {
             maxPrice: Number(aiParsed.maxPrice) || maxP,
@@ -374,7 +360,7 @@ router.post("/mood", async (req, res) => {
 
     let scored = [];
     let cfg = { label: "Custom Mood", categories: [], keywords: /.*/ };
-    const requestApiKey = extractGroqApiKey(req);
+    const requestApiKey = process.env.GROQ_MOOD_API_KEY || process.env.GROQ_API_KEY || "";
 
     if (customMood) {
       cfg.label = `"${customMood}"`;
@@ -486,7 +472,7 @@ router.post("/upsell", async (req, res) => {
 
     if (!candidates.length) return res.json({ success: true, data: [] });
 
-    const apiKey = extractGroqApiKey(req);
+    const apiKey = process.env.GROQ_MOOD_API_KEY || process.env.GROQ_API_KEY || "";
     if (!apiKey) {
       // Logic Fallback: Just return best items from the same restaurant
       return res.json({ success: true, data: candidates.slice(0, 3) });
@@ -506,20 +492,11 @@ router.post("/upsell", async (req, res) => {
       '- Return ONLY strict JSON: {"pairings":[{"id":"string","reason":"string"}]}'
     ].join("\n");
 
-    const resp = await fetch(GROQ_CHAT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        temperature: 0.4,
-        response_format: { type: "json_object" },
-        messages: [{ role: "system", content: "Return valid JSON pairing recommendations." }, { role: "user", content: prompt }],
-      }),
+    const raw = await groqMoodChat({
+      messages: [{ role: "system", content: "Return valid JSON pairing recommendations." }, { role: "user", content: prompt }],
+      temperature: 0.4,
     });
-
-    if (!resp.ok) throw new Error("Groq Pairing Failed");
-    const data = await resp.json();
-    const parsed = JSON.parse(data?.choices?.[0]?.message?.content || '{"pairings":[]}');
+    const parsed = JSON.parse(raw || '{"pairings":[]}');
 
     const results = (parsed.pairings || [])
       .map(p => {
@@ -543,7 +520,7 @@ router.get("/review-summary/:restaurantId", async (req, res) => {
       return res.json({ success: true, data: { totalReviews: 0, avgRating: 0, summary: "No reviews yet", positiveThemes: [], negativeThemes: [], aiGenerated: false } });
     }
 
-    const apiKey = extractGroqApiKey(req);
+    const apiKey = process.env.GROQ_API_KEY || "";
     if (!apiKey) {
       const ratingAvg = Math.round(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length * 10) / 10;
       return res.json({ success: true, data: { totalReviews: reviews.length, avgRating: ratingAvg, summary: "Enable Groq API for AI summaries", positiveThemes: [], negativeThemes: [], aiGenerated: false } });
@@ -558,23 +535,13 @@ router.get("/review-summary/:restaurantId", async (req, res) => {
       reviewTexts,
     ].join("\n");
 
-    const resp = await fetch(GROQ_CHAT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        temperature: 0.3,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: "Return valid JSON only." },
-          { role: "user", content: prompt },
-        ],
-      }),
+    const raw = await groqChat({
+      messages: [
+        { role: "system", content: "Return valid JSON only." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.3,
     });
-
-    if (!resp.ok) throw new Error(`Groq failed (${resp.status})`);
-    const data = await resp.json();
-    const raw = data?.choices?.[0]?.message?.content || "{}";
     const parsed = JSON.parse(raw);
 
     // Filter out placeholder values
@@ -630,9 +597,10 @@ router.post("/recommendations", async (req, res) => {
     const { weather, budget, prefDietary, prefSpicy, token } = req.body;
     let userId = null;
     
-    // Optional Auth
-    if (token) {
-       try { const decoded = jwt.verify(token, process.env.JWT_SECRET); userId = decoded.id; } catch(err) {}
+    // Optional Auth — read token from header only, never from body
+    const headerToken = req.headers.token;
+    if (headerToken) {
+      try { const decoded = jwt.verify(headerToken, process.env.JWT_SECRET); userId = decoded.id; } catch(err) {}
     }
 
     // 1. GATHER CONTEXT
@@ -658,7 +626,7 @@ router.post("/recommendations", async (req, res) => {
     const favorites = Object.entries(itemCounts).sort((a,b)=>b[1]-a[1]).slice(0, 5).map(e => e[0]);
 
     // 3. ASK GROQ TO BRAIN-REORGANIZE THE MENU
-    const apiKey = extractGroqApiKey(req);
+    const apiKey = process.env.GROQ_MOOD_API_KEY || process.env.GROQ_API_KEY || "";
     
     // Sample diverse foods
     const sampled = allFoods.sort(() => 0.5 - Math.random()).slice(0, 40).map(f => ({
@@ -682,19 +650,11 @@ router.post("/recommendations", async (req, res) => {
       JSON.stringify(sampled)
     ].join("\n");
 
-    const resp = await fetch(GROQ_CHAT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        temperature: 0.6,
-        response_format: { type: "json_object" },
-        messages: [{ role: "system", content: "Valid JSON only." }, { role: "user", content: prompt }],
-      }),
+    const raw = await groqMoodChat({
+      messages: [{ role: "system", content: "Valid JSON only." }, { role: "user", content: prompt }],
+      temperature: 0.6,
     });
-
-    const aiData = await resp.json();
-    const parsed = JSON.parse(aiData?.choices?.[0]?.message?.content || '{"sections":[]}');
+    const parsed = JSON.parse(raw || '{"sections":[]}');
 
     // 4. MAP AND ENRICH
     const finalSections = (parsed.sections || []).map(sec => {
@@ -727,7 +687,7 @@ router.post("/nutrition-scan", authMiddleware, async (req, res) => {
     }
 
     const { healthGoal, allergies } = user;
-    const apiKey = extractGroqApiKey(req);
+    const apiKey = process.env.GROQ_MOOD_API_KEY || process.env.GROQ_API_KEY || "";
 
     // 2. Logic-based pre-scoring
     const foods = await foodModel.find({ _id: { $in: items } }).lean();
@@ -781,20 +741,12 @@ router.post("/nutrition-scan", authMiddleware, async (req, res) => {
            "Return ONLY JSON: {\"reasons\":[{\"name\":\"FoodName\",\"reason\":\"string\"}]}"
          ].join("\n");
 
-         const resp = await fetch(GROQ_CHAT_URL, {
-           method: "POST",
-           headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-           body: JSON.stringify({
-             model: "llama-3.1-8b-instant",
-             temperature: 0.3,
-             response_format: { type: "json_object" },
-             messages: [{ role: "system", content: "Nutrition expert role." }, { role: "user", content: prompt }],
-           }),
+         const aiRaw = await groqMoodChat({
+           messages: [{ role: "system", content: "Nutrition expert role." }, { role: "user", content: prompt }],
+           temperature: 0.3,
          });
-
-         if (resp.ok) {
-           const aiData = await resp.json();
-           const parsed = JSON.parse(aiData?.choices?.[0]?.message?.content || '{"reasons":[]}');
+         if (aiRaw) {
+           const parsed = JSON.parse(aiRaw || '{"reasons":[]}');
            (parsed.reasons || []).forEach(r => {
               const match = matches.find(m => {
                 const f = foods.find(food => String(food._id) === String(m.foodId));

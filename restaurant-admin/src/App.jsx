@@ -4,6 +4,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedFeature from "./components/ProtectedFeature";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // ── Page skeleton fallback ────────────────────────────────────────────────────
 const PageSkeleton = () => (
@@ -79,7 +80,7 @@ export default function App() {
           <Route path="/edit-food/:id" element={<ProtectedRoute><ProtectedFeature featureName="menu"><EditFood /></ProtectedFeature></ProtectedRoute>} />
           <Route path="/ai-insights" element={<ProtectedRoute><ProtectedFeature featureName="aiInsights"><AIInsights /></ProtectedFeature></ProtectedRoute>} />
           <Route path="/ai-labor-optimizer" element={<ProtectedRoute><ProtectedFeature featureName="aiLaborOptimization"><AILaborOptimizer /></ProtectedFeature></ProtectedRoute>} />
-          <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><AICustomerSegmentation /></ProtectedFeature></ProtectedRoute>} />
+          <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><ErrorBoundary><AICustomerSegmentation /></ErrorBoundary></ProtectedFeature></ProtectedRoute>} />
           <Route path="/coupons"    element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><Promos /></ProtectedFeature></ProtectedRoute>} />
           <Route path="/coupon-strategist" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><AICouponStrategist /></ProtectedFeature></ProtectedRoute>} />
 

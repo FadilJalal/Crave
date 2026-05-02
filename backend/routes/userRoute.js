@@ -1,10 +1,11 @@
 import express from 'express';
 import { googleLogin, loginUser, registerUser, getProfile, updateProfile, getAddresses, addAddress, deleteAddress, setDefaultAddress, getHealthProfile, updateHealthProfile } from '../controllers/userController.js';
 import authMiddleware from '../middleware/auth.js';
+import { validate, schemas } from '../middleware/validate.js';
 const userRouter = express.Router();
 
-userRouter.post("/register", registerUser);
-userRouter.post("/login", loginUser);
+userRouter.post("/register", validate(schemas.register), registerUser);
+userRouter.post("/login", validate(schemas.login), loginUser);
 userRouter.post("/google-login", googleLogin);
 userRouter.get("/profile", authMiddleware, getProfile);
 userRouter.put("/profile", authMiddleware, updateProfile);

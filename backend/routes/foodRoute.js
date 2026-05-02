@@ -4,6 +4,7 @@ import multer from "multer";
 import adminAuth from "../middleware/adminAuth.js";
 import authMiddleware from "../middleware/auth.js";
 import restaurantAuth from "../middleware/restaurantAuth.js";
+import { validate, schemas } from "../middleware/validate.js";
 import { listFood } from "../controllers/foodController.js";
 import foodModel from "../models/foodModel.js";
 import inventoryModel from "../models/inventoryModel.js";
@@ -57,7 +58,7 @@ foodRouter.get("/list/public", async (req, res) => {
 foodRouter.get("/list", adminAuth, listFood);
 
 // ── ADMIN: add food (superadmin — restaurantId sent in body) ───────────────
-foodRouter.post("/add", adminAuth, upload.single("image"), async (req, res) => {
+foodRouter.post("/add", adminAuth, upload.single("image"), validate(schemas.createFood), async (req, res) => {
   try {
     if (!req.file) return res.json({ success: false, message: "Image is required" });
 

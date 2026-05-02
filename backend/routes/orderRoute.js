@@ -2,6 +2,7 @@ import express from "express";
 import authMiddleware from "../middleware/auth.js";
 import adminAuth from "../middleware/adminAuth.js";
 import restaurantAuth from "../middleware/restaurantAuth.js";
+import { validate, schemas } from "../middleware/validate.js";
 
 import {
   listOrders,
@@ -22,7 +23,7 @@ const orderRouter = express.Router();
 
 // Customer routes
 orderRouter.post("/userorders", authMiddleware, userOrders);
-orderRouter.post("/place", authMiddleware, placeOrder);
+orderRouter.post("/place", authMiddleware, validate(schemas.placeOrder), placeOrder);
 orderRouter.post("/placecod", authMiddleware, placeOrderCod);
 orderRouter.post("/verify", verifyOrder);
 orderRouter.post("/cancel", authMiddleware, cancelOrder);

@@ -6,6 +6,7 @@ import restaurantModel from "../models/restaurantModel.js";
 import foodModel from "../models/foodModel.js";
 import { isRestaurantOpen } from "../utils/restaurantHours.js";
 import { deductInventoryForOrder, restoreInventoryForCancelledOrder } from "./inventoryController.js";
+import { emitToUser, emitToRestaurant } from "../utils/socketManager.js";
 
 // ✅ FIXED: lazy-init Stripe so a missing key doesn't crash the server at startup
 const getStripe = () => {
@@ -423,6 +424,13 @@ const placeOrder = async (req, res) => {
         }
 
         await newOrder.save();
+        emitToRestaurant(String(newOrder.restaurantId), "newOrder", {
+          orderId: newOrder._id,
+          items: newOrder.items,
+          amount: newOrder.amount,
+          address: newOrder.address,
+          createdAt: newOrder.createdAt,
+        });
         return res.json({ success: true, paid: true, orderId: newOrder._id });
       } else {
         return res.json({ success: false, message: 'Card payment failed', paymentIntentStatus: paymentIntent.status });
@@ -605,6 +613,13 @@ const placeOrderCod = async (req, res) => {
       }
     }
 
+    emitToRestaurant(String(newOrder.restaurantId), "newOrder", {
+      orderId: newOrder._id,
+      items: newOrder.items,
+      amount: newOrder.amount,
+      address: newOrder.address,
+      createdAt: newOrder.createdAt,
+    });
     res.json({ success: true, message: "Order Placed Successfully", orderId: newOrder._id });
   } catch (error) {
     console.error("[placeOrderCod] Error:", error.message);
@@ -924,6 +939,11 @@ const updateStatus = async (req, res) => {
     }
 
     await order.save();
+    emitToUser(String(order.userId), "order:statusUpdate", {
+      orderId: order._id,
+      status: order.status,
+      updatedAt: new Date(),
+    });
 
     res.json({ success: true, message: "Status Updated" });
   } catch (error) {
@@ -998,6 +1018,13 @@ const verifyOrder = async (req, res) => {
                 console.error("[verifyOrder] Pioneer retroactive update failed:", e);
             }
         }
+        emitToRestaurant(String(order.restaurantId), "newOrder", {
+          orderId: order._id,
+          items: order.items,
+          amount: order.amount,
+          address: order.address,
+          createdAt: order.createdAt,
+        });
       }
       res.json({ success: true, message: "Payment Successful" });
     } else {
@@ -1084,6 +1111,11 @@ const restaurantUpdateStatus = async (req, res) => {
     }
 
     await order.save();
+    emitToUser(String(order.userId), "order:statusUpdate", {
+      orderId: order._id,
+      status: order.status,
+      updatedAt: new Date(),
+    });
 
     res.json({ success: true, message: "Status Updated" });
   } catch (error) {
@@ -1130,6 +1162,8 @@ export {
   restaurantUpdateStatus,
   getOrderById,
   cancelOrder,
+  calcDeliveryFee,
+  applySharedFeeIfValid,
 };
 
 // ── CANCEL ORDER (customer) ────────────────────────────────────────────────
@@ -1171,6 +1205,11 @@ async function cancelOrder(req, res) {
 
     order.status = "Cancelled";
     await order.save();
+    emitToUser(String(order.userId), "order:statusUpdate", {
+      orderId: order._id,
+      status: order.status,
+      updatedAt: new Date(),
+    });
 
     // ── Restore inventory for cancelled order ────────────────────────────────
     try {

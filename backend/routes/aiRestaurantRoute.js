@@ -8,10 +8,9 @@ import userModel from "../models/userModel.js";
 import restaurantModel from "../models/restaurantModel.js";
 import campaignModel from "../models/campaignModel.js";
 import { requireFeature } from "../middleware/featureAccess.js";
+import { groqChat } from "../utils/groqClient.js";
 
 const router = express.Router();
-const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
 
 // AI-powered review reply generation
 router.post("/generate-review-reply", restaurantAuth, async (req, res) => {
@@ -36,24 +35,11 @@ router.post("/generate-review-reply", restaurantAuth, async (req, res) => {
       },
     ];
 
-    const resp = await fetch(GROQ_CHAT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        temperature: 0.7,
-        max_tokens: 250,
-        messages,
-      }),
+    const raw = await groqChat({
+      messages,
+      temperature: 0.7,
     });
-
-    if (!resp.ok) throw new Error("Groq generation failed.");
-
-    const data = await resp.json();
-    const reply = String(data?.choices?.[0]?.message?.content || "").trim().replace(/^"|"$/g, '');
+    const reply = String(raw || "").trim().replace(/^"|"$/g, '');
 
     res.json({ success: true, reply });
   } catch (err) {
@@ -173,16 +159,7 @@ async function getGroqSegmentInsights({ segmentStats, metrics }) {
     },
   };
 
-  const resp = await fetch(GROQ_CHAT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      temperature: 0.2,
-      max_tokens: 650,
+    const content = await groqChat({
       messages: [
         {
           role: "system",
@@ -194,16 +171,10 @@ async function getGroqSegmentInsights({ segmentStats, metrics }) {
           content: JSON.stringify(prompt),
         },
       ],
-    }),
-  });
+      temperature: 0.2,
+    });
 
-  if (!resp.ok) {
-    throw new Error(`Groq failed (${resp.status})`);
-  }
-
-  const data = await resp.json();
-  const content = data?.choices?.[0]?.message?.content || "";
-  const parsed = parseFirstJsonObject(content);
+    const parsed = parseFirstJsonObject(content);
 
   if (!parsed || typeof parsed !== "object") {
     throw new Error("Groq returned invalid JSON payload");
@@ -248,37 +219,23 @@ async function generateGroqCampaignScript({ restaurantName, segmentType, support
     },
   };
 
-  const resp = await fetch(GROQ_CHAT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      temperature: 0.7,
-      max_tokens: 180,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a restaurant campaign copywriter. Return only the final message as plain text, no preface, no markdown.",
-        },
-        {
-          role: "user",
-          content: JSON.stringify(prompt),
-        },
-      ],
-    }),
+  const content = await groqChat({
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a restaurant campaign copywriter. Return only the final message as plain text, no preface, no markdown.",
+      },
+      {
+        role: "user",
+        content: JSON.stringify(prompt),
+      },
+    ],
+    temperature: 0.7,
   });
 
-  if (!resp.ok) {
-    throw new Error(`Groq failed (${resp.status})`);
-  }
-
-  const data = await resp.json();
-  const content = String(data?.choices?.[0]?.message?.content || "").trim();
-  if (!content) {
+  const script = String(content || "").trim();
+  if (!script) {
     throw new Error("Groq returned empty script");
   }
 
@@ -724,24 +681,10 @@ router.post("/generate-campaign-ai", restaurantAuth, async (req, res) => {
       },
     ];
 
-    const resp = await fetch(GROQ_CHAT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        temperature: 0.8,
-        max_tokens: 500,
-        messages,
-      }),
+    const content = await groqChat({
+      messages,
+      temperature: 0.8,
     });
-
-    if (!resp.ok) throw new Error("Groq generation failed.");
-
-    const data = await resp.json();
-    const content = String(data?.choices?.[0]?.message?.content || "").trim();
     const parsed = parseFirstJsonObject(content);
 
     if (!parsed || !parsed.subject) {

@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import { StoreContext } from '../../Context/StoreContext';
 import LiveDeliveryMap from '../../components/LiveDeliveryMap/LiveDeliveryMap';
 import { toast } from 'react-toastify';
@@ -41,7 +42,6 @@ const stepIndex = (status) => {
   return 0;
 };
 
-const POLL_INTERVAL = 3000; // 3 seconds for "Perfect" real-time feel
 
 const getOrderItemsSubtotal = (order) =>
   (order?.items || []).reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.quantity) || 0)), 0);
@@ -67,8 +67,6 @@ const OrderTracking = () => {
   const [error, setError]           = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [pulsing, setPulsing]       = useState(false);
-  const pollRef = useRef(null);
-
   const prevStatusRef = useRef(null);
 
   const fetchOrder = async (silent = false) => {
@@ -92,17 +90,21 @@ const OrderTracking = () => {
   useEffect(() => {
     if (!token) return;
     fetchOrder();
-    pollRef.current = setInterval(() => {
-      setOrder(prev => {
-        if ((prev?.status || '').toLowerCase().trim() === 'delivered') {
-          clearInterval(pollRef.current);
-        }
-        return prev;
-      });
-      fetchOrder(true);
-    }, POLL_INTERVAL);
-    return () => clearInterval(pollRef.current);
   }, [token, orderId]);
+
+  useEffect(() => {
+    if (order?.userId) {
+      const socket = io(url);
+      socket.emit("register:user", order.userId);
+      socket.on("order:statusUpdate", (data) => {
+        if (data.orderId === orderId) {
+          setOrder(prev => ({ ...prev, status: data.status, updatedAt: data.updatedAt }));
+          playNotificationSound();
+        }
+      });
+      return () => socket.disconnect();
+    }
+  }, [order?.userId, orderId, url]);
 
   const step         = order ? stepIndex(order.status) : 0;
   const isDelivered  = step === 4;
