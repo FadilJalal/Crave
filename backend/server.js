@@ -1,9 +1,13 @@
 import "dotenv/config";
+import http from "http";
 import express from "express";
+import { initSocket } from "./utils/socketManager.js";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import compression from "compression";
+import mongoSanitize from "express-mongo-sanitize";
+import mongoose from "mongoose";
 import authRouter from "./routes/authRoute.js";
 import recommendationRouter from "./routes/recommendationRoute.js";
 import { connectDB } from "./config/db.js";
@@ -103,6 +107,9 @@ app.use("/api/subscription/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
+// ── NoSQL injection protection ───────────────────────────────────────────────
+app.use(mongoSanitize());
+
 // ── File upload (multer) ──────────────────────────────────────────────────────
 // Configured in individual route handlers to work with FormData
 // NOTE: multer is NOT applied globally — it's attached to specific routes
@@ -167,6 +174,16 @@ app.get("/", (req, res) => {
   res.json({ success: true, message: "API is running" });
 });
 
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    env: process.env.NODE_ENV || "development",
+  });
+});
+
 // ── API routes ────────────────────────────────────────────────────────────────
 app.use("/api/user",            authLimiter, userRouter);
 app.use("/api/food",            foodRouter);
@@ -208,7 +225,12 @@ app.use((err, req, res, next) => {
   }
 });
 
-app.listen(port, () => {
+const httpServer = http.createServer(app);
+
+const allowedOriginsForSocket = (process.env.ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:5175").split(",").map(o => o.trim());
+initSocket(httpServer, allowedOriginsForSocket);
+
+httpServer.listen(port, () => {
   console.log(`✅ Server started on http://localhost:${port}`);
   startCampaignScheduler();
 });

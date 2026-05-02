@@ -124,12 +124,11 @@ const orderSchema = new mongoose.Schema(
 );
 
 // ── Performance Indexes ──────────────────────────────────────────────────────
-// Speed up queries by userId and restaurantId
-orderSchema.index({ userId: 1 });
-orderSchema.index({ restaurantId: 1 });
-orderSchema.index({ createdAt: -1 }); // For sorting by date
-orderSchema.index({ status: 1 }); // For filtering by status
-orderSchema.index({ deliveryPreference: 1, status: 1, isBatched: 1, createdAt: -1 }); // For shared matching
+orderSchema.index({ userId: 1, createdAt: -1 });               // Order history page
+orderSchema.index({ restaurantId: 1, status: 1 });             // Kitchen view
+orderSchema.index({ restaurantId: 1, createdAt: -1 });         // Revenue queries
+orderSchema.index({ isSharedDelivery: 1, status: 1, createdAt: -1 }); // Shared matching
+orderSchema.index({ stripeSessionId: 1 }, { sparse: true });   // Stripe webhook lookup
 
 const orderModel =
   mongoose.models.order || mongoose.model("order", orderSchema);
