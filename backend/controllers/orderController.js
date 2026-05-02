@@ -1164,6 +1164,7 @@ export {
   cancelOrder,
   calcDeliveryFee,
   applySharedFeeIfValid,
+  haversine,
 };
 
 // ── CANCEL ORDER (customer) ────────────────────────────────────────────────

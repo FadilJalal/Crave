@@ -37,12 +37,17 @@
 - 💰 **Split Payments**: Flexible payment options (COD, Card, Split)
 
 ### 📸 Screenshots
-*(Add your project screenshots in the `docs` folder and update these paths)*
-- **Homepage:** `![Homepage Demo](docs/homepage.png)`
-- **Customer Order Flow:** `![Order Flow](docs/order-flow.png)`
-- **Restaurant Admin Dashboard:** `![Admin Dashboard](docs/admin-dashboard.png)`
-- **Shared Delivery Map:** `![Shared Delivery Map](docs/shared-delivery.png)`
-- **AI Review Summary (Before/After):** `![AI Review Summary](docs/ai-review.png)`
+
+> To see the UI, run the project locally using the setup instructions below.
+> Screenshots will be added here before final submission.
+
+| Screen | Description |
+|--------|-------------|
+| Customer home | Browse restaurants, mood picker, flash deals, AI search |
+| Shared delivery | Live two-leg map with savings badge and progress tracking |
+| Restaurant dashboard | Orders, KDS, inventory, AI sentiment analysis |
+| AI features | Review summarisation, surge detection, upsell pairings |
+| Super admin | Platform-wide analytics, restaurant and user management |
 
 ---
 
