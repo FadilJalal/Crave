@@ -97,7 +97,8 @@ export const getAdminStats = async (req, res) => {
       allOrders, 
       activeRestaurants,
       upcomingRenewalsList,
-      recentRestaurants
+      recentRestaurants,
+      sharedOrderCount
     ] = await Promise.all([
       restaurantModel.countDocuments({}),
       orderModel.countDocuments({ status: { $ne: "Cancelled" } }),
@@ -110,6 +111,7 @@ export const getAdminStats = async (req, res) => {
         "subscription.endDate": { $lte: nextWeek, $gte: now } 
       }).select("name subscription.endDate logo"),
       restaurantModel.find().sort({ createdAt: -1 }).limit(5).select("name logo createdAt"),
+      orderModel.countDocuments({ isSharedDelivery: true, status: "Delivered" }),
     ]);
 
     // Calculate Idle Restaurants (Active subscription but 0 orders in 7 days)
@@ -135,7 +137,8 @@ export const getAdminStats = async (req, res) => {
         upcomingRenewals: upcomingRenewalsList,
         recentRestaurants,
         idleRestaurants: idleCount,
-        activeSubscriptions: activeRestaurants.length
+        activeSubscriptions: activeRestaurants.length,
+        sharedOrderCount
       },
     });
   } catch (err) {

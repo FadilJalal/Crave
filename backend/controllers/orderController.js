@@ -1144,8 +1144,8 @@ async function cancelOrder(req, res) {
     if (String(order.userId) !== String(userId))
       return res.status(403).json({ success: false, message: "Not your order." });
 
-    if (order.status !== "Food Processing")
-      return res.json({ success: false, message: "Order cannot be cancelled — it is already being prepared for delivery." });
+    if (order.status !== "Order Placed" && order.status !== "Food Processing")
+      return res.json({ success: false, message: "Order cannot be cancelled — it has already advanced beyond the preparation stage." });
 
     const minutesElapsed = (Date.now() - new Date(order.createdAt).getTime()) / 60000;
     if (minutesElapsed > 5)

@@ -151,12 +151,12 @@ export default function Dashboard() {
              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24, marginTop: 20 }}>
                 <div>
                    <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Carbon Offset</div>
-                   <div style={{ fontSize: 24, fontWeight: 900, color: '#10b981' }}>{((stats?.totalRevenue || 0) * 0.00042).toFixed(2)} KG</div>
+                   <div style={{ fontSize: 24, fontWeight: 900, color: '#10b981' }}>{((stats?.sharedOrderCount || 0) * 1.2).toFixed(2)} KG</div>
                    <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>Estimated CO2 reduction</div>
                 </div>
                 <div>
                    <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Trips Optimized</div>
-                   <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{Math.floor((stats?.activeSubscriptions || 0) * 12.5)}</div>
+                   <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{stats?.sharedOrderCount || 0}</div>
                    <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>Consolidated delivery legs</div>
                 </div>
                 <div style={{ background: 'rgba(255,255,255,0.05)', padding: 12, borderRadius: 12 }}>
@@ -244,10 +244,9 @@ export default function Dashboard() {
                   }
                 `}</style>
              </div>
-          </div>        </div>
-+          </div>
-+
-           {/* Quick links */}
+          </div>
+          </div>
+          </div>
 
           {/* Quick links */}
           <div style={{ marginTop: 40 }}>

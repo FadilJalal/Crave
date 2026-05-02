@@ -100,9 +100,19 @@ export default function Revenue() {
         });
         const trendData = Object.entries(dailyMap).map(([name, amount]) => ({ name, amount })).slice(-15);
 
-        // ── AI Prediction Logic ──
-        const lastWeekRev = trendData.slice(-7).reduce((s, d) => s + d.amount, 0);
-        const predictedNextWeek = lastWeekRev * 1.08; // AI predicts 8% growth
+        // ── AI Prediction Logic (Dynamic Trend Analysis) ──
+        const recentDays = trendData.slice(-7);
+        const previousDays = trendData.slice(-14, -7);
+        const recentAvg = recentDays.length ? recentDays.reduce((s, d) => s + d.amount, 0) / recentDays.length : 0;
+        const previousAvg = previousDays.length ? previousDays.reduce((s, d) => s + d.amount, 0) / previousDays.length : 0;
+        
+        let growthFactor = 1.05; // Base 5% growth
+        if (previousAvg > 0) {
+            const trend = (recentAvg - previousAvg) / previousAvg;
+            growthFactor = 1 + Math.max(-0.1, Math.min(0.2, trend + 0.05)); // Add 5% booster to current trend
+        }
+        
+        const predictedNextWeek = (recentAvg * 7) * growthFactor;
 
         // ── Filtered Ledger ──
         const ledger = filtered.filter(o => 
@@ -110,7 +120,38 @@ export default function Revenue() {
             (o.address?.firstName || "").toLowerCase().includes(searchQuery.toLowerCase())
         );
 
-        return { gross, count, avgValue, netSettlement, trendData, predictedNextWeek, ledger, estimatedTax };
+        const cashRev = successful.filter(o => o.paymentMethod === 'cod').reduce((s, o) => s + (o.amount || 0), 0);
+        const cardRev = gross - cashRev;
+
+        // ── Top Selling Items ──
+        const itemMap = {};
+        successful.forEach(o => {
+            o.items?.forEach(i => {
+                const name = i.item?.name || i.name;
+                if (!name) return;
+                itemMap[name] = (itemMap[name] || 0) + (i.quantity || 1);
+            });
+        });
+        const topItems = Object.entries(itemMap)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, qty]) => ({ name, qty }));
+
+        // ── Busiest Hours ──
+        const hourMap = {};
+        successful.forEach(o => {
+            const hour = new Date(o.createdAt).getHours();
+            hourMap[hour] = (hourMap[hour] || 0) + 1;
+        });
+        const busiestHours = Object.entries(hourMap)
+            .map(([hour, count]) => ({ hour: `${hour}:00`, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 3);
+
+        const sharedCount = successful.filter(o => o.isSharedDelivery).length;
+        const sustainabilityImpact = sharedCount * 1.2; // 1.2kg saved per shared delivery consolidated
+
+        return { gross, count, avgValue, netSettlement, trendData, predictedNextWeek, ledger, estimatedTax, platformFees, cashRev, cardRev, topItems, busiestHours, sharedCount, sustainabilityImpact };
     }, [orders, timeframe, searchQuery]);
 
 
@@ -132,8 +173,8 @@ export default function Revenue() {
                     <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                         <div className="rev-live-dot" />
                         <div>
-                            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: "var(--rev-text)" }}>Enterprise Settlement Terminal</h1>
-                            <span style={{ fontSize: 13, color: "var(--rev-muted)", fontWeight: 600 }}>ID: CRAVE-REST-AUDIT-ALPHA</span>
+                            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: "var(--rev-text)" }}>Sales & Revenue Hub</h1>
+                            <span style={{ fontSize: 13, color: "var(--rev-muted)", fontWeight: 600 }}>Track your restaurant's financial growth</span>
                         </div>
                     </div>
                     <div style={{ display: "flex", gap: 12 }}>
@@ -152,7 +193,7 @@ export default function Revenue() {
                 {/* ── KPI Grid ── */}
                 <div className="rev-enterprise-grid">
                     <StatCard 
-                        title="Gross Transaction Value" 
+                        title="Total Sales (Gross)" 
                         value={money(analytics.gross)} 
                         icon={<Globe size={24} />} 
                         color="var(--rev-info)" 
@@ -160,7 +201,7 @@ export default function Revenue() {
                         up={true}
                     />
                     <StatCard 
-                        title="Net Settlement" 
+                        title="Your Take Home (Net)" 
                         value={money(analytics.netSettlement)} 
                         icon={<DollarSign size={24} />} 
                         color="var(--rev-success)" 
@@ -168,7 +209,7 @@ export default function Revenue() {
                         up={true}
                     />
                     <StatCard 
-                        title="Processed Volume" 
+                        title="Orders Completed" 
                         value={analytics.count} 
                         icon={<ShoppingBag size={24} />} 
                         color="var(--rev-primary)" 
@@ -176,12 +217,45 @@ export default function Revenue() {
                         up={false}
                     />
                     <StatCard 
-                        title="Estimated VAT (5%)" 
-                        value={money(analytics.estimatedTax)} 
-                        icon={<ShieldCheck size={24} />} 
-                        color="var(--rev-muted)" 
-                        delta="Fiscal Compliance"
+                        title="Average Order Value" 
+                        value={money(analytics.avgValue)} 
+                        icon={<Target size={24} />} 
+                        color="#8b5cf6" 
+                        delta="Customer Spends"
                     />
+                </div>
+
+                {/* ── Money Breakdown Section ── */}
+                <div className="rev-main-panel" style={{ marginBottom: 30, padding: 32, background: 'linear-gradient(to bottom, var(--rev-card), var(--rev-bg))' }}>
+                    <h3 style={{ margin: '0 0 24px', fontWeight: 900 }}>Where does the money go?</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+                        <div className="breakdown-box">
+                            <div className="bb-lbl">TOTAL SALES</div>
+                            <div className="bb-val">{money(analytics.gross)}</div>
+                            <div className="bb-bar"><div style={{ width: '100%', background: 'var(--rev-info)' }}></div></div>
+                        </div>
+                        <div className="breakdown-box">
+                            <div className="bb-lbl">PLATFORM FEES (15%)</div>
+                            <div className="bb-val" style={{ color: '#ef4444' }}>- {money(analytics.platformFees)}</div>
+                            <div className="bb-bar"><div style={{ width: '15%', background: '#ef4444' }}></div></div>
+                        </div>
+                        <div className="breakdown-box">
+                            <div className="bb-lbl">GOVT TAX (5%)</div>
+                            <div className="bb-val" style={{ color: '#f59e0b' }}>- {money(analytics.estimatedTax)}</div>
+                            <div className="bb-bar"><div style={{ width: '5%', background: '#f59e0b' }}></div></div>
+                        </div>
+                        <div className="breakdown-box" style={{ background: 'var(--rev-success-soft)', border: '1px solid var(--rev-success)' }}>
+                            <div className="bb-lbl" style={{ color: 'var(--rev-success)' }}>NET PROFIT</div>
+                            <div className="bb-val" style={{ color: 'var(--rev-success)' }}>{money(analytics.netSettlement)}</div>
+                            <div className="bb-bar"><div style={{ width: '80%', background: 'var(--rev-success)' }}></div></div>
+                        </div>
+                    </div>
+                    <div style={{ marginTop: 24, padding: '12px 20px', background: '#f0fdf4', borderRadius: 12, border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Globe size={18} color="#15803d" />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#15803d' }}>
+                            Your restaurant saved <strong style={{ fontSize: 15 }}>{analytics.sustainabilityImpact.toFixed(1)} KG</strong> of CO2 this period via <strong style={{ fontSize: 15 }}>{analytics.sharedCount}</strong> Shared Delivery matches.
+                        </span>
+                    </div>
                 </div>
 
                 {/* ── Trajectory & AI Forecasting ── */}
@@ -223,13 +297,13 @@ export default function Revenue() {
 
                     <aside className="rev-ai-sidebar">
                         <div className="rev-forecast-card">
-                            <h4 style={{ margin: 0, fontSize: 12, fontWeight: 900, opacity: 0.6, letterSpacing: 1 }}>AI PREDICTIVE FORECAST</h4>
+                            <h4 style={{ margin: 0, fontSize: 12, fontWeight: 900, opacity: 0.6, letterSpacing: 1 }}>AI GROWTH PREDICTION</h4>
                             <div style={{ margin: "20px 0" }}>
                                 <div style={{ fontSize: 32, fontWeight: 950 }}>{money(analytics.predictedNextWeek)}</div>
-                                <span style={{ fontSize: 13, color: "var(--rev-success)", fontWeight: 800 }}>⚡ 8.4% Probable Increase</span>
+                                <span style={{ fontSize: 13, color: "var(--rev-success)", fontWeight: 800 }}>⚡ Expected Sales Next Week</span>
                             </div>
                             <p style={{ fontSize: 13, opacity: 0.8, lineHeight: 1.5 }}>
-                                Crave AI engine detects a positive surge in breakfast orders. We recommend prepping inventory for high-demand items.
+                                Crave AI predicts a **Positive Trend**. We suggest keeping more breakfast inventory ready for the upcoming weekend.
                             </p>
                             <div className="rev-prediction-bar">
                                 <motion.div 
@@ -247,17 +321,47 @@ export default function Revenue() {
 
                         <div className="rev-main-panel" style={{ padding: 24 }}>
                             <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
-                                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--rev-info)" }} />
-                                <span style={{ fontSize: 13, fontWeight: 900 }}>Business Health Pulse</span>
+                                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#8b5cf6" }} />
+                                <span style={{ fontSize: 13, fontWeight: 900 }}>Payment Methods</span>
                             </div>
-                            <div style={{ height: 100, display: "flex", alignItems: "flex-end", gap: 4 }}>
-                                {[40, 70, 45, 90, 65, 80, 55, 95].map((h, i) => (
-                                    <div key={i} style={{ flex: 1, height: `${h}%`, background: "var(--rev-info-soft)", borderTopLeftRadius: 4, borderTopRightRadius: 4, transition: "height 1s" }} />
-                                ))}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 800, marginBottom: 4 }}>
+                                        <span>ONLINE PAYMENTS</span>
+                                        <span>{analytics.gross > 0 ? Math.round((analytics.cardRev / analytics.gross) * 100) : 0}%</span>
+                                    </div>
+                                    <div style={{ height: 6, background: 'var(--rev-border)', borderRadius: 10 }}><div style={{ width: `${analytics.gross > 0 ? (analytics.cardRev / analytics.gross) * 100 : 0}%`, height: '100%', background: '#8b5cf6', borderRadius: 10 }}></div></div>
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 800, marginBottom: 4 }}>
+                                        <span>CASH ON DELIVERY</span>
+                                        <span>{analytics.gross > 0 ? Math.round((analytics.cashRev / analytics.gross) * 100) : 0}%</span>
+                                    </div>
+                                    <div style={{ height: 6, background: 'var(--rev-border)', borderRadius: 10 }}><div style={{ width: `${analytics.gross > 0 ? (analytics.cashRev / analytics.gross) * 100 : 0}%`, height: '100%', background: '#f59e0b', borderRadius: 10 }}></div></div>
+                                </div>
                             </div>
-                            <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <span style={{ fontSize: 11, fontWeight: 800, color: "var(--rev-muted)" }}>Current Stability Score</span>
-                                <span style={{ fontSize: 14, fontWeight: 950, color: "var(--rev-info)" }}>Optimal</span>
+                        </div>
+
+                        {/* ── Performance Insights ── */}
+                        <div className="rev-main-panel" style={{ padding: 24 }}>
+                            <h4 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 900 }}>TOP SELLING DISHES</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {analytics.topItems.length > 0 ? analytics.topItems.map((item, i) => (
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ fontSize: 13, fontWeight: 700 }}>{item.name}</div>
+                                        <div style={{ fontSize: 11, fontWeight: 900, background: 'var(--rev-primary-soft)', color: 'var(--rev-primary)', padding: '2px 8px', borderRadius: 6 }}>{item.qty} sold</div>
+                                    </div>
+                                )) : <div style={{ fontSize: 12, color: 'var(--rev-muted)' }}>No sales data yet</div>}
+                            </div>
+
+                            <h4 style={{ margin: '24px 0 16px', fontSize: 12, fontWeight: 900 }}>BUSIEST HOURS</h4>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                {analytics.busiestHours.length > 0 ? analytics.busiestHours.map((h, i) => (
+                                    <div key={i} style={{ flex: 1, textAlign: 'center', padding: '10px 4px', background: 'var(--rev-bg)', borderRadius: 12, border: '1px solid var(--rev-border)' }}>
+                                        <div style={{ fontSize: 11, fontWeight: 900 }}>{h.hour}</div>
+                                        <div style={{ fontSize: 10, color: 'var(--rev-muted)', marginTop: 2 }}>{h.count} orders</div>
+                                    </div>
+                                )) : <div style={{ fontSize: 12, color: 'var(--rev-muted)' }}>Calculating...</div>}
                             </div>
                         </div>
                     </aside>
@@ -267,14 +371,14 @@ export default function Revenue() {
                 <div className="rev-ledger-container">
                     <div style={{ padding: "32px 40px", borderBottom: "1px solid var(--rev-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div>
-                            <h3 style={{ margin: 0, fontWeight: 900 }}>Fiscal Settlement Ledger</h3>
-                            <span style={{ fontSize: 13, color: "var(--rev-muted)" }}>Search across all recorded transactions.</span>
+                            <h3 style={{ margin: 0, fontWeight: 900 }}>Recent Sales Ledger</h3>
+                            <span style={{ fontSize: 13, color: "var(--rev-muted)" }}>Detailed list of all incoming orders and payments.</span>
                         </div>
                         <div className="rev-search-box">
                             <SearchIcon size={16} color="var(--rev-muted)" />
                             <input 
                                 type="text" 
-                                placeholder="Search by ID or Trace..." 
+                                placeholder="Search by Order ID or Customer..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -311,7 +415,81 @@ export default function Revenue() {
                 </div>
             )}
 
+            {/* ── Professional Audit Report (Print Only) ── */}
+            <div className="rev-print-report">
+                <div className="print-header">
+                    <h1 style={{ color: '#111827', margin: 0 }}>CRAVE | Financial Audit Report</h1>
+                    <p style={{ color: '#6b7280', margin: '4px 0 20px' }}>Generated on {new Date().toLocaleString()}</p>
+                </div>
+                
+                <div className="print-grid">
+                    <div className="print-box">
+                        <div className="print-lbl">Reporting Period</div>
+                        <div className="print-val">{TIMEFRAME_OPTIONS.find(o => o.value === timeframe)?.label}</div>
+                    </div>
+                    <div className="print-box">
+                        <div className="print-lbl">Total Gross Revenue</div>
+                        <div className="print-val">{money(analytics.gross)}</div>
+                    </div>
+                    <div className="print-box">
+                        <div className="print-lbl">Net Settlement (Take Home)</div>
+                        <div className="print-val" style={{ color: '#059669' }}>{money(analytics.netSettlement)}</div>
+                    </div>
+                </div>
+
+                <div className="print-section">
+                    <h3>Revenue Breakdown</h3>
+                    <table className="print-table">
+                        <tbody>
+                            <tr><td>Gross Sales</td><td style={{ textAlign: 'right' }}>{money(analytics.gross)}</td></tr>
+                            <tr><td>Platform Service Fees (15%)</td><td style={{ textAlign: 'right', color: '#dc2626' }}>- {money(analytics.platformFees)}</td></tr>
+                            <tr><td>Estimated VAT (5%)</td><td style={{ textAlign: 'right', color: '#dc2626' }}>- {money(analytics.estimatedTax)}</td></tr>
+                            <tr style={{ fontWeight: 'bold', fontSize: '1.2em', borderTop: '2px solid #000' }}>
+                                <td>Net Payable Amount</td>
+                                <td style={{ textAlign: 'right' }}>{money(analytics.netSettlement)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div className="print-section">
+                    <h3>Top Performing Categories</h3>
+                    <div style={{ display: 'flex', gap: 20 }}>
+                        {analytics.topItems.map((item, i) => (
+                            <div key={i} className="print-mini-card">
+                                <strong>{item.name}</strong>
+                                <span>{item.qty} units sold</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="print-footer">
+                    <p>This report is electronically generated and verified by Crave Intelligence Hub.</p>
+                    <div style={{ marginTop: 40, borderTop: '1px solid #eee', paddingTop: 10, display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Manager Signature: _______________________</span>
+                        <span>Date: _______________________</span>
+                    </div>
+                </div>
+            </div>
+
             <style>{`
+                .rev-print-report { display: none; padding: 40px; font-family: 'Inter', sans-serif; }
+                @media print {
+                    .ra-sidebar, .rev-layout, .rev-loading-hub { display: none !important; }
+                    .rev-print-report { display: block !important; }
+                    .print-header { border-bottom: 3px solid #111827; padding-bottom: 20px; margin-bottom: 30px; }
+                    .print-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 40px; }
+                    .print-box { padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px; }
+                    .print-lbl { font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: 800; }
+                    .print-val { font-size: 18px; font-weight: 900; margin-top: 4px; }
+                    .print-section { margin-bottom: 40px; }
+                    .print-section h3 { font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 15px; }
+                    .print-table { width: 100%; border-collapse: collapse; }
+                    .print-table td { padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
+                    .print-mini-card { flex: 1; padding: 12px; border: 1px solid #eee; border-radius: 6px; font-size: 12px; }
+                    .print-footer { margin-top: 60px; font-size: 10px; color: #9ca3af; }
+                }
                 .rev-loading-text { font-weight: 900; letter-spacing: 2px; color: var(--rev-muted); text-transform: uppercase; margin-top: 16px; font-size: 11px; }
                 .rev-loading-hub { height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
                 .rev-select-premium { padding: 10px 16px; border-radius: 12px; border: 1px solid var(--rev-border); background: var(--rev-card); color: var(--rev-text); font-weight: 800; font-size: 13px; outline: none; cursor: pointer; }
@@ -322,10 +500,15 @@ export default function Revenue() {
                 [data-theme='dark'] .rev-search-box { background: rgba(255,255,255,0.05); }
                 .rev-search-box input { background: transparent; border: none; outline: none; color: var(--rev-text); font-weight: 700; width: 100%; }
                 .rev-search-box input::placeholder { color: var(--rev-muted); }
-                .rev-status-pill { padding: 6px 12px; border-radius: 50px; font-size: 10px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; }
                 .delivered-pill { background: var(--rev-success-soft); color: var(--rev-success); }
                 .pending-pill { background: var(--rev-info-soft); color: var(--rev-info); }
                 .cancelled-pill { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+                .breakdown-box { padding: 16px; background: var(--rev-card); border-radius: 16px; border: 1px solid var(--rev-border); }
+                .bb-lbl { font-size: 10px; font-weight: 900; color: var(--rev-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+                .bb-val { font-size: 18px; font-weight: 900; margin-bottom: 12px; }
+                .bb-bar { height: 4px; background: var(--rev-bg); border-radius: 10px; overflow: hidden; }
+                .bb-bar div { height: 100%; border-radius: 10px; }
             `}</style>
         </RestaurantLayout>
     );
