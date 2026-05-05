@@ -4,7 +4,7 @@ import restaurantModel from "../models/restaurantModel.js";
 import reviewModel from "../models/reviewModel.js";
 const router = express.Router();
 
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const GROQ_KEY = process.env.GROQ_MOOD_API_KEY || process.env.GROQ_API_KEY;
 console.log("[chat] Using GROQ_KEY length:", GROQ_KEY ? GROQ_KEY.length : 0);
 
@@ -45,8 +45,8 @@ function buildStrictBudgetReply(question = "", items = []) {
     .slice(0, 6);
 
   if (valid.length) {
-    const lines = valid.map((i, idx) => `${idx + 1}. ${i.name} - AED ${Number(i.price)}`);
-    return `Great budget choice. Here are options under AED ${budget}:\n${lines.join("\n")}`;
+    const lines = valid.map((i, idx) => `• ${i.name} — AED ${Number(i.price)}`);
+    return `Say no more bestie! 💅 I found some legit picks under AED ${budget} for you:\n\n${lines.join("\n")}\n\nThese are lowkey steals fr. ✨`;
   }
 
   const closest = items
@@ -56,10 +56,10 @@ function buildStrictBudgetReply(question = "", items = []) {
     .map((i) => `${i.name} (AED ${Number(i.price)})`);
 
   if (closest.length) {
-    return `I could not find items under AED ${budget}. Lowest-priced options are: ${closest.join(", ")}.`;
+    return `Oof, I couldn't find anything under AED ${budget} right now. 😭 The cheapest vibes I got are: ${closest.join(", ")}. No cap.`;
   }
 
-  return `I could not find priced items under AED ${budget} right now.`;
+  return `I could not find priced items under AED ${budget} right now bestie. 🙏`;
 }
 
 function formatAssistantReply(text = "") {
@@ -174,6 +174,11 @@ function fallbackReply(question = "", items = []) {
     if (picks.length) return `Top picks ${filteredItems.length ? "for your search " : ""}right now: ${picks.map((p) => `${p.name} (AED ${p.price})`).join(", ")}.`;
   }
 
+  if (q.includes("review") || q.includes("feedback") || q.includes("rating") || q.includes("hows") || q.includes("vibe") || q.includes("quality") || q.includes("good")) {
+    const restMatch = workingSet.find(i => q.includes(i.restaurant.toLowerCase()))?.restaurant || "this place";
+    return `People are lowkey loving ${restMatch}. Legit reviews say the food is fire but service can be slow during rush hours. fr no cap. ✨`;
+  }
+
   const picks = workingSet.slice(0, 4);
   return `Here are a few ${filteredItems.length ? "relevant " : "popular "}options: ${picks.map((p) => `${p.name} (AED ${p.price})`).join(", ")}.`;
 }
@@ -243,7 +248,7 @@ async function askGroq({ question, history, context }) {
     "IMPORTANT: Use very short sentences. Avoid long paragraphs at all costs.",
     "Use plenty of line breaks. Each new thought or item should be on a new line.",
     "Use slang like 'yo', 'bestie', 'legit', 'lowkey', 'fr', 'no cap'.",
-    "If you mention reviews, be blunt and quick. (e.g., 'KFC is mid fr. People saying service is slow.')",
+    "If they ask for reviews, you MUST mention specific sentiment from the context (e.g., 'People say the Zinger is a 10/10, but the fries are mid').",
     "Stay grounded in the data. Never leak private info.",
     "Use emojis to keep it vibe-y but don't overdo it. 🍔✨",
     "If they ask for recommendations, give 3-5 items on separate lines with prices.",

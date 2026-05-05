@@ -10,7 +10,7 @@ const GROQ_BASE = "https://api.groq.com/openai/v1/chat/completions";
  * @param {Object} opts
  * @param {Array}  opts.messages    - OpenAI-style message array
  * @param {string} [opts.apiKey]    - Override API key (defaults to GROQ_API_KEY env var)
- * @param {string} [opts.model]     - Model ID (default: llama-3.1-8b-instant)
+ * @param {string} [opts.model]     - Model ID (default: llama-3.3-70b-versatile)
  * @param {number} [opts.temperature] - Sampling temperature (default: 0.3)
  * @param {boolean}[opts.jsonMode]  - Request JSON response_format (default: true)
  * @returns {Promise<string>} Raw content string from the model
@@ -18,7 +18,7 @@ const GROQ_BASE = "https://api.groq.com/openai/v1/chat/completions";
 export async function groqChat({
   messages,
   apiKey,
-  model = "llama-3.1-8b-instant",
+  model = "llama-3.3-70b-versatile",
   temperature = 0.3,
   jsonMode = true,
 }) {

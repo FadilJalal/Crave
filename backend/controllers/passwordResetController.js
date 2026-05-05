@@ -88,6 +88,7 @@ export const forgotPassword = async (req, res) => {
 
     if (record) {
       await sendResetEmail({ name, email: email.toLowerCase(), resetLink });
+      console.log(`[DEV] Reset link for ${email}: ${resetLink}`);
     }
 
     res.json({ success: true, message: "If that email exists, a reset link has been sent." });

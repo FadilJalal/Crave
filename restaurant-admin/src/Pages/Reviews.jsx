@@ -138,6 +138,114 @@ const ReplyBox = ({ review, onReplied }) => {
   );
 };
 
+const AISentimentAnalysis = () => {
+  const [summary, setSummary] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const generateSummary = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/api/ai/restaurant/sentiment-summary");
+      if (res.data.success) {
+        setSummary(res.data.summary);
+      }
+    } catch (err) {
+      console.error("Sentiment analysis failed:", err);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{
+      background: "linear-gradient(135deg, #1e1b4b, #312e81)",
+      borderRadius: 24,
+      padding: "24px",
+      marginBottom: 32,
+      color: "white",
+      boxShadow: "0 20px 40px rgba(30, 27, 75, 0.2)",
+      border: "1px solid rgba(255,255,255,0.1)",
+      position: "relative",
+      overflow: "hidden"
+    }}>
+      <div style={{
+        position: "absolute",
+        top: -50,
+        right: -50,
+        width: 150,
+        height: 150,
+        background: "rgba(99, 102, 241, 0.2)",
+        borderRadius: "50%",
+        filter: "blur(40px)"
+      }} />
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: summary ? 16 : 0, position: "relative" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: "12px",
+            background: "rgba(255,255,255,0.1)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 20
+          }}>
+            🤖
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, letterSpacing: "-0.02em" }}>AI Sentiment Analyst</h3>
+            <p style={{ margin: 0, fontSize: 12, opacity: 0.7, fontWeight: 600 }}>Get an instant summary of your last 50 reviews</p>
+          </div>
+        </div>
+        
+        {!summary && (
+          <button
+            onClick={generateSummary}
+            disabled={loading}
+            style={{
+              background: "white",
+              color: "#1e1b4b",
+              border: "none",
+              borderRadius: "12px",
+              padding: "10px 20px",
+              fontSize: 13,
+              fontWeight: 800,
+              cursor: loading ? "wait" : "pointer",
+              transition: "transform 0.2s",
+              boxShadow: "0 10px 20px rgba(0,0,0,0.1)"
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+          >
+            {loading ? "Analyzing..." : "Generate Analysis"}
+          </button>
+        )}
+      </div>
+
+      {summary && (
+        <div style={{
+          background: "rgba(255,255,255,0.05)",
+          borderRadius: "16px",
+          padding: "20px",
+          fontSize: 14,
+          lineHeight: 1.6,
+          whiteSpace: "pre-wrap",
+          border: "1px solid rgba(255,255,255,0.08)",
+          position: "relative"
+        }}>
+          {summary}
+          <button 
+            onClick={() => setSummary("")}
+            style={{
+              position: "absolute", top: 12, right: 12,
+              background: "none", border: "none", color: "white",
+              opacity: 0.5, cursor: "pointer", fontSize: 12
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Reviews() {
   const [reviews, setReviews] = useState([]);
   const [avgRating, setAvgRating] = useState(0);
@@ -177,6 +285,8 @@ export default function Reviews() {
             Real feedback from your customers after delivery
           </p>
         </div>
+
+        <AISentimentAnalysis />
 
         {loading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

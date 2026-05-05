@@ -7,6 +7,7 @@ import { useTheme } from "../ThemeContext";
 
 import { useNotifications } from "../context/NotificationContext";
 import NotificationCenter from "./NotificationCenter";
+import AdminChat from "./AdminChat/AdminChat";
 import { toast } from "react-toastify";
 
 export default function RestaurantLayout({ children }) {
@@ -447,7 +448,7 @@ export default function RestaurantLayout({ children }) {
             linkOrDisabled("/menu", "🍽️ Menu & Dishes", canMenu),
             linkOrDisabled("/add-food", "➕ Add New Food", canMenu),
             linkOrDisabled("/bulk-upload", "📦 Bulk Quick Upload", canBulk),
-            link("/orders", "🧾 Active Orders"),
+            link("/orders", "📜 Orders"),
             link("/kds", "👨‍🍳 Kitchen Console (KDS)"),
             link("/inventory", "📦 Inventory & Stock"),
             link("/labor", "👷 Staff & Labor"),
@@ -652,6 +653,7 @@ export default function RestaurantLayout({ children }) {
           </div>
         </div>
       )}
+      <AdminChat />
     </div>
   );
 }

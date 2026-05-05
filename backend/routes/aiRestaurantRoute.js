@@ -7,13 +7,15 @@ import reviewModel from "../models/reviewModel.js";
 import userModel from "../models/userModel.js";
 import restaurantModel from "../models/restaurantModel.js";
 import campaignModel from "../models/campaignModel.js";
+import inventoryModel from "../models/inventoryModel.js";
+import staffModel from "../models/staffModel.js";
 import { requireFeature } from "../middleware/featureAccess.js";
 import { groqChat } from "../utils/groqClient.js";
 
 const router = express.Router();
 
 const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
 
 // AI-powered review reply generation
@@ -1208,6 +1210,134 @@ router.get("/labor-optimization", restaurantAuth, async (req, res) => {
   } catch (e) {
     console.error("[ai/labor-optimization]", e);
     res.json({ success: false, message: "Labor optimization analysis failed" });
+  }
+});
+
+
+// ── 19. ADMIN OPERATIONS CHAT ──────────────────────────────────────────────
+async function buildAdminContext(restaurantId) {
+  const [inventory, staff, orders, foods] = await Promise.all([
+    inventoryModel.find({ restaurantId, isActive: true }).lean(),
+    staffModel.find({ restaurantId }).lean(),
+    orderModel.find({ restaurantId, createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }).lean(),
+    foodModel.find({ restaurantId }).select("name price category inStock").lean(),
+  ]);
+
+  const todayRevenue = orders.reduce((s, o) => s + (o.amount || 0), 0);
+  const lowStock = inventory.filter(i => i.currentStock <= i.minimumStock).map(i => `${i.itemName} (${i.currentStock} ${i.unit} left)`);
+  const activeStaff = staff.filter(s => s.status === "Clocked In").map(s => `${s.name} (${s.role})`);
+
+  return {
+    restaurantId,
+    inventory: {
+      category: "RAW INGREDIENTS / STOCK",
+      totalItems: inventory.length,
+      totalInventoryValue: inventory.reduce((s, i) => s + ((i.currentStock || 0) * (i.unitCost || 0)), 0),
+      lowStockItems: lowStock.slice(0, 10),
+      allStock: inventory.slice(0, 40).map(i => ({ name: i.itemName, stock: i.currentStock, unit: i.unit, min: i.minimumStock, unitCost: i.unitCost || 0 }))
+    },
+    staff: {
+      total: staff.length,
+      currentlyClockedIn: activeStaff,
+      statusSummary: staff.reduce((acc, s) => { acc[s.status] = (acc[s.status] || 0) + 1; return acc; }, {})
+    },
+    todaySales: {
+      orders: orders.length,
+      revenue: todayRevenue,
+      avgOrder: orders.length > 0 ? Math.round(todayRevenue / orders.length) : 0
+    },
+    menu: {
+      category: "CUSTOMER DISHES / MENU",
+      totalItems: foods.length,
+      allDishes: foods.slice(0, 25).map(f => ({ name: f.name, price: f.price })),
+      outOfStock: foods.filter(f => !f.inStock).map(f => f.name)
+    }
+  };
+}
+
+router.post("/chat", restaurantAuth, async (req, res) => {
+  try {
+    const { question, history } = req.body;
+    const restaurantId = req.restaurantId;
+
+    const context = await buildAdminContext(restaurantId);
+    
+    const systemPrompt = [
+      "You are KFC Ops AI, a high-level Restaurant Operations Consultant. Talk naturally like a human assistant.",
+      "CRITICAL: Distinguish between 'Inventory' and 'Menu'.",
+      "- INVENTORY: Raw ingredients (Flour, Oil, Chicken Pieces). These are tracked in kilograms/pieces for the kitchen. Use 'totalInventoryValue' for the total sum of all stock.",
+      "- MENU: Dishes sold to customers (Zinger Burger, Bucket, 3pc Meal). Use 'allDishes' for dish prices.",
+      "CRITICAL: All prices and costs are in AED (Dirhams). Never use dollar signs ($). Use 'AED' prefix.",
+      "IMPORTANT: Do NOT use markdown bolding (like **Inventory**) in your responses. Keep it as plain text.",
+      "IMPORTANT: Do NOT return raw JSON. Speak in plain, professional sentences.",
+      "If stocks are low, suggest reordering immediately.",
+      "Keep responses concise and punchy. Use bullet points for lists.",
+      "Output plain text only. No markdown symbols except line breaks and bullets.",
+      "",
+      `Current Operations Context (JSON):\n${JSON.stringify(context)}`,
+    ].join("\n");
+
+    const chatHistory = (history || [])
+      .slice(-15)
+      .map((m) => ({
+        role: m.role === "assistant" ? "assistant" : "user",
+        content: String(m.content || m.text || ""),
+      }))
+      .filter((m) => m.content.trim());
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...chatHistory,
+      { role: "user", content: question },
+    ];
+
+    const reply = await groqChat({
+      messages,
+      temperature: 0.5,
+      max_tokens: 800,
+      jsonMode: false
+    });
+
+    res.json({ success: true, reply });
+  } catch (err) {
+    console.error("[ai/restaurant/chat]", err);
+    res.json({ 
+      success: true, 
+      reply: "I'm having trouble accessing the real-time data right now. Please check your Dashboard for the latest updates on stocks and sales!" 
+    });
+  }
+});
+
+// ── 21. CUSTOMER SENTIMENT ANALYSIS ───────────────────────────────────────
+router.get("/sentiment-summary", restaurantAuth, async (req, res) => {
+  try {
+    const reviews = await reviewModel.find({ restaurantId: req.restaurantId })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    if (reviews.length < 3) {
+      return res.json({ success: true, summary: "Need at least 3 reviews to generate a meaningful sentiment analysis." });
+    }
+
+    const reviewTexts = reviews.map(r => `Rating: ${r.rating}/5 | Comment: ${r.comment || "No text"}`).join("\n");
+
+    const systemPrompt = "You are a customer experience analyst. Summarize these restaurant reviews into a short, punchy 'Sentiment Report'. Use bullet points for 'What people love' and 'What to improve'. Be specific. No markdown headers, just text and bullets.";
+    const userPrompt = `Recent Reviews:\n${reviewTexts}`;
+
+    const summary = await groqChat({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.5,
+      jsonMode: false
+    });
+
+    res.json({ success: true, summary });
+  } catch (err) {
+    console.error("[ai/sentiment-summary]", err);
+    res.json({ success: false, message: "Failed to generate sentiment summary" });
   }
 });
 
