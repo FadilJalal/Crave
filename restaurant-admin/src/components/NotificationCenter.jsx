@@ -236,12 +236,20 @@ export default function NotificationCenter({ dark = false }) {
                                 setReadIds(prev => [...prev, n.id]);
                               }}
                               style={{ 
-                                background: "none", border: "none", color: "var(--muted)", 
-                                fontSize: 14, cursor: "pointer", opacity: 0.5, padding: "0 0 5px 5px",
-                                marginTop: -2
+                                background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)", 
+                                border: "none", color: "var(--muted)", 
+                                fontSize: 14, cursor: "pointer", opacity: 0.8, 
+                                padding: "4px 8px", borderRadius: "6px",
+                                marginTop: -2, display: "flex", alignItems: "center", justifyContent: "center"
                               }}
-                              onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                              onMouseLeave={e => e.currentTarget.style.opacity = 0.5}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.opacity = 1;
+                                e.currentTarget.style.background = dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.opacity = 0.8;
+                                e.currentTarget.style.background = dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
+                              }}
                             >✕</button>
                           </div>
                           <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", fontWeight: 500, lineHeight: 1.4 }}>{n.desc}</p>

@@ -25,15 +25,32 @@ export default function AlertSection({ alerts = [], dark = false }) {
                <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "white" : "#1e293b" }}>{alert.title}</div>
                <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{alert.desc}</div>
             </div>
-            <button 
-              onClick={alert.action}
-              style={{
-                background: alert.type === "danger" ? "#ef4444" : "var(--orange)",
-                border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 10, fontWeight: 800, color: "white", cursor: "pointer"
-              }}
-            >
-              {alert.cta}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button 
+                onClick={alert.action}
+                style={{
+                  background: alert.type === "danger" ? "#ef4444" : "var(--orange)",
+                  border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 10, fontWeight: 800, color: "white", cursor: "pointer"
+                }}
+              >
+                {alert.cta}
+              </button>
+              {alert.onDismiss && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    alert.onDismiss();
+                  }}
+                  style={{
+                    background: "none", border: "none", color: dark ? "rgba(255,255,255,0.2)" : "#94a3b8",
+                    fontSize: 14, cursor: "pointer", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center"
+                  }}
+                  title="Dismiss"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

@@ -1,10 +1,12 @@
 import express from "express";
 import foodModel from "../models/foodModel.js";
 import restaurantModel from "../models/restaurantModel.js";
+import reviewModel from "../models/reviewModel.js";
 const router = express.Router();
 
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
-const GROQ_KEY = process.env.GROQ_MOOD_API_KEY;
+const GROQ_KEY = process.env.GROQ_MOOD_API_KEY || process.env.GROQ_API_KEY;
+console.log("[chat] Using GROQ_KEY length:", GROQ_KEY ? GROQ_KEY.length : 0);
 
 function tokenize(text = "") {
   return String(text)
@@ -81,9 +83,10 @@ function formatAssistantReply(text = "") {
   // Only split single-digit list markers (1.-9.) to avoid breaking prices like "AED 42.".
   const withFirstListBreak = compact.replace(/:\s([1-9]\.)\s/g, ":\n$1 ");
   const numbered = withFirstListBreak.replace(/\s([1-9]\.)\s/g, "\n$1 ");
+  const withBullets = numbered.replace(/•\s/g, "\n• ");
 
   // Keep paragraphs compact in chat bubble.
-  return numbered
+  return withBullets
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -176,7 +179,7 @@ function fallbackReply(question = "", items = []) {
 }
 
 async function buildPublicContext() {
-  const [restaurants, foods] = await Promise.all([
+  const [restaurants, foods, reviews] = await Promise.all([
     restaurantModel
       .find({ isActive: true })
       .select("name address deliveryRadius minimumOrder avgPrepTime openingHours isActive")
@@ -186,15 +189,29 @@ async function buildPublicContext() {
       .select("name description price category restaurantId inStock avgRating")
       .populate("restaurantId", "name isActive")
       .lean(),
+    reviewModel
+      .find()
+      .select("restaurantId rating comment userName createdAt")
+      .sort({ createdAt: -1 })
+      .limit(150)
+      .lean(),
   ]);
 
+  const safeReviews = reviews.map(rv => ({
+    restaurantId: rv.restaurantId,
+    text: rv.comment ? (rv.comment.slice(0, 100) + (rv.comment.length > 100 ? "..." : "")) : "",
+    rating: rv.rating
+  }));
+
   const safeRestaurants = restaurants.map((r) => ({
+    id: r._id,
     name: r.name,
     address: r.address,
     deliveryRadiusKm: r.deliveryRadius,
     minimumOrder: r.minimumOrder,
     avgPrepTimeMinutes: r.avgPrepTime,
     openingHours: r.openingHours,
+    reviews: safeReviews.filter(rv => String(rv.restaurantId) === String(r._id)).slice(0, 5)
   }));
 
   const safeFoods = foods
@@ -204,39 +221,34 @@ async function buildPublicContext() {
       category: f.category,
       price: f.price,
       rating: f.avgRating || 0,
-      description: f.description,
+      description: f.description ? f.description.slice(0, 40) : "",
       restaurant: f.restaurantId?.name || "Unknown",
-      inStock: f.inStock !== false,
     }));
 
   return {
     stats: {
       restaurantCount: safeRestaurants.length,
       inStockItemCount: safeFoods.length,
-      categories: [...new Set(safeFoods.map((f) => f.category).filter(Boolean))].slice(0, 30),
+      categories: [...new Set(safeFoods.map((f) => f.category).filter(Boolean))].slice(0, 20),
     },
-    restaurants: safeRestaurants.slice(0, 120),
-    foods: safeFoods.slice(0, 400),
+    restaurants: safeRestaurants.slice(0, 50),
+    foods: safeFoods.slice(0, 150),
   };
 }
 
 
 async function askGroq({ question, history, context }) {
   const systemPrompt = [
-    "You are Crave AI, a conversational customer assistant for food ordering.",
-    "Chat naturally like Gemini/ChatGPT, but stay grounded in provided data.",
-    "Use ONLY the provided PUBLIC context data.",
-    "Never mention or infer private data such as passwords, tokens, emails, phone numbers, payment details, internal IDs.",
-    "If answer is not in context, clearly say you do not have that info and suggest next best action.",
-    "Keep responses concise, friendly, practical, and personalized to the user request.",
-    "If user asks for recommendations, return 3-6 relevant items with prices.",
-    context.activeBudget ? `CRITICAL: The user has a strict budget of AED ${context.activeBudget}. You MUST NOT recommend anything above this price. If no items fit, recommend the closest cheaper alternatives.` : "If user gives a budget (under AED X), strictly honor it.",
-    "If user asks follow-up questions, use conversation history to maintain context.",
-    "Include AED prices where relevant.",
-    "Use short, clean responses with line breaks; avoid long dense paragraphs.",
-    "For recommendations, prefer 3-5 bullet points or numbered lines.",
-    "Avoid repeating the same sentence or item names unnecessarily.",
-    "Output plain text only. Do not use markdown symbols like **, __, #, or code blocks.",
+    "You are Crave AI, a close friend—chill, casual, and super punchy. TALK LIKE YOU ARE TEXTING.",
+    "IMPORTANT: Use very short sentences. Avoid long paragraphs at all costs.",
+    "Use plenty of line breaks. Each new thought or item should be on a new line.",
+    "Use slang like 'yo', 'bestie', 'legit', 'lowkey', 'fr', 'no cap'.",
+    "If you mention reviews, be blunt and quick. (e.g., 'KFC is mid fr. People saying service is slow.')",
+    "Stay grounded in the data. Never leak private info.",
+    "Use emojis to keep it vibe-y but don't overdo it. 🍔✨",
+    "If they ask for recommendations, give 3-5 items on separate lines with prices.",
+    context.activeBudget ? `CRITICAL: Budget is AED ${context.activeBudget}. Stick to it.` : "Honor any budget mentions.",
+    "Output plain text only. No markdown symbols like **, __, #, or code blocks.",
     "",
     `Public data context (JSON):\n${JSON.stringify(context)}`,
   ].join("\n");
@@ -271,6 +283,7 @@ async function askGroq({ question, history, context }) {
   const text = data?.choices?.[0]?.message?.content?.trim();
   if (!response.ok || !text) {
     const msg = data?.error?.message || "Groq API request failed";
+    console.error("GROQ API ERROR:", data?.error || data);
     throw new Error(msg);
   }
 
@@ -293,10 +306,10 @@ function buildScopedContext(question, fullContext, menuItems, activeBudget) {
       
       let score = 0;
       for (const t of qTokens) {
-        if (restName.includes(t)) score += 25; // Massive boost for restaurant match
-        if (name.includes(t)) score += 8;
+        if (restName.includes(t)) score += 30; // Massive boost for restaurant match
+        if (name.includes(t)) score += 10;
         if (cat.includes(t)) score += 5;
-        if (desc.includes(t)) score += 2;
+        if (desc.includes(t)) score += 3;
       }
       
       // Aggressive budget scoring
@@ -313,8 +326,6 @@ function buildScopedContext(question, fullContext, menuItems, activeBudget) {
     .sort((a, b) => b._score - a._score || (a.price || 0) - (b.price || 0));
 
   // If budget exists, prioritize showing ONLY compliant items in the top slice
-  const foods = scoredFoods.slice(0, 120).map(({ _score, ...rest }) => rest);
-
   const scoredRestaurants = allRestaurants
     .map((r) => {
       const hay = tokenize(`${r.name} ${r.address || ""}`);
@@ -324,12 +335,12 @@ function buildScopedContext(question, fullContext, menuItems, activeBudget) {
     })
     .sort((a, b) => b._score - a._score);
 
-  const restaurants = scoredRestaurants.slice(0, 60).map(({ _score, ...rest }) => rest);
+  const restaurants = scoredRestaurants.slice(0, 5).map(({ _score, ...rest }) => rest);
 
   return {
     stats: fullContext.stats,
     restaurants,
-    foods,
+    foods: scoredFoods.slice(0, 10).map(({ _score, ...rest }) => rest),
     activeBudget: budget > 0 ? budget : null
   };
 }
@@ -370,6 +381,7 @@ router.post("/", async (req, res) => {
         return res.json({ success: true, reply });
       } catch (groqErr) {
         console.error("[chat][groq]", groqErr.message);
+        return res.json({ success: true, reply: fallbackReply(q, workingItems) });
       }
     }
 

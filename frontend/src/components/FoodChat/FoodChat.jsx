@@ -8,7 +8,7 @@ const FoodChat = () => {
   const [open, setOpen]         = useState(false);
   const [input, setInput]       = useState("");
   const [messages, setMessages] = useState([
-    { role: "assistant", text: "Hey! 👋 Tell me what you're craving — spicy, budget-friendly, quick — I'll find the perfect match from our menu!" }
+    { role: "assistant", text: "Yo! 👋 I'm Crave AI, your food bestie. Tell me what's on your mind — budget picks, spicy vibes, or what's actually good around here. I got the legit reviews too! 🍔✨" }
   ]);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
@@ -51,7 +51,7 @@ const FoodChat = () => {
         body: JSON.stringify({
           question: q,
           menuContext: buildMenuContext(),
-          history: messages.slice(-6).map(m => ({ role: m.role, content: m.text }))
+          history: messages.slice(-10).map(m => ({ role: m.role, content: m.text }))
         })
       });
       const data = await res.json();

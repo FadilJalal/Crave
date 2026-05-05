@@ -456,7 +456,7 @@ export default function LiveDeliveryMap({ order, onArrival }) {
 
       let start = null;
       let frameId = null;
-      const duration = 15000; // 15 seconds for demo/testing
+      const duration = 120000; // 2 minutes for a slower, more realistic simulation
       
       const step = (timestamp) => {
         if (!start) start = timestamp;

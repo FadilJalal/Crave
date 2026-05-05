@@ -232,6 +232,19 @@ export default function Dashboard() {
   const knownIdsRef = useRef(null);
   const audioCtxRef = useRef(null);
   const intervalRef = useRef(null);
+  const [dismissedAlertIds, setDismissedAlertIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("ra_dismissed_dashboard_alerts") || "[]"); }
+    catch { return []; }
+  });
+
+  const dismissAlert = (id) => {
+    setDismissedAlertIds(prev => {
+      const next = [...new Set([...prev, id])];
+      localStorage.setItem("ra_dismissed_dashboard_alerts", JSON.stringify(next));
+      return next;
+    });
+  };
+
 
   const playAlert = useCallback(() => {
     try {
@@ -259,7 +272,7 @@ export default function Dashboard() {
 
   const loadData = useCallback(async () => {
     try {
-      const [f, i, o, s, r] = await Promise.all([
+      const [f, i, o, st, subRes, r] = await Promise.all([
         api.get("/api/restaurantadmin/foods"),
         api.get("/api/inventory"),
         api.get("/api/order/restaurant/list"),
@@ -283,7 +296,7 @@ export default function Dashboard() {
         }
         setOrders(incoming || []);
       }
-      if (s.data?.success) setStaff(s.data.data || []);
+      if (st.data?.success) setStaff(st.data.data || []);
       if (subRes.data?.success) setSub(subRes.data.data);
       if (r.data?.success) setReviews({
         data: r.data.data || [],
@@ -356,8 +369,11 @@ export default function Dashboard() {
     const lowStock = inventory.filter(i => i.currentStock <= i.minimumStock && i.isActive);
     if (lowStock.length > 0) arr.push({ id: "stock", type: "warning", title: "Low Stock Alert", desc: `${lowStock.length} items running low`, icon: "📉", action: () => navigate("/inventory"), cta: "Items" });
     if (pendingOrders.length > 5) arr.push({ id: "orders", type: "danger", title: "Order Backlog", desc: `${pendingOrders.length} pending orders.`, icon: "🔥", action: () => navigate("/orders"), cta: "Queue" });
-    return arr;
-  }, [sub, inventory, pendingOrders, navigate]);
+    
+    return arr
+      .filter(a => !dismissedAlertIds.includes(a.id))
+      .map(a => ({ ...a, onDismiss: () => dismissAlert(a.id) }));
+  }, [sub, inventory, pendingOrders, navigate, dismissedAlertIds]);
 
   return (
     <RestaurantLayout>
