@@ -111,24 +111,22 @@ router.post("/smart-search", async (req, res) => {
           `User Query: "${query}"`
         ].join("\n");
 
-        try {
-          const raw = await groqMoodChat({
-            messages: [
-              { role: "system", content: "Return valid JSON only." },
-              { role: "user", content: prompt },
-            ],
-            temperature: 0.1,
-          });
-          const aiParsed = JSON.parse(raw);
-          parsedParams = {
-            maxPrice: Number(aiParsed.maxPrice) || maxP,
-            minPrice: Number(aiParsed.minPrice) || minP,
-            category: aiParsed.category?.toLowerCase() || null,
-            dietary: Array.isArray(aiParsed.dietary) ? aiParsed.dietary : [],
-            cleanSearch: aiParsed.cleanSearch?.toLowerCase() || q,
-            aiUsed: true
-          };
-        }
+        const raw = await groqMoodChat({
+          messages: [
+            { role: "system", content: "Return valid JSON only." },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.1,
+        });
+        const aiParsed = JSON.parse(raw);
+        parsedParams = {
+          maxPrice: Number(aiParsed.maxPrice) || maxP,
+          minPrice: Number(aiParsed.minPrice) || minP,
+          category: aiParsed.category?.toLowerCase() || null,
+          dietary: Array.isArray(aiParsed.dietary) ? aiParsed.dietary : [],
+          cleanSearch: aiParsed.cleanSearch?.toLowerCase() || q,
+          aiUsed: true
+        };
       } catch (aiErr) {
         console.warn("[ai/smart-search] Groq parsing failed");
       }
@@ -711,6 +709,12 @@ router.post("/nutrition-scan", authMiddleware, async (req, res) => {
         if (/protein|chicken|beef|steak|fish|paneer|egg|lentil|tofu/i.test(text)) { score = 90; reason = "Excellent source of protein"; }
       } else if (healthGoal === "Low Carb") {
         if (!/rice|bread|pasta|noodle|potato|fries/i.test(text)) { score = 85; reason = "Naturally low in carbs"; }
+      } else if (/party|sharing|family|group/i.test(healthGoal)) {
+        if (/bucket|combo|box|platter|serves|pack|quantity|servings|pcs|pieces/i.test(text)) { 
+          score = 90; reason = "Perfect for sharing & groups"; 
+        } else if (/large|family|party/i.test(text)) {
+          score = 75; reason = "Good portion size for multiple people";
+        }
       }
 
       // Allergy Check (Reduces score to 0 and adds warning)
@@ -724,7 +728,8 @@ router.post("/nutrition-scan", authMiddleware, async (req, res) => {
     });
 
     // 3. AI Enrichment (If API Key is present)
-    if (apiKey && matches.some(m => m.score > 50)) {
+    const hasPredefinedGoal = ["Vegan", "Keto", "High Protein", "Low Carb"].includes(healthGoal);
+    if (apiKey && (matches.some(m => m.score > 50) || !hasPredefinedGoal)) {
        try {
          const topMatches = matches.filter(m => m.score > 50).slice(0, 5);
          const candidateNames = topMatches.map(m => {
@@ -733,9 +738,8 @@ router.post("/nutrition-scan", authMiddleware, async (req, res) => {
          }).join("\n");
 
          const prompt = [
-           `The user has a health goal of "${healthGoal}".`,
-           "Evaluate these foods and provide a professional nutrition 'reason' (max 6 words).",
-           "Explain why it fits the goal.",
+           `The user has a dietary or lifestyle goal of "${healthGoal}".`,
+           "Evaluate these foods and provide a short reason (max 6 words) why it fits this goal.",
            "Foods:",
            candidateNames,
            "Return ONLY JSON: {\"reasons\":[{\"name\":\"FoodName\",\"reason\":\"string\"}]}"

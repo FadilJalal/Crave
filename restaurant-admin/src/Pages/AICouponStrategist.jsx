@@ -238,7 +238,7 @@ export default function AICouponStrategist() {
 }
 
 // ── Strategy Card ────────────────────────────────────────────────────────────
-function StrategyCard({ s, dark, card, bord, muted, surf, highlighted, onApply, isExpanded, onExpand }) {
+function StrategyCard({ s, dark, card, bord, muted, surf, onApply }) {
   const meta = SEGMENT_META[s?.segment] || SEGMENT_META.All;
   const [hovered, setHovered] = useState(false);
 

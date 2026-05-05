@@ -12,6 +12,10 @@ import { groqChat } from "../utils/groqClient.js";
 
 const router = express.Router();
 
+const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+
+
 // AI-powered review reply generation
 router.post("/generate-review-reply", restaurantAuth, async (req, res) => {
   try {
@@ -971,26 +975,14 @@ router.post("/generate-description", restaurantAuth, async (req, res) => {
       },
     ];
 
-    const resp = await fetch(GROQ_CHAT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        temperature: 0.85,
-        max_tokens: 120,
-        messages,
-      }),
+    const description = await groqChat({
+      messages,
+      temperature: 0.85,
+      model: GROQ_MODEL,
+      jsonMode: false
     });
 
-    if (!resp.ok) throw new Error("Groq generation failed.");
-
-    const data = await resp.json();
-    const description = String(data?.choices?.[0]?.message?.content || "").trim().replace(/^"|"$/g, '');
-
-    res.json({ success: true, description });
+    res.json({ success: true, description: String(description || "").trim().replace(/^"|"$/g, '') });
   } catch (err) {
     console.error("[ai/generate-description]", err);
     res.json({ success: false, message: "Failed to generate description." });
@@ -1092,14 +1084,12 @@ router.post("/coupon-strategies", restaurantAuth, async (req, res) => {
       }
     ];
 
-    const resp = await fetch(GROQ_CHAT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: GROQ_MODEL, temperature: 0.8, messages })
+    const content = await groqChat({
+      messages,
+      temperature: 0.8,
+      model: GROQ_MODEL,
+      jsonMode: true
     });
-
-    const data = await resp.json();
-    const content = data?.choices?.[0]?.message?.content || "[]";
     const strategies = parseFirstJsonObject(content) || [];
 
     res.json({ success: true, strategies });
@@ -1132,14 +1122,12 @@ router.post("/custom-coupon-strategy", restaurantAuth, async (req, res) => {
       }
     ];
 
-    const resp = await fetch(GROQ_CHAT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: GROQ_MODEL, temperature: 0.8, messages })
+    const content = await groqChat({
+      messages,
+      temperature: 0.8,
+      model: GROQ_MODEL,
+      jsonMode: true
     });
-
-    const data = await resp.json();
-    const content = data?.choices?.[0]?.message?.content || "{}";
     const strategy = parseFirstJsonObject(content) || {};
 
     res.json({ success: true, strategy });

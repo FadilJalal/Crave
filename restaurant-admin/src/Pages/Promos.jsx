@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { useTheme } from "../ThemeContext";
@@ -52,6 +53,7 @@ const QUICK_IDEAS = [
 
 export default function Promos() {
   const { dark } = useTheme();
+  const location = useLocation();
   const [aiGoal, setAiGoal] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiIdeas, setAiIdeas] = useState([]);
@@ -74,7 +76,15 @@ export default function Promos() {
     textMuted: dark ? "#94a3b8" : "#64748b",
   };
 
-  useEffect(() => { fetchActivePromos(); }, []);
+  useEffect(() => {
+    fetchActivePromos();
+    if (location.state?.suggestedTitle) {
+      const { suggestedTitle, suggestedDiscount } = location.state;
+      setAiGoal(`Create a coupon for: ${suggestedTitle} (${suggestedDiscount})`);
+      // Scroll to top to ensure visibility
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [location.state]);
 
   const fetchActivePromos = async () => {
     try {

@@ -73,7 +73,7 @@ const PlaceOrder = () => {
     return () => window.removeEventListener('crave_location_changed', onLocChange);
   }, []);
 
-  const { getTotalCartAmount, token, food_list, foodListLoading, cartItems, url, setCartItems, currency, deliveryCharge, addresses, defaultAddress } = useContext(StoreContext);
+  const { getTotalCartAmount, token, food_list, foodListLoading, cartItems, url, setCartItems, currency, deliveryCharge, addresses, defaultAddress, walletBalance } = useContext(StoreContext);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -124,12 +124,16 @@ const PlaceOrder = () => {
   // At checkout: shared delivery charges the same fee as standard.
   // The real discount kicks in AFTER matching on the waiting screen.
   // If there's already a match found at checkout time, apply the shared fee immediately.
+  const [useWallet, setUseWallet] = useState(false);
+
   let selectedDeliveryFee = standardDeliveryFee;
   if (deliveryMode === 'shared' && sharedQuote?.eligible) {
     selectedDeliveryFee = Number(sharedQuote.sharedFee);
   }
 
-  const finalTotal = Math.max(0, subtotal - discount + selectedDeliveryFee);
+  const initialTotal = Math.max(0, subtotal - discount + selectedDeliveryFee);
+  const walletAppliedAmount = useWallet ? Math.min(initialTotal, walletBalance || 0) : 0;
+  const finalTotal = Math.max(0, initialTotal - walletAppliedAmount);
 
   const onChange = (e) => setData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -288,6 +292,8 @@ const PlaceOrder = () => {
       discount: discount || 0,
       paymentMethod: payment,
       deliveryPreference: deliveryMode === 'shared' ? 'shared' : 'express',
+      useWallet: useWallet,
+      walletAppliedAmount: walletAppliedAmount,
       sharedDelivery: {
         enabled: deliveryMode === 'shared' && !!sharedQuote?.eligible,
         sharedFee: selectedDeliveryFee,
@@ -567,8 +573,62 @@ const PlaceOrder = () => {
               <div className='po-sum-row'><span>{t("subtotal")}</span><span>{currency}{subtotal.toFixed(2)}</span></div>
               {discount > 0 && <div className='po-sum-row' style={{ color: '#16a34a', fontWeight: 700 }}><span>{t("discount_label")} ({promo.code})</span><span>- {currency}{discount.toFixed(2)}</span></div>}
               <div className='po-sum-row'><span>{t("delivery_fee")}</span><span>{currency}{selectedDeliveryFee.toFixed(2)}</span></div>
+              {useWallet && walletAppliedAmount > 0 && (
+                <div className='po-sum-row' style={{ color: '#ff4e2a', fontWeight: 700 }}><span>Wallet Applied</span><span>- {currency}{walletAppliedAmount.toFixed(2)}</span></div>
+              )}
               <div className='po-sum-row po-sum-total'><span>{t("total")}</span><span>{currency}{finalTotal.toFixed(2)}</span></div>
             </div>
+            
+            {walletBalance > 0 && (
+              <div 
+                onClick={() => setUseWallet(!useWallet)}
+                style={{ 
+                  marginTop: '16px', 
+                  padding: '14px 18px', 
+                  background: useWallet ? 'rgba(255, 78, 42, 0.08)' : 'var(--card)', 
+                  borderRadius: '14px', 
+                  border: useWallet ? '2px solid var(--brand)' : '1.5px solid var(--border)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: useWallet ? '0 4px 12px rgba(255, 78, 42, 0.1)' : 'var(--shadow-sm)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ 
+                    width: '36px', height: '36px', borderRadius: '10px', 
+                    background: useWallet ? 'var(--brand)' : 'var(--bg-soft)', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s ease'
+                  }}>
+                    <span style={{ fontSize: '18px', filter: useWallet ? 'brightness(0) invert(1)' : 'grayscale(100%) opacity(0.5)' }}>💰</span>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, color: 'var(--text)', fontSize: '14.5px' }}>Crave Wallet</div>
+                    <div style={{ fontWeight: 600, color: useWallet ? 'var(--brand)' : 'var(--text-3)', fontSize: '12.5px' }}>
+                      {currency}{walletBalance.toFixed(2)} available
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Modern Toggle Switch */}
+                <div style={{
+                  width: '44px', height: '24px', borderRadius: '12px',
+                  background: useWallet ? 'var(--brand)' : 'var(--border)',
+                  position: 'relative', transition: 'background 0.3s'
+                }}>
+                  <div style={{
+                    position: 'absolute', top: '2px', left: useWallet ? '22px' : '2px',
+                    width: '20px', height: '20px', borderRadius: '50%',
+                    background: '#fff', transition: 'left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }} />
+                </div>
+              </div>
+            )}
+            
             <div className='po-delivery-mode-box'>
                 {/* --- Redesign: Shared Delivery Match Banner --- */}
                 {sharedQuote?.eligible && (

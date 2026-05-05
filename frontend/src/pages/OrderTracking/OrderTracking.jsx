@@ -110,10 +110,31 @@ const OrderTracking = () => {
   const isDelivered  = step === 4;
   const currentStep  = STEPS(t)[step];
   const displayTotal = order ? getOrderDisplayTotal(order) : 0;
-  const splitCashDue = order?.paymentMethod === 'split' ? Math.max(0, Number(order?.amount || 0)) : 0;
+  const splitCashDue = order?.paymentMethod === 'split' ? (order?.splitCashDue ?? 0) : (order?.payment ? 0 : (order?.amount ?? 0));
 
   const formatDate = (d) =>
     new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  const handleArrival = async () => {
+    // Only auto-update if it was currently Out for Delivery
+    if (order?.status === 'Out for Delivery') {
+      try {
+        const response = await axios.post(`${url}/api/order/user/status`, {
+          orderId: order._id,
+          status: 'Delivered'
+        }, { headers: { token } });
+        
+        if (response.data.success) {
+          // Status will also be updated via Socket.io, but we set it here for instant UI response
+          setOrder(prev => ({ ...prev, status: 'Delivered' }));
+          toast.success("Order Delivered! Enjoy your meal 🏁");
+          playNotificationSound();
+        }
+      } catch (err) {
+        console.error("Auto-delivery update failed:", err);
+      }
+    }
+  };
 
   if (!token) return (
     <div className="ot-page">
@@ -187,7 +208,7 @@ const OrderTracking = () => {
             </ul>
             <div className="ot-divider" />
             <div className="sdw-savings-badge">
-              {order?.sharedRole === 'matcher' ? `Matched & Saved!` : `Instant Cashback: ${currency}${order?.sharedSavings.toFixed(2)}`}
+              {order?.sharedRole === 'matcher' ? `Matched & Saved!` : `Instant Cashback: ${currency}${(order?.sharedSavings || 0).toFixed(2)}`}
             </div>
             
             <div style={{ marginTop: '10px', fontSize: '14px', fontWeight: 600, color: '#166534' }}>
@@ -265,8 +286,8 @@ const OrderTracking = () => {
                   <p style={{ margin: 0, color: order?.isSharedDelivery ? '#15803d' : '#c2410c', fontSize: '13px', fontWeight: 500, lineHeight: 1.4 }}>
                     {order?.isSharedDelivery 
                       ? (order?.sharedRole === 'matcher'
-                          ? `A neighbor is ordering from the same area. Since you joined a partner, your ${currency}${order?.sharedSavings.toFixed(2)} savings were applied upfront!`
-                          : `A neighbor joined your delivery! ${currency}${order?.sharedSavings.toFixed(2)} has been credited to your Crave Wallet.`)
+                          ? `A neighbor is ordering from the same area. Since you joined a partner, your ${currency}${(order?.sharedSavings || 0).toFixed(2)} savings were applied upfront!`
+                          : `A neighbor joined your delivery! ${currency}${(order?.sharedSavings || 0).toFixed(2)} has been credited to your Crave Wallet.`)
                       : `We're still looking for a neighbor nearby. If found within the first 10 mins, you'll get 50% cashback automatically!`
                     }
                   </p>
@@ -381,7 +402,7 @@ const OrderTracking = () => {
           {/* RIGHT: map — sticky so it stays visible while scrolling left */}
           <div className="ot-right">
             <h3 className="ot-section-label">📍 {t("live_delivery_map")}</h3>
-            <LiveDeliveryMap order={order} />
+            <LiveDeliveryMap order={order} onArrival={handleArrival} />
           </div>
 
         </div>

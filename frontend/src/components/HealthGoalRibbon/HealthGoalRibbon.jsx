@@ -22,7 +22,9 @@ const HealthGoalRibbon = () => {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        // Custom query logic if needed, for now just a UI match
+        if (customQuery.trim()) {
+            updateHealthProfile(customQuery.trim());
+        }
     };
 
     return (

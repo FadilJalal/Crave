@@ -454,7 +454,7 @@ const StoreContextProvider = (props) => {
   const runNutritionScan = async () => {
     if (!token || healthGoal === "None" || !food_list.length) return;
     try {
-      const itemIds = food_list.slice(0, 50).map(f => f._id);
+      const itemIds = food_list.slice(0, 100).map(f => f._id);
       const res = await axios.post(url + "/api/ai/nutrition-scan", { items: itemIds }, { headers: { token } });
       if (res.data.success) {
         const matchMap = {};

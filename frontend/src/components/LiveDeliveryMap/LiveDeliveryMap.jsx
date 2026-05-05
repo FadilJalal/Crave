@@ -150,7 +150,7 @@ function makePulseIcon(L, emoji, borderColor) {
   });
 }
 
-export default function LiveDeliveryMap({ order }) {
+export default function LiveDeliveryMap({ order, onArrival }) {
   const { url } = useContext(StoreContext);
   const { t } = useTranslation();
   const [customerCoords, setCustomerCoords] = useState(null);
@@ -456,25 +456,19 @@ export default function LiveDeliveryMap({ order }) {
 
       let start = null;
       let frameId = null;
-      const duration = 180000; 
+      const duration = 15000; // 15 seconds for demo/testing
       
       const step = (timestamp) => {
         if (!start) start = timestamp;
         const elapsed = timestamp - start;
-        const rawProgress = elapsed / duration;
-        let progress;
+        const finalProgress = Math.min(1.0, elapsed / duration);
         
-        if (rawProgress < 0.95) {
-          progress = rawProgress;
-        } else {
-          progress = 0.95 + (Math.min(0.04, (rawProgress - 0.95) * 0.1));
-        }
-        
-        const finalProgress = Math.min(0.99, progress);
         setRenderedProgress(finalProgress);
         
-        if (finalProgress < 0.99) {
+        if (finalProgress < 1.0) {
           frameId = requestAnimationFrame(step);
+        } else if (onArrival) {
+          onArrival();
         }
       };
       

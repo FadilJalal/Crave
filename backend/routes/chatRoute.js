@@ -111,6 +111,18 @@ function fallbackReply(question = "", items = []) {
   const q = String(question).toLowerCase();
   if (!items.length) return "I couldn't load menu data right now. Please try again in a moment.";
 
+  // Tokenize the question to find specific restaurant or category matches
+  const qTokens = tokenize(q);
+  
+  // Try to find items that match at least one token from the query in their name, category or restaurant
+  let filteredItems = items.filter(i => {
+    const hay = tokenize(`${i.name} ${i.category} ${i.restaurant || ""}`);
+    return qTokens.some(t => hay.includes(t));
+  });
+
+  // If no specific keyword match, use all items
+  const workingSet = filteredItems.length > 0 ? filteredItems : items;
+
   // Natural chat handling for greetings and small talk.
   if (/^(hi|hey|hello|yo|hola|salam|assalam|good morning|good evening)\b/.test(q)) {
     return "Hey! I can help you find food by budget, taste, category, or restaurant. Try: spicy under AED 30, best burgers, or vegetarian options.";
@@ -121,13 +133,13 @@ function fallbackReply(question = "", items = []) {
 
   if (q.includes("cheap") || q.includes("budget") || q.includes("under")) {
     const budget = Number(q.match(/(\d+)/)?.[1] || 40);
-    const picks = items
+    const picks = workingSet
       .filter((i) => i.price > 0 && i.price <= budget)
       .sort((a, b) => a.price - b.price)
       .slice(0, 4);
-    if (picks.length) return `Budget picks under AED ${budget}: ${picks.map((p) => `${p.name} (AED ${p.price})`).join(", ")}.`;
+    if (picks.length) return `Budget picks ${filteredItems.length ? "matching your search " : ""}under AED ${budget}: ${picks.map((p) => `${p.name} (AED ${p.price})`).join(", ")}.`;
 
-    const closest = items
+    const closest = workingSet
       .filter((i) => i.price > 0)
       .sort((a, b) => a.price - b.price)
       .slice(0, 3);
@@ -140,27 +152,27 @@ function fallbackReply(question = "", items = []) {
   }
 
   if (q.includes("spicy")) {
-    const picks = items.filter((i) => /spicy|hot|chili|chilli|pepper|masala/i.test(`${i.name} ${i.description}`)).slice(0, 4);
+    const picks = workingSet.filter((i) => /spicy|hot|chili|chilli|pepper|masala/i.test(`${i.name} ${i.description}`)).slice(0, 4);
     if (picks.length) return `Spicy options: ${picks.map((p) => p.name).join(", ")}.`;
   }
 
   if (q.includes("vegetarian") || q.includes("vegan") || q.includes("healthy")) {
-    const picks = items
+    const picks = workingSet
       .filter((i) => /veg|vegan|salad|healthy|fresh/i.test(`${i.name} ${i.category} ${i.description}`))
       .slice(0, 4);
     if (picks.length) return `Try these lighter options: ${picks.map((p) => `${p.name} (AED ${p.price})`).join(", ")}.`;
   }
 
   if (q.includes("best") || q.includes("popular") || q.includes("recommend")) {
-    const picks = items
+    const picks = workingSet
       .slice()
       .sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0) || Number(a.price || 0) - Number(b.price || 0))
       .slice(0, 4);
-    if (picks.length) return `Top picks right now: ${picks.map((p) => `${p.name} (AED ${p.price})`).join(", ")}.`;
+    if (picks.length) return `Top picks ${filteredItems.length ? "for your search " : ""}right now: ${picks.map((p) => `${p.name} (AED ${p.price})`).join(", ")}.`;
   }
 
-  const picks = items.slice(0, 4);
-  return `Here are a few popular options: ${picks.map((p) => `${p.name} (AED ${p.price})`).join(", ")}.`;
+  const picks = workingSet.slice(0, 4);
+  return `Here are a few ${filteredItems.length ? "relevant " : "popular "}options: ${picks.map((p) => `${p.name} (AED ${p.price})`).join(", ")}.`;
 }
 
 async function buildPublicContext() {
@@ -274,17 +286,28 @@ function buildScopedContext(question, fullContext, menuItems, activeBudget) {
 
   const scoredFoods = allFoods
     .map((f) => {
-      const hay = tokenize(`${f.name} ${f.category} ${f.description || ""} ${f.restaurant || ""}`);
+      const restName = String(f.restaurant || "").toLowerCase();
+      const name = String(f.name || "").toLowerCase();
+      const cat = String(f.category || "").toLowerCase();
+      const desc = String(f.description || "").toLowerCase();
+      
       let score = 0;
-      for (const t of qTokens) if (hay.includes(t)) score += 2;
+      for (const t of qTokens) {
+        if (restName.includes(t)) score += 25; // Massive boost for restaurant match
+        if (name.includes(t)) score += 8;
+        if (cat.includes(t)) score += 5;
+        if (desc.includes(t)) score += 2;
+      }
       
       // Aggressive budget scoring
       if (budget > 0) {
-        if (f.price > 0 && f.price <= budget) score += 10;
-        else if (f.price > budget) score -= 50; // Heavily penalize over-budget items
+        if (f.price > 0 && f.price <= budget) score += 15;
+        else if (f.price > budget) score -= 60; // Heavily penalize over-budget items
       }
       
-      if (/recommend|best|popular|top/i.test(question)) score += Number(f.rating || 0);
+      if (/recommend|best|popular|top/i.test(question)) {
+        score += Number(f.rating || 0) * 2;
+      }
       return { ...f, _score: score };
     })
     .sort((a, b) => b._score - a._score || (a.price || 0) - (b.price || 0));

@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import { useTheme } from "../ThemeContext";
 import "./Orders.css";
 
-const STATUS_OPTIONS = ["Order Placed", "Order Accepted", "Food Processing", "Ready", "Out for delivery", "Delivered", "Cancelled"];
+const STATUS_OPTIONS = ["Order Placed", "Order Accepted", "Food Processing", "Ready", "Out for Delivery", "Delivered", "Cancelled"];
 
 const STATUS_BADGE_CLASS = {
   "Order Placed": "ao-badge ao-badge-placed",
@@ -641,10 +641,10 @@ export default function Orders() {
                           </button>
                         ) : (
                           <div className="ao-status-grid">
-                            {["Order Accepted", "Food Processing", "Ready", "Out for delivery", "Delivered"].map((s) => {
+                            {["Order Accepted", "Food Processing", "Ready", "Out for Delivery", "Delivered"].map((s) => {
                               const st = STATUS_COLORS[s] || STATUS_COLORS["Food Processing"];
                               const active = order.status === s;
-                              const isCompleted = ["Order Accepted", "Food Processing", "Ready", "Out for delivery", "Delivered"].indexOf(order.status) >= ["Order Accepted", "Food Processing", "Ready", "Out for delivery", "Delivered"].indexOf(s);
+                              const isCompleted = ["Order Accepted", "Food Processing", "Ready", "Out for Delivery", "Delivered"].indexOf(order.status) >= ["Order Accepted", "Food Processing", "Ready", "Out for Delivery", "Delivered"].indexOf(s);
                               
                               return (
                                 <button

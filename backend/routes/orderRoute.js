@@ -15,6 +15,7 @@ import {
   restaurantUpdateStatus,
   cancelOrder,
   quoteSharedDelivery,
+  userUpdateStatus,
 } from "../controllers/orderController.js";
 
 import orderModel from "../models/orderModel.js";
@@ -27,6 +28,7 @@ orderRouter.post("/place", authMiddleware, validate(schemas.placeOrder), placeOr
 orderRouter.post("/placecod", authMiddleware, placeOrderCod);
 orderRouter.post("/verify", verifyOrder);
 orderRouter.post("/cancel", authMiddleware, cancelOrder);
+orderRouter.post("/user/status", authMiddleware, userUpdateStatus);
 orderRouter.post("/shared-delivery/quote", authMiddleware, quoteSharedDelivery);
 
 // Order tracking by ID (customer must own the order)

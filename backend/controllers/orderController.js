@@ -308,11 +308,23 @@ const placeOrder = async (req, res) => {
       return { ...item, price: unitPrice, isFlashDeal: isFlashActive }; // Bug 3: Save flash status to item
     });
 
+    const discountAmount = req.body.discount || 0;
+    const initialTotal = Math.max(0, calculatedSubtotal - discountAmount + actualDeliveryFee);
+    let walletAppliedAmount = 0;
+    
+    // ── 💰 WALLET REDEMPTION LOGIC ───────────────────────────────────────────
+    if (req.body.useWallet && req.body.walletAppliedAmount > 0) {
+      const orderUser = await userModel.findById(req.body.userId);
+      if (orderUser && orderUser.walletBalance > 0) {
+        walletAppliedAmount = Math.min(initialTotal, orderUser.walletBalance, req.body.walletAppliedAmount);
+      }
+    }
+
     const newOrder = new orderModel({
       userId: req.body.userId,
       restaurantId,
       items: verifiedItems,
-      amount: calculatedSubtotal, // Use our trusted calculation
+      amount: initialTotal - walletAppliedAmount, // Save actual amount paid
       deliveryFee: actualDeliveryFee,
       isSharedDelivery: sharedDeliveryApplied.isShared,
       sharedMatchedOrderId: sharedDeliveryApplied.matchedOrderId,
@@ -320,7 +332,8 @@ const placeOrder = async (req, res) => {
       address: req.body.address,
       paymentMethod: "stripe",
       promoCode: req.body.promoCode || null,
-      discount: req.body.discount || 0,
+      discount: discountAmount,
+      walletAppliedAmount: walletAppliedAmount,
       deliveryPreference: req.body.deliveryPreference || "express",
       sharedRole: req.body.deliveryPreference === "shared" ? (sharedDeliveryApplied.isShared ? "matcher" : "pioneer") : null,
       distanceFromRestaurant: radiusCheck.distKm || 0,
@@ -354,7 +367,7 @@ const placeOrder = async (req, res) => {
       // Always include the customer parameter to avoid Stripe errors
       const orderUser = await userModel.findById(req.body.userId);
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round((req.body.amount || 0) * 100),
+        amount: Math.round((initialTotal - walletAppliedAmount) * 100),
         currency,
         payment_method: req.body.paymentMethodId,
         customer: orderUser?.stripeCustomerId || undefined,
@@ -367,6 +380,13 @@ const placeOrder = async (req, res) => {
         newOrder.payment = true;
         newOrder.stripeSessionId = paymentIntent.id;
         
+        if (walletAppliedAmount > 0) {
+          await userModel.findByIdAndUpdate(req.body.userId, {
+            $inc: { walletBalance: -walletAppliedAmount },
+            $push: { walletHistory: { type: 'debit', amount: walletAppliedAmount, description: 'Applied to Order' } }
+          });
+        }
+
         // ── ⚡ Inventory Deduction (Real-time for saved card) ─────────────
         try {
           const invRes = await deductInventoryForOrder(restaurantId, verifiedItems, String(newOrder._id));
@@ -437,10 +457,22 @@ const placeOrder = async (req, res) => {
       }
     } else {
       // --- Pay with new card (Stripe Checkout) ---
+      let final_line_items = line_items;
+      if (discountAmount > 0 || walletAppliedAmount > 0) {
+        final_line_items = [{
+          price_data: {
+            currency,
+            product_data: { name: "Crave Order Total" },
+            unit_amount: Math.round((initialTotal - walletAppliedAmount) * 100),
+          },
+          quantity: 1,
+        }];
+      }
+
       const session = await stripe.checkout.sessions.create({
         success_url: `${frontend_URL}/verify?success=true&orderId=${newOrder._id}`,
         cancel_url: `${frontend_URL}/verify?success=false&orderId=${newOrder._id}`,
-        line_items,
+        line_items: final_line_items,
         mode: "payment",
       });
       newOrder.stripeSessionId = session.id;
@@ -516,11 +548,22 @@ const placeOrderCod = async (req, res) => {
       return { ...item, price: unitPrice, isFlashDeal: isFlashActive }; // Bug 3: Save flash status
     });
 
+    const discountAmount = req.body.discount || 0;
+    const initialTotal = Math.max(0, calculatedSubtotal - discountAmount + actualDeliveryFee);
+    let walletAppliedAmount = 0;
+    
+    if (req.body.useWallet && req.body.walletAppliedAmount > 0) {
+      const orderUser = await userModel.findById(req.body.userId);
+      if (orderUser && orderUser.walletBalance > 0) {
+        walletAppliedAmount = Math.min(initialTotal, orderUser.walletBalance, req.body.walletAppliedAmount);
+      }
+    }
+
     const newOrder = new orderModel({
       userId: req.body.userId,
       restaurantId,
       items: verifiedItems,
-      amount: calculatedSubtotal, // Use trusted calculation
+      amount: initialTotal - walletAppliedAmount, // Save actual paid
       deliveryFee: actualDeliveryFee,
       isSharedDelivery: sharedDeliveryApplied.isShared,
       sharedMatchedOrderId: sharedDeliveryApplied.matchedOrderId,
@@ -529,7 +572,8 @@ const placeOrderCod = async (req, res) => {
       payment: true,
       paymentMethod: req.body.paymentMethod || "cod",
       promoCode: req.body.promoCode || null,
-      discount: req.body.discount || 0,
+      discount: discountAmount,
+      walletAppliedAmount: walletAppliedAmount,
       splitCardTotal: req.body.splitCardTotal || 0,
       splitCashDue:   req.body.splitCashDue   || 0,
       splitCardCount: req.body.splitCardCount  || 0,
@@ -541,6 +585,13 @@ const placeOrderCod = async (req, res) => {
 
     await newOrder.save();
     await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
+
+    if (walletAppliedAmount > 0) {
+      await userModel.findByIdAndUpdate(req.body.userId, {
+        $inc: { walletBalance: -walletAppliedAmount },
+        $push: { walletHistory: { type: 'debit', amount: walletAppliedAmount, description: 'Applied to Order' } }
+      });
+    }
 
     // ── ⚡ Inventory Deduction (Real-time on Order) ──────────────────────
     try {
@@ -972,6 +1023,14 @@ const verifyOrder = async (req, res) => {
           }
         }
 
+        // ── 💰 Wallet Deduction for Stripe Checkout ─────────────────────────────
+        if (order.walletAppliedAmount > 0) {
+          await userModel.findByIdAndUpdate(order.userId, {
+            $inc: { walletBalance: -order.walletAppliedAmount },
+            $push: { walletHistory: { type: 'debit', amount: order.walletAppliedAmount, description: 'Applied to Order' } }
+          });
+        }
+
         // ── ⚡ Bug 3: Increment Flash Deal Claimed Counter ────────────────────
         try {
           for (const item of order.items) {
@@ -1150,6 +1209,39 @@ const getOrderById = async (req, res) => {
   }
 };
 
+// =====================================
+// USER: UPDATE STATUS TO DELIVERED
+// =====================================
+const userUpdateStatus = async (req, res) => {
+  try {
+    const { orderId, status } = req.body;
+    if (status !== "Delivered") {
+      return res.json({ success: false, message: "Invalid status update" });
+    }
+    const order = await orderModel.findOne({ _id: orderId, userId: req.body.userId });
+    if (!order) return res.json({ success: false, message: "Order not found" });
+
+    order.status = status;
+    await order.save();
+    
+    emitToRestaurant(String(order.restaurantId), "orderStatusUpdate", {
+      orderId: order._id,
+      status: order.status,
+    });
+    
+    const io = getIO();
+    io.to(`user_${order.userId}`).emit("order:statusUpdate", {
+      orderId: order._id,
+      status: order.status,
+      updatedAt: new Date()
+    });
+
+    res.json({ success: true, message: "Status updated to Delivered" });
+  } catch (error) {
+    res.json({ success: false, message: "Error updating status" });
+  }
+};
+
 export {
   placeOrder,
   placeOrderCod,
@@ -1160,6 +1252,7 @@ export {
   verifyOrder,
   listRestaurantOrders,
   restaurantUpdateStatus,
+  userUpdateStatus,
   getOrderById,
   cancelOrder,
   calcDeliveryFee,
