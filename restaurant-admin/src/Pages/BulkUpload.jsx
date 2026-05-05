@@ -155,8 +155,9 @@ const uploadRow = async (row) => {
   return res.data;
 };
 
-const extractQuantityFromName = (name) => {
+const extractQuantityFromName = (name, description = "") => {
     if (!name) return 1;
+    const searchArea = `${name} ${description}`;
     // Patterns like "15pcs", "6 wings", "10-piece", "pack of 4"
     const patterns = [
         /(\d+(?:\.\d+)?)\s*(?:-?\s*piece|pc|pcs|pce|wing|strip|piece)/i,
@@ -166,7 +167,7 @@ const extractQuantityFromName = (name) => {
     ];
 
     for (const pattern of patterns) {
-        const match = name.match(pattern);
+        const match = searchArea.match(pattern);
         if (match && match[1]) {
             const val = parseFloat(match[1]);
             if (val > 0 && val < 500) return val; 
@@ -227,7 +228,17 @@ const parseIngredientString = (str, foodNameFallback = "") => {
         const qtyMatch = parts[1].match(/(\d+(?:\.\d+)?)/);
         qty = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
     } else {
-        qty = fallbackQty; 
+        // SMART FALLBACK: Only use the number from the dish name (e.g. 15 from "15pc Strips")
+        // if the ingredient name itself is mentioned in the dish name.
+        const lowerName = name.toLowerCase();
+        const lowerDish = foodNameFallback.toLowerCase();
+        
+        const isMainIngredient = 
+            lowerDish.includes(lowerName) || 
+            lowerName.includes(lowerDish) ||
+            (lowerName.includes("chicken") && (lowerDish.includes("strip") || lowerDish.includes("wing") || lowerDish.includes("nugget") || lowerDish.includes("piece") || lowerDish.includes("pc")));
+
+        qty = isMainIngredient ? fallbackQty : 1; 
     }
     
     return { name, qty };
@@ -1012,13 +1023,13 @@ export default function BulkUpload() {
                           </td>
 
                           {/* ── Ingredients cell ── */}
-                          <td style={{ padding: "10px 12px" }} onClick={e => e.stopPropagation()}>
+                          <td style={{ padding: "10px 12px", maxWidth: 300 }} onClick={e => e.stopPropagation()}>
                             {(() => {
                               const parsed = parseIngredientString(row.ingredients, row.name);
                               const ingCount = parsed.length;
                               const hasInv = inventoryItems.length > 0;
                               return (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 160, overflowY: "auto", paddingRight: 4 }} className="custom-scrollbar">
                                   {ingCount > 0 && (
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                                       {parsed.map((ing, pi) => {
@@ -1169,6 +1180,11 @@ export default function BulkUpload() {
             </div>
           </div>
         )}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #ff4e2a; border-radius: 10px; }
+      `}</style>
       </div>
     </RestaurantLayout>
   );

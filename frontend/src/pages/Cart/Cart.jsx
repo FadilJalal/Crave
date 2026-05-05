@@ -82,7 +82,12 @@ const Cart = () => {
   const parseSelections = (selections = {}) => {
     return Object.entries(selections)
       .filter(([, v]) => v && (Array.isArray(v) ? v.length > 0 : true))
-      .map(([k, v]) => ({ label: k, value: Array.isArray(v) ? v.join(', ') : v }));
+      .map(([k, v]) => ({ 
+        label: k, 
+        value: Array.isArray(v) 
+          ? v.map(item => String(item).split(':')[0]).join(', ') 
+          : String(v).split(':')[0] 
+      }));
   };
 
   return (

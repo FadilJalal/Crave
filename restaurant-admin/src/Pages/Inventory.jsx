@@ -7,8 +7,9 @@ import { toast } from "react-toastify";
 import { useTheme } from "../ThemeContext";
 import ConfirmationModal from "../components/ConfirmationModal";
 
-const extractQuantityFromName = (name) => {
+const extractQuantityFromName = (name, description = "") => {
     if (!name) return 1;
+    const searchArea = `${name} ${description}`;
     const patterns = [
         /(\d+)\s*(?:-?\s*piece|pc|pcs|pce|wing|strip)/i,
         /(?:pack|bucket|deal)\s*(?:of|for)?\s*(\d+)/i,
@@ -16,7 +17,7 @@ const extractQuantityFromName = (name) => {
         /(\d+)\s*x\s*(?:^|\s)/i
     ];
     for (const pattern of patterns) {
-        const match = name.match(pattern);
+        const match = searchArea.match(pattern);
         if (match && match[1]) {
             const val = parseInt(match[1]);
             if (val > 0 && val < 500) return val;
@@ -320,10 +321,19 @@ export default function Inventory() {
 
             if ((recipeMatch || directMatch || keywordMatch) && !matchedIds.has(f._id)) {
                 matchedIds.add(f._id);
+                
+                // SMART QUANTITY: Only use the number from the food name (e.g. 15 from "15 PC Strips")
+                // if the inventory item name itself is mentioned in the food name.
+                const fallbackQty = extractQuantityFromName(f.name, f.description);
+                const isMainIngredient = 
+                    fNameRaw.includes(search) || 
+                    search.includes(fNameRaw) ||
+                    (search.includes("chicken") && (fNameRaw.includes("strip") || fNameRaw.includes("wing") || fNameRaw.includes("nugget") || fNameRaw.includes("piece") || fNameRaw.includes("pc")));
+
                 results.push({ 
                     foodId: f._id, 
                     foodName: f.name, 
-                    quantityPerOrder: extractQuantityFromName(f.name) 
+                    quantityPerOrder: isMainIngredient ? fallbackQty : 1 
                 });
             }
         });

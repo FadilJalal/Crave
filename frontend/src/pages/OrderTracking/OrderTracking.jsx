@@ -200,9 +200,21 @@ const OrderTracking = () => {
             <div className="ot-divider" />
             <ul className="ot-items">
               {(order.items || []).map((item, i) => (
-                <li key={i} className="ot-item">
-                  <span className="ot-item-name">{item.name}</span>
-                  <span className="ot-item-qty">×{item.quantity}</span>
+                <li key={i} className="ot-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                    <span className="ot-item-name">{item.name}</span>
+                    <span className="ot-item-qty">×{item.quantity}</span>
+                  </div>
+                  {item.selections && Object.entries(item.selections).length > 0 && (
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
+                      {Object.entries(item.selections).map(([key, val], si) => {
+                        const cleanVal = Array.isArray(val) 
+                          ? val.map(v => String(v).split(':')[0]).join(', ') 
+                          : String(val).split(':')[0];
+                        return <span key={si}>{key}: {cleanVal}{si < Object.entries(item.selections).length - 1 ? ' · ' : ''}</span>
+                      })}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -341,10 +353,22 @@ const OrderTracking = () => {
               <h3 className="ot-card-title">🛍 {t("order_summary")}</h3>
               <ul className="ot-items">
                 {(order.items || []).map((item, i) => (
-                  <li key={i} className="ot-item">
-                    <span className="ot-item-name">{item.name}</span>
-                    <span className="ot-item-qty">×{item.quantity}</span>
-                    <span className="ot-item-price">{currency}{(item.price * item.quantity).toFixed(2)}</span>
+                  <li key={i} className="ot-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span className="ot-item-name">{item.name}</span>
+                      <span className="ot-item-qty">×{item.quantity}</span>
+                      <span className="ot-item-price">{currency}{(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                    {item.selections && Object.entries(item.selections).length > 0 && (
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px', paddingLeft: '4px', borderLeft: '2px solid #e5e7eb' }}>
+                        {Object.entries(item.selections).map(([key, val], si) => {
+                          const cleanVal = Array.isArray(val) 
+                            ? val.map(v => String(v).split(':')[0]).join(', ') 
+                            : String(val).split(':')[0];
+                          return <span key={si}>{key}: {cleanVal}{si < Object.entries(item.selections).length - 1 ? ' · ' : ''}</span>
+                        })}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

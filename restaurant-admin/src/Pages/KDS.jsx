@@ -148,7 +148,12 @@ function OrderCard({ order, onAction, isReady }) {
                             {item.selections && Object.values(item.selections).some(v => v && v.length > 0) && (
                                 <div className="item-selections">
                                     {Object.entries(item.selections)
-                                        .map(([k, v]) => Array.isArray(v) ? v.join(", ") : v)
+                                        .map(([k, v]) => {
+                                            const val = Array.isArray(v) 
+                                                ? v.map(vi => String(vi).split(':')[0]).join(", ") 
+                                                : String(v).split(':')[0];
+                                            return val;
+                                        })
                                         .filter(v => v)
                                         .join(" · ")}
                                 </div>

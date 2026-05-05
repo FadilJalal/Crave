@@ -59,9 +59,12 @@ const parseIngredientQuantity = (itemName, ingredientsStr, dishName) => {
     // Fallback if no ingredients string or no match in it:
     // Only use dish name quantity if the inventory item name itself is mentioned in the dish name
     // (e.g. "20pcs Chicken" and inventory item is "Chicken")
-    const lowerItem = itemName.toLowerCase();
-    const lowerDish = dishName.toLowerCase();
-    if (lowerDish.includes(lowerItem)) {
+    const isMainIngredient = 
+        lowerDish.includes(lowerItem) || 
+        lowerItem.includes(lowerDish) ||
+        (lowerItem.includes("chicken") && (lowerDish.includes("strip") || lowerDish.includes("wing") || lowerDish.includes("nugget") || lowerDish.includes("piece") || lowerDish.includes("pc")));
+
+    if (isMainIngredient) {
         return extractQuantityFromName(dishName) || 1;
     }
 
@@ -606,7 +609,11 @@ const bulkImportInventory = async (req, res) => {
         });
     } catch (error) {
         console.error("Error bulk importing inventory:", error);
-        res.status(500).json({ success: false, message: "Failed to import items" });
+        res.status(500).json({ 
+            success: false, 
+            message: "Import failed: " + (error.message || "Unknown error"),
+            error: error.errors ? Object.keys(error.errors).map(k => `${k}: ${error.errors[k].message}`) : null
+        });
     }
 };
 
@@ -1205,28 +1212,56 @@ const deductInventoryForOrder = async (restaurantId, orderItems, orderId) => {
             return { success: true, message: "No items to deduct" };
         }
 
-        // Build a map of foodId -> quantity ordered
+        // 1. Build a map of foodId -> quantity ordered
         const orderedMap = {};
+        // 2. Build a map of customization labels -> quantity ordered (for choice-based tracking)
+        const selectionMap = {};
+
         for (const oi of orderItems) {
-            // Check all possible ID fields (Mongoose _id, or flat foodId)
             const idSource = oi._id || oi.foodId || oi.id;
-            if (!idSource) {
-                console.warn(`[inventory][deduct] Item in order ${orderId} missing ID:`, oi.name);
-                continue;
+            const itemQty = Number(oi.quantity) || 0;
+
+            if (idSource) {
+                const key = String(idSource);
+                orderedMap[key] = (orderedMap[key] || 0) + itemQty;
             }
-            const key = String(idSource);
-            orderedMap[key] = (orderedMap[key] || 0) + (Number(oi.quantity) || 0);
+
+            // Smart Tracking: Check if any selected options/customizations match inventory names
+            // Format of oi.selections is usually { "Group Name": "Option Label" } or { "Group": ["Opt1", "Opt2"] }
+            if (oi.selections && typeof oi.selections === 'object') {
+                Object.values(oi.selections).forEach(val => {
+                    const processVal = (v) => {
+                        if (!v) return;
+                        const s = String(v).trim();
+                        // Support "Item Name:Quantity" (e.g. "Garlic Dip:2")
+                        const parts = s.split(":");
+                        const name = parts[0].toLowerCase().trim();
+                        let qty = 1;
+                        if (parts.length > 1) {
+                            qty = parseFloat(parts[1]) || 1;
+                        }
+                        selectionMap[name] = (selectionMap[name] || 0) + (qty * itemQty);
+                    };
+
+                    if (Array.isArray(val)) {
+                        val.forEach(processVal);
+                    } else {
+                        processVal(val);
+                    }
+                });
+            }
         }
 
-        console.log(`[inventory][deduct] Ordered Items Map:`, orderedMap);
+        console.log(`[inventory][deduct] Ordered Map:`, orderedMap);
+        console.log(`[inventory][deduct] Selection Map:`, selectionMap);
 
+        // Fetch all inventory items for this restaurant
         const inventoryItems = await inventoryModel.find({
             restaurantId,
-            isActive: true,
-            "linkedMenuItems.0": { $exists: true }
+            isActive: true
         });
 
-        console.log(`[inventory][deduct] Found ${inventoryItems.length} inventory items with links.`);
+        console.log(`[inventory][deduct] Found ${inventoryItems.length} active inventory items.`);
 
         const deductionResults = [];
 
@@ -1235,7 +1270,33 @@ const deductInventoryForOrder = async (restaurantId, orderItems, orderId) => {
             let totalDeductionForThisItem = 0;
             const itemLogs = [];
 
-            for (const link of inv.linkedMenuItems) {
+            // 1. DEDUCT BASED ON SELECTIONS (Customizations like "Select Drink: Pepsi")
+            const lowerInvName = (inv.itemName || "").toLowerCase().trim();
+            const qtyFromSelections = Number(selectionMap[lowerInvName] || 0);
+
+            if (qtyFromSelections > 0) {
+                totalDeductionForThisItem += qtyFromSelections;
+                itemLogs.push({
+                    orderId: orderId || "unknown",
+                    foodId: "customization",
+                    foodName: `Choice: ${inv.itemName}`,
+                    qtyOrdered: qtyFromSelections,
+                    qtyDeducted: qtyFromSelections,
+                    stockBefore: invCurrentStock,
+                    stockAfter: invCurrentStock - qtyFromSelections,
+                    date: new Date()
+                });
+                deductionResults.push({
+                    inventoryItem: inv.itemName,
+                    foodId: "customization",
+                    qtyDeducted: qtyFromSelections
+                });
+                // Update current stock for potential subsequent linked deductions
+                invCurrentStock -= qtyFromSelections;
+            }
+
+            // 2. DEDUCT BASED ON LINKS (Fixed ingredients like "20pcs Chicken")
+            for (const link of (inv.linkedMenuItems || [])) {
                 // Ensure we get the raw ID string
                 const foodKey = String(link.foodId?._id || link.foodId || "");
                 const qtyOrdered = Number(orderedMap[foodKey] || 0);
@@ -1256,8 +1317,8 @@ const deductInventoryForOrder = async (restaurantId, orderItems, orderId) => {
                     foodName: orderItems.find(oi => String(oi._id || oi.foodId || oi.id) === foodKey)?.name || "Unknown Item",
                     qtyOrdered,
                     qtyDeducted: qtyToDeduct,
-                    stockBefore: invCurrentStock - (totalDeductionForThisItem - qtyToDeduct),
-                    stockAfter: invCurrentStock - totalDeductionForThisItem,
+                    stockBefore: invCurrentStock,
+                    stockAfter: invCurrentStock - qtyToDeduct,
                     date: new Date()
                 });
 
@@ -1266,6 +1327,8 @@ const deductInventoryForOrder = async (restaurantId, orderItems, orderId) => {
                     foodId: foodKey,
                     qtyDeducted: qtyToDeduct
                 });
+                
+                invCurrentStock -= qtyToDeduct;
             }
 
             // Apply the total deduction for this inventory item in one go
@@ -1969,3 +2032,4 @@ export {
     getCostAnalysis,
     syncAllLinks
 };
+

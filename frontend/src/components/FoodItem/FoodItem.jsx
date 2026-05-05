@@ -392,7 +392,9 @@ const FoodItem = (props) => {
                           <div style={{ width: 20, height: 20, borderRadius: group.multiSelect ? 6 : '50%', border: `2px solid ${isSelected ? '#ff4e2a' : (dark ? '#475569' : '#d1d5db')}`, background: isSelected ? '#ff4e2a' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
                             {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"/></svg>}
                           </div>
-                          <span style={{ fontWeight: 700, fontSize: 15, color: modalText }}>{opt.label}</span>
+                          <span style={{ fontWeight: 700, fontSize: 15, color: modalText }}>
+                            {opt.label.split(':')[0]}
+                          </span>
                         </div>
                         {opt.extraPrice > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: isSelected ? '#ff4e2a' : modalMuted }}>+{currency}{opt.extraPrice}</span>}
                       </div>
