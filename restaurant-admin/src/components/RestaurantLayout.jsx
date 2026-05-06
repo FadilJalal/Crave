@@ -497,13 +497,36 @@ export default function RestaurantLayout({ children }) {
             borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 100
           }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 950, letterSpacing: "-0.8px" }}>
-                {location.pathname === "/dashboard" ? "Dashboard Overview" :
-                  location.pathname === "/orders" ? "Active Orders" :
-                  location.pathname === "/kds" ? "Kitchen Display System" :
-                    location.pathname === "/inventory" ? "Inventory Management" : "Restaurant Admin"}
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 950, letterSpacing: "-0.8px", color: "var(--text)" }}>
+                {(() => {
+                  const path = location.pathname;
+                  if (path === "/dashboard") return "Dashboard Overview";
+                  if (path === "/orders") return "Active Orders";
+                  if (path === "/kds") return "Kitchen Console";
+                  if (path === "/inventory") return "Inventory & Stock";
+                  if (path === "/inventory/analytics") return "Stock Analytics";
+                  if (path === "/bulk-upload") return "Bulk Menu Upload";
+                  if (path === "/menu") return "Menu & Dishes";
+                  if (path === "/add-food") return "Add New Food";
+                  if (path === "/labor") return "Staff & Labor";
+                  if (path === "/coupons") return "AI Promo Generator";
+                  if (path === "/coupon-strategist") return "Coupon Growth Lab";
+                  if (path === "/email-campaign") return "AI Campaigns";
+                  if (path === "/ai-insights") return "AI Intelligence";
+                  if (path === "/ai-labor-optimizer") return "Labor Optimization";
+                  if (path === "/ai-customer-segmentation") return "Customer Segments";
+                  if (path === "/review-reply") return "AI Review Assistant";
+                  if (path === "/revenue") return "Revenue Analytics";
+                  if (path === "/finance") return "Billing & Payouts";
+                  if (path === "/customers") return "Customer Database";
+                  if (path === "/messages") return "Messages";
+                  if (path === "/reviews") return "Guest Reviews";
+                  if (path === "/settings") return "Restaurant Settings";
+                  if (path === "/subscription") return "Enterprise Subscription";
+                  return "Restaurant Admin";
+                })()}
               </h2>
-              <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--muted)", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 {new Date().toLocaleDateString("en-AE", { weekday: "long", day: "numeric", month: "long" })}
               </p>
             </div>

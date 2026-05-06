@@ -841,16 +841,8 @@ export default function BulkUpload() {
         />
       )}
 
-      <div style={{ marginBottom: 6, display: "flex", alignItems: "flex-start",
-        justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <div>
-          <h2 style={{ margin: "0 0 4px", fontSize: 26, fontWeight: 900, letterSpacing: "-0.5px" }}>
-            📦 Bulk Menu Upload
-          </h2>
-          <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
-            Upload your whole menu from a spreadsheet + images in minutes
-          </p>
-        </div>
+      <div style={{ marginBottom: 16, display: "flex", alignItems: "center",
+        justifyContent: "flex-end", flexWrap: "wrap", gap: 12 }}>
         <button onClick={downloadTemplate}
           style={{ padding: "9px 20px", borderRadius: 50, border: "1.5px solid #e5e7eb",
             background: dark ? "#0f172a" : "#fff", color: dark ? "var(--text)" : "#111827", fontWeight: 700, fontSize: 13, cursor: "pointer",

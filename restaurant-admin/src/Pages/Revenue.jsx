@@ -169,14 +169,7 @@ export default function Revenue() {
                 <div className="rev-layout">
                 
                 {/* ── Enterprise HUD ── */}
-                <header className="rev-hud-header">
-                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                        <div className="rev-live-dot" />
-                        <div>
-                            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: "var(--rev-text)" }}>Sales & Revenue Hub</h1>
-                            <span style={{ fontSize: 13, color: "var(--rev-muted)", fontWeight: 600 }}>Track your restaurant's financial growth</span>
-                        </div>
-                    </div>
+                <header className="rev-hud-header" style={{ justifyContent: 'flex-end', marginBottom: 24 }}>
                     <div style={{ display: "flex", gap: 12 }}>
                         <select 
                             className="rev-select-premium"

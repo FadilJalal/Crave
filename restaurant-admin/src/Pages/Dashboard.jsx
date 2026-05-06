@@ -11,6 +11,7 @@ import TopItems from "../components/TopItems";
 import ReviewsPreview from "../components/ReviewsPreview";
 import NotificationCenter from "../components/NotificationCenter";
 import { toast } from "react-toastify";
+import socket, { connectRestaurantSocket, disconnectSocket } from "../utils/socket";
 import "./Dashboard.css";
 
 const STATUS_CONFIG = {
@@ -317,8 +318,27 @@ export default function Dashboard() {
       } catch (err) { console.error(err); }
     };
     loadAnalytics();
-    return () => clearInterval(intervalRef.current);
-  }, [loadData]);
+
+    // ── Real-time Notifications ──
+    const restInfo = JSON.parse(localStorage.getItem("restaurantInfo") || "{}");
+    const rId = restInfo._id;
+    if (rId) {
+      connectRestaurantSocket(rId);
+      socket.on("newOrder", (data) => {
+          playAlert();
+          toast.success(`🛎️ New order arrived! #${(data.orderId || "").slice(-6).toUpperCase()}`, { 
+            autoClose: 10000,
+            onClick: () => navigate("/orders") 
+          });
+          loadData();
+      });
+    }
+
+    return () => {
+      clearInterval(intervalRef.current);
+      socket.off("newOrder");
+    };
+  }, [loadData, navigate, playAlert]);
 
   const updateStatus = async (orderId, status) => {
     try {
@@ -407,7 +427,7 @@ export default function Dashboard() {
             <div style={{ maxWidth: 760 }}>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 999, background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.14)", fontSize: 11, fontWeight: 800, letterSpacing: "0.4px", marginBottom: 12, backdropFilter: "blur(12px)" }}><span>⚡</span> Control Center</div>
               <h1 style={{ margin: 0, fontSize: 36, fontWeight: 900, letterSpacing: "-1.5px", color: "white", lineHeight: 1.05 }}>{new Date().getHours() < 12 ? "Good morning." : new Date().getHours() < 17 ? "Good afternoon." : "Good evening."}</h1>
-              <p style={{ margin: "10px 0 0", fontSize: 14, color: "rgba(255,255,255,0.7)", fontWeight: 500, maxWidth: 640 }}>{new Date().toLocaleDateString("en-AE", { weekday: "long", day: "numeric", month: "long" })} · {todayOrders.length} orders today · AED {todayRevenue} revenue so far</p>
+              <p style={{ margin: "10px 0 0", fontSize: 14, color: "rgba(255,255,255,0.7)", fontWeight: 500, maxWidth: 640 }}>{todayOrders.length} orders today · AED {todayRevenue} revenue so far</p>
             </div>
           </div>
           <DashboardSummary stats={{ todayRevenue, todayOrdersCount: todayOrders.length, completionRate }} orders={orders} dark={dark} />

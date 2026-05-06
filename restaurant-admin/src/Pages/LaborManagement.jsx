@@ -92,27 +92,7 @@ export default function LaborManagement() {
     <RestaurantLayout>
       <div style={{ maxWidth: 1100, margin: "0 auto", paddingBottom: 60 }}>
         
-        {/* HEADER SECTION */}
-        <div style={{ marginBottom: 40, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              <div style={{ 
-                background: `${accentColor}15`, color: accentColor, 
-                padding: "6px 12px", borderRadius: 8, fontSize: 10, fontWeight: 800, 
-                textTransform: "uppercase", letterSpacing: 1, display: "flex", alignItems: "center", gap: 6 
-              }}>
-                <Briefcase size={14} />
-                Workforce Hub
-              </div>
-            </div>
-            <h1 style={{ fontSize: 36, fontWeight: 900, margin: 0, letterSpacing: "-1px", color: dark ? "#fff" : "#0f172a" }}>
-              Labor & Staff <span style={{ color: "var(--muted)", fontWeight: 400 }}>Management</span>
-            </h1>
-            <p style={{ fontSize: 15, color: "var(--muted)", marginTop: 8, maxWidth: 600, lineHeight: 1.6 }}>
-              Maintain your active employee roster, track roles, and oversee baseline labor expenditures across operations.
-            </p>
-          </div>
-          
+        <div style={{ marginBottom: 24, display: "flex", justifyContent: "flex-end" }}>
           <button 
             onClick={() => setShowAddModal(true)}
             style={{

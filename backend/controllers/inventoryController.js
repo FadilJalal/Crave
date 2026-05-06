@@ -1214,33 +1214,39 @@ const deductInventoryForOrder = async (restaurantId, orderItems, orderId) => {
 
         // 1. Build a map of foodId -> quantity ordered
         const orderedMap = {};
-        // 2. Build a map of customization labels -> quantity ordered (for choice-based tracking)
+        // 2. Build a map of customization labels -> quantity ordered (total order)
         const selectionMap = {};
+        // 3. New: Build a map of [foodId][itemName] -> quantity (per-item choices to prevent double-dipping)
+        const itemSelectionConflicts = {};
 
         for (const oi of orderItems) {
             const idSource = oi._id || oi.foodId || oi.id;
             const itemQty = Number(oi.quantity) || 0;
+            const foodKey = String(idSource);
 
             if (idSource) {
-                const key = String(idSource);
-                orderedMap[key] = (orderedMap[key] || 0) + itemQty;
+                orderedMap[foodKey] = (orderedMap[foodKey] || 0) + itemQty;
             }
 
-            // Smart Tracking: Check if any selected options/customizations match inventory names
-            // Format of oi.selections is usually { "Group Name": "Option Label" } or { "Group": ["Opt1", "Opt2"] }
             if (oi.selections && typeof oi.selections === 'object') {
+                if (!itemSelectionConflicts[foodKey]) itemSelectionConflicts[foodKey] = {};
+
                 Object.values(oi.selections).forEach(val => {
                     const processVal = (v) => {
                         if (!v) return;
                         const s = String(v).trim();
-                        // Support "Item Name:Quantity" (e.g. "Garlic Dip:2")
                         const parts = s.split(":");
                         const name = parts[0].toLowerCase().trim();
                         let qty = 1;
                         if (parts.length > 1) {
                             qty = parseFloat(parts[1]) || 1;
                         }
+                        
+                        // Global map for deduction
                         selectionMap[name] = (selectionMap[name] || 0) + (qty * itemQty);
+                        
+                        // Per-item map to detect overlaps with "ingredients" column
+                        itemSelectionConflicts[foodKey][name] = (itemSelectionConflicts[foodKey][name] || 0) + (qty * itemQty);
                     };
 
                     if (Array.isArray(val)) {
@@ -1270,8 +1276,9 @@ const deductInventoryForOrder = async (restaurantId, orderItems, orderId) => {
             let totalDeductionForThisItem = 0;
             const itemLogs = [];
 
-            // 1. DEDUCT BASED ON SELECTIONS (Customizations like "Select Drink: Pepsi")
             const lowerInvName = (inv.itemName || "").toLowerCase().trim();
+
+            // 1. DEDUCT BASED ON SELECTIONS (Customizations like "Select Drink: Pepsi")
             const qtyFromSelections = Number(selectionMap[lowerInvName] || 0);
 
             if (qtyFromSelections > 0) {
@@ -1291,21 +1298,25 @@ const deductInventoryForOrder = async (restaurantId, orderItems, orderId) => {
                     foodId: "customization",
                     qtyDeducted: qtyFromSelections
                 });
-                // Update current stock for potential subsequent linked deductions
                 invCurrentStock -= qtyFromSelections;
             }
 
             // 2. DEDUCT BASED ON LINKS (Fixed ingredients like "20pcs Chicken")
             for (const link of (inv.linkedMenuItems || [])) {
-                // Ensure we get the raw ID string
                 const foodKey = String(link.foodId?._id || link.foodId || "");
                 const qtyOrdered = Number(orderedMap[foodKey] || 0);
                 
                 if (!qtyOrdered) continue;
-                if (Number(link.quantityPerOrder) <= 0) {
-                    console.warn(`[inventory][deduct] Invalid link qty for ${inv.itemName} -> ${foodKey}`);
+
+                // --- SAFETY CHECK: DOUBLE DEDUCTION PREVENTION ---
+                // If the user made a CHOICE for this inventory item for this specific burger,
+                // we skip the linked deduction because it's already accounted for in Step 1.
+                if (itemSelectionConflicts[foodKey]?.[lowerInvName]) {
+                    console.log(`[inventory][deduct] Skipping linked deduction for ${inv.itemName} in ${foodKey} because it was already deducted as a Choice.`);
                     continue;
                 }
+
+                if (Number(link.quantityPerOrder) <= 0) continue;
 
                 const linkQtyPerOrder = Number(link.quantityPerOrder);
                 const qtyToDeduct = Number((qtyOrdered * linkQtyPerOrder).toFixed(4));

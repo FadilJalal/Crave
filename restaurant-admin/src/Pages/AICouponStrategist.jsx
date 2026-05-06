@@ -98,18 +98,7 @@ export default function AICouponStrategist() {
     <RestaurantLayout>
       <div style={{ background: bg, color: txt, minHeight: "100vh", fontFamily: "'Outfit', sans-serif", padding: "40px" }}>
 
-        {/* ── Header ── */}
-        <div style={{ marginBottom: 36 }}>
-          <div style={{ fontSize: 11, fontWeight: 900, color: "#10b981", textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>
-            Neural Growth Engine · Growth &amp; AI
-          </div>
-          <h1 style={{ margin: 0, fontSize: 38, fontWeight: 950, letterSpacing: "-1.5px" }}>
-            Coupon <span style={{ color: "#10b981" }}>Growth Lab</span>
-          </h1>
-          <p style={{ margin: "8px 0 0", fontSize: 15, color: muted, fontWeight: 500, maxWidth: 580 }}>
-            AI analyzes your order data and synthesizes targeted coupon strategies designed to boost retention, reactivate churn, and unlock new revenue.
-          </p>
-        </div>
+
 
         {/* ── KPI Row ── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 32 }}>
@@ -134,7 +123,6 @@ export default function AICouponStrategist() {
 
             {/* Run Analysis */}
             <div style={{ background: card, border: `1px solid ${bord}`, borderRadius: 24, padding: 24, boxShadow: dark ? "0 12px 30px rgba(0,0,0,0.3)" : "0 4px 16px rgba(0,0,0,0.04)" }}>
-              <div style={{ fontSize: 11, fontWeight: 900, color: muted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Auto-Analysis</div>
               <p style={{ fontSize: 13, color: muted, marginBottom: 20, lineHeight: 1.6 }}>
                 Let the AI scan your order history and generate 5 ready-to-deploy coupon strategies.
               </p>

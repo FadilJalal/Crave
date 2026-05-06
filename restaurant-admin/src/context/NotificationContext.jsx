@@ -166,6 +166,28 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     if (Notification.permission !== "granted") Notification.requestPermission();
     fetchNotifications();
+
+    // ── Real-time Socket Sync ──
+    const restInfo = JSON.parse(localStorage.getItem("restaurantInfo") || "{}");
+    const rId = restInfo?._id;
+    
+    if (rId) {
+      import("../utils/socket").then(({ default: socket, connectRestaurantSocket, disconnectSocket }) => {
+        connectRestaurantSocket(rId);
+        
+        const handleNewOrder = () => {
+          fetchNotifications(); // Refresh all notification data instantly
+        };
+
+        socket.on("newOrder", handleNewOrder);
+
+        return () => {
+          socket.off("newOrder", handleNewOrder);
+          disconnectSocket();
+        };
+      });
+    }
+
     const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
   }, []);

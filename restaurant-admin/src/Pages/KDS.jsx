@@ -4,6 +4,7 @@ import { api } from "../utils/api";
 import { useTheme } from "../ThemeContext";
 import { toast } from "react-toastify";
 import { Clock, Play, CheckCircle, ChevronRight, AlertTriangle, Timer } from "lucide-react";
+import socket, { connectRestaurantSocket, disconnectSocket } from "../utils/socket";
 import "./KDS.css";
 
 export default function KDS() {
@@ -51,8 +52,26 @@ export default function KDS() {
 
     useEffect(() => {
         fetchOrders();
-        const interval = setInterval(fetchOrders, 3000);
-        return () => clearInterval(interval);
+        
+        // Real-time updates for the kitchen
+        const restInfo = JSON.parse(localStorage.getItem("restaurantInfo") || "{}");
+        const rId = restInfo._id;
+        if (rId) {
+            connectRestaurantSocket(rId);
+            socket.on("newOrder", () => {
+                fetchOrders();
+                // Optional: Play a "ding" for the kitchen specifically
+                try {
+                    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+                    audio.play().catch(() => {});
+                } catch(e) {}
+            });
+        }
+
+        return () => {
+            socket.off("newOrder");
+            disconnectSocket();
+        };
     }, [fetchOrders]);
 
     const updateStatus = async (orderId, currentStatus) => {

@@ -108,14 +108,9 @@ export default function AICustomerSegmentation() {
       <div style={{ background: bg, minHeight: "100vh", color: txt, fontFamily: "'Outfit',sans-serif" }}>
 
         {/* Hero Banner */}
-        <div style={{ background: dark ? "linear-gradient(135deg,#0f1729 0%,#0a0f1e 100%)" : "linear-gradient(135deg,#eef2ff 0%,#f8faff 100%)", borderBottom: `1px solid ${bd}`, padding: "40px 40px 32px" }}>
+        <div style={{ background: dark ? "linear-gradient(135deg,#0f1729 0%,#0a0f1e 100%)" : "linear-gradient(135deg,#eef2ff 0%,#f8faff 100%)", borderBottom: `1px solid ${bd}`, padding: "20px 40px 32px" }}>
           <div>
-            <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", flexWrap:"wrap", gap:20 }}>
-              <div>
-                <span style={{ fontSize:11, fontWeight:900, color:acc, textTransform:"uppercase", letterSpacing:2, background:`${acc}15`, padding:"4px 12px", borderRadius:99, border:`1px solid ${acc}30` }}>AI Segment Studio</span>
-                <h1 style={{ margin:"14px 0 6px", fontSize:36, fontWeight:950, letterSpacing:"-1.5px" }}>Customer <span style={{color:acc}}>Intelligence</span></h1>
-                <p style={{ margin:0, fontSize:15, color:mut, fontWeight:500 }}>Behavioral clusters · Campaign dispatch · Real-time export</p>
-              </div>
+            <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"flex-end", flexWrap:"wrap", gap:20 }}>
               <div style={{ display:"flex", gap:10 }}>
                 <button onClick={exportCsv} disabled={loading || !customers.length} style={{ padding:"11px 20px", borderRadius:12, border:`1px solid ${bd}`, background:card, color:txt, fontWeight:800, fontSize:13, cursor:"pointer" }}>📊 Export</button>
                 <button onClick={loadAll} disabled={loading} style={{ padding:"11px 20px", borderRadius:12, border:"none", background:acc, color:"#fff", fontWeight:800, fontSize:13, cursor:"pointer", boxShadow:`0 8px 20px ${acc}40` }}>

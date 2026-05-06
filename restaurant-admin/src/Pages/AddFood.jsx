@@ -635,16 +635,7 @@ export default function AddFood() {
   return (
     <RestaurantLayout>
       <div style={{ maxWidth: 1000, margin: "0 auto", paddingBottom: 40 }}>
-        {/* Title Section */}
-        <div style={{ marginBottom: 8 }}>
-          <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: "-0.5px", color: textMain }}>Add Food</h2>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: textMuted }}>
-            Add food first, then review and upload.
-          </p>
-        </div>
-
-        {/* Content Section */}
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: 0 }}>
           <Stepper step={step} dark={dark} />
 
           {step === 0 && (

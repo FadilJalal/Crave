@@ -311,24 +311,20 @@ export default function Menu() {
 
   return (
     <RestaurantLayout>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-        flexWrap: "wrap", gap: 12, marginBottom: 32 }}>
-        <h2 style={{ margin: 0, minWidth: 0, fontWeight: 900, fontSize: 32 }}>
-          Live Menu&nbsp;
-          <span style={{ fontWeight: 600, color: softText, fontSize: 18 }}>
-            ({filtered.length}{filtered.length !== foods.length ? ` of ${foods.length}` : ""} items)
-          </span>
-        </h2>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end",
+        flexWrap: "wrap", gap: 12, marginBottom: 24 }}>
+        <div style={{ marginRight: 'auto', fontWeight: 700, color: softText, fontSize: 14 }}>
+            {filtered.length}{filtered.length !== foods.length ? ` of ${foods.length}` : ""} items found
+        </div>
         <div style={{ display: "flex", gap: 12 }}>
-          {/* Manual duplicate cleaner removed as backend now handles upserts automatically */}
           <button onClick={() => navigate("/add-food")} style={{ 
-            padding: "12px 24px", borderRadius: 16, border: "none", 
+            padding: "10px 20px", borderRadius: 14, border: "none", 
             background: "linear-gradient(90deg, #FF3008, #ff6b4a)", color: "white", 
-            fontWeight: 900, fontSize: 14, cursor: "pointer",
-            boxShadow: "0 8px 20px rgba(255,48,8,0.25)",
+            fontWeight: 900, fontSize: 13, cursor: "pointer",
+            boxShadow: "0 6px 15px rgba(255,48,8,0.2)",
             display: "flex", alignItems: "center", gap: 8
           }}>
-            <span style={{ fontSize: 18 }}>+</span> Add New Item
+            <span>+</span> Add New Item
           </button>
         </div>
       </div>

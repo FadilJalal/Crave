@@ -54,6 +54,8 @@ export default function Inventory() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all"); // all, low, out, high
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   
   // Stats
   const stats = {
@@ -152,12 +154,17 @@ export default function Inventory() {
 
   // --- Bulk Selection & Filtering ---
   const filteredItems = items.filter(item => {
-    if (statusFilter === "all") return true;
-    if (statusFilter === "low") return item.currentStock <= item.minimumStock && item.currentStock > 0;
-    if (statusFilter === "out") return item.currentStock === 0;
-    if (statusFilter === "high") return item.currentStock >= item.maximumStock;
-    if (statusFilter === "unlinked") return !item.linkedMenuItems || item.linkedMenuItems.length === 0;
-    return true;
+    const name = item.itemName || item.name || "Unnamed Item";
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = 
+      statusFilter === 'all' || 
+      (statusFilter === 'low' && item.currentStock <= item.minimumStock && item.currentStock > 0) ||
+      (statusFilter === 'out' && item.currentStock === 0) ||
+      (statusFilter === 'unlinked' && (!item.linkedMenuItems || item.linkedMenuItems.length === 0));
+    
+    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+
+    return matchesSearch && matchesStatus && matchesCategory;
   });
 
   const toggleSelect = (id) => {
@@ -542,435 +549,545 @@ export default function Inventory() {
     <RestaurantLayout>
       <style>
         {`
-          .inventory-grid {
+          .inventory-list {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-auto-rows: 1fr;
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            justify-content: center;
+            gap: 16px;
             margin-top: 24px;
             padding-bottom: 60px;
-            align-items: stretch;
           }
 
-          .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-          .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-          .custom-scrollbar::-webkit-scrollbar-thumb { background: ${dark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'}; border-radius: 10px; }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ff4e2a; }
-
-          .inv-card {
-            background: white;
-            border-radius: 16px;
+          .inv-row {
+            background: ${dark ? 'rgba(15, 23, 42, 0.4)' : '#fff'};
+            border: 1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#f1f5f9'};
+            border-radius: 8px;
             padding: 20px;
-            border: 1.5px solid #f3f4f6;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            display: flex !important;
-            flex-direction: column !important;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
-            height: 100% !important;
-            min-height: 480px;
-          }
-
-          .inv-card:hover { 
-            border-color: #ff4e2a; 
-            background: #fffafa;
-          }
-
-          .inv-card.low-stock { 
-            border-color: #fee2e2; 
-            background: #fffcfc; 
-          }
-
-          [data-theme="dark"] .inv-card {
-            background: #1e293b;
-            border-color: rgba(255, 255, 255, 0.08);
-            color: #f1f5f9;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-          }
-          
-          [data-theme="dark"] .inv-card:hover {
-            border-color: #ff4e2a;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.4);
-          }
-
-          [data-theme="dark"] .inv-card.selected {
-            background: rgba(255, 78, 42, 0.05);
-            border-color: #ff4e2a;
-          }
-
-          [data-theme="dark"] .inv-card.low-stock {
-            background: rgba(239, 68, 68, 0.03);
-            border-color: rgba(239, 68, 68, 0.2);
-          }
-          
-          .action-navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.82);
-            backdrop-filter: blur(16px);
-            padding: 12px 24px;
-            border-radius: 18px;
-            border: 1px solid #e5e7eb;
-            margin-top: 24px;
-            position: sticky;
-            top: 80px;
-            z-index: 95;
-            box-shadow: 0 4px 20px -5px rgba(0,0,0,0.05);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          }
-
-          @media (max-width: 900px) {
-            .action-navbar {
-              flex-direction: column;
-              gap: 16px;
-              align-items: flex-start;
-              padding: 16px;
-            }
-            .action-navbar > div {
-              width: 100%;
-              justify-content: space-between;
-            }
-          }
-          
-          /* Dark mode adjustment */
-          [data-theme="dark"] .action-navbar {
-            background: rgba(15, 23, 42, 0.85);
-            border-color: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 20px -5px rgba(0,0,0,0.3);
-          }
-
-          .stock-ctrl {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #f8fafc;
-            padding: 12px;
-            border-radius: 14px;
-            margin: 16px 0;
-            border: 1px solid #f1f5f9;
-          }
-          
-          [data-theme="dark"] .stock-ctrl {
-            background: rgba(255,255,255,0.03);
-            border-color: rgba(255,255,255,0.05);
-          }
-
-          .progress-bar { 
-            height: 6px; 
-            background: #f1f5f9; 
-            border-radius: 100px; 
-            overflow: hidden; 
-            margin-top: 6px; 
-          }
-          
-          [data-theme="dark"] .progress-bar {
-            background: rgba(255,255,255,0.05);
-          }
-
-          .progress-fill { 
-            height: 100%; 
-            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
-          }
-          
-          .card-action-btn {
-            padding: 10px 14px;
-            border-radius: 12px;
-            border: 1.5px solid #e5e7eb;
-            background: white;
             cursor: pointer;
-            font-size: 13px;
-            font-weight: 700;
-            flex: 1;
-            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            overflow: hidden;
+          }
+
+          .inv-row:hover {
+            background: ${dark ? 'rgba(30, 41, 59, 0.6)' : '#f8fafc'};
+            border-color: #ff4e2a;
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -12px rgba(0,0,0,0.15);
+            z-index: 2;
+          }
+
+          .inv-row.selected {
+            background: ${dark ? 'rgba(255, 78, 42, 0.08)' : '#fff5f4'};
+            border-color: #ff4e2a;
+            box-shadow: 0 0 0 1px #ff4e2a30, 0 10px 25px -10px rgba(255,78,42,0.1);
+          }
+
+          .inv-row.low-stock::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: #f97316;
+          }
+
+          .inv-row.out-of-stock::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: #ef4444;
+          }
+
+          .mono-num {
+            font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+            font-variant-numeric: tabular-nums;
+          }
+            letter-spacing: -0.5px;
+            font-variant-numeric: tabular-nums;
+          }
+
+          .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+          }
+
+          .badge::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+          }
+
+          .badge-blue { background: rgba(59, 130, 246, 0.08); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.15); }
+          .badge-purple { background: rgba(139, 92, 246, 0.08); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.15); }
+          .badge-orange { background: rgba(249, 115, 22, 0.08); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.15); }
+          .badge-red { background: rgba(239, 68, 68, 0.08); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.15); }
+
+          .stock-progress-track {
+            height: 6px;
+            width: 100%;
+            background: ${dark ? 'rgba(255,255,255,0.03)' : '#f1f5f9'};
+            border-radius: 100px;
+            overflow: hidden;
+            margin-top: 6px;
+            position: relative;
+          }
+
+          .stock-progress-fill {
+            height: 100%;
+            border-radius: 100px;
+            transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+
+          .action-btn-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-          }
-          
-          [data-theme="dark"] .card-action-btn {
-            background: #1e293b;
-            border-color: rgba(255,255,255,0.08);
-            color: #f1f5f9;
-          }
-
-          .card-action-btn:hover { 
-            background: #111827; 
-            color: white; 
-            border-color: #111827;
-          }
-          
-          [data-theme="dark"] .card-action-btn:hover {
-            background: #ff4e2a;
-            border-color: #ff4e2a;
-          }
-
-          .card-checkbox { 
-            position: absolute; 
-            top: 16px; 
-            right: 16px; 
-            width: 18px; 
-            height: 18px; 
-            accent-color: #ff4e2a; 
-            z-index: 10; 
-            cursor: pointer;
-          }
-          
-          .filter-pill {
-            padding: 6px 14px;
-            border-radius: 100px;
-            border: 1px solid #e5e7eb;
-            background: white;
-            font-size: 12px;
-            font-weight: 700;
+            border: 1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'};
+            background: ${dark ? 'rgba(255,255,255,0.02)' : '#fff'};
             cursor: pointer;
             transition: all 0.2s;
-            white-space: nowrap;
-          }
-          
-          [data-theme="dark"] .filter-pill {
-            background: #1e293b;
-            border-color: rgba(255,255,255,0.08);
-            color: #94a3b8;
+            color: var(--muted);
           }
 
-          .filter-pill:hover { border-color: #ff4e2a; color: #ff4e2a; }
-          .filter-pill.active { background: #111827; color: white; border-color: #111827; }
-          
-          [data-theme="dark"] .filter-pill.active {
+          .action-btn-circle:hover {
             background: #ff4e2a;
+            color: #fff;
             border-color: #ff4e2a;
-            color: white;
-          }
-          
-          .drop-zone {
-            border: 2px dashed #e5e7eb;
-            border-radius: 16px;
-            padding: 48px;
-            text-align: center;
-            background: #f9fafb;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
+            transform: scale(1.1);
           }
 
-          [data-theme="dark"] .drop-zone {
-            background: rgba(255,255,255,0.03);
-            border-color: rgba(255,255,255,0.1);
-            color: #f1f5f9;
+          @keyframes pulse-glow {
+            0% { box-shadow: 0 0 5px rgba(255, 78, 42, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(255, 78, 42, 0.4); }
+            100% { box-shadow: 0 0 5px rgba(255, 78, 42, 0.2); }
           }
 
-          .preview-table {
+          @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+          }
+
+          @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+
+          .scanline {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 16px;
-            font-size: 13px;
-          }
-
-          .preview-table th {
-            text-align: left;
-            padding: 12px;
-            background: #f3f4f6;
-            color: #4b5563;
-            font-weight: 700;
-            border-bottom: 1px solid #e5e7eb;
-          }
-
-          .preview-table td {
-            padding: 12px;
-            border-bottom: 1px solid #f3f4f6;
+            height: 100px;
+            background: linear-gradient(to bottom, transparent 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+            pointer-events: none;
+            animation: scanline 4s linear infinite;
+            z-index: 10;
           }
         `}
       </style>
 
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.6px', margin: 0 }}>Inventory Management</h1>
-          <p className="muted" style={{ fontSize: 14, marginTop: 4 }}>Control and manage your storage and ingredients.</p>
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button className="btn btn-outline" onClick={downloadTemplate}>📥 Template</button>
-          <button className="btn btn-outline" style={{ borderColor: '#6366f1', color: '#6366f1' }} onClick={() => setConfirmConfig({
-            open: true,
-            onConfirm: handleSyncAllLinks,
-            title: "Sync Inventory Links",
-            message: "This will scan all your inventory and automatically link them to menu items based on your recipes. Proceed?",
-            type: "info"
-          })}>🔄 Sync All Links</button>
-          <button className="btn btn-outline" style={{ borderColor: '#ff4e2a', color: '#ff4e2a' }} onClick={() => { fetchMenuItems(); setShowImportModal(true); }}>Bulk Upload</button>
-          <button className="btn" onClick={() => { setEditingItem(null); setShowAddModal(true); }}>+ Add Item</button>
-        </div>
-      </div>
-
-      <div className="stats-grid" style={{ marginTop: 24 }}>
-        <div className="stat-card"><div className="stat-label">Total Items</div><div className="stat-value">{stats.total}</div></div>
-        <div className="stat-card"><div className="stat-label">Low Stock</div><div className="stat-value" style={{ color: stats.lowStock > 0 ? '#ea580c' : 'inherit' }}>{stats.lowStock}</div></div>
-        <div className="stat-card"><div className="stat-label">Out of Stock</div><div className="stat-value" style={{ color: stats.outOfStock > 0 ? '#dc2626' : 'inherit' }}>{stats.outOfStock}</div></div>
-        <div className="stat-card"><div className="stat-label">Value (AED)</div><div className="stat-value" style={{ color: '#16a34a' }}>{stats.value}</div></div>
-      </div>
-
-      <div className="action-navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                                 <input type="checkbox" style={{ width: 16, height: 16, accentColor: '#ff4e2a', cursor: 'pointer' }} checked={filteredItems.length > 0 && selectedIds.length === filteredItems.length} onChange={(e) => handleSelectAll(e.target.checked)} />
-                                 Select ALL
-                              </label>
-             {selectedIds.length > 0 && (
-                 <>
-                    <div style={{ width: 1, height: 20, background: '#e5e7eb' }} />
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#ff4e2a' }}>{selectedIds.length} Selected</div>
-                    <button className="btn btn-sm" style={{ background: '#dc2626', color: 'white', borderColor: '#dc2626', padding: '6px 16px' }} disabled={isBulkDeleting} onClick={handleBulkDelete}>Delete Selected</button>
-                 </>
-             )}
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-             {['all', 'low', 'out', 'unlinked'].map((f) => (
-                 <button key={f} className={`filter-pill ${statusFilter === f ? 'active' : ''}`} onClick={() => setStatusFilter(f)}>
-                     {f === 'all' ? 'All Items' : f === 'low' ? 'Low Stock' : f === 'out' ? 'Out of Stock' : 'Unlinked Items'}
-                 </button>
-             ))}
-        </div>
-      </div>
-
-      <div className="inventory-grid" style={{ 
-        display: 'flex', 
-        flexWrap: 'wrap',
-        gap: '24px', 
-        marginTop: '24px', 
-        paddingBottom: '60px',
-        alignItems: 'stretch'
-      }}>
-        {loading ? (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 100 }}><h2>Updating...</h2></div>
-        ) : filteredItems.length === 0 ? (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 100, border: `2px dashed ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`, borderRadius: 24, background: dark ? 'rgba(255,255,255,0.02)' : '#f9fafb' }}><h2>No items found</h2></div>
-        ) : filteredItems.map(item => {
-          const isLow = item.currentStock <= item.minimumStock;
-          const isOut = item.currentStock === 0;
-          const stockPercentage = Math.min((item.currentStock / (item.maximumStock || 100)) * 100, 100);
-          const isSelected = selectedIds.includes(item._id);
-
-          return (
-            <div 
-              key={item._id} 
-              className={`inv-card ${isSelected ? 'selected' : ''} ${isOut ? 'low-stock' : isLow ? 'low-stock' : ''}`} 
-              style={{ 
-                padding: '20px 18px',
-                display: 'flex',
-                flexDirection: 'column',
-                height: 'auto',
-                minHeight: '520px',
-                width: 'calc(33.33% - 16px)',
-                flexShrink: 0
-              }}
-            >
-              <input type="checkbox" className="card-checkbox" checked={isSelected} onChange={() => toggleSelect(item._id)} />
-              
-              {/* 1. Header Area - Compact */}
-              <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 18, fontWeight: 1000, letterSpacing: '-0.5px', marginBottom: 4, color: dark ? '#f8fafc' : '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.itemName}</div>
-                  <div style={{ 
-                    display: 'inline-flex', 
-                    padding: '2px 8px', 
-                    background: item.category === 'food_ingredient' ? (dark ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff') : (dark ? 'rgba(139, 92, 246, 0.15)' : '#f5f3ff'), 
-                    color: item.category === 'food_ingredient' ? (dark ? '#60a5fa' : '#2563eb') : (dark ? '#a78bfa' : '#7c3aed'), 
-                    borderRadius: 6, 
-                    fontSize: 9, 
-                    fontWeight: 900, 
-                    textTransform: 'uppercase'
-                  }}>
-                      {item.category.replace('_', ' ')}
-                  </div>
-              </div>
-
-              {/* 2. Primary Stock Control - Shrunk */}
-              <div style={{ background: dark ? 'rgba(0,0,0,0.2)' : '#f8fafc', padding: '12px 14px', borderRadius: 16, marginBottom: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <button 
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); updateStock(item._id, -1); }} 
-                        style={{ width: 28, height: 28, border: 'none', background: dark ? 'rgba(255,255,255,0.08)' : 'white', borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >–</button>
-                      <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: 26, fontWeight: 1000, color: dark ? 'white' : '#000', lineHeight: 1 }}>{Number(Number(item.currentStock).toFixed(2)).toLocaleString()}</div>
-                          <div style={{ fontSize: 10, fontWeight: 900, color: '#64748b', marginTop: 2 }}>{item.unit}</div>
-                      </div>
-                      <button 
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); updateStock(item._id, 1); }} 
-                        style={{ width: 28, height: 28, border: 'none', background: dark ? 'rgba(255,255,255,0.08)' : 'white', borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >+</button>
-                  </div>
-                  <div className="progress-bar" style={{ height: 4, background: dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0' }}>
-                    <div className="progress-fill" style={{ 
-                      width: `${stockPercentage}%`, 
-                      background: isOut ? '#ef4444' : isLow ? '#f97316' : '#22c55e'
-                    }} />
-                  </div>
-              </div>
-
-              {/* 3. Linked Recipes Section - Expanded to fill middle */}
-              <div style={{ marginBottom: 16, flex: 1 }}>
-                  <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 950, marginBottom: 6, letterSpacing: '0.6px' }}>LINKED RECIPIES</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {(item.linkedMenuItems || []).length > 0 ? (
-                          item.linkedMenuItems.slice(0, 2).map((link, idx) => (
-                              <span key={idx} style={{ fontSize: 9, fontWeight: 800, background: dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6', padding: '3px 8px', borderRadius: 6, color: dark ? '#cbd5e1' : '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                  <span style={{ opacity: 0.9 }}>{(link.foodId?.name || 'Dish').slice(0, 14)}</span>
-                                  <span style={{ color: link.quantityPerOrder > 1 ? '#ff4e2a' : (dark ? '#94a3b8' : '#64748b'), fontWeight: 900 }}>({link.quantityPerOrder})</span>
-                              </span>
-                          ))
-                      ) : (
-                          <div style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>No links</div>
-                      )}
-                      {(item.linkedMenuItems || []).length > 2 && (
-                          <span style={{ fontSize: 9, fontWeight: 900, color: '#ff4e2a', background: dark ? 'rgba(255, 78, 42, 0.1)' : '#fff1f0', padding: '3px 8px', borderRadius: 6 }} onClick={() => handleManageLinks(item)}>
-                              +{item.linkedMenuItems.length - 2} more
-                          </span>
-                      )}
-                  </div>
-              </div>
-
-              {/* 4 & 5. Bottom Anchored Content */}
-              <div style={{ marginTop: 'auto' }}>
-                  <div style={{ background: dark ? 'rgba(255,255,255,0.015)' : '#fdfdfd', border: `1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#f1f5f9'}`, borderRadius: 14, padding: '12px', marginBottom: 18 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                          <div>
-                              <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 950, textTransform: 'uppercase', marginBottom: 2 }}>COST</div>
-                              <div style={{ fontSize: 13, fontWeight: 950 }}>AED {item.unitCost}</div>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 950, textTransform: 'uppercase', marginBottom: 2 }}>VALUE</div>
-                              <div style={{ fontSize: 13, fontWeight: 950, color: '#ff4e2a' }}>AED {Number((item.unitCost * item.currentStock).toFixed(2)).toLocaleString()}</div>
-                          </div>
-                      </div>
-                      <button 
-                        onClick={() => handleManageLinks(item)}
-                        style={{ width: '100%', padding: '7px', background: '#ff4e2a', color: 'white', border: 'none', borderRadius: 10, fontSize: 11, fontWeight: 950, cursor: 'pointer' }}
-                      >
-                        LINK RECIPES
-                      </button>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="card-action-btn" style={{ flex: 2, padding: '7px', fontSize: 11, background: dark ? '#334155' : '#f1f5f9', border: 'none' }} onClick={() => handleEdit(item)}>Edit Unit</button>
-                      <button className="card-action-btn" style={{ flex: 2, padding: '7px', fontSize: 11, borderColor: '#10b981', color: '#10b981' }} onClick={() => { setLoggingItem(item); setShowLogModal(true); }}>View Log</button>
-                      <button className="card-action-btn" style={{ width: 32, flex: 'none', padding: 0, borderColor: '#fee2e2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => confirmDelete(item)}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                      </button>
-                  </div>
-              </div>
+      <div className="page-header" style={{ marginBottom: 40 }}>
+        {/* Top Command Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, marginBottom: 32, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, position: 'relative', maxWidth: 500 }}>
+             <span style={{ position: 'absolute', left: 20, top: '50%', transform: 'translateY(-50%)', opacity: 0.4, fontSize: 16 }}>🔍</span>
+             <input 
+               type="text" 
+               placeholder="Search assets or linked recipes..." 
+               value={searchTerm}
+               onChange={(e) => setSearchTerm(e.target.value)}
+               style={{
+                 width: '100%',
+                 padding: '14px 20px 14px 52px',
+                 borderRadius: 16,
+                 border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                 background: dark ? 'rgba(15, 23, 42, 0.4)' : '#fff',
+                 color: dark ? '#fff' : '#0f172a',
+                 fontSize: 14,
+                 fontWeight: 700,
+                 outline: 'none',
+                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                 boxShadow: dark ? '0 4px 12px rgba(0,0,0,0.1)' : '0 1px 4px rgba(0,0,0,0.02)'
+               }}
+             />
+             <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: dark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 900, color: 'var(--muted)', pointerEvents: 'none', border: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}` }}>⌘ K</div>
+          </div>
+          
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ display: 'flex', background: dark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 4, borderRadius: 14, border: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}` }}>
+              <button onClick={downloadTemplate} style={{ padding: '10px 18px', borderRadius: 11, border: 'none', background: 'transparent', color: 'inherit', fontSize: 12, fontWeight: 900, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Template
+              </button>
+              <button onClick={() => setConfirmConfig({ open: true, onConfirm: handleSyncAllLinks, title: "Sync Inventory", message: "Scan and synchronize all stock links?", type: "info" })} style={{ padding: '10px 18px', borderRadius: 11, border: 'none', background: 'transparent', color: 'inherit', fontSize: 12, fontWeight: 900, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                Sync
+              </button>
+              <button onClick={() => { fetchMenuItems(); setShowImportModal(true); }} style={{ padding: '10px 18px', borderRadius: 11, border: 'none', background: 'transparent', color: 'inherit', fontSize: 12, fontWeight: 900, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Import
+              </button>
             </div>
-          );
-        })}
+            <button className="btn" style={{ padding: '14px 28px', borderRadius: 16, fontSize: 13, fontWeight: 950, background: '#ff4e2a', boxShadow: '0 10px 25px rgba(255,78,42,0.3)' }} onClick={() => { setEditingItem(null); setShowAddModal(true); }}>
+               + New Ingredient
+            </button>
+          </div>
+        </div>
+
+        {/* Tactical Intelligence Command Strip */}
+        <div style={{ 
+          background: dark ? 'rgba(11, 18, 32, 0.4)' : '#fff', 
+          border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+          borderRadius: 24,
+          padding: '24px 32px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 24,
+          boxShadow: dark ? '0 25px 60px rgba(0,0,0,0.4), inset 0 0 20px rgba(255,255,255,0.02)' : '0 10px 30px rgba(0,0,0,0.02)',
+          backdropFilter: 'blur(40px)',
+          position: 'relative',
+          overflow: 'hidden',
+          marginBottom: 32
+        }}>
+          {/* Neon Pulse Overlay */}
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: `radial-gradient(${dark ? 'rgba(168, 85, 247, 0.05)' : 'rgba(0,0,0,0.01)'} 1px, transparent 1px)`, backgroundSize: '32px 32px' }} />
+
+          {[
+            { 
+              label: 'VIBE CHECK', 
+              value: stats.total, 
+              color: '#a855f7', 
+              trend: '+12%', 
+              subtext: 'TOTAL VECTORS',
+              icon: '✨',
+              status: 'W'
+            },
+            { 
+              label: 'LOWKEY LOW', 
+              value: stats.lowStock, 
+              color: '#3b82f6', 
+              trend: '-2%', 
+              subtext: 'STOCK STABLE',
+              icon: '🔋',
+              status: 'STABLE'
+            },
+            { 
+              label: 'TOTAL L\'S', 
+              value: stats.outOfStock, 
+              color: '#ff4e2a', 
+              trend: 'ZERO', 
+              subtext: 'ZERO VACANCY',
+              icon: '🚨',
+              status: 'CRITICAL',
+              alert: stats.outOfStock > 0 
+            },
+            { 
+              label: 'MAJOR BAGS', 
+              value: stats.value, 
+              isCurrency: true,
+              color: '#10b981', 
+              trend: '+5.4%', 
+              subtext: 'TOTAL LIQUID ASSETS',
+              icon: '💰',
+              status: 'SECURED'
+            }
+          ].map((s, i) => (
+            <div key={i} style={{ 
+              padding: '24px', 
+              borderRadius: 24, 
+              background: dark ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.8)',
+              border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
+              position: 'relative',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              zIndex: 1,
+              flex: 1
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <div style={{ 
+                  width: 36, height: 36, borderRadius: 12, 
+                  background: s.alert ? `${s.color}20` : (dark ? 'rgba(255,255,255,0.03)' : '#f8fafc'), 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                  color: s.alert ? s.color : 'var(--muted)',
+                  border: `1px solid ${s.alert ? `${s.color}40` : (dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0')}`,
+                  boxShadow: s.alert ? `0 0 15px ${s.color}30` : 'none'
+                }}>
+                  {s.icon}
+                </div>
+                <div style={{ 
+                   fontSize: 8, fontWeight: 950, color: s.color, 
+                   background: `${s.color}15`, padding: '4px 10px', 
+                   borderRadius: 20, letterSpacing: '1.2px' 
+                }}>
+                  {s.status}
+                </div>
+              <div>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontSize: 9, fontWeight: 950, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>{s.label}</div>
+                    {s.alert && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ff4e2a', animation: 'pulse 1.5s infinite' }} />}
+                 </div>
+                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 6 }}>
+                    <div className="mono-num" style={{ 
+                      fontSize: s.isCurrency ? 24 : 36, 
+                      fontWeight: 950, 
+                      color: s.alert ? s.color : (dark ? '#fff' : '#0f172a'),
+                      letterSpacing: '-1.5px',
+                      lineHeight: 1
+                    }}>
+                      {s.isCurrency && <span style={{ fontSize: 12, marginRight: 4, verticalAlign: 'middle', opacity: 0.6 }}>AED</span>}
+                      {typeof s.value === 'number' ? s.value.toLocaleString() : s.value}
+                    </div>
+                    <div style={{ 
+                      fontSize: 10, 
+                      fontWeight: 950, 
+                      color: s.trend.startsWith('+') ? '#10b981' : (s.trend === 'ZERO' ? '#64748b' : '#ef4444'),
+                      background: s.trend.startsWith('+') ? '#10b98115' : (s.trend === 'ZERO' ? '#f1f5f9' : '#ef444415'),
+                      padding: '4px 8px',
+                      borderRadius: 6,
+                      marginBottom: 2
+                    }}>
+                      {s.trend}
+                    </div>
+                 </div>
+        </div>
+
+              {s.alert && (
+                 <div style={{ 
+                   position: 'absolute', top: 0, right: 32, width: 6, height: 6, 
+                   borderRadius: '50%', background: s.color, 
+                   boxShadow: `0 0 12px ${s.color}`,
+                   animation: 'pulse 1.5s infinite' 
+                 }} />
+              )}
+            </div>
+          ))}
+        </div>
+      <div style={{ 
+          marginTop: 40, 
+          padding: '14px 24px', 
+          borderRadius: 16, 
+          background: dark ? 'rgba(15, 23, 42, 0.4)' : '#fff',
+          border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+          backdropFilter: 'blur(40px)',
+          boxShadow: dark ? '0 25px 60px rgba(0,0,0,0.4), inset 0 0 20px rgba(255,255,255,0.02)' : '0 10px 30px rgba(0,0,0,0.03)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          position: 'relative',
+          zIndex: 10,
+          width: '100%'
+      }}>
+        {/* OPERATIONAL VECTOR: Selection */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+           <label style={{ 
+              display: 'flex', alignItems: 'center', gap: 10, 
+              fontSize: 9, fontWeight: 950, cursor: 'pointer', 
+              color: selectedIds.length > 0 ? '#ff4e2a' : 'var(--muted)',
+              letterSpacing: '1px',
+              padding: '10px 16px',
+              borderRadius: 10,
+              background: dark ? (selectedIds.length > 0 ? 'rgba(255,78,42,0.1)' : 'rgba(255,255,255,0.03)') : '#f8fafc',
+              border: `1px solid ${selectedIds.length > 0 ? '#ff4e2a' : (dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0')}`,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              whiteSpace: 'nowrap'
+            }}>
+               <input 
+                 type="checkbox" 
+                 style={{ width: 15, height: 15, accentColor: '#ff4e2a', cursor: 'pointer' }} 
+                 checked={filteredItems.length > 0 && selectedIds.length === filteredItems.length} 
+                 onChange={(e) => handleSelectAll(e.target.checked)} 
+               />
+               {selectedIds.length > 0 ? `${selectedIds.length} SELECTED` : 'SELECT ALL'}
+            </label>
+
+            {selectedIds.length > 0 && (
+              <button 
+                className="btn" 
+                style={{ 
+                  background: '#ef4444', color: 'white', border: 'none', 
+                  padding: '10px 16px', borderRadius: 8, fontSize: 9, fontWeight: 950,
+                  cursor: 'pointer', boxShadow: '0 8px 25px rgba(239,68,68,0.3)',
+                  letterSpacing: '0.5px'
+                }} 
+                disabled={isBulkDeleting} 
+                onClick={handleBulkDelete}
+              >
+                TERMINATE
+              </button>
+            )}
+        </div>
+
+        {/* DIAGNOSTIC MATRIX: Status Sorting */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', minWidth: 0 }}>
+             <div style={{ fontSize: 8, fontWeight: 950, color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', opacity: 0.5, whiteSpace: 'nowrap' }}>Diagnostic</div>
+             <div style={{ display: 'flex', gap: 2, background: dark ? 'rgba(0,0,0,0.3)' : '#f1f5f9', padding: 3, borderRadius: 10, border: `1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#e2e8f0'}` }}>
+                 {[
+                   { id: 'all', label: 'All' },
+                   { id: 'low', label: 'Low' },
+                   { id: 'out', label: 'Out' },
+                   { id: 'unlinked', label: 'Link' }
+                 ].map((f) => (
+                     <button 
+                      key={f.id} 
+                      onClick={() => setStatusFilter(f.id)}
+                      style={{
+                          padding: '8px 14px', borderRadius: 7, fontSize: 9, fontWeight: 950,
+                          background: statusFilter === f.id ? (dark ? '#fff' : '#0f172a') : 'transparent',
+                          color: statusFilter === f.id ? (dark ? '#0f172a' : '#fff') : 'var(--muted)',
+                          border: 'none', 
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          letterSpacing: '0.5px'
+                      }}
+                     >
+                         {f.label.toUpperCase()}
+                     </button>
+                 ))}
+             </div>
+        </div>
+
+        {/* CLASSIFICATION STRIP: Category Filters */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+           <div style={{ fontSize: 8, fontWeight: 950, color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', opacity: 0.5, whiteSpace: 'nowrap' }}>Taxonomy</div>
+           <div style={{ display: 'flex', gap: 4 }}>
+                {[
+                    { id: 'all', label: 'All', icon: '✨' },
+                    { id: 'beverage', label: 'Bev', icon: '🥤' },
+                    { id: 'food_ingredient', label: 'Ing', icon: '🍅' },
+                    { id: 'packaging', label: 'Pkg', icon: '📦' }
+                ].map((c) => (
+                    <button 
+                        key={c.id} 
+                        onClick={() => setCategoryFilter(c.id)}
+                        style={{
+                            padding: '8px 12px', borderRadius: 8, fontSize: 9, fontWeight: 950,
+                            background: categoryFilter === c.id ? '#ff4e2a' : (dark ? 'rgba(255,255,255,0.02)' : '#fff'),
+                            color: categoryFilter === c.id ? '#fff' : 'var(--muted)',
+                            border: `1px solid ${categoryFilter === c.id ? '#ff4e2a' : (dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0')}`,
+                            cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
+                            boxShadow: categoryFilter === c.id ? '0 8px 20px rgba(255,78,42,0.2)' : 'none',
+                            whiteSpace: 'nowrap'
+                        }}
+                    >
+                        <span style={{ fontSize: 11 }}>{c.icon}</span>
+                        {c.label.toUpperCase()}
+                    </button>
+                ))}
+           </div>
+        </div>
+      </div>
+
+
+      <div className="inventory-list" style={{ minHeight: '400px' }}>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 80, color: 'var(--muted)', fontWeight: 800 }}>⚡ SYNCHRONIZING ENGINE...</div>
+        ) : filteredItems && filteredItems.length > 0 ? (
+          filteredItems.map(item => {
+            const isLow = item.currentStock <= item.minimumStock && item.currentStock > 0;
+            const isOut = item.currentStock === 0;
+            const stockPercentage = Math.min((item.currentStock / (item.maximumStock || 100)) * 100, 100);
+            const isSelected = selectedIds.includes(item._id);
+            const displayName = item.itemName || item.name || "Unnamed Item";
+
+            return (
+              <div 
+                key={item._id} 
+                className={`inv-row ${isSelected ? 'selected' : ''} ${isOut ? 'out-of-stock' : isLow ? 'low-stock' : ''}`}
+                onClick={() => toggleSelect(item._id)}
+              >
+                {/* Card Top: Status & Selection */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                   <div style={{ 
+                     padding: '4px 8px', borderRadius: 6, fontSize: 9, fontWeight: 900, letterSpacing: 1,
+                     background: item.category === 'food_ingredient' ? (dark ? 'rgba(59, 130, 246, 0.15)' : '#eff6ff') : (dark ? 'rgba(139, 92, 246, 0.15)' : '#f5f3ff'),
+                     color: item.category === 'food_ingredient' ? (dark ? '#60a5fa' : '#2563eb') : (dark ? '#a78bfa' : '#7c3aed'),
+                     textTransform: 'uppercase', border: `1px solid ${item.category === 'food_ingredient' ? (dark ? '#3b82f640' : '#bfdbfe') : (dark ? '#8b5cf640' : '#ddd6fe')}`
+                   }}>
+                     {item.category.replace('_', ' ')}
+                   </div>
+                   <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: 8 }}>
+                     <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(item._id)} style={{ width: 16, height: 16, accentColor: '#ff4e2a', cursor: 'pointer' }} />
+                   </div>
+                </div>
+
+                {/* Card Main: Identification */}
+                <div style={{ height: 44, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                   <div style={{ fontWeight: 950, fontSize: 16, color: dark ? '#fff' : '#0f172a', letterSpacing: '-0.5px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
+                   <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700 }}>SKU: {item._id.slice(-8).toUpperCase()}</div>
+                </div>
+
+                {/* Card Center: Stock Visualization */}
+                <div style={{ background: dark ? 'rgba(0,0,0,0.2)' : '#f8fafc', padding: '12px 16px', borderRadius: 12, border: `1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#f1f5f9'}` }} onClick={(e) => e.stopPropagation()}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                      <div className="mono-num" style={{ fontSize: 20, fontWeight: 950, color: isOut ? '#ef4444' : isLow ? '#f97316' : (dark ? '#f8fafc' : '#0f172a') }}>
+                         {Number(item.currentStock).toLocaleString()}
+                         <span style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 4, fontWeight: 800 }}>{item.unit}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                         <button onClick={() => updateStock(item._id, 1)} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${dark ? 'rgba(16, 185, 129, 0.2)' : '#bcf0da'}`, background: dark ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5', cursor: 'pointer', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, transition: 'all 0.2s' }}>▲</button>
+                         <button onClick={() => updateStock(item._id, -1)} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${dark ? 'rgba(239, 68, 68, 0.2)' : '#fecaca'}`, background: dark ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, transition: 'all 0.2s' }}>▼</button>
+                      </div>
+                   </div>
+                   <div className="stock-progress-track" style={{ height: 6, background: dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0' }}>
+                      <div className="stock-progress-fill" style={{ 
+                         width: `${stockPercentage}%`, 
+                         background: isOut ? '#ef4444' : isLow ? '#f97316' : '#10b981',
+                         boxShadow: `0 0 10px ${isOut ? '#ef444450' : isLow ? '#f9731650' : '#10b98150'}`
+                      }} />
+                   </div>
+                   <div style={{ marginTop: 8, fontSize: 9, fontWeight: 900, color: 'var(--muted)', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>MIN: {item.minimumStock}</span>
+                      <span style={{ color: '#ff4e2a', opacity: 0.8 }}>{item.linkedMenuItems?.length || 0} DEPLOYMENTS</span>
+                   </div>
+                </div>
+
+                {/* Card Bottom: Valuation & Actions */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
+                   <div>
+                      <div style={{ fontSize: 8, color: 'var(--muted)', fontWeight: 900, textTransform: 'uppercase', marginBottom: 2 }}>Current Valuation</div>
+                      <div className="mono-num" style={{ fontSize: 16, fontWeight: 950, color: '#ff4e2a' }}>
+                         <span style={{ fontSize: 10, opacity: 0.8 }}>AED</span> {(item.unitCost * item.currentStock).toLocaleString()}
+                      </div>
+                   </div>
+                   <div style={{ display: 'flex', gap: 6 }} onClick={(e) => e.stopPropagation()}>
+                      <button className="action-btn-circle" onClick={() => { setLoggingItem(item); setShowLogModal(true); }} title="Audit Trail"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
+                      <button className="action-btn-circle" onClick={() => handleManageLinks(item)} title="Deployments"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+                      <button className="action-btn-circle" onClick={() => { setEditingItem(item); setFormData({ ...item }); setShowAddModal(true); }} title="Edit"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                      <button className="action-btn-circle" style={{ borderColor: '#ef444430', color: '#ef4444' }} onClick={() => { setDeletingItem(item); setShowDeleteModal(true); }} title="Terminate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+                   </div>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div style={{ textAlign: 'center', padding: 100, border: `1px dashed ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`, borderRadius: 24, opacity: 0.5 }}>
+            <h2 style={{ fontWeight: 900, color: 'var(--muted)' }}>NO DATA VECTORS FOUND</h2>
+          </div>
+        )}
       </div>
 
       {showImportModal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+          <div style={{ position: 'fixed', top: 0, left: 260, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
               <div className="card" style={{ width: '100%', maxWidth: 900, padding: 32, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, flexShrink: 0 }}>
                     <div>
@@ -1110,7 +1227,7 @@ export default function Inventory() {
       )}
 
       {showLogModal && loggingItem && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+        <div style={{ position: 'fixed', top: 0, left: 260, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
           <div className="card" style={{ width: '100%', maxWidth: 750, padding: 32, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
               <div>
@@ -1170,13 +1287,13 @@ export default function Inventory() {
       )}
 
       {showDeleteModal && deletingItem && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}>
+          <div style={{ position: 'fixed', top: 0, left: 260, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}>
              <div className="card" style={{ width: 400, padding: 32, textAlign: 'center' }}><h2>Delete?</h2><p>Delete <strong>{deletingItem.itemName}</strong>?</p><button className="btn" style={{ background: '#dc2626', color: 'white' }} onClick={handleDelete}>Delete</button></div>
           </div>
       )}
 
       {showAddModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div style={{ position: 'fixed', top: 0, left: 260, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div className="card" style={{ width: 600, padding: 32, maxWeight: '90vh', overflowY: 'auto' }}>
             <h2 style={{ marginBottom: 20, fontWeight: 900 }}>{editingItem ? 'Edit Ingredient' : 'Add New Ingredient'}</h2>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1244,7 +1361,7 @@ export default function Inventory() {
       )}
 
       {showLinkModal && linkingItem && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+          <div style={{ position: 'fixed', top: 0, left: 260, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
               <div className="card" style={{ width: '100%', maxWidth: 700, padding: 32, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
                    <div style={{ marginBottom: 24, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ flex: 1 }}>

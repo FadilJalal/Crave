@@ -78,29 +78,7 @@ export default function AIInsights() {
     <RestaurantLayout>
       <div style={{ maxWidth: 1100, margin: "0 auto", paddingBottom: 60 }}>
         
-        {/* PROFESSIONAL HEADER */}
-        <div style={{ marginBottom: 40 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <div style={{ 
-              background: `${accentColor}15`, color: accentColor, 
-              padding: "6px 12px", borderRadius: 8, fontSize: 10, fontWeight: 800, 
-              textTransform: "uppercase", letterSpacing: 1, display: "flex", alignItems: "center", gap: 6 
-            }}>
-              <BrainCircuit size={14} />
-              AI Intelligence Suite
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981" }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>Analyzing Active Vectors</span>
-            </div>
-          </div>
-          <h1 style={{ fontSize: 36, fontWeight: 900, margin: 0, letterSpacing: "-1px", color: dark ? "#fff" : "#0f172a" }}>
-            Business Intelligence <span style={{ color: "var(--muted)", fontWeight: 400 }}>& Insights</span>
-          </h1>
-          <p style={{ fontSize: 15, color: "var(--muted)", marginTop: 8, maxWidth: 600, lineHeight: 1.6 }}>
-            Gain a competitive edge with AI-driven analytics that audit your restaurant's operational health and market position in real-time.
-          </p>
-        </div>
+
 
         {/* REFINED TAB SWITCHER */}
         <div style={{ 
