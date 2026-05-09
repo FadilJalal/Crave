@@ -5,6 +5,7 @@ import restaurantModel from "../models/restaurantModel.js";
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 import campaignModel from "../models/campaignModel.js";
+import promoModel from "../models/promoModel.js";
 
 const router     = express.Router();
 const FROM_EMAIL = () => process.env.FROM_EMAIL || "onboarding@resend.dev";
@@ -126,6 +127,7 @@ router.post("/send", restaurantAuth, emailCampaignAccessOnly, async (req, res) =
         subject, heading, body,
         ctaText: ctaText || "",
         ctaUrl: ctaUrl || "",
+        promoCode: req.body.promoCode || "",
         status: "scheduled",
         scheduledAt: schedDate,
       });
@@ -138,9 +140,24 @@ router.post("/send", restaurantAuth, emailCampaignAccessOnly, async (req, res) =
     if (orders.length === 0)
       return res.json({ success: false, message: "No customers to send to yet." });
 
+    const uniqueUserIds = [...new Set(orders.map(o => String(o.userId)))];
+    const users = await userModel.find({ _id: { $in: uniqueUserIds } }).select("email").lean();
+    const recipientEmails = users.map(u => u.email).filter(Boolean);
+
     const { sent, failed, recipientCount } = await sendToCustomers({
       restaurant: req.restaurant, subject, heading, body, ctaText, ctaUrl, type, personalize,
     });
+
+    const finalPromoCode = req.body.promoCode || "";
+    if (finalPromoCode) {
+      await promoModel.findOneAndUpdate(
+        { code: finalPromoCode.toUpperCase().trim(), restaurantId: req.restaurantId },
+        { 
+          $addToSet: { targetedEmails: { $each: recipientEmails } },
+          isPublic: false // Make it exclusive to recipients
+        }
+      );
+    }
 
     await campaignModel.create({
       restaurantId: req.restaurantId,
@@ -148,6 +165,7 @@ router.post("/send", restaurantAuth, emailCampaignAccessOnly, async (req, res) =
       subject, heading, body,
       ctaText: ctaText || "",
       ctaUrl: ctaUrl || "",
+      promoCode: finalPromoCode,
       status: sent > 0 ? "sent" : "failed",
       sentAt: new Date(),
       recipientCount,

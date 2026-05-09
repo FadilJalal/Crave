@@ -456,7 +456,6 @@ export default function RestaurantLayout({ children }) {
 
           {navGroup("growth", "🚀", "Growth & AI", [
             linkOrDisabled("/coupons", "🏷️ AI Promo Generator", canAiPromo),
-            linkOrDisabled("/coupon-strategist", "🧬 Coupon Growth Lab", canAiPromo),
             linkOrDisabled("/email-campaign", "📧 AI Campaigns", canAiMarketing),
             linkOrDisabled("/ai-insights", "🧠 AI Insights", canAiInsights),
             linkOrDisabled("/ai-labor-optimizer", "🕒 AI Labor Optimizer", canAiLabor),
@@ -510,7 +509,6 @@ export default function RestaurantLayout({ children }) {
                   if (path === "/add-food") return "Add New Food";
                   if (path === "/labor") return "Staff & Labor";
                   if (path === "/coupons") return "AI Promo Generator";
-                  if (path === "/coupon-strategist") return "Coupon Growth Lab";
                   if (path === "/email-campaign") return "AI Campaigns";
                   if (path === "/ai-insights") return "AI Intelligence";
                   if (path === "/ai-labor-optimizer") return "Labor Optimization";

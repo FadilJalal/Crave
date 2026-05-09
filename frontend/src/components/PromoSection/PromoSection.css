@@ -33,16 +33,24 @@
 }
 
 .promo-chip {
-  padding: 6px 11px;
-  border-radius: 999px;
+  padding: 5px 12px;
+  border-radius: 8px;
   border: 1.5px dashed var(--brand);
   background: var(--brand-soft);
   color: var(--brand);
   cursor: pointer;
   font-family: inherit;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.promo-chip:hover:not(:disabled) {
+  background: var(--brand);
+  color: white;
+  border-style: solid;
 }
 
 .promo-chip:disabled {

@@ -13,6 +13,8 @@ const promoSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   usedBy: [{ type: String }],                    // array of userIds (one use per user)
   isPublic: { type: Boolean, default: true },   // false = hidden from available promos list
+  targetSegment: { type: String, default: null }, // e.g. "VIP", "Lost", "New"
+  targetedEmails: [{ type: String }],            // specific emails for this promo
 }, { timestamps: true });
 
 const promoModel = mongoose.models.promo || mongoose.model("promo", promoSchema);

@@ -1,4 +1,15 @@
 import restaurantModel from "../models/restaurantModel.js";
+import foodModel from "../models/foodModel.js";
+import staffModel from "../models/staffModel.js";
+import inventoryModel from "../models/inventoryModel.js";
+import promoModel from "../models/promoModel.js";
+import orderModel from "../models/orderModel.js";
+import reviewModel from "../models/reviewModel.js";
+import campaignModel from "../models/campaignModel.js";
+import messageModel from "../models/messageModel.js";
+import adminModel from "../models/adminModel.js";
+import payoutModel from "../models/payoutModel.js";
+import passwordResetModel from "../models/passwordResetModel.js";
 import bcrypt from "bcrypt";
 
 // ✅ GET LIST
@@ -79,8 +90,24 @@ export const removeRestaurant = async (req, res) => {
       return res.status(404).json({ success: false, message: "Restaurant not found" });
     }
 
-    console.log(`[DELETE] ✅ Restaurant deleted successfully`);
-    res.json({ success: true, message: "Restaurant removed" });
+    // Cascading deletes to ensure no orphan records remain
+    console.log(`[DELETE] Triggering cascading deletes for restaurant: ${id}`);
+    await Promise.all([
+      foodModel.deleteMany({ restaurantId: id }),
+      staffModel.deleteMany({ restaurantId: id }),
+      inventoryModel.deleteMany({ restaurantId: id }),
+      promoModel.deleteMany({ restaurantId: id }),
+      orderModel.deleteMany({ restaurantId: id }),
+      reviewModel.deleteMany({ restaurantId: id }),
+      campaignModel.deleteMany({ restaurantId: id }),
+      messageModel.deleteMany({ restaurantId: id }),
+      adminModel.deleteMany({ restaurantId: id, role: "restaurantadmin" }),
+      payoutModel.deleteMany({ restaurantId: id }),
+      passwordResetModel.deleteMany({ restaurantId: id }),
+    ]);
+
+    console.log(`[DELETE] ✅ Restaurant and all associated data deleted successfully`);
+    res.json({ success: true, message: "Restaurant and all associated data removed" });
   } catch (err) {
     console.error("[DELETE] Error:", err.message);
     res.status(500).json({ success: false, message: "Error removing restaurant" });

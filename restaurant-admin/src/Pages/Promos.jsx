@@ -129,19 +129,21 @@ export default function Promos() {
     }
   };
 
-  const handleDeploy = async () => {
-    if (!editingData) return;
+  const handleDeploy = async (manualData = null) => {
+    const data = manualData || editingData;
+    if (!data) return;
     setIsDeploying(true);
     try {
       const deployPayload = {
-        name: editingData.title,
-        code: editingData.code.toUpperCase(),
-        type: editingData.type,
-        value: editingData.value,
-        minOrder: editingData.minOrder || 0,
-        description: editingData.reason || editingData.description,
+        name: data.title,
+        code: data.code.toUpperCase(),
+        type: data.type,
+        value: data.value,
+        minOrder: data.minOrder || 0,
+        description: data.reason || data.description,
         isActive: true,
-        promoType: "ai-generated"
+        promoType: "ai-generated",
+        targetSegment: data.targetSegment || null
       };
       const res = await api.post("/api/promo/create", deployPayload);
       if (res.data?.success) {
@@ -162,7 +164,7 @@ export default function Promos() {
 
   const handleDelete = async (id) => {
     try {
-      const res = await api.delete(`/api/promo/${id}`);
+      const res = await api.post("/api/promo/delete", { id });
       if (res.data?.success) {
         toast.success("Strategy purged.");
         fetchActivePromos();
@@ -329,16 +331,40 @@ export default function Promos() {
                                         </div>
                                     </div>
 
-                                    <h4 style={{ fontSize: "21px", fontWeight: 950, margin: "0 0 10px 0", letterSpacing: "-0.3px" }}>{idea.title}</h4>
+                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                                        <h4 style={{ fontSize: "21px", fontWeight: 950, margin: 0, letterSpacing: "-0.3px" }}>{idea.title}</h4>
+                                        <div style={{ background: theme.bg, color: theme.accent, padding: "4px 10px", borderRadius: "6px", fontSize: "10px", fontWeight: 900, border: `1px solid ${theme.accent}33` }}>
+                                            {idea.code || "AUTO-GEN"}
+                                        </div>
+                                    </div>
                                     <p style={{ fontSize: "14px", color: theme.textMuted, lineHeight: 1.6, marginBottom: "24px", minHeight: "68px" }}>{idea.reason || idea.description}</p>
                                     
-                                    <div style={{ display: "flex", gap: "8px", borderTop: `1px solid ${theme.border}`, paddingTop: "20px" }}>
-                                        <div style={{ background: theme.bg, color: theme.textMuted, fontSize: "10px", fontWeight: 800, padding: "4px 10px", borderRadius: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                            <Target size={12} /> {idea.audience}
+                                    <div style={{ display: "flex", gap: "8px", borderTop: `1px solid ${theme.border}`, paddingTop: "20px", alignItems: "center", justifyContent: "space-between" }}>
+                                        <div style={{ display: "flex", gap: "8px" }}>
+                                            <div style={{ background: theme.bg, color: theme.textMuted, fontSize: "10px", fontWeight: 800, padding: "4px 10px", borderRadius: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
+                                                <Target size={12} /> {idea.audience}
+                                            </div>
+                                            <div style={{ background: theme.bg, color: theme.textMuted, fontSize: "10px", fontWeight: 800, padding: "4px 10px", borderRadius: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
+                                                <Clock size={12} /> {idea.timeText}
+                                            </div>
                                         </div>
-                                        <div style={{ background: theme.bg, color: theme.textMuted, fontSize: "10px", fontWeight: 800, padding: "4px 10px", borderRadius: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                            <Clock size={12} /> {idea.timeText}
-                                        </div>
+                                        
+                                        {activePromos.some(p => p.code === idea.code) ? (
+                                            <div style={{ color: theme.accentSecondary, fontSize: "10px", fontWeight: 900, display: "flex", alignItems: "center", gap: "4px" }}>
+                                                <CheckCircle size={14} /> LIVE
+                                            </div>
+                                        ) : (
+                                            <button 
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    const code = idea.code || `STRAT-${Math.random().toString(36).substring(2,7).toUpperCase()}`;
+                                                    handleDeploy({...idea, code}); 
+                                                }}
+                                                style={{ background: theme.accent, color: "white", border: "none", padding: "6px 12px", borderRadius: "8px", fontSize: "10px", fontWeight: 900, cursor: "pointer", boxShadow: `0 4px 10px ${theme.accent}44` }}
+                                            >
+                                                QUICK ACTIVATE
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))
@@ -413,7 +439,25 @@ export default function Promos() {
                 <div style={{ padding: "48px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px" }}>
                         <h2 style={{ fontSize: "24px", fontWeight: 1000, margin: 0 }}>Strategy Refinement</h2>
-                        <span style={{ fontSize: "11px", fontWeight: 900, background: theme.bg, padding: "4px 12px", borderRadius: "8px", border: `1px solid ${theme.border}` }}>UNIT: {editingData.code}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontSize: "10px", fontWeight: 900, color: theme.textMuted }}>NODE ID:</span>
+                            <input 
+                                value={editingData.code} 
+                                onChange={e => setEditingData({...editingData, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "")})} 
+                                style={{ 
+                                    background: theme.bg, 
+                                    border: `1px solid ${theme.accent}44`, 
+                                    borderRadius: "8px", 
+                                    padding: "4px 12px", 
+                                    fontSize: "12px", 
+                                    fontWeight: 900, 
+                                    color: theme.accent, 
+                                    width: "140px",
+                                    outline: "none",
+                                    textAlign: "center"
+                                }} 
+                            />
+                        </div>
                     </div>
 
                     <div style={{ display: "grid", gap: "24px" }}>
@@ -441,13 +485,29 @@ export default function Promos() {
 
                         <div>
                             <label style={modalLabel}>CAMPAIGN DESCRIPTION & LOGIC</label>
-                            <textarea value={editingData.reason || editingData.description} onChange={e => setEditingData({...editingData, description: e.target.value})} style={{...modalInputStyle(theme, false), height: "100px", resize: "none"}} />
+                            <textarea 
+                                value={editingData.description || editingData.reason || ""} 
+                                onChange={e => setEditingData({...editingData, description: e.target.value, reason: e.target.value})} 
+                                style={{...modalInputStyle(theme, false), height: "100px", resize: "none"}} 
+                            />
                         </div>
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
                             <div>
                                 <label style={modalLabel}>TARGET AUDIENCE</label>
-                                <div style={modalReadOnly(theme)}><Users size={14} style={{ opacity: 0.5 }} /> {editingData.audience}</div>
+                                <select 
+                                    value={editingData.targetSegment || ""} 
+                                    onChange={e => setEditingData({...editingData, targetSegment: e.target.value || null, audience: e.target.options[e.target.selectedIndex].text})} 
+                                    style={modalInputStyle(theme, true)}
+                                >
+                                    <option value="">All Customers</option>
+                                    <option value="VIP">👑 VIP Customers</option>
+                                    <option value="Loyal">💎 Loyal Customers</option>
+                                    <option value="New">🌱 New Customers</option>
+                                    <option value="Regular">🧑 Regulars</option>
+                                    <option value="At Risk">⚠️ At Risk</option>
+                                    <option value="Lost">💔 Lost Customers</option>
+                                </select>
                             </div>
                             <div>
                                 <label style={modalLabel}>DEPLOYMENT WINDOW</label>

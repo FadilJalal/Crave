@@ -56,11 +56,6 @@ export default function ProtectedFeature({
   }, [featureName, subscription]);
 
   useEffect(() => {
-    if (initialSubscription) {
-      setLoading(false);
-      return;
-    }
-
     const loadSubscription = async () => {
       try {
         const res = await api.get("/api/subscription/mine");

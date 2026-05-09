@@ -10,6 +10,8 @@ export function redirectToFrontend() {
 export function clearRestaurantSession() {
   localStorage.removeItem("restaurantToken");
   localStorage.removeItem("restaurantInfo");
+  localStorage.removeItem("restaurant_subscription_cache");
+  sessionStorage.removeItem("restaurant_subscription_cache");
 }
 
 export async function saveRestaurantSession(token) {

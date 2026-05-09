@@ -3,7 +3,7 @@ import RestaurantLayout from "../components/RestaurantLayout";
 import ConfirmationModal from "../components/ConfirmationModal";
 import { api } from "../utils/api";
 import { useTheme } from "../ThemeContext";
-import { Sparkles, Loader2, Send, History, PenLine, Megaphone } from "lucide-react";
+import { Sparkles, Loader2, Send, History, PenLine, Trash2, Megaphone, X } from "lucide-react";
 
 const TYPES = [
   { key: "offer", label: "Special Offer", color: "#ff4e2a", desc: "Discount or limited-time deal" },
@@ -27,7 +27,25 @@ const TYPE_COLOR = { offer: "#ff4e2a", menu: "#8b5cf6", general: "#111827" };
 
 function formatDate(d) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-AE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(d).toLocaleDateString("en-AE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function detectCode(campaign) {
+  if (campaign.promoCode) return campaign.promoCode;
+  const combined = (campaign.subject + " " + campaign.body).toUpperCase();
+  const matches = combined.match(/[A-Z0-9]{5,}/g);
+  if (matches) {
+    // Exclude common marketing words that aren't likely codes
+    const blacklist = ["EXCLUSIV", "DISCOUN", "OFFER", "THANKS", "LOYAL", "VALUED", "ORDER", "TODAY", "COUPON", "VISIT", "DELIGHT"];
+    const candidates = matches.filter(m => !blacklist.some(w => m.includes(w)));
+    
+    // Prioritize candidates with numbers (likely actual codes like SAVE20)
+    const withNumbers = candidates.filter(m => /\d/.test(m));
+    if (withNumbers.length > 0) return withNumbers[0];
+    
+    return candidates[0] || null;
+  }
+  return null;
 }
 
 export default function EmailCampaign() {
@@ -52,6 +70,10 @@ export default function EmailCampaign() {
   const [personalize, setPersonalize] = useState(true);
   const [scheduleMode, setScheduleMode] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [manualCode, setManualCode] = useState("");
+  const [manualValue, setManualValue] = useState(10);
+  const [isSyncingCode, setIsSyncingCode] = useState(false);
 
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
@@ -60,6 +82,7 @@ export default function EmailCampaign() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [activePromos, setActivePromos] = useState([]);
 
   // Custom Modal State
   const [modal, setModal] = useState({ isOpen: false, title: "", message: "", confirmText: "", onConfirm: () => { } });
@@ -72,6 +95,12 @@ export default function EmailCampaign() {
       })
       .catch(() => setHasAccess(false))
       .finally(() => setLoadingCount(false));
+    
+    api.get("/api/promo/list")
+      .then(res => {
+        if (res.data.success) setActivePromos(res.data.data || []);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -99,10 +128,15 @@ export default function EmailCampaign() {
     try {
       const res = await api.post("/api/email-campaign/send", {
         subject, heading, body, ctaText, ctaUrl, type, personalize,
+        promoCode,
         scheduledAt: scheduleMode ? scheduledAt : null,
       });
       setResult({ success: res.data.success, message: res.data.message });
-      if (res.data.success && scheduleMode) { setScheduleMode(false); setScheduledAt(""); }
+      if (res.data.success) {
+        loadHistory();
+        if (scheduleMode) { setScheduleMode(false); setScheduledAt(""); }
+        setPromoCode(""); // Clear after successful send
+      }
     } catch {
       setResult({ success: false, message: "Failed to send campaign." });
     } finally { setSending(false); setModal({ ...modal, isOpen: false }); }
@@ -399,6 +433,97 @@ export default function EmailCampaign() {
                   <div><label style={lbl}>CTA Destination (URL)</label><input style={inp} value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} placeholder="https://..." /></div>
                 </div>
 
+                <div style={{ background: dark ? "rgba(139,92,246,0.03)" : "#f5f3ff", padding: "16px", borderRadius: "16px", border: `1px solid ${dark ? "rgba(139,92,246,0.1)" : "#ddd6fe"}` }}>
+                  <label style={{...lbl, color: "#8b5cf6"}}>Associated Promo Code</label>
+                  <div style={{ display: "flex", gap: "10px", marginTop: "8px", alignItems: "center" }}>
+                    <select 
+                      style={{...inp, color: "#8b5cf6", fontWeight: 900, appearance: "none", width: "180px", background: dark ? "#0a0f18" : "#fff"}} 
+                      value={promoCode} 
+                      onChange={e => { setPromoCode(e.target.value); if(e.target.value) setManualCode(""); }}
+                    >
+                      <option value="">None / Manual</option>
+                      {activePromos.map(p => (
+                        <option key={p._id} value={p.code}>{p.code} ({p.type === 'percent' ? `${p.value}%` : `AED ${p.value}`})</option>
+                      ))}
+                    </select>
+
+                    {promoCode && (
+                      <button 
+                        onClick={() => setPromoCode("")}
+                        style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                        title="Remove link"
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
+
+                    {!promoCode && (
+                      <input 
+                        style={{...inp, flex: 1, borderColor: "#8b5cf633", background: dark ? "#0a0f18" : "#fff"}} 
+                        value={manualCode} 
+                        onChange={e => setManualCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,""))}
+                        placeholder="Enter code manually (e.g. DELICIOUS10)"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Auto-Detection for Manual Codes */}
+                {manualCode && (
+                  <div style={{ background: "rgba(139,92,246,0.1)", padding: "12px 16px", borderRadius: "12px", border: "1px dashed #8b5cf6", display: "flex", gap: "16px", alignItems: "center" }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "12px", color: "#8b5cf6", fontWeight: 800 }}>
+                        {activePromos.some(p => p.code === manualCode) ? `📝 "${manualCode}" already exists.` : `✨ "${manualCode}" doesn't exist yet.`}
+                      </div>
+                      <div style={{ fontSize: "10px", color: "#8b5cf6cc", fontWeight: 600, marginTop: "2px" }}>
+                        {activePromos.some(p => p.code === manualCode) ? "Sync value to store:" : "Set discount value for this code:"}
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <input 
+                        type="number" 
+                        value={manualValue} 
+                        onChange={e => setManualValue(e.target.value === "" ? "" : Number(e.target.value))} 
+                        style={{ width: "70px", background: dark ? "#0a0f18" : "#fff", border: "1px solid #8b5cf633", borderRadius: "8px", padding: "6px 8px", color: "#8b5cf6", fontWeight: 900, textAlign: "center" }}
+                        placeholder="0"
+                      />
+                      <span style={{ fontSize: "12px", fontWeight: 900, color: "#8b5cf6" }}>%</span>
+                    </div>
+
+                    <button 
+                      onClick={async () => {
+                        setIsSyncingCode(true);
+                        try {
+                          const res = await api.post("/api/promo/create", {
+                            name: manualCode + " (Email Campaign)",
+                            code: manualCode,
+                            type: "percent",
+                            value: Number(manualValue) || 10,
+                            isActive: true
+                          });
+                          if(res.data.success) {
+                            const newPromo = res.data.data;
+                            // Update local list if exists, otherwise add
+                            setActivePromos(prev => {
+                              const filtered = prev.filter(p => p.code !== manualCode);
+                              return [newPromo, ...filtered];
+                            });
+                            setPromoCode(manualCode);
+                            setManualCode("");
+                            toast.success("Promo synced successfully!");
+                          }
+                        } catch { toast.error("Failed to sync code."); }
+                        finally { setIsSyncingCode(false); }
+                      }}
+                      disabled={isSyncingCode}
+                      style={{ background: "#8b5cf6", color: "white", border: "none", padding: "8px 16px", borderRadius: "8px", fontSize: "11px", fontWeight: 1000, cursor: "pointer" }}
+                    >
+                      {isSyncingCode ? "SYNCING..." : activePromos.some(p => p.code === manualCode) ? "UPDATE" : "ACTIVATE"}
+                    </button>
+                  </div>
+                )}
+
                 <div style={{ background: dark ? "rgba(255,255,255,0.02)" : "#f9fafb", borderRadius: 16, padding: "16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, border: dark ? "1px solid rgba(255,255,255,0.05)" : "1px solid #f1f5f9" }}>
                   <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13, color: textPrimary, fontWeight: 700 }}>
                     <input type="checkbox" checked={personalize} onChange={e => setPersonalize(e.target.checked)} style={{ width: 18, height: 18, borderRadius: 6, cursor: "pointer" }} />
@@ -538,6 +663,7 @@ export default function EmailCampaign() {
                         <div style={{ fontSize: 11, color: textSecondary, display: "flex", gap: 10, fontWeight: 700 }}>
                           <span>{formatDate(c.scheduledAt || c.sentAt || c.createdAt)}</span>
                           {c.status === "sent" && <span>· {c.sentCount} recipients</span>}
+                          {detectCode(c) && <span style={{ color: "#8b5cf6", fontWeight: 1000 }}>· CODE: {detectCode(c)}</span>}
                         </div>
                       </div>
                       <span style={{ fontSize: 10, fontWeight: 950, padding: "4px 12px", borderRadius: 10, background: badge.bg, color: badge.color, textTransform: "uppercase", letterSpacing: 0.5 }}>
@@ -547,7 +673,7 @@ export default function EmailCampaign() {
                         onClick={() => handleDelete(c._id)}
                         style={{ padding: "8px", borderRadius: 10, border: "none", background: dark ? "rgba(239,68,68,0.1)" : "#fef2f2", color: "#ef4444", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
                       >
-                        <Megaphone size={14} style={{ transform: "rotate(180deg)" }} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   );

@@ -40,7 +40,6 @@ const AILaborOptimizer      = lazy(() => import("./Pages/AILaborOptimizer"));
 const AICustomerSegmentation= lazy(() => import("./Pages/AICustomerSegmentation"));
 const LaborManagement       = lazy(() => import("./Pages/LaborManagement"));
 const Promos                = lazy(() => import("./Pages/Promos"));
-const AICouponStrategist    = lazy(() => import("./Pages/AICouponStrategist"));
 const Finance               = lazy(() => import("./Pages/Finance"));
 const ReviewReply           = lazy(() => import("./Pages/ReviewReply"));
 const KDS                   = lazy(() => import("./Pages/KDS"));
@@ -82,7 +81,6 @@ export default function App() {
           <Route path="/ai-labor-optimizer" element={<ProtectedRoute><ProtectedFeature featureName="aiLaborOptimization"><AILaborOptimizer /></ProtectedFeature></ProtectedRoute>} />
           <Route path="/ai-customer-segmentation" element={<ProtectedRoute><ProtectedFeature featureName="aiCustomerSegmentation"><ErrorBoundary><AICustomerSegmentation /></ErrorBoundary></ProtectedFeature></ProtectedRoute>} />
           <Route path="/coupons"    element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><Promos /></ProtectedFeature></ProtectedRoute>} />
-          <Route path="/coupon-strategist" element={<ProtectedRoute><ProtectedFeature featureName="aiPromoGenerator"><AICouponStrategist /></ProtectedFeature></ProtectedRoute>} />
 
           <Route path="/"  element={<Navigate to="/login" replace />} />
           <Route path="*"  element={<Navigate to="/login" replace />} />

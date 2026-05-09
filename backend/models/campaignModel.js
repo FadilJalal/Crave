@@ -8,6 +8,7 @@ const campaignSchema = new mongoose.Schema({
   body:         { type: String, required: true },
   ctaText:      { type: String, default: "" },
   ctaUrl:       { type: String, default: "" },
+  promoCode:    { type: String, default: "" },
   status:       { type: String, enum: ["sent", "scheduled", "failed"], default: "sent" },
   scheduledAt:  { type: Date, default: null },
   sentAt:       { type: Date, default: null },

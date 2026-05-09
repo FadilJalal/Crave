@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { api } from '../utils/api';
+import { toast } from 'react-toastify';
 
 const NotificationContext = createContext();
 
@@ -27,14 +28,14 @@ export const NotificationProvider = ({ children }) => {
   const [reviews, setReviews] = useState({ data: [], avgRating: 0, total: 0 });
 
   const clearAll = () => {
-    const currentIds = rawAlerts.map(a => a.id);
-    const newHidden = [...new Set([...hiddenAlertIds, ...currentIds])];
-    setHiddenAlertIds(newHidden);
-    localStorage.setItem("ra_hidden_alerts", JSON.stringify(newHidden));
-    
+    // Clear transient activities by updating the timestamp
     const now = Date.now();
     setClearedAt(now);
     localStorage.setItem("ra_notifications_cleared_at", now.toString());
+    
+    // We NO LONGER hide persistent alerts (like 'Low Stock' or 'New Orders') 
+    // because they represent an active state that needs resolution.
+    // If we hide them, the user will forget they have pending tasks.
   };
 
   const fetchNotifications = async () => {
@@ -92,7 +93,8 @@ export const NotificationProvider = ({ children }) => {
 
       const pendingCount = ordersList.filter(ord => ord.status === "Order Placed").length;
       if (pendingCount > 0) {
-        alertsArr.push({ id: "orders", type: "danger", title: "New Orders", desc: `${pendingCount} order${pendingCount > 1 ? 's' : ''} waiting to be accepted.`, icon: "🛎️", cta: "Accept" });
+        // Use a dynamic ID so it pops back up if the count changes, even if dismissed
+        alertsArr.push({ id: `orders-${pendingCount}`, type: "danger", title: "New Orders", desc: `${pendingCount} order${pendingCount > 1 ? 's' : ''} waiting to be accepted.`, icon: "🛎️", cta: "Accept" });
       }
 
       const promoList = p.data?.success ? (p.data.promos || p.data.data || []) : [];
@@ -175,7 +177,21 @@ export const NotificationProvider = ({ children }) => {
       import("../utils/socket").then(({ default: socket, connectRestaurantSocket, disconnectSocket }) => {
         connectRestaurantSocket(rId);
         
-        const handleNewOrder = () => {
+        const handleNewOrder = (data) => {
+          // Play notification sound
+          const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+          audio.play().catch(e => console.log("Audio play blocked by browser policy"));
+
+          // Show in-app toast
+          toast.success(`🛎️ NEW ORDER RECEIVED! #${(data?.orderId || "").slice(-6).toUpperCase()}`, {
+            position: "top-right",
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+
           fetchNotifications(); // Refresh all notification data instantly
         };
 

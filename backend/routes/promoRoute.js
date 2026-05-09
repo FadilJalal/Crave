@@ -5,6 +5,9 @@ import restaurantAuth from "../middleware/restaurantAuth.js";
 import authMiddleware from "../middleware/auth.js";
 import restaurantModel from "../models/restaurantModel.js";
 import foodModel from "../models/foodModel.js";
+import userModel from "../models/userModel.js";
+import orderModel from "../models/orderModel.js";
+import jwt from "jsonwebtoken";
 import { requireFeature } from "../middleware/featureAccess.js";
 
 const promoRouter = express.Router();
@@ -65,6 +68,15 @@ const normalizePromoSuggestion = (suggestion, index) => {
   };
 };
 
+function segmentTypeFromUserStats({ orders, spending, daysSinceLast, daysActive }) {
+  if (orders >= 20 && spending > 500) return "VIP";
+  if (orders >= 10 && daysSinceLast < 30) return "Loyal";
+  if (daysSinceLast > 90) return "Lost";
+  if (orders === 1 && daysSinceLast < 7) return "New";
+  if (daysSinceLast > 60 && daysActive > 30) return "At Risk";
+  return "Regular";
+}
+
 // ── Customer: validate a promo code ────────────────────────────────────────
 // Needs restaurantId so we only match promos belonging to that restaurant
 promoRouter.post("/validate", authMiddleware, async (req, res) => {
@@ -75,13 +87,26 @@ promoRouter.post("/validate", authMiddleware, async (req, res) => {
     if (!code) return res.json({ success: false, message: "Please enter a promo code." });
     if (!restaurantId) return res.json({ success: false, message: "Restaurant info missing." });
 
-    const promo = await promoModel.findOne({
-      code: code.toUpperCase().trim(),
-      restaurantId,
+    const searchCode = code.trim();
+    
+    // Case-insensitive lookup using regex
+    const existingPromo = await promoModel.findOne({ 
+      code: { $regex: new RegExp("^" + searchCode + "$", "i") } 
     });
 
-    if (!promo || !promo.isActive)
+    if (!existingPromo) {
       return res.json({ success: false, message: "Invalid promo code." });
+    }
+
+    if (existingPromo.restaurantId.toString() !== restaurantId?.toString()) {
+      return res.json({ success: false, message: "This promo code is not valid for this restaurant." });
+    }
+
+    if (!existingPromo.isActive) {
+      return res.json({ success: false, message: "This promo code has been deactivated." });
+    }
+
+    const promo = existingPromo;
 
     if (promo.expiresAt && new Date() > promo.expiresAt)
       return res.json({ success: false, message: "This promo code has expired." });
@@ -97,6 +122,30 @@ promoRouter.post("/validate", authMiddleware, async (req, res) => {
         success: false,
         message: `Minimum order of AED ${promo.minOrder} required for this code.`,
       });
+
+    // ── Segment Validation ──────────────────────────────────────────────────
+    if (promo.targetSegment) {
+      const userOrders = await orderModel.find({ userId: userId, restaurantId, status: { $ne: "Cancelled" } }).sort({ createdAt: 1 }).lean();
+      
+      const now = Date.now();
+      const firstOrder = userOrders.length ? userOrders[0].createdAt : now;
+      const lastOrder = userOrders.length ? userOrders[userOrders.length - 1].createdAt : now;
+      const totalSpending = userOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+      
+      const userSegment = segmentTypeFromUserStats({
+        orders: userOrders.length,
+        spending: totalSpending,
+        daysSinceLast: (now - new Date(lastOrder)) / 864e5,
+        daysActive: (now - new Date(firstOrder)) / 864e5
+      });
+
+      if (userSegment !== promo.targetSegment) {
+        return res.json({ 
+          success: false, 
+          message: `This exclusive offer is reserved for our ${promo.targetSegment} customers. Keep ordering to unlock more rewards!` 
+        });
+      }
+    }
 
     let discount = 0;
     if (promo.type === "percent") {
@@ -142,17 +191,52 @@ promoRouter.post("/use", authMiddleware, async (req, res) => {
 // ── Public: list active promos for a restaurant (shown in cart) ────────────
 promoRouter.get("/public/:restaurantId", async (req, res) => {
   try {
+    const { restaurantId } = req.params;
     const now = new Date();
-    const promos = await promoModel.find({
-      restaurantId: req.params.restaurantId,
+    
+    // 1. Find all active promos for this restaurant
+    let promos = await promoModel.find({
+      restaurantId,
       isActive: true,
-      isPublic: true,
       $and: [
         { $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }] },
         { $or: [{ maxUses: null }, { $expr: { $lt: ["$usedCount", "$maxUses"] } }] },
       ],
-    }).select("code type value minOrder").sort({ value: -1 });
-    res.json({ success: true, data: promos });
+    }).select("code type value minOrder isPublic targetedEmails targetSegment usedBy").sort({ value: -1 });
+
+    // 2. Identify the user (optional)
+    const token = req.headers.token;
+    let user = null;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        user = await userModel.findById(decoded.id).select("email").lean();
+      } catch (e) { /* ignore invalid token */ }
+    }
+
+    // 3. Filter by visibility
+    const visiblePromos = promos.filter(p => {
+      // Rule: If user already used it, hide it
+      if (user && p.usedBy && p.usedBy.includes(String(user._id))) return false;
+
+      // Rule: If it's targeted specifically by email, ONLY show to those emails
+      if (p.targetedEmails && p.targetedEmails.length > 0) {
+        if (!user) return false;
+        return p.targetedEmails.includes(user.email);
+      }
+      
+      // If it's a general public promo, check if it's truly public
+      if (p.isPublic) return true;
+
+      return false; // Hidden otherwise
+    });
+
+    res.json({ success: true, data: visiblePromos.map(p => ({
+      code: p.code,
+      type: p.type,
+      value: p.value,
+      minOrder: p.minOrder
+    })) });
   } catch (err) {
     console.error("[promo/public]", err);
     res.json({ success: false, data: [] });
@@ -307,24 +391,23 @@ promoRouter.post("/create", restaurantAuth, requireFeature("aiPromoGenerator"), 
       return res.json({ success: false, message: "Invalid expiry date." });
     }
 
-    const exists = await promoModel.findOne({
-      code,
-      restaurantId: req.restaurantId,
-    });
-    if (exists) return res.json({ success: false, message: "You already have a promo with this code." });
-
     const name = String(req.body?.name || "").trim();
 
-    const promo = await promoModel.create({
-      restaurantId: req.restaurantId,
-      code,
-      name,
-      type,
-      value,
-      minOrder: Number.isFinite(minOrder) ? minOrder : 0,
-      maxUses: maxUses === null ? null : Math.floor(maxUses),
-      expiresAt: parsedExpiry || null,
-    });
+    const promo = await promoModel.findOneAndUpdate(
+      { code, restaurantId: req.restaurantId },
+      {
+        name,
+        type,
+        value,
+        minOrder: Number.isFinite(minOrder) ? minOrder : 0,
+        maxUses: maxUses === null ? null : Math.floor(maxUses),
+        expiresAt: parsedExpiry || null,
+        targetSegment: req.body?.targetSegment || null,
+        isActive: req.body?.isActive !== undefined ? req.body.isActive : true,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
     res.json({ success: true, data: serializePromo(promo.toObject()) });
   } catch (err) {
     console.error("[promo/create]", err);

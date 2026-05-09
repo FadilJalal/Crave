@@ -52,12 +52,13 @@ const Cart = () => {
   // Fetch available promos for this restaurant
   React.useEffect(() => {
     if (!cartRestaurantId) return;
-    axios.get(url + '/api/promo/public/' + cartRestaurantId)
+    const config = token ? { headers: { token } } : {};
+    axios.get(url + '/api/promo/public/' + cartRestaurantId, config)
       .then(res => {
         if (res.data.success) setAvailablePromos(res.data.data);
       })
       .catch(() => {});
-  }, [cartRestaurantId, url]);
+  }, [cartRestaurantId, url, token]);
 
   const handleApplyPromo = async () => {
     if (!promoInput.trim()) return;

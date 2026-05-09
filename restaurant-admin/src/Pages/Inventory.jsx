@@ -459,7 +459,7 @@ export default function Inventory() {
         await api.put(`/api/inventory/${editingItem._id}`, formData);
         toast.success("Item updated");
       } else {
-        await api.post("/api/inventory", formData);
+        await api.post("/api/inventory/add", formData);
         toast.success("Item added");
       }
       setShowAddModal(false);
@@ -549,6 +549,12 @@ export default function Inventory() {
     <RestaurantLayout>
       <style>
         {`
+          @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap');
+
+          :root {
+            font-family: 'Outfit', sans-serif;
+          }
+
           .inventory-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -602,11 +608,10 @@ export default function Inventory() {
           }
 
           .mono-num {
-            font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+            font-family: 'JetBrains Mono', monospace;
             font-variant-numeric: tabular-nums;
-          }
+            font-weight: 850;
             letter-spacing: -0.5px;
-            font-variant-numeric: tabular-nums;
           }
 
           .badge {
@@ -699,6 +704,103 @@ export default function Inventory() {
             animation: scanline 4s linear infinite;
             z-index: 10;
           }
+
+          .status-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 950;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .status-new { background: #ecfdf5; color: #059669; border: 1px solid #10b98130; }
+          .status-update { background: #eff6ff; color: #2563eb; border: 1px solid #3b82f630; }
+          .status-duplicate { background: #fff7ed; color: #c2410c; border: 1px solid #f9731630; }
+          .status-invalid { background: #fef2f2; color: #dc2626; border: 1px solid #ef444430; }
+
+          .preview-table-container {
+            border: 1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'};
+            border-radius: 16px;
+            overflow: hidden;
+            background: ${dark ? 'rgba(0,0,0,0.2)' : '#fff'};
+            max-height: 500px;
+            display: flex;
+            flex-direction: column;
+            margin-top: 12px;
+          }
+
+          .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+          }
+
+          .preview-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: ${dark ? '#1e293b' : '#f8fafc'};
+            box-shadow: 0 1px 0 ${dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'};
+          }
+
+          .preview-table th {
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+          }
+
+          .preview-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#f1f5f9'};
+            color: ${dark ? (dark ? '#cbd5e1' : '#475569') : '#475569'};
+            white-space: nowrap;
+          }
+
+          .preview-table tr:hover {
+            background: ${dark ? 'rgba(255,255,255,0.02)' : '#f9fafb'};
+          }
+
+          .import-select {
+            background: ${dark ? 'rgba(15, 23, 42, 0.6)' : '#fff'};
+            border: 1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'};
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            color: inherit;
+            outline: none;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+          }
+
+          .import-select:focus {
+            border-color: #ff4e2a;
+            box-shadow: 0 0 0 2px rgba(255, 78, 42, 0.1);
+          }
+
+          .import-input {
+            background: ${dark ? 'rgba(15, 23, 42, 0.6)' : '#fff'};
+            border: 1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'};
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 900;
+            color: inherit;
+            outline: none;
+            width: 100%;
+            font-family: 'JetBrains Mono', monospace;
+          }
+
+          .import-input:focus {
+            border-color: #ff4e2a;
+          }
+
         `}
       </style>
 
@@ -769,44 +871,10 @@ export default function Inventory() {
           <div style={{ position: 'absolute', inset: 0, backgroundImage: `radial-gradient(${dark ? 'rgba(168, 85, 247, 0.05)' : 'rgba(0,0,0,0.01)'} 1px, transparent 1px)`, backgroundSize: '32px 32px' }} />
 
           {[
-            { 
-              label: 'VIBE CHECK', 
-              value: stats.total, 
-              color: '#a855f7', 
-              trend: '+12%', 
-              subtext: 'TOTAL VECTORS',
-              icon: '✨',
-              status: 'W'
-            },
-            { 
-              label: 'LOWKEY LOW', 
-              value: stats.lowStock, 
-              color: '#3b82f6', 
-              trend: '-2%', 
-              subtext: 'STOCK STABLE',
-              icon: '🔋',
-              status: 'STABLE'
-            },
-            { 
-              label: 'TOTAL L\'S', 
-              value: stats.outOfStock, 
-              color: '#ff4e2a', 
-              trend: 'ZERO', 
-              subtext: 'ZERO VACANCY',
-              icon: '🚨',
-              status: 'CRITICAL',
-              alert: stats.outOfStock > 0 
-            },
-            { 
-              label: 'MAJOR BAGS', 
-              value: stats.value, 
-              isCurrency: true,
-              color: '#10b981', 
-              trend: '+5.4%', 
-              subtext: 'TOTAL LIQUID ASSETS',
-              icon: '💰',
-              status: 'SECURED'
-            }
+            { label: 'VIBE CHECK', value: stats.total, color: '#a855f7', trend: '+12%', subtext: 'TOTAL VECTORS', icon: '✨', status: 'W' },
+            { label: 'LOWKEY LOW', value: stats.lowStock, color: '#3b82f6', trend: '-2%', subtext: 'STOCK STABLE', icon: '🔋', status: 'STABLE' },
+            { label: 'TOTAL L\'S', value: stats.outOfStock, color: '#ff4e2a', trend: 'ZERO', subtext: 'ZERO VACANCY', icon: '🚨', status: 'CRITICAL', alert: stats.outOfStock > 0 },
+            { label: 'MAJOR BAGS', value: stats.value, isCurrency: true, color: '#10b981', trend: '+5.4%', subtext: 'TOTAL LIQUID ASSETS', icon: '💰', status: 'SECURED' }
           ].map((s, i) => (
             <div key={i} style={{ 
               padding: '24px', 
@@ -821,65 +889,79 @@ export default function Inventory() {
               zIndex: 1,
               flex: 1
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <div style={{ 
-                  width: 36, height: 36, borderRadius: 12, 
-                  background: s.alert ? `${s.color}20` : (dark ? 'rgba(255,255,255,0.03)' : '#f8fafc'), 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                  color: s.alert ? s.color : 'var(--muted)',
-                  border: `1px solid ${s.alert ? `${s.color}40` : (dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0')}`,
-                  boxShadow: s.alert ? `0 0 15px ${s.color}30` : 'none'
-                }}>
-                  {s.icon}
-                </div>
-                <div style={{ 
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                 <div style={{ 
+                   width: 44, height: 44, borderRadius: 14, 
+                   background: dark ? 'rgba(255,255,255,0.04)' : '#f8fafc',
+                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                   fontSize: 22, border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                   boxShadow: s.alert ? `0 0 20px ${s.color}40` : 'none'
+                 }}>
+                   {s.icon}
+                 </div>
+                 <div style={{ 
                    fontSize: 8, fontWeight: 950, color: s.color, 
                    background: `${s.color}15`, padding: '4px 10px', 
-                   borderRadius: 20, letterSpacing: '1.2px' 
-                }}>
-                  {s.status}
-                </div>
-              <div>
+                   borderRadius: 20, letterSpacing: '1.2px',
+                   fontFamily: "'Outfit', sans-serif"
+                 }}>
+                   {s.status}
+                 </div>
+               </div>
+
+               <div>
                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ fontSize: 9, fontWeight: 950, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>{s.label}</div>
+                    <div style={{ 
+                       fontSize: 10, fontWeight: 950, color: 'var(--muted)', 
+                       textTransform: 'uppercase', letterSpacing: '1.5px',
+                       fontFamily: "'Outfit', sans-serif"
+                    }}>{s.label}</div>
                     {s.alert && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ff4e2a', animation: 'pulse 1.5s infinite' }} />}
                  </div>
-                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 6 }}>
+                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 4 }}>
                     <div className="mono-num" style={{ 
-                      fontSize: s.isCurrency ? 24 : 36, 
-                      fontWeight: 950, 
+                      fontSize: s.isCurrency ? 26 : 38, 
+                      fontWeight: 900, 
                       color: s.alert ? s.color : (dark ? '#fff' : '#0f172a'),
-                      letterSpacing: '-1.5px',
-                      lineHeight: 1
+                      letterSpacing: '-2px',
+                      lineHeight: 1,
+                      fontFamily: "'JetBrains Mono', monospace"
                     }}>
-                      {s.isCurrency && <span style={{ fontSize: 12, marginRight: 4, verticalAlign: 'middle', opacity: 0.6 }}>AED</span>}
+                      {s.isCurrency && <span style={{ fontSize: 13, marginRight: 4, verticalAlign: 'middle', opacity: 0.6 }}>AED</span>}
                       {typeof s.value === 'number' ? s.value.toLocaleString() : s.value}
                     </div>
                     <div style={{ 
-                      fontSize: 10, 
+                      fontSize: 11, 
                       fontWeight: 950, 
                       color: s.trend.startsWith('+') ? '#10b981' : (s.trend === 'ZERO' ? '#64748b' : '#ef4444'),
                       background: s.trend.startsWith('+') ? '#10b98115' : (s.trend === 'ZERO' ? '#f1f5f9' : '#ef444415'),
-                      padding: '4px 8px',
-                      borderRadius: 6,
-                      marginBottom: 2
+                      padding: '4px 10px',
+                      borderRadius: 8,
+                      marginBottom: 4,
+                      fontFamily: "'Outfit', sans-serif"
                     }}>
                       {s.trend}
                     </div>
                  </div>
-        </div>
+                 <p style={{ 
+                   margin: '8px 0 0 0', fontSize: 8, fontWeight: 950, 
+                   color: 'var(--muted)', opacity: 0.6, letterSpacing: '1px',
+                   fontFamily: "'Outfit', sans-serif", textTransform: 'uppercase'
+                 }}>{s.subtext}</p>
+               </div>
 
-              {s.alert && (
-                 <div style={{ 
-                   position: 'absolute', top: 0, right: 32, width: 6, height: 6, 
-                   borderRadius: '50%', background: s.color, 
-                   boxShadow: `0 0 12px ${s.color}`,
-                   animation: 'pulse 1.5s infinite' 
-                 }} />
-              )}
+               {s.alert && (
+                  <div style={{ 
+                    position: 'absolute', top: 0, right: 32, width: 6, height: 6, 
+                    borderRadius: '50%', background: s.color, 
+                    boxShadow: `0 0 12px ${s.color}`,
+                    animation: 'pulse 1.5s infinite' 
+                  }} />
+               )}
             </div>
           ))}
         </div>
+      </div>
       <div style={{ 
           marginTop: 40, 
           padding: '14px 24px', 
@@ -890,14 +972,14 @@ export default function Inventory() {
           boxShadow: dark ? '0 25px 60px rgba(0,0,0,0.4), inset 0 0 20px rgba(255,255,255,0.02)' : '0 10px 30px rgba(0,0,0,0.03)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
           gap: 16,
           position: 'relative',
           zIndex: 10,
-          width: '100%'
+          width: '100%',
+          overflowX: 'auto'
       }}>
         {/* OPERATIONAL VECTOR: Selection */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
            <label style={{ 
               display: 'flex', alignItems: 'center', gap: 10, 
               fontSize: 9, fontWeight: 950, cursor: 'pointer', 
@@ -908,7 +990,8 @@ export default function Inventory() {
               background: dark ? (selectedIds.length > 0 ? 'rgba(255,78,42,0.1)' : 'rgba(255,255,255,0.03)') : '#f8fafc',
               border: `1px solid ${selectedIds.length > 0 ? '#ff4e2a' : (dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0')}`,
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              fontFamily: "'Outfit', sans-serif"
             }}>
                <input 
                  type="checkbox" 
@@ -926,7 +1009,8 @@ export default function Inventory() {
                   background: '#ef4444', color: 'white', border: 'none', 
                   padding: '10px 16px', borderRadius: 8, fontSize: 9, fontWeight: 950,
                   cursor: 'pointer', boxShadow: '0 8px 25px rgba(239,68,68,0.3)',
-                  letterSpacing: '0.5px'
+                  letterSpacing: '1px',
+                  fontFamily: "'Outfit', sans-serif"
                 }} 
                 disabled={isBulkDeleting} 
                 onClick={handleBulkDelete}
@@ -937,8 +1021,8 @@ export default function Inventory() {
         </div>
 
         {/* DIAGNOSTIC MATRIX: Status Sorting */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', minWidth: 0 }}>
-             <div style={{ fontSize: 8, fontWeight: 950, color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', opacity: 0.5, whiteSpace: 'nowrap' }}>Diagnostic</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1.5, justifyContent: 'center', minWidth: 0 }}>
+             <div style={{ fontSize: 9, fontWeight: 950, color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.5, whiteSpace: 'nowrap', fontFamily: "'Outfit', sans-serif" }}>Diagnostic</div>
              <div style={{ display: 'flex', gap: 2, background: dark ? 'rgba(0,0,0,0.3)' : '#f1f5f9', padding: 3, borderRadius: 10, border: `1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#e2e8f0'}` }}>
                  {[
                    { id: 'all', label: 'All' },
@@ -956,7 +1040,8 @@ export default function Inventory() {
                           border: 'none', 
                           cursor: 'pointer',
                           transition: 'all 0.15s',
-                          letterSpacing: '0.5px'
+                          letterSpacing: '0.8px',
+                   fontFamily: "'Outfit', sans-serif"
                       }}
                      >
                          {f.label.toUpperCase()}
@@ -966,8 +1051,8 @@ export default function Inventory() {
         </div>
 
         {/* CLASSIFICATION STRIP: Category Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-           <div style={{ fontSize: 8, fontWeight: 950, color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', opacity: 0.5, whiteSpace: 'nowrap' }}>Taxonomy</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end', minWidth: 0 }}>
+           <div style={{ fontSize: 9, fontWeight: 950, color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.5, whiteSpace: 'nowrap', fontFamily: "'Outfit', sans-serif" }}>Taxonomy</div>
            <div style={{ display: 'flex', gap: 4 }}>
                 {[
                     { id: 'all', label: 'All', icon: '✨' },
@@ -985,7 +1070,8 @@ export default function Inventory() {
                             border: `1px solid ${categoryFilter === c.id ? '#ff4e2a' : (dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0')}`,
                             cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
                             boxShadow: categoryFilter === c.id ? '0 8px 20px rgba(255,78,42,0.2)' : 'none',
-                            whiteSpace: 'nowrap'
+                            whiteSpace: 'nowrap',
+               fontFamily: "'Outfit', sans-serif"
                         }}
                     >
                         <span style={{ fontSize: 11 }}>{c.icon}</span>
@@ -1087,15 +1173,17 @@ export default function Inventory() {
       </div>
 
       {showImportModal && (
-          <div style={{ position: 'fixed', top: 0, left: 260, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
-              <div className="card" style={{ width: '100%', maxWidth: 900, padding: 32, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ position: 'fixed', top: 0, left: 260, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+              <div className="card" style={{ width: '100%', maxWidth: 1100, padding: 32, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`, background: dark ? '#0f172a' : '#fff', boxShadow: '0 32px 64px rgba(0,0,0,0.4)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, flexShrink: 0 }}>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>Bulk Upload</h2>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
-                            <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>Populate your storage via CSV or Excel.</p>
-                            <span style={{ fontSize: 11, fontWeight: 900, background: '#f1f5f9', color: '#475569', padding: '3px 10px', borderRadius: 50, border: '1px solid #e2e8f0' }}>
-                                {menuItems.length} Recipes Ready
+                        <div style={{ fontSize: 10, fontWeight: 950, color: '#ff4e2a', letterSpacing: '2px', marginBottom: 4 }}>OPERATIONAL INPUT</div>
+                        <h2 style={{ margin: 0, fontSize: 28, fontWeight: 950, letterSpacing: '-1px', color: dark ? '#fff' : '#0f172a' }}>Bulk <span style={{ color: '#ff4e2a' }}>Upload</span></h2>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                            <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>Populate your storage via CSV or Excel vectors.</p>
+                            <div style={{ height: 14, width: 1, background: 'var(--border)' }} />
+                            <span style={{ fontSize: 10, fontWeight: 950, background: dark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', color: 'var(--muted)', padding: '4px 12px', borderRadius: 20, border: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}` }}>
+                                {menuItems.length} RECIPES ONLINE
                             </span>
                         </div>
                     </div>
@@ -1121,76 +1209,105 @@ export default function Inventory() {
                         </div>
                     ) : importPreview.length > 0 ? (
                         <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                                <div style={{ fontSize: 14, fontWeight: 700 }}>Previewing {importPreview.length} rows from file</div>
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    <button className="btn btn-sm btn-outline" onClick={() => setImportPreview([])}>Clear</button>
-                                    <button className="btn btn-sm" disabled={importLoading} onClick={submitBulkImport}>
-                                        {importLoading ? "Processing..." : `Import ${importPreview.length} items`}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, background: dark ? 'rgba(255,255,255,0.02)' : '#f8fafc', padding: '12px 20px', borderRadius: 14, border: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}` }}>
+                                <div style={{ fontSize: 12, fontWeight: 850, color: 'var(--muted)' }}>
+                                    <span style={{ color: '#ff4e2a' }}>PREVIEW MODE:</span> {importPreview.length} ROWS DETECTED
+                                </div>
+                                <div style={{ display: 'flex', gap: 12 }}>
+                                    <button className="btn btn-outline" style={{ padding: '8px 20px', fontSize: 11, fontWeight: 900 }} onClick={() => setImportPreview([])}>DISCARD</button>
+                                    <button 
+                                        className="btn" 
+                                        style={{ padding: '8px 24px', fontSize: 11, fontWeight: 950, background: '#ff4e2a', boxShadow: '0 8px 20px rgba(255,78,42,0.2)' }} 
+                                        disabled={importLoading} 
+                                        onClick={submitBulkImport}
+                                    >
+                                        {importLoading ? "PROCESSING..." : `IMPORT ${importPreview.length} ENTITIES`}
                                     </button>
                                 </div>
                             </div>
-                            <div style={{ overflowX: 'auto' }}>
-                                <table className="preview-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Category</th>
-                                            <th>Stock</th>
-                                            <th>Cost</th>
-                                            <th>Suggested Link</th>
-                                            <th>Qty/Order</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {importPreview.map((row, idx) => (
-                                            <tr key={idx}>
-                                                <td style={{ fontWeight: 800 }}>{row.itemName}</td>
-                                                <td style={{ opacity: 0.7 }}>{row.category.replace('_',' ')}</td>
-                                                <td style={{ fontWeight: 700 }}>{row.currentStock} {row.unit}</td>
-                                                <td style={{ fontWeight: 700 }}>AED {row.unitCost}</td>
-                                                <td>
-                                                    <select 
-                                                      className="select-sm" 
-                                                      style={{ padding: '4px 8px', fontSize: 11, width: 140 }}
-                                                      value={row.linkedMenuItems?.[0]?.foodId || ""}
-                                                      onChange={(e) => {
-                                                        const newVal = e.target.value;
-                                                        const match = menuItems.find(m => m._id === newVal);
-                                                        const updated = [...importPreview];
-                                                        updated[idx].linkedMenuItems = newVal ? [{ foodId: newVal, foodName: match?.name, quantityPerOrder: 1 }] : [];
-                                                        setImportPreview(updated);
-                                                      }}
-                                                    >
-                                                      <option value="">No link</option>
-                                                      {menuItems.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    {row.linkedMenuItems?.length > 0 && (
-                                                      <input 
-                                                        type="number" 
-                                                        className="input-sm" 
-                                                        style={{ width: 50, padding: '4px' }}
-                                                        value={row.linkedMenuItems[0].quantityPerOrder}
-                                                        onChange={(e) => {
-                                                          const updated = [...importPreview];
-                                                          updated[idx].linkedMenuItems[0].quantityPerOrder = Number(e.target.value);
-                                                          setImportPreview(updated);
-                                                        }}
-                                                      />
-                                                    )}
-                                                </td>
-                                                <td>
-                                                    <span className={`status-badge status-${row.status.toLowerCase()}`}>
-                                                        {row.status}
-                                                    </span>
-                                                </td>
+                            <div className="preview-table-container">
+                                <div style={{ overflowX: 'auto', overflowY: 'auto' }}>
+                                    <table className="preview-table">
+                                        <thead>
+                                            <tr>
+                                                <th style={{ width: '25%' }}>Asset Identity</th>
+                                                <th>Taxonomy</th>
+                                                <th>Initial Vector</th>
+                                                <th>Unit Valuation</th>
+                                                <th style={{ width: '20%' }}>Recipe Mapping</th>
+                                                <th>Deduction</th>
+                                                <th>Integrity</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {importPreview.map((row, idx) => (
+                                                <tr key={idx} style={{ opacity: row.status === 'Invalid' ? 0.6 : 1 }}>
+                                                    <td>
+                                                        <div style={{ fontWeight: 900, color: dark ? '#fff' : '#0f172a' }}>{row.itemName}</div>
+                                                        <div style={{ fontSize: 9, opacity: 0.5, fontWeight: 700 }}>BATCH_{idx + 100}</div>
+                                                    </td>
+                                                    <td>
+                                                        <span style={{ 
+                                                            fontSize: 9, fontWeight: 950, opacity: 0.8,
+                                                            background: dark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                                                            padding: '2px 6px', borderRadius: 4
+                                                        }}>
+                                                            {row.category.replace('_',' ').toUpperCase()}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ fontWeight: 900, fontFamily: 'JetBrains Mono' }}>
+                                                            {row.currentStock}
+                                                            <span style={{ fontSize: 9, opacity: 0.5, marginLeft: 4 }}>{row.unit}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ fontWeight: 900, color: '#10b981', fontFamily: 'JetBrains Mono' }}>
+                                                            <span style={{ fontSize: 9, opacity: 0.6 }}>AED</span> {row.unitCost}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <select 
+                                                          className="import-select" 
+                                                          value={row.linkedMenuItems?.[0]?.foodId || ""}
+                                                          onChange={(e) => {
+                                                            const newVal = e.target.value;
+                                                            const match = menuItems.find(m => m._id === newVal);
+                                                            const updated = [...importPreview];
+                                                            updated[idx].linkedMenuItems = newVal ? [{ foodId: newVal, foodName: match?.name, quantityPerOrder: 1 }] : [];
+                                                            setImportPreview(updated);
+                                                          }}
+                                                        >
+                                                          <option value="">No link detected</option>
+                                                          {menuItems.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+                                                        </select>
+                                                    </td>
+                                                    <td style={{ width: 80 }}>
+                                                        {row.linkedMenuItems?.length > 0 && (
+                                                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                              <input 
+                                                                type="number" 
+                                                                className="import-input" 
+                                                                value={row.linkedMenuItems[0].quantityPerOrder}
+                                                                onChange={(e) => {
+                                                                  const updated = [...importPreview];
+                                                                  updated[idx].linkedMenuItems[0].quantityPerOrder = Number(e.target.value);
+                                                                  setImportPreview(updated);
+                                                                }}
+                                                              />
+                                                          </div>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <span className={`status-badge status-${row.status.toLowerCase()}`}>
+                                                            {row.status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     ) : (
