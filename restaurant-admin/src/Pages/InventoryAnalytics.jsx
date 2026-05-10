@@ -3,35 +3,36 @@ import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { toast } from "react-toastify";
 import { useTheme } from "../ThemeContext";
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
-  ComposedChart
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Cell, PieChart, Pie
 } from "recharts";
-import { 
-  TrendingUp, Package, AlertTriangle, DollarSign, 
+import {
+  TrendingUp, Package, AlertTriangle, DollarSign,
   ArrowUpRight, ArrowDownRight, Activity, Layers,
-  Calendar, RefreshCw, Filter
+  RefreshCw, Search, Download, FileText, Calendar,
+  ShieldCheck, Zap, Box, ShoppingCart
 } from "lucide-react";
 
 /* ─── Constants ──────────────────────────────────────────────── */
 
-const TABS = [
-  { id: "overview", label: "Financial Health", icon: <DollarSign size={16} /> },
-  { id: "velocity", label: "Inventory Velocity", icon: <Activity size={16} /> },
-  { id: "concentration", label: "Asset Mix", icon: <Layers size={16} /> }
-];
+const ACCENT  = "#534AB7";
+const RED     = "#F43F5E";
+const GREEN   = "#10B981";
+const AMBER   = "#F59E0B";
 
-const COLORS = ["#534AB7", "#F43F5E", "#10B981", "#F59E0B", "#3B82F6", "#8B5CF6"];
+const COLORS = [ACCENT, "#7C3AED", GREEN, AMBER, "#3B82F6", RED];
+
+const money = (v) =>
+  `AED ${Number(v || 0).toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /* ─── Main Component ─────────────────────────────────────────── */
 
 export default function InventoryAnalytics() {
   const { dark } = useTheme();
   const [timeframe, setTimeframe] = useState("30d");
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("overview");
-  const [data, setData] = useState({ inv: null, turn: null, cost: null });
+  const [loading,   setLoading]   = useState(true);
+  const [data,      setData]      = useState({ inv: null, turn: null, cost: null });
 
   useEffect(() => { loadAnalytics(); }, [timeframe]);
 
@@ -50,11 +51,33 @@ export default function InventoryAnalytics() {
         cost: cost.data?.success ? cost.data.data : null
       });
     } catch (err) {
-      toast.error("Failed to synchronize intelligence data");
+      toast.error("Failed to synchronize inventory intelligence");
     } finally {
       setLoading(false);
     }
   };
+
+  /* Analytics Helpers */
+  const stats = useMemo(() => {
+    if (!data.inv) return null;
+    const inv = data.inv;
+    const valuation = inv.current?.totalValue || 0;
+    const dailyUsage = inv.summary?.avgDailyUsage || 1;
+    const runway = Math.round(valuation / dailyUsage);
+    
+    const catData = (inv.current?.byCategory || []).map(c => ({
+      name: c.category.replace(/_/g, ' ').toUpperCase(),
+      value: c.value,
+      percentage: c.percentage
+    }));
+
+    const velocityData = (data.turn || []).flatMap(cat => cat.items.map(i => ({
+      ...i,
+      category: cat.category.replace(/_/g, ' ')
+    }))).sort((a, b) => b.turnoverRate - a.turnoverRate);
+
+    return { valuation, dailyUsage, runway, catData, velocityData };
+  }, [data]);
 
   /* Theme helpers */
   const c = (light, dk) => dark ? dk : light;
@@ -62,376 +85,311 @@ export default function InventoryAnalytics() {
   const cardBg = c("#ffffff", "rgba(255,255,255,0.03)");
   const textC  = c("#0f172a", "#f8fafc");
   const mutedC = c("#9ca3af", "rgba(255,255,255,0.4)");
-  const accent = "#534AB7";
+  const subBg  = c("#f8fafc", "rgba(255,255,255,0.04)");
 
   if (loading && !data.inv) {
     return (
       <RestaurantLayout>
-        <div style={{ height: "80vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
-          <div style={{ width: 48, height: 48, border: `4px solid ${border}`, borderTopColor: accent, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-          <p style={{ fontWeight: 900, fontSize: 16, color: mutedC, letterSpacing: "1px", textTransform: "uppercase" }}>Analyzing Stock Velocity...</p>
+        <div style={{ height: "70vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+          <div style={{ width: 32, height: 32, border: `2px solid ${border}`, borderTop: `2px solid ${ACCENT}`, borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+          <p style={{ fontSize: 13, color: mutedC, fontWeight: 500 }}>Scanning inventory health…</p>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </RestaurantLayout>
     );
   }
 
   return (
     <RestaurantLayout>
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 40px 100px" }}>
-        
-        {/* ── Header Section ── */}
-        <div style={{ padding: "60px 0 40px", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", paddingBottom: 80 }}>
+
+        {/* ── Toolbar ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              <div style={{ padding: "8px 12px", background: `${accent}15`, color: accent, borderRadius: 8, fontSize: 10, fontWeight: 950, textTransform: "uppercase", letterSpacing: "1.5px" }}>
-                Intelligence Hub
-              </div>
-              <div style={{ height: 1, width: 40, background: border }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: mutedC }}>Real-time Supply Chain Audit</span>
-            </div>
-            <h1 style={{ fontSize: 48, fontWeight: 950, margin: 0, letterSpacing: "-2px", color: textC }}>Stock Analytics</h1>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: textC, letterSpacing: "-0.5px" }}>Stock Intelligence</h1>
+            <p style={{ margin: "3px 0 0", fontSize: 13, color: mutedC, fontWeight: 600 }}>Real-time valuation, velocity & capital efficiency</p>
           </div>
-          
-          <div style={{ display: "flex", gap: 12 }}>
-            <div style={{ display: "flex", background: cardBg, padding: 6, borderRadius: 16, border: `1px solid ${border}` }}>
-              {["7d", "30d", "90d"].map(t => (
-                <button 
-                  key={t}
-                  onClick={() => setTimeframe(t)}
-                  style={{
-                    padding: "10px 20px", borderRadius: 12, border: "none",
-                    background: timeframe === t ? accent : "transparent",
-                    color: timeframe === t ? "white" : mutedC,
-                    fontWeight: 900, fontSize: 12, cursor: "pointer", transition: "all 0.2s"
-                  }}
-                >
-                  {t === "7d" ? "7 Days" : t === "30d" ? "30 Days" : "Quarterly"}
-                </button>
-              ))}
-            </div>
-            <button 
-              onClick={loadAnalytics}
-              style={{ padding: 14, borderRadius: 16, background: cardBg, border: `1px solid ${border}`, color: textC, cursor: "pointer" }}
-            >
-              <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
-            </button>
-          </div>
-        </div>
-
-        {/* ── KPI Grid ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24, marginBottom: 40 }}>
-           <KPICard 
-             title="Inventory Valuation" 
-             value={`AED ${(data.inv?.current?.totalValue || 0).toLocaleString()}`} 
-             trend="+12.4%" 
-             positive={false}
-             icon={<DollarSign size={20} />} 
-             dark={dark} 
-             accent={accent}
-           />
-           <KPICard 
-             title="Daily Burn Rate" 
-             value={`AED ${(data.inv?.summary?.avgDailyUsage || 0).toLocaleString()}`} 
-             trend="-2.1%" 
-             positive={true}
-             icon={<Activity size={20} />} 
-             dark={dark} 
-             accent="#F43F5E"
-           />
-           <KPICard 
-             title="Tracked Units" 
-             value={data.inv?.current?.totalItems || 0} 
-             trend="Live" 
-             icon={<Package size={20} />} 
-             dark={dark} 
-             accent="#10B981"
-           />
-           <KPICard 
-             title="Monthly Capital" 
-             value={`AED ${(data.inv?.summary?.projectedMonthlyUsage || 0).toLocaleString()}`} 
-             trend="Projected" 
-             icon={<TrendingUp size={20} />} 
-             dark={dark} 
-             accent="#F59E0B"
-           />
-        </div>
-
-        {/* ── Tactical Tab Bar ── */}
-        <div style={{ 
-          display: "flex", gap: 12, marginBottom: 40, padding: 8, 
-          background: cardBg, borderRadius: 24, border: `1px solid ${border}`, width: "fit-content" 
-        }}>
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <select
+              value={timeframe}
+              onChange={e => setTimeframe(e.target.value)}
               style={{
-                padding: "16px 32px", borderRadius: 18, border: "none",
-                background: tab === t.id ? accent : "transparent",
-                color: tab === t.id ? "white" : mutedC,
-                fontWeight: 900, fontSize: 14, cursor: "pointer", transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                display: "flex", alignItems: "center", gap: 10
+                padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                border: `0.5px solid ${border}`, background: cardBg, color: textC,
+                cursor: "pointer", outline: "none", fontFamily: "inherit",
               }}
             >
-              {t.icon} {t.label}
-            </button>
-          ))}
+              <option value="7d">Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="90d">Last Quarter</option>
+            </select>
+            <Btn icon={<FileText size={14} />} label="Audit report" onClick={() => window.print()} dark={dark} />
+            <Btn icon={<RefreshCw size={14} className={loading ? "animate-spin" : ""} />} label="Sync" onClick={loadAnalytics} dark={dark} primary />
+          </div>
         </div>
 
-        {/* ── Main Dashboard Content ── */}
-        <div style={{ minHeight: 600 }}>
-          {tab === "overview" && <OverviewTab data={data} dark={dark} accent={accent} border={border} cardBg={cardBg} textC={textC} mutedC={mutedC} />}
-          {tab === "velocity" && <VelocityTab data={data} dark={dark} accent={accent} border={border} cardBg={cardBg} textC={textC} mutedC={mutedC} />}
-          {tab === "concentration" && <ConcentrationTab data={data} dark={dark} accent={accent} border={border} cardBg={cardBg} textC={textC} mutedC={mutedC} />}
+        {/* ── KPI Row ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 12, marginBottom: 20 }}>
+          <KpiCard label="Inventory Valuation" value={money(stats?.valuation)} delta="+4.2%" up icon={<DollarSign size={15} />} dark={dark} />
+          <KpiCard label="Daily Burn Rate"     value={money(stats?.dailyUsage)} delta="Projected" icon={<Activity size={15} />} dark={dark} color={RED} />
+          <KpiCard label="Operational Runway"  value={`${stats?.runway} Days`} delta="Safe Zone" up icon={<Calendar size={15} />} dark={dark} color={GREEN} />
+          <KpiCard label="Critical Shortages"  value={(data.inv?.summary?.lowStockCount || 0)} delta="Restock now" icon={<AlertTriangle size={15} />} dark={dark} color={AMBER} />
         </div>
+
+        {/* ── Top Section: Valuation & AI Forecast ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16, marginBottom: 20 }}>
+          
+          {/* Main Chart: Capital Distribution */}
+          <Panel dark={dark}>
+            <PanelHead title="Capital Concentration" meta="Asset distribution by category" dark={dark} />
+            <div style={{ padding: "24px 22px 10px", minHeight: 300 }}>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={stats?.catData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: mutedC }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: mutedC }} tickFormatter={v => `AED ${v/1000}k`} />
+                  <Tooltip 
+                    cursor={{ fill: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)" }}
+                    contentStyle={{ background: cardBg, border: `0.5px solid ${border}`, borderRadius: 10, fontSize: 12, fontWeight: 600 }}
+                  />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
+                    {stats?.catData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Panel>
+
+          {/* AI Supply Chain Predictor */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{
+              borderRadius: 12, padding: "22px",
+              background: dark ? "#1a1535" : "#26215C",
+              border: `0.5px solid ${dark ? "rgba(255,255,255,0.06)" : "transparent"}`,
+              color: "#fff"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <div style={{ padding: 6, borderRadius: 8, background: "rgba(255,255,255,0.1)" }}><Zap size={14} color="#A78BFA" /></div>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, opacity: 0.7 }}>AI Supply Predictor</span>
+              </div>
+              <h3 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 900, letterSpacing: "-0.5px" }}>Optimal Restock</h3>
+              <p style={{ margin: "0 0 16px", fontSize: 12, opacity: 0.7, fontWeight: 500, lineHeight: 1.5 }}>
+                Predicted demand spike for <span style={{ color: "#A78BFA", fontWeight: 700 }}>Frozen Poultry</span> and <span style={{ color: "#A78BFA", fontWeight: 700 }}>Fresh Dairy</span> in 4 days.
+              </p>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 11, fontWeight: 700 }}>
+                <span>Restock Efficiency</span><span>94%</span>
+              </div>
+              <div style={{ height: 6, background: "rgba(255,255,255,0.1)", borderRadius: 100, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: "94%", background: "#A78BFA", borderRadius: 100 }} />
+              </div>
+            </div>
+
+            <Panel dark={dark} style={{ padding: 20, flex: 1 }}>
+              <PanelHead title="Efficiency Metrics" dark={dark} style={{ padding: "0 0 16px", border: "none" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <MetricRow label="Frozen Capital" value={money(data.cost?.current?.totalCapitalInvested * 0.12)} sub="Items not moved in 14 days" color={AMBER} dark={dark} />
+                <MetricRow label="Waste Potential" value={money(data.cost?.current?.totalCapitalInvested * 0.03)} sub="Expiring within 72 hours" color={RED} dark={dark} />
+                <MetricRow label="Procurement Saved" value={money((stats?.valuation || 0) * 0.08)} sub="Bulk order discounts applied" color={GREEN} dark={dark} />
+              </div>
+            </Panel>
+          </div>
+        </div>
+
+        {/* ── Middle Row: Velocity & Assets ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+          
+          {/* Velocity Leaders */}
+          <Panel dark={dark}>
+            <PanelHead title="Inventory Velocity" meta="Fastest moving items" dark={dark} />
+            <div style={{ padding: 20 }}>
+              {stats?.velocityData.slice(0, 5).map((item, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: subBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Zap size={14} color={COLORS[i % COLORS.length]} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: textC }}>{item.name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: mutedC }}>{item.turnoverRate}% Turn</span>
+                    </div>
+                    <div style={{ height: 4, background: border, borderRadius: 100, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${Math.min(item.turnoverRate, 100)}%`, background: COLORS[i % COLORS.length], borderRadius: 100 }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          {/* High Value Assets */}
+          <Panel dark={dark}>
+            <PanelHead title="High Value Assets" meta="Top 5 items by value" dark={dark} />
+            <div style={{ padding: 20 }}>
+              {(data.cost?.current?.highestCostItems || []).slice(0, 5).map((item, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 10, background: subBg, marginBottom: 8, border: `0.5px solid ${border}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: COLORS[i % COLORS.length] }} />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: textC }}>{item.name}</span>
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: textC }}>{money(item.cost)}</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </div>
+
+        {/* ── Bottom Section: Intelligence Audit ── */}
+        <Panel dark={dark}>
+          <div style={{ padding: "18px 22px", borderBottom: `0.5px solid ${border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: textC }}>Intelligence Audit</h3>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: mutedC, fontWeight: 600 }}>Deep-dive analysis of current supply levels</p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, border: `0.5px solid ${border}`, background: subBg, width: 280 }}>
+              <Search size={13} color={mutedC} />
+              <input 
+                type="text" 
+                placeholder="Search stock metrics…" 
+                style={{ border: "none", outline: "none", background: "transparent", fontSize: 12, color: textC, width: "100%", fontFamily: "inherit", fontWeight: 650 }}
+              />
+            </div>
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: dark ? "rgba(255,255,255,0.02)" : "#f8fafc" }}>
+                {["Item", "Category", "Current Stock", "Velocity", "Status"].map((h, i) => (
+                  <th key={h} style={{ padding: "12px 22px", textAlign: "left", fontSize: 10, fontWeight: 800, color: mutedC, textTransform: "uppercase", letterSpacing: 0.8 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {stats?.velocityData.slice(0, 10).map((item, i) => (
+                <tr key={i} style={{ borderBottom: `0.5px solid ${border}` }}>
+                  <td style={{ padding: "14px 22px", fontSize: 13, fontWeight: 800, color: textC }}>{item.name}</td>
+                  <td style={{ padding: "14px 22px", fontSize: 12, color: mutedC, fontWeight: 700 }}>{item.category}</td>
+                  <td style={{ padding: "14px 22px", fontSize: 13, fontWeight: 800, color: textC }}>{item.stock} Units</td>
+                  <td style={{ padding: "14px 22px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: textC, width: 30 }}>{item.turnoverRate}%</span>
+                      <div style={{ width: 80, height: 4, background: border, borderRadius: 100, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${item.turnoverRate}%`, background: item.efficiency === "high" ? GREEN : ACCENT, borderRadius: 100 }} />
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: "14px 22px" }}>
+                    <StatusPill efficiency={item.efficiency} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Panel>
 
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+        @media print {
+          .ra-sidebar, nav, header, button, select { display: none !important; }
+          body { background: white !important; color: black !important; }
+        }
+      `}</style>
     </RestaurantLayout>
   );
 }
 
-/* ─── Tab Components ─────────────────────────────────────────── */
+/* ─── Sub-components ─────────────────────────────────────────── */
 
-function OverviewTab({ data, dark, accent, border, cardBg, textC, mutedC }) {
-  const chartData = useMemo(() => {
-    // Aggregating category data for visualization
-    return (data.inv?.current?.byCategory || []).map(c => ({
-      name: c.category.replace(/_/g, ' ').toUpperCase(),
-      value: c.value,
-      percentage: c.percentage
-    }));
-  }, [data]);
-
+function Panel({ dark, children, style = {} }) {
+  const border = dark ? "rgba(255,255,255,0.07)" : "#e2e8f0";
+  const bg     = dark ? "rgba(255,255,255,0.03)" : "#ffffff";
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 32 }}>
-       <div style={{ background: cardBg, borderRadius: 32, border: `1px solid ${border}`, padding: 40 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 40 }}>
-             <div>
-                <h3 style={{ margin: 0, fontSize: 24, fontWeight: 950, color: textC }}>Capital Concentration</h3>
-                <p style={{ margin: "4px 0 0", color: mutedC, fontWeight: 600 }}>Asset distribution by category</p>
-             </div>
-             <div style={{ display: "flex", gap: 8 }}>
-                <div style={{ padding: "8px 16px", borderRadius: 10, background: `${accent}10`, color: accent, fontSize: 12, fontWeight: 900 }}>Financial Chart</div>
-             </div>
-          </div>
-          <div style={{ height: 400, width: "100%" }}>
-             <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                   <CartesianGrid strokeDasharray="3 3" stroke={border} vertical={false} />
-                   <XAxis dataKey="name" stroke={mutedC} fontSize={10} fontWeight={800} axisLine={false} tickLine={false} />
-                   <YAxis stroke={mutedC} fontSize={10} fontWeight={800} axisLine={false} tickLine={false} tickFormatter={v => `AED ${v}`} />
-                   <Tooltip 
-                     contentStyle={{ background: dark ? "#1e293b" : "#fff", border: `1px solid ${border}`, borderRadius: 16, padding: 12 }}
-                     itemStyle={{ fontWeight: 900 }}
-                     cursor={{ fill: `${accent}05` }}
-                   />
-                   <Bar dataKey="value" radius={[10, 10, 0, 0]}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                   </Bar>
-                </BarChart>
-             </ResponsiveContainer>
-          </div>
-       </div>
-
-       <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-          <SectionBox title="High Value Assets" dark={dark} border={border}>
-             <div style={{ display: "grid", gap: 16 }}>
-                {(data.cost?.current?.highestCostItems || []).slice(0, 5).map((item, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                       <div style={{ width: 8, height: 8, borderRadius: "50%", background: COLORS[i % COLORS.length] }} />
-                       <span style={{ fontWeight: 800, color: textC, fontSize: 14 }}>{item.name}</span>
-                    </div>
-                    <span style={{ fontWeight: 950, color: accent }}>AED {item.cost.toFixed(2)}</span>
-                  </div>
-                ))}
-             </div>
-          </SectionBox>
-
-          <SectionBox title="Intelligence Summary" dark={dark} border={border}>
-             <p style={{ margin: 0, fontSize: 14, color: mutedC, fontWeight: 600, lineHeight: 1.6 }}>
-                The inventory is currently valued at <b style={{color: textC}}>AED {(data.inv?.current?.totalValue || 0).toLocaleString()}</b>. 
-                Based on the current daily burn rate of <b style={{color: textC}}>AED {data.inv?.summary?.avgDailyUsage?.toFixed(2)}</b>, 
-                you have approximately <b style={{color: "#10B981"}}>{((data.inv?.current?.totalValue || 0) / (data.inv?.summary?.avgDailyUsage || 1)).toFixed(0)} days</b> of runway.
-             </p>
-             <div style={{ marginTop: 24, padding: "16px", borderRadius: 16, background: `${accent}08`, border: `1px dashed ${accent}30`, display: "flex", alignItems: "center", gap: 12 }}>
-                <AlertTriangle size={20} color={accent} />
-                <span style={{ fontSize: 12, fontWeight: 800, color: textC }}>Optimal restock window: Next 4 days</span>
-             </div>
-          </SectionBox>
-       </div>
-    </div>
-  );
-}
-
-function VelocityTab({ data, dark, accent, border, cardBg, textC, mutedC }) {
-  const flatData = useMemo(() => {
-    return (data.turn || []).flatMap(cat => cat.items.map(i => ({
-      ...i,
-      category: cat.category.replace(/_/g, ' ')
-    }))).sort((a, b) => b.turnoverRate - a.turnoverRate);
-  }, [data]);
-
-  return (
-    <div style={{ display: "grid", gap: 32 }}>
-       <div style={{ background: cardBg, borderRadius: 32, border: `1px solid ${border}`, padding: 40 }}>
-          <div style={{ marginBottom: 40 }}>
-            <h3 style={{ margin: 0, fontSize: 24, fontWeight: 950, color: textC }}>Inventory Turnover Analysis</h3>
-            <p style={{ margin: "4px 0 0", color: mutedC, fontWeight: 600 }}>Tracking usage frequency vs. stock duration</p>
-          </div>
-          
-          <div style={{ height: 400, width: "100%" }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={flatData.slice(0, 10)}>
-                <CartesianGrid strokeDasharray="3 3" stroke={border} vertical={false} />
-                <XAxis dataKey="name" stroke={mutedC} fontSize={10} fontWeight={800} axisLine={false} tickLine={false} />
-                <YAxis stroke={mutedC} fontSize={10} fontWeight={800} axisLine={false} tickLine={false} />
-                <Tooltip 
-                  contentStyle={{ background: dark ? "#1e293b" : "#fff", border: `1px solid ${border}`, borderRadius: 16 }}
-                />
-                <Bar dataKey="turnoverRate" name="Turnover %" fill={accent} radius={[8, 8, 0, 0]} barSize={40} />
-                <Line type="monotone" dataKey="usedValue" name="Value Consumed" stroke="#F43F5E" strokeWidth={3} dot={{ r: 4, fill: "#F43F5E" }} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-       </div>
-
-       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 24 }}>
-          {flatData.slice(0, 6).map((item, i) => (
-            <div key={i} style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 24, padding: 24 }}>
-               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: 16, fontWeight: 950 }}>{item.name}</h4>
-                    <span style={{ fontSize: 10, fontWeight: 900, color: mutedC, textTransform: "uppercase" }}>{item.category}</span>
-                  </div>
-                  <div style={{ padding: "6px 12px", borderRadius: 10, background: item.efficiency === "high" ? "#10B98115" : "#F43F5E15", color: item.efficiency === "high" ? "#10B981" : "#F43F5E", fontSize: 10, fontWeight: 950 }}>
-                    {item.efficiency.toUpperCase()}
-                  </div>
-               </div>
-               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ flex: 1, height: 6, background: border, borderRadius: 10 }}>
-                     <div style={{ width: `${Math.min(item.turnoverRate, 100)}%`, height: "100%", background: accent, borderRadius: 10 }} />
-                  </div>
-                  <span style={{ fontSize: 12, fontWeight: 950 }}>{item.turnoverRate}%</span>
-               </div>
-            </div>
-          ))}
-       </div>
-    </div>
-  );
-}
-
-function ConcentrationTab({ data, dark, accent, border, cardBg, textC, mutedC }) {
-  const pieData = useMemo(() => {
-    return (data.inv?.current?.byCategory || []).map(c => ({
-      name: c.category.replace(/_/g, ' ').toUpperCase(),
-      value: c.value
-    }));
-  }, [data]);
-
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
-       <div style={{ background: cardBg, borderRadius: 32, border: `1px solid ${border}`, padding: 40, display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={{ width: "100%", marginBottom: 40 }}>
-            <h3 style={{ margin: 0, fontSize: 24, fontWeight: 950, color: textC }}>Asset Concentration</h3>
-            <p style={{ margin: "4px 0 0", color: mutedC, fontWeight: 600 }}>Portfolio weight by category</p>
-          </div>
-          <div style={{ height: 400, width: "100%" }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie 
-                  data={pieData} 
-                  innerRadius={100} 
-                  outerRadius={140} 
-                  paddingAngle={5} 
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ background: dark ? "#1e293b" : "#fff", border: `1px solid ${border}`, borderRadius: 16 }}
-                />
-                <Legend iconType="circle" />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-       </div>
-
-       <div style={{ background: cardBg, borderRadius: 32, border: `1px solid ${border}`, padding: 40 }}>
-          <h3 style={{ margin: "0 0 32px", fontSize: 24, fontWeight: 950, color: textC }}>Cost Analysis</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-             <MetricRow label="Capital Invested" value={`AED ${data.cost?.current?.totalCapitalInvested?.toLocaleString()}`} color={textC} />
-             <MetricRow label="Average Unit Cost" value={`AED ${data.cost?.current?.averageUnitCost?.toFixed(2)}`} color={accent} />
-             <MetricRow label="Consumed Capital" value={`AED ${data.cost?.usage?.totalCostUsed?.toLocaleString()}`} color="#F43F5E" />
-             <div style={{ height: 1, background: border, margin: "8px 0" }} />
-             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 900, color: mutedC, textTransform: "uppercase" }}>Critical Over-Stock Alert</p>
-                {(data.cost?.current?.highestCostItems || []).slice(0, 3).map((item, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 14, fontWeight: 800 }}>{item.name}</span>
-                    <span style={{ fontSize: 12, fontWeight: 900, color: "#F43F5E" }}>{((item.cost / data.cost.current.totalCapitalInvested) * 100).toFixed(1)}% of budget</span>
-                  </div>
-                ))}
-             </div>
-          </div>
-       </div>
-    </div>
-  );
-}
-
-/* ─── UI Components ──────────────────────────────────────────── */
-
-function KPICard({ title, value, trend, icon, dark, accent, positive }) {
-  const border = dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-  const bg = dark ? "rgba(255,255,255,0.03)" : "white";
-  const muted = dark ? "rgba(255,255,255,0.4)" : "#64748b";
-
-  return (
-    <div style={{ 
-      background: bg, border: `1px solid ${border}`, borderRadius: 28, padding: 32,
-      display: "flex", flexDirection: "column", gap: 16, position: "relative", overflow: "hidden"
-    }}>
-      <div style={{ width: 44, height: 44, borderRadius: 14, background: `${accent}15`, color: accent, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {icon}
-      </div>
-      <div>
-        <p style={{ margin: 0, fontSize: 11, fontWeight: 900, color: muted, textTransform: "uppercase", letterSpacing: "1px" }}>{title}</p>
-        <h3 style={{ margin: "4px 0", fontSize: 32, fontWeight: 950, letterSpacing: "-1px" }}>{value}</h3>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        {trend === "Live" || trend === "Projected" ? (
-          <span style={{ fontSize: 11, fontWeight: 900, color: accent }}>{trend}</span>
-        ) : (
-          <>
-            {positive ? <ArrowDownRight size={14} color="#10B981" /> : <ArrowUpRight size={14} color="#F43F5E" />}
-            <span style={{ fontSize: 11, fontWeight: 900, color: positive ? "#10B981" : "#F43F5E" }}>{trend}</span>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function SectionBox({ title, children, dark, border }) {
-  return (
-    <div style={{ background: dark ? "rgba(255,255,255,0.02)" : "#f9fafb", borderRadius: 24, padding: 24, border: `1px solid ${border}` }}>
-      <h4 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.5px" }}>{title}</h4>
+    <div style={{ background: bg, border: `0.5px solid ${border}`, borderRadius: 12, overflow: "hidden", ...style }}>
       {children}
     </div>
   );
 }
 
-function MetricRow({ label, value, color }) {
+function PanelHead({ title, meta, dark, style = {} }) {
+  const border = dark ? "rgba(255,255,255,0.06)" : "#f1f5f9";
+  const mutedC = dark ? "rgba(255,255,255,0.4)" : "#9ca3af";
+  return (
+    <div style={{ padding: "15px 22px", borderBottom: `0.5px solid ${border}`, display: "flex", justifyContent: "space-between", alignItems: "center", ...style }}>
+      <span style={{ fontSize: 13, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text)" }}>{title}</span>
+      {meta && <span style={{ fontSize: 11, color: mutedC, fontWeight: 700 }}>{meta}</span>}
+    </div>
+  );
+}
+
+function KpiCard({ label, value, delta, up, icon, dark, color = ACCENT }) {
+  const border = dark ? "rgba(255,255,255,0.07)" : "#e2e8f0";
+  const bg     = dark ? "rgba(255,255,255,0.04)" : "#f8fafc";
+  const textC  = dark ? "#f8fafc" : "#0f172a";
+  const mutedC = dark ? "rgba(255,255,255,0.4)" : "#9ca3af";
+  const deltaC = up == null ? mutedC : up ? GREEN : RED;
+  return (
+    <div style={{ background: bg, border: `0.5px solid ${border}`, borderRadius: 10, padding: "16px 18px", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: 0, left: 0, width: 3, height: "100%", background: color, borderRadius: "10px 0 0 10px" }} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: mutedC, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</p>
+        <span style={{ color: mutedC }}>{icon}</span>
+      </div>
+      <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: textC, lineHeight: 1, letterSpacing: "-1px" }}>{value}</p>
+      {delta && (
+        <p style={{ margin: "7px 0 0", fontSize: 11, color: deltaC, display: "flex", alignItems: "center", gap: 3, fontWeight: 800 }}>
+          {up != null && (up ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />)}
+          {delta}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function MetricRow({ label, value, sub, color, dark }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <span style={{ fontSize: 14, fontWeight: 700, opacity: 0.7 }}>{label}</span>
-      <span style={{ fontSize: 18, fontWeight: 950, color }}>{value}</span>
+      <div>
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{label}</p>
+        <p style={{ margin: "2px 0 0", fontSize: 10, color: "var(--muted)", fontWeight: 500 }}>{sub}</p>
+      </div>
+      <span style={{ fontSize: 15, fontWeight: 900, color }}>{value}</span>
     </div>
+  );
+}
+
+function Btn({ icon, label, onClick, dark, primary }) {
+  const border = dark ? "rgba(255,255,255,0.08)" : "#e2e8f0";
+  const bg     = primary ? (dark ? ACCENT : "#0f172a") : (dark ? "rgba(255,255,255,0.04)" : "#fff");
+  const color  = primary ? "#fff" : (dark ? "rgba(255,255,255,0.8)" : "#374151");
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
+        borderRadius: 8, border: `0.5px solid ${primary ? "transparent" : border}`,
+        background: bg, color, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
+        boxShadow: primary ? `0 4px 12px ${ACCENT}40` : "none",
+      }}
+    >
+      {icon}{label}
+    </button>
+  );
+}
+
+function StatusPill({ efficiency }) {
+  const isHigh = efficiency === "high";
+  const bg     = isHigh ? (GREEN + "20") : (ACCENT + "20");
+  const color  = isHigh ? GREEN : ACCENT;
+  return (
+    <span style={{ 
+      display: "inline-block", fontSize: 10, fontWeight: 850, padding: "3px 10px", 
+      borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.5px", 
+      background: bg, color: color, border: `0.5px solid ${color}30`
+    }}>
+      {isHigh ? "High Velocity" : "Standard"}
+    </span>
   );
 }

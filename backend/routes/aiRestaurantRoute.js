@@ -1221,11 +1221,12 @@ router.get("/labor-optimization", restaurantAuth, async (req, res) => {
 
 // ── 19. ADMIN OPERATIONS CHAT ──────────────────────────────────────────────
 async function buildAdminContext(restaurantId) {
-  const [inventory, staff, orders, foods] = await Promise.all([
+  const [inventory, staff, orders, foods, reviews] = await Promise.all([
     inventoryModel.find({ restaurantId, isActive: true }).lean(),
     staffModel.find({ restaurantId }).lean(),
     orderModel.find({ restaurantId, createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }).lean(),
     foodModel.find({ restaurantId }).select("name price category inStock").lean(),
+    reviewModel.find({ restaurantId }).sort({ createdAt: -1 }).limit(10).lean(),
   ]);
 
   const todayRevenue = orders.reduce((s, o) => s + (o.amount || 0), 0);
@@ -1256,6 +1257,11 @@ async function buildAdminContext(restaurantId) {
       totalItems: foods.length,
       allDishes: foods.slice(0, 25).map(f => ({ name: f.name, price: f.price })),
       outOfStock: foods.filter(f => !f.inStock).map(f => f.name)
+    },
+    reviews: {
+      category: "CUSTOMER FEEDBACK / REVIEWS",
+      recent: reviews.map(r => ({ rating: r.rating, comment: r.comment, customer: r.userName })),
+      avgRating: reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : "N/A"
     }
   };
 }
@@ -1273,6 +1279,7 @@ router.post("/chat", restaurantAuth, async (req, res) => {
       "- INVENTORY: Raw ingredients (Flour, Oil, Chicken Pieces). These are tracked in kilograms/pieces for the kitchen. Use 'totalInventoryValue' for the total sum of all stock.",
       "- MENU: Dishes sold to customers (Zinger Burger, Bucket, 3pc Meal). Use 'allDishes' for dish prices.",
       "CRITICAL: All prices and costs are in AED (Dirhams). Never use dollar signs ($). Use 'AED' prefix.",
+      "CUSTOMER FEEDBACK: You have access to recent reviews. Use them to answer questions about customer satisfaction.",
       "IMPORTANT: Do NOT use markdown bolding (like **Inventory**) in your responses. Keep it as plain text.",
       "IMPORTANT: Do NOT return raw JSON. Speak in plain, professional sentences.",
       "If stocks are low, suggest reordering immediately.",

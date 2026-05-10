@@ -871,10 +871,10 @@ export default function Inventory() {
           <div style={{ position: 'absolute', inset: 0, backgroundImage: `radial-gradient(${dark ? 'rgba(168, 85, 247, 0.05)' : 'rgba(0,0,0,0.01)'} 1px, transparent 1px)`, backgroundSize: '32px 32px' }} />
 
           {[
-            { label: 'VIBE CHECK', value: stats.total, color: '#a855f7', trend: '+12%', subtext: 'TOTAL VECTORS', icon: '✨', status: 'W' },
-            { label: 'LOWKEY LOW', value: stats.lowStock, color: '#3b82f6', trend: '-2%', subtext: 'STOCK STABLE', icon: '🔋', status: 'STABLE' },
-            { label: 'TOTAL L\'S', value: stats.outOfStock, color: '#ff4e2a', trend: 'ZERO', subtext: 'ZERO VACANCY', icon: '🚨', status: 'CRITICAL', alert: stats.outOfStock > 0 },
-            { label: 'MAJOR BAGS', value: stats.value, isCurrency: true, color: '#10b981', trend: '+5.4%', subtext: 'TOTAL LIQUID ASSETS', icon: '💰', status: 'SECURED' }
+            { label: 'TOTAL ITEMS', value: stats.total, color: '#a855f7', trend: '+12%', subtext: 'ACTIVE INVENTORY', icon: '📦', status: 'SYNCED' },
+            { label: 'LOW STOCK', value: stats.lowStock, color: '#3b82f6', trend: '-2%', subtext: 'REORDER NEEDED', icon: '⚠️', status: 'WARNING' },
+            { label: 'OUT OF STOCK', value: stats.outOfStock, color: '#ff4e2a', trend: 'ZERO', subtext: 'CRITICAL ATTENTION', icon: '🚨', status: 'ALERT', alert: stats.outOfStock > 0 },
+            { label: 'STOCK VALUE', value: stats.value, isCurrency: true, color: '#10b981', trend: '+5.4%', subtext: 'TOTAL CAPITAL', icon: '💰', status: 'ESTIMATED' }
           ].map((s, i) => (
             <div key={i} style={{ 
               padding: '24px', 
