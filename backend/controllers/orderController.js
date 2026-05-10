@@ -312,11 +312,14 @@ const placeOrder = async (req, res) => {
     const initialTotal = Math.max(0, calculatedSubtotal - discountAmount + actualDeliveryFee);
     let walletAppliedAmount = 0;
     
-    // ── 💰 WALLET REDEMPTION LOGIC ───────────────────────────────────────────
+    // ── 💰 WALLET REDEMPTION LOGIC (Per Restaurant) ───────────────────────────
     if (req.body.useWallet && req.body.walletAppliedAmount > 0) {
       const orderUser = await userModel.findById(req.body.userId);
-      if (orderUser && orderUser.walletBalance > 0) {
-        walletAppliedAmount = Math.min(initialTotal, orderUser.walletBalance, req.body.walletAppliedAmount);
+      const loyalty = orderUser.restaurantLoyalty?.find(l => String(l.restaurantId) === String(restaurantId));
+      const userPoints = loyalty?.points || 0;
+      
+      if (userPoints > 0) {
+        walletAppliedAmount = Math.min(initialTotal, userPoints, req.body.walletAppliedAmount);
       }
     }
 
@@ -381,10 +384,14 @@ const placeOrder = async (req, res) => {
         newOrder.stripeSessionId = paymentIntent.id;
         
         if (walletAppliedAmount > 0) {
-          await userModel.findByIdAndUpdate(req.body.userId, {
-            $inc: { walletBalance: -walletAppliedAmount },
-            $push: { walletHistory: { type: 'debit', amount: walletAppliedAmount, description: 'Applied to Order' } }
-          });
+          // Debit from specific restaurant loyalty
+          await userModel.updateOne(
+            { _id: req.body.userId, "restaurantLoyalty.restaurantId": restaurantId },
+            { 
+              $inc: { "restaurantLoyalty.$.points": -walletAppliedAmount },
+              $push: { walletHistory: { type: 'debit', restaurantId, amount: walletAppliedAmount, description: 'Applied to Order' } }
+            }
+          );
         }
 
         // ── ⚡ Inventory Deduction (Real-time for saved card) ─────────────
@@ -424,16 +431,23 @@ const placeOrder = async (req, res) => {
               await newOrder.save(); // Save the sequence change to matcher too
               
               if (pioneerSavings > 0) {
-                 await userModel.findByIdAndUpdate(pioneerOrder.userId, {
-                    $inc: { walletBalance: pioneerSavings },
-                    $push: {
-                        walletHistory: { 
-                          type: 'credit', 
-                          amount: pioneerSavings, 
-                          description: 'Shared Delivery Match — Wallet Refund' 
+                 const resLoyalty = await userModel.findOne({ _id: pioneerOrder.userId, "restaurantLoyalty.restaurantId": restaurantId });
+                 if (resLoyalty) {
+                    await userModel.updateOne(
+                        { _id: pioneerOrder.userId, "restaurantLoyalty.restaurantId": restaurantId },
+                        { 
+                           $inc: { "restaurantLoyalty.$.points": pioneerSavings },
+                           $push: { walletHistory: { type: 'credit', restaurantId, amount: pioneerSavings, description: 'Shared Delivery Match — Wallet Refund' } }
                         }
-                    }
-                 });
+                    );
+                 } else {
+                    await userModel.findByIdAndUpdate(pioneerOrder.userId, {
+                        $push: { 
+                          restaurantLoyalty: { restaurantId, points: pioneerSavings },
+                          walletHistory: { type: 'credit', restaurantId, amount: pioneerSavings, description: 'Shared Delivery Match — Wallet Refund' }
+                        }
+                    });
+                 }
               }
               
               console.log(`[placeOrder] Pioneer order ${pioneerOrder._id} matched with ${newOrder._id}. Credited ${pioneerSavings} to wallet.`);
@@ -554,8 +568,11 @@ const placeOrderCod = async (req, res) => {
     
     if (req.body.useWallet && req.body.walletAppliedAmount > 0) {
       const orderUser = await userModel.findById(req.body.userId);
-      if (orderUser && orderUser.walletBalance > 0) {
-        walletAppliedAmount = Math.min(initialTotal, orderUser.walletBalance, req.body.walletAppliedAmount);
+      const loyalty = orderUser.restaurantLoyalty?.find(l => String(l.restaurantId) === String(restaurantId));
+      const userPoints = loyalty?.points || 0;
+
+      if (userPoints > 0) {
+        walletAppliedAmount = Math.min(initialTotal, userPoints, req.body.walletAppliedAmount);
       }
     }
 
@@ -587,10 +604,13 @@ const placeOrderCod = async (req, res) => {
     await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
 
     if (walletAppliedAmount > 0) {
-      await userModel.findByIdAndUpdate(req.body.userId, {
-        $inc: { walletBalance: -walletAppliedAmount },
-        $push: { walletHistory: { type: 'debit', amount: walletAppliedAmount, description: 'Applied to Order' } }
-      });
+      await userModel.updateOne(
+        { _id: req.body.userId, "restaurantLoyalty.restaurantId": restaurantId },
+        { 
+          $inc: { "restaurantLoyalty.$.points": -walletAppliedAmount },
+          $push: { walletHistory: { type: 'debit', restaurantId, amount: walletAppliedAmount, description: 'Applied to Order' } }
+        }
+      );
     }
 
     // ── ⚡ Inventory Deduction (Real-time on Order) ──────────────────────
@@ -646,16 +666,23 @@ const placeOrderCod = async (req, res) => {
           // (or they just pay the halved fee upon delivery). 
           // User redesign: "Customer A pays full and waits... Customer A gets other half credited to Crave Wallet"
           if (pioneerSavings > 0) {
-              await userModel.findByIdAndUpdate(pioneerOrder.userId, {
-                  $inc: { walletBalance: pioneerSavings },
-                  $push: { 
-                    walletHistory: { 
-                      type: 'credit', 
-                      amount: pioneerSavings, 
-                      description: 'Shared Delivery Match — Wallet Refund' 
-                    } 
-                  }
-              });
+              const resLoyalty = await userModel.findOne({ _id: pioneerOrder.userId, "restaurantLoyalty.restaurantId": restaurantId });
+              if (resLoyalty) {
+                  await userModel.updateOne(
+                      { _id: pioneerOrder.userId, "restaurantLoyalty.restaurantId": restaurantId },
+                      { 
+                        $inc: { "restaurantLoyalty.$.points": pioneerSavings },
+                        $push: { walletHistory: { type: 'credit', restaurantId, amount: pioneerSavings, description: 'Shared Delivery Match — Wallet Refund' } }
+                      }
+                  );
+              } else {
+                  await userModel.findByIdAndUpdate(pioneerOrder.userId, {
+                      $push: { 
+                        restaurantLoyalty: { restaurantId, points: pioneerSavings },
+                        walletHistory: { type: 'credit', restaurantId, amount: pioneerSavings, description: 'Shared Delivery Match — Wallet Refund' }
+                      }
+                  });
+              }
           }
           console.log(`[placeOrderCod] Pioneer order ${pioneerOrder._id} matched. Wallet Credited.`);
         }

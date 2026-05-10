@@ -11,6 +11,7 @@ const getWallet = async (req, res) => {
         res.json({
             success: true,
             balance: user.walletBalance || 0,
+            restaurantLoyalty: user.restaurantLoyalty || [],
             history: user.walletHistory || []
         });
     } catch (error) {

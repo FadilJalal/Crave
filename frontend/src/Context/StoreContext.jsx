@@ -529,6 +529,7 @@ const StoreContextProvider = (props) => {
   }, [token]);
 
   const [walletBalance, setWalletBalance] = useState(0);
+  const [restaurantLoyalty, setRestaurantLoyalty] = useState([]);
   const [walletHistory, setWalletHistory] = useState([]);
   
   const fetchWalletBalance = async () => {
@@ -537,6 +538,7 @@ const StoreContextProvider = (props) => {
       const res = await axios.get(url + "/api/wallet", { headers: { token } });
       if (res.data.success) {
         setWalletBalance(res.data.balance || 0);
+        setRestaurantLoyalty(res.data.restaurantLoyalty || []);
         setWalletHistory(res.data.history || []);
       }
     } catch (error) {
@@ -595,7 +597,7 @@ const StoreContextProvider = (props) => {
     // Address management
     addresses, defaultAddress, fetchAddresses, addAddress, deleteAddress, setDefaultAddressIndex, setDefaultAddress,
     // Wallet
-    walletBalance, walletHistory, fetchWalletBalance,
+    walletBalance, restaurantLoyalty, walletHistory, fetchWalletBalance,
     // Health Profile
     healthGoal, nutritionMatches, updateHealthProfile, fetchHealthProfile,
     // User Profile

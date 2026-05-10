@@ -73,7 +73,7 @@ const PlaceOrder = () => {
     return () => window.removeEventListener('crave_location_changed', onLocChange);
   }, []);
 
-  const { getTotalCartAmount, token, food_list, foodListLoading, cartItems, url, setCartItems, currency, deliveryCharge, addresses, defaultAddress, walletBalance } = useContext(StoreContext);
+  const { getTotalCartAmount, token, food_list, foodListLoading, cartItems, url, setCartItems, currency, deliveryCharge, addresses, defaultAddress, walletBalance, restaurantLoyalty } = useContext(StoreContext);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -131,8 +131,11 @@ const PlaceOrder = () => {
     selectedDeliveryFee = Number(sharedQuote.sharedFee);
   }
 
+  const currentRestaurantId = food_list.find(f => f._id === Object.values(cartItems).find(e => e.quantity > 0)?.itemId)?.restaurantId?._id;
+  const restaurantPoints = restaurantLoyalty?.find(l => String(l.restaurantId) === String(currentRestaurantId))?.points || 0;
+
   const initialTotal = Math.max(0, subtotal - discount + selectedDeliveryFee);
-  const walletAppliedAmount = useWallet ? Math.min(initialTotal, walletBalance || 0) : 0;
+  const walletAppliedAmount = useWallet ? Math.min(initialTotal, restaurantPoints || 0) : 0;
   const finalTotal = Math.max(0, initialTotal - walletAppliedAmount);
 
   const onChange = (e) => setData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -610,7 +613,7 @@ const PlaceOrder = () => {
               )}
             </div>
             
-            {walletBalance > 0 && (
+            {restaurantPoints > 0 && (
               <div 
                 onClick={() => setUseWallet(!useWallet)}
                 style={{ 
@@ -639,7 +642,7 @@ const PlaceOrder = () => {
                   <div>
                     <div style={{ fontWeight: 800, color: 'var(--text)', fontSize: '14.5px' }}>Crave Wallet</div>
                     <div style={{ fontWeight: 600, color: useWallet ? 'var(--brand)' : 'var(--text-3)', fontSize: '12.5px' }}>
-                      {currency}{walletBalance.toFixed(2)} available
+                      {currency}{restaurantPoints.toFixed(2)} available
                     </div>
                   </div>
                 </div>

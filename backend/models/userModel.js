@@ -28,9 +28,16 @@ const userSchema = new mongoose.Schema({
             }
         ],
         walletBalance: { type: Number, default: 0 },
+        restaurantLoyalty: [
+            {
+                restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'restaurant' },
+                points: { type: Number, default: 0 }
+            }
+        ],
         walletHistory: [
             {
                 type: { type: String, enum: ['credit', 'debit'] },
+                restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'restaurant' }, // Linked to restaurant
                 amount: { type: Number },
                 description: { type: String },
                 date: { type: Date, default: Date.now }
