@@ -979,7 +979,7 @@ export default function Inventory() {
           overflowX: 'auto'
       }}>
         {/* OPERATIONAL VECTOR: Selection */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
            <label style={{ 
               display: 'flex', alignItems: 'center', gap: 10, 
               fontSize: 9, fontWeight: 950, cursor: 'pointer', 
@@ -991,7 +991,8 @@ export default function Inventory() {
               border: `1px solid ${selectedIds.length > 0 ? '#ff4e2a' : (dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0')}`,
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               whiteSpace: 'nowrap',
-              fontFamily: "'Outfit', sans-serif"
+              fontFamily: "'Outfit', sans-serif",
+              flexShrink: 0
             }}>
                <input 
                  type="checkbox" 
@@ -1020,9 +1021,8 @@ export default function Inventory() {
             )}
         </div>
 
-        {/* DIAGNOSTIC MATRIX: Status Sorting */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1.5, justifyContent: 'center', minWidth: 0 }}>
-             <div style={{ fontSize: 9, fontWeight: 950, color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.5, whiteSpace: 'nowrap', fontFamily: "'Outfit', sans-serif" }}>Diagnostic</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, justifyContent: 'center' }}>
+             <div style={{ fontSize: 9, fontWeight: 950, color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.5, whiteSpace: 'nowrap', fontFamily: "'Outfit', sans-serif", flexShrink: 0 }}>Diagnostic</div>
              <div style={{ display: 'flex', gap: 2, background: dark ? 'rgba(0,0,0,0.3)' : '#f1f5f9', padding: 3, borderRadius: 10, border: `1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#e2e8f0'}` }}>
                  {[
                    { id: 'all', label: 'All' },
@@ -1050,9 +1050,8 @@ export default function Inventory() {
              </div>
         </div>
 
-        {/* CLASSIFICATION STRIP: Category Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end', minWidth: 0 }}>
-           <div style={{ fontSize: 9, fontWeight: 950, color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.5, whiteSpace: 'nowrap', fontFamily: "'Outfit', sans-serif" }}>Taxonomy</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, justifyContent: 'flex-end' }}>
+           <div style={{ fontSize: 9, fontWeight: 950, color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.5, whiteSpace: 'nowrap', fontFamily: "'Outfit', sans-serif", flexShrink: 0 }}>Taxonomy</div>
            <div style={{ display: 'flex', gap: 4 }}>
                 {[
                     { id: 'all', label: 'All', icon: '✨' },

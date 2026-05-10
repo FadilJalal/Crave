@@ -155,8 +155,13 @@ export default function SplitPayment({ total, apiBaseUrl, currency = "AED", onCo
               />
             </div>
             {isActive && !isPaid && (
-              <>
-                <p className="sp-enter-hint">Enter card details below and click "Charge Card {idx + 1}"</p>
+              <div style={{ marginTop: 12 }}>
+                <div className="sp-card-field-wrap" style={{ marginBottom: 12 }}>
+                  <p className="sp-enter-hint" style={{ marginBottom: 8, color: '#111827', fontWeight: 600 }}>
+                    Card details for Card {idx + 1}
+                  </p>
+                  <CardElement options={cardElementStyle} onChange={(e) => setCardReady(!!e.complete)} />
+                </div>
                 <button
                   type="button"
                   className="sp-pay-chip"
@@ -165,19 +170,11 @@ export default function SplitPayment({ total, apiBaseUrl, currency = "AED", onCo
                 >
                   {processingKey === key ? `Charging Card ${idx + 1}...` : `Charge Card ${idx + 1} — ${currency}${Math.max(amountValue(cardAmounts[key]) - Number(paidAmounts[key] || 0), 0).toFixed(2)}`}
                 </button>
-              </>
+              </div>
             )}
           </div>
         );
       })}
-
-      {/* Shared card element — one physical card entered at a time */}
-      <div className="sp-card-field-wrap" style={{ marginTop: 8 }}>
-        <p className="sp-enter-hint" style={{ marginBottom: 8 }}>
-          {allCardsPaid ? "All cards charged ✓" : `Card details for Card ${activeCardKeys.indexOf(activeKey) + 1}`}
-        </p>
-        <CardElement options={cardElementStyle} onChange={(e) => setCardReady(!!e.complete)} />
-      </div>
 
       {/* Add / remove */}
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>

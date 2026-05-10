@@ -528,7 +528,7 @@ const PlaceOrder = () => {
                         style={{ width: '100%', padding: 10, borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 14, marginBottom: 8, background: 'var(--bg)', color: 'var(--text)' }}
                       />
                       <div style={{ border: '1.5px solid var(--border)', borderRadius: 8, padding: 10, background: 'var(--bg-soft)' }}>
-                        <CardElement options={{ style: { base: { fontSize: '15px', color: dark ? '#fff' : '#222', fontFamily: 'DM Sans, sans-serif', '::placeholder': { color: '#bdbdbd' } }, invalid: { color: '#dc2626' } } }} />
+                        <CardElement options={{ style: { base: { fontSize: '15px', color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#fff' : '#222', fontFamily: 'DM Sans, sans-serif', '::placeholder': { color: '#bdbdbd' } }, invalid: { color: '#dc2626' } } }} />
                       </div>
                     </div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 8 }}>
@@ -577,6 +577,37 @@ const PlaceOrder = () => {
                 <div className='po-sum-row' style={{ color: '#ff4e2a', fontWeight: 700 }}><span>Wallet Applied</span><span>- {currency}{walletAppliedAmount.toFixed(2)}</span></div>
               )}
               <div className='po-sum-row po-sum-total'><span>{t("total")}</span><span>{currency}{finalTotal.toFixed(2)}</span></div>
+              {payment === 'split' && (
+                <div style={{ 
+                  marginTop: '16px', 
+                  padding: '12px 14px', 
+                  background: 'var(--bg-soft)', 
+                  borderRadius: '12px', 
+                  border: '1px solid var(--border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#16a34a', fontWeight: 700, fontSize: '13px' }}>
+                      <span style={{ fontSize: '16px' }}>💳</span>
+                      <span>Paid via Cards</span>
+                    </div>
+                    <span style={{ color: '#16a34a', fontWeight: 800, fontSize: '14px' }}>
+                      - {currency}{(splitStatus.paidCardAmount || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff4e2a', fontWeight: 700, fontSize: '13px' }}>
+                      <span style={{ fontSize: '16px' }}>🏠</span>
+                      <span>Cash at Door</span>
+                    </div>
+                    <span style={{ color: '#ff4e2a', fontWeight: 900, fontSize: '15px' }}>
+                      {currency}{Math.max(0, finalTotal - (splitStatus.paidCardAmount || 0)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
             
             {walletBalance > 0 && (

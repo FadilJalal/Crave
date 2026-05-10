@@ -315,7 +315,11 @@ export default function LiveDeliveryMap({ order, onArrival }) {
       if (restaurantCoords) {
         try {
           if (firstOrderCoords) {
-            const sharedRoute = await fetchSharedRoadRoute(restaurantCoords, firstOrderCoords, customerCoords);
+            const isFirstStop = (order?.deliverySequence === 1);
+            const stop1 = isFirstStop ? customerCoords : firstOrderCoords;
+            const stop2 = isFirstStop ? firstOrderCoords : customerCoords;
+            
+            const sharedRoute = await fetchSharedRoadRoute(restaurantCoords, stop1, stop2);
             routePoints = sharedRoute.points;
             firstStopProgressRef.current = sharedRoute.splitT;
           } else {
@@ -490,7 +494,12 @@ export default function LiveDeliveryMap({ order, onArrival }) {
 
     if (statusInfo.progress >= splitT) {
       firstStopNotifiedRef.current = true;
-      toast.info(t("first_order_delivered_msg"));
+      const isFirstStop = (order?.deliverySequence === 1);
+      if (isFirstStop) {
+        toast.success(t("You've arrived! Enjoy your meal."));
+      } else {
+        toast.info(t("First stop delivered! You're next in line."));
+      }
     }
   }, [order?.isSharedDelivery, order?.status, firstOrderCoords, statusInfo.progress]);
 
