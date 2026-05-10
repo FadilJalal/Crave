@@ -465,7 +465,7 @@ export default function RestaurantLayout({ children }) {
 
           {navGroup("finance", "💰", "Finance & Data", [
             link("/revenue", "💰 Revenue"),
-            link("/finance", "🏦 Billing & Payouts"),
+            link("/finance", "🔗 EVN"),
             link("/customers", "👥 Customers"),
             link("/inventory/analytics", "📊 Stock Analytics"),
           ])}
@@ -515,7 +515,7 @@ export default function RestaurantLayout({ children }) {
                   if (path === "/ai-customer-segmentation") return "Customer Segments";
                   if (path === "/review-reply") return "AI Review Assistant";
                   if (path === "/revenue") return "Revenue Analytics";
-                  if (path === "/finance") return "Billing & Payouts";
+                  if (path === "/finance") return "EVN | E-Vendor Network";
                   if (path === "/customers") return "Customer Database";
                   if (path === "/messages") return "Messages";
                   if (path === "/reviews") return "Guest Reviews";

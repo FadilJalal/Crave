@@ -44,6 +44,7 @@ router.post("/generate-review-reply", restaurantAuth, async (req, res) => {
     const raw = await groqChat({
       messages,
       temperature: 0.7,
+      jsonMode: false
     });
     const reply = String(raw || "").trim().replace(/^"|"$/g, '');
 

@@ -3,531 +3,479 @@ import RestaurantLayout from "../components/RestaurantLayout";
 import { api } from "../utils/api";
 import { useTheme } from "../ThemeContext";
 import { toast } from "react-toastify";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-    TrendingUp, 
-    DollarSign, 
-    ShoppingBag, 
-    Clock, 
-    Target,
-    Zap,
-    Download,
-    Filter,
-    ShieldCheck,
-    Globe,
-    CreditCard,
-    ArrowUpRight,
-    ArrowDownRight,
-    Activity,
-    Search as SearchIcon,
-    FileText,
-    Calendar
+import {
+  TrendingUp, DollarSign, ShoppingBag, Target,
+  Download, FileText, Search as SearchIcon,
+  ArrowUpRight, ArrowDownRight, CheckCircle2,
+  AlertCircle, Clock, CreditCard, Banknote,
+  Lightbulb, RefreshCw
 } from "lucide-react";
-import { 
-    AreaChart, 
-    Area, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid, 
-    Tooltip, 
-    ResponsiveContainer,
-    BarChart,
-    Bar,
-    Cell,
-    PieChart,
-    Pie
-} from 'recharts';
-import "./Revenue.css";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer
+} from "recharts";
 
-const TIMEFRAME_OPTIONS = [
-    { value: "7d", label: "7 Days Summary", days: 7 },
-    { value: "30d", label: "30 Days Summary", days: 30 },
-    { value: "90d", label: "90 Days Summary", days: 90 },
-    { value: "all", label: "Fiscal Overview", days: null },
+/* ─── Constants ──────────────────────────────────────────────── */
+
+const ACCENT   = "#534AB7";
+const ACC_BG   = "#EEEDFE";
+const ACC_TXT  = "#3C3489";
+
+const TIMEFRAMES = [
+  { value: "7d",  label: "Last 7 days",    days: 7   },
+  { value: "30d", label: "Last 30 days",   days: 30  },
+  { value: "90d", label: "Last 90 days",   days: 90  },
+  { value: "all", label: "All time",       days: null },
 ];
 
-const money = (value) => `AED ${Number(value || 0).toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (v) =>
+  `AED ${Number(v || 0).toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/* ─── Main component ─────────────────────────────────────────── */
 
 export default function Revenue() {
-    const { dark } = useTheme();
-    const [timeframe, setTimeframe] = useState("30d");
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState("");
+  const { dark } = useTheme();
+  const [timeframe, setTimeframe] = useState("30d");
+  const [orders,    setOrders]    = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [search,    setSearch]    = useState("");
 
-    useEffect(() => {
-        fetchOrders();
-    }, []);
+  useEffect(() => { fetchOrders(); }, []);
 
-    const fetchOrders = async () => {
-        try {
-            setLoading(true);
-            const res = await api.get("/api/order/restaurant/list");
-            if (res.data.success) setOrders(res.data.data);
-        } catch (err) {
-            toast.error("Failed to sync financial data");
-        } finally {
-            setLoading(false);
-        }
-    };
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/api/order/restaurant/list");
+      if (res.data.success) setOrders(res.data.data);
+    } catch {
+      toast.error("Failed to load revenue data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const analytics = useMemo(() => {
-        const timeframeOption = TIMEFRAME_OPTIONS.find(o => o.value === timeframe);
-        const now = new Date();
-        const rangeLimit = timeframe === "all" ? null : new Date(now.setDate(now.getDate() - (timeframeOption?.days || 0)));
-        
-        const filtered = rangeLimit 
-            ? orders.filter(o => new Date(o.createdAt) >= rangeLimit)
-            : orders;
+  const a = useMemo(() => {
+    const tf  = TIMEFRAMES.find(o => o.value === timeframe);
+    const now = new Date();
+    const cut = tf.days ? new Date(now.setDate(now.getDate() - tf.days)) : null;
+    const fil = cut ? orders.filter(o => new Date(o.createdAt) >= cut) : orders;
 
-        const successful = filtered.filter(o => o.status === "Delivered");
-        
-        const gross = successful.reduce((s, o) => s + (o.amount || 0), 0);
-        const count = successful.length;
-        const avgValue = count ? gross / count : 0;
-        const cancelledRev = filtered.filter(o => o.status === "Cancelled").reduce((s, o) => s + (o.amount || 0), 0);
+    const delivered  = fil.filter(o => o.status === "Delivered");
+    const gross      = delivered.reduce((s, o) => s + (o.amount || 0), 0);
+    const count      = delivered.length;
+    const avg        = count ? gross / count : 0;
+    const tax        = gross * 0.05;
+    const fees       = gross * 0.15;
+    const net        = gross - tax - fees;
 
-        // ── Enterprise Metrics ──
-        const estimatedTax = gross * 0.05; // 5% VAT
-        const platformFees = gross * 0.15; // 15% Platform fee
-        const netSettlement = gross - estimatedTax - platformFees;
+    const cashRev    = delivered.filter(o => o.paymentMethod === "cod").reduce((s, o) => s + (o.amount || 0), 0);
+    const cardRev    = gross - cashRev;
 
-        // ── Trend Line ──
-        const dailyMap = {};
-        successful.forEach(o => {
-            const date = new Date(o.createdAt).toLocaleDateString([], { day: '2-digit', month: 'short' });
-            dailyMap[date] = (dailyMap[date] || 0) + o.amount;
-        });
-        const trendData = Object.entries(dailyMap).map(([name, amount]) => ({ name, amount })).slice(-15);
+    const dailyMap = {};
+    delivered.forEach(o => {
+      const d = new Date(o.createdAt).toLocaleDateString([], { day: "2-digit", month: "short" });
+      dailyMap[d] = (dailyMap[d] || 0) + o.amount;
+    });
+    const trend = Object.entries(dailyMap).map(([name, amount]) => ({ name, amount })).slice(-14);
 
-        // ── AI Prediction Logic (Dynamic Trend Analysis) ──
-        const recentDays = trendData.slice(-7);
-        const previousDays = trendData.slice(-14, -7);
-        const recentAvg = recentDays.length ? recentDays.reduce((s, d) => s + d.amount, 0) / recentDays.length : 0;
-        const previousAvg = previousDays.length ? previousDays.reduce((s, d) => s + d.amount, 0) / previousDays.length : 0;
-        
-        let growthFactor = 1.05; // Base 5% growth
-        if (previousAvg > 0) {
-            const trend = (recentAvg - previousAvg) / previousAvg;
-            growthFactor = 1 + Math.max(-0.1, Math.min(0.2, trend + 0.05)); // Add 5% booster to current trend
-        }
-        
-        const predictedNextWeek = (recentAvg * 7) * growthFactor;
+    const recent   = trend.slice(-7);
+    const prev     = trend.slice(-14, -7);
+    const rAvg     = recent.length ? recent.reduce((s, d) => s + d.amount, 0) / recent.length : 0;
+    const pAvg     = prev.length   ? prev.reduce((s, d) => s + d.amount, 0)   / prev.length   : 0;
+    const gf       = pAvg > 0 ? 1 + Math.max(-0.1, Math.min(0.2, (rAvg - pAvg) / pAvg + 0.05)) : 1.05;
+    const nextWeek = rAvg * 7 * gf;
 
-        // ── Filtered Ledger ──
-        const ledger = filtered.filter(o => 
-            o._id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-            (o.address?.firstName || "").toLowerCase().includes(searchQuery.toLowerCase())
-        );
+    const itemMap = {};
+    delivered.forEach(o => o.items?.forEach(i => {
+      const n = i.item?.name || i.name;
+      if (n) itemMap[n] = (itemMap[n] || 0) + (i.quantity || 1);
+    }));
+    const topItems = Object.entries(itemMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, qty]) => ({ name, qty }));
 
-        const cashRev = successful.filter(o => o.paymentMethod === 'cod').reduce((s, o) => s + (o.amount || 0), 0);
-        const cardRev = gross - cashRev;
+    const hourMap = {};
+    delivered.forEach(o => {
+      const h = new Date(o.createdAt).getHours();
+      hourMap[h] = (hourMap[h] || 0) + 1;
+    });
+    const busiestHours = Object.entries(hourMap)
+      .map(([h, c]) => ({ hour: `${h}:00`, count: c }))
+      .sort((a, b) => b.count - a.count).slice(0, 3);
 
-        // ── Top Selling Items ──
-        const itemMap = {};
-        successful.forEach(o => {
-            o.items?.forEach(i => {
-                const name = i.item?.name || i.name;
-                if (!name) return;
-                itemMap[name] = (itemMap[name] || 0) + (i.quantity || 1);
-            });
-        });
-        const topItems = Object.entries(itemMap)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([name, qty]) => ({ name, qty }));
+    const shared = delivered.filter(o => o.isSharedDelivery).length;
+    const co2    = shared * 1.2;
 
-        // ── Busiest Hours ──
-        const hourMap = {};
-        successful.forEach(o => {
-            const hour = new Date(o.createdAt).getHours();
-            hourMap[hour] = (hourMap[hour] || 0) + 1;
-        });
-        const busiestHours = Object.entries(hourMap)
-            .map(([hour, count]) => ({ hour: `${hour}:00`, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 3);
+    const ledger = fil.filter(o =>
+      o._id.toLowerCase().includes(search.toLowerCase()) ||
+      (o.address?.firstName || "").toLowerCase().includes(search.toLowerCase())
+    );
 
-        const sharedCount = successful.filter(o => o.isSharedDelivery).length;
-        const sustainabilityImpact = sharedCount * 1.2; // 1.2kg saved per shared delivery consolidated
+    return { gross, count, avg, net, tax, fees, cashRev, cardRev, trend, nextWeek, topItems, busiestHours, shared, co2, ledger };
+  }, [orders, timeframe, search]);
 
-        return { gross, count, avgValue, netSettlement, trendData, predictedNextWeek, ledger, estimatedTax, platformFees, cashRev, cardRev, topItems, busiestHours, sharedCount, sustainabilityImpact };
-    }, [orders, timeframe, searchQuery]);
+  /* helpers */
+  const c = (light, dk) => dark ? dk : light;
+  const border = c("rgba(0,0,0,0.07)", "rgba(255,255,255,0.07)");
+  const cardBg = c("#ffffff", "rgba(255,255,255,0.03)");
+  const mutedC = c("#9ca3af", "rgba(255,255,255,0.4)");
+  const textC  = c("#0f172a", "#f8fafc");
+  const subBg  = c("#f8fafc", "rgba(255,255,255,0.04)");
 
-
-
+  if (loading) {
     return (
-        <RestaurantLayout>
-            {loading ? (
-                <div className="rev-loading-hub">
-                    <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
-                        <Activity size={48} />
-                    </motion.div>
-                    <p className="rev-loading-text">Synchronizing Financial Hub 3.0...</p>
+      <RestaurantLayout>
+        <div style={{ height: "70vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+          <div style={{ width: 32, height: 32, border: `2px solid ${border}`, borderTop: `2px solid ${ACCENT}`, borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+          <p style={{ fontSize: 13, color: mutedC, fontWeight: 500 }}>Loading financial data…</p>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
+        </div>
+      </RestaurantLayout>
+    );
+  }
+
+  const cardPercent = a.gross > 0 ? Math.round((a.cardRev / a.gross) * 100) : 0;
+  const cashPercent = 100 - cardPercent;
+
+  return (
+    <RestaurantLayout>
+      <div style={{ maxWidth: 1200, margin: "0 auto", paddingBottom: 80 }}>
+
+        {/* ── Toolbar ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: textC, letterSpacing: "-0.5px" }}>Revenue</h1>
+            <p style={{ margin: "3px 0 0", fontSize: 13, color: mutedC, fontWeight: 600 }}>Financial overview &amp; settlement tracking</p>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <select
+              value={timeframe}
+              onChange={e => setTimeframe(e.target.value)}
+              style={{
+                padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                border: `0.5px solid ${border}`, background: cardBg, color: textC,
+                cursor: "pointer", outline: "none", fontFamily: "inherit",
+              }}
+            >
+              {TIMEFRAMES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <Btn icon={<FileText size={14} />} label="Audit report" onClick={() => window.print()} dark={dark} />
+            <Btn icon={<Download size={14} />} label="Export" onClick={() => toast.info("Export starting…")} dark={dark} primary />
+          </div>
+        </div>
+
+        {/* ── KPI row ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 12, marginBottom: 20 }}>
+          <KpiCard label="Gross revenue"      value={money(a.gross)}  delta="+18.4%" up  icon={<TrendingUp size={15} />}  dark={dark} />
+          <KpiCard label="Net settlement"     value={money(a.net)}    delta="+12.1%" up  icon={<DollarSign size={15} />}  dark={dark} />
+          <KpiCard label="Orders completed"   value={a.count}         delta="-2.4%"      icon={<ShoppingBag size={15} />} dark={dark} />
+          <KpiCard label="Avg. order value"   value={money(a.avg)}    delta="Per order"  icon={<Target size={15} />}      dark={dark} />
+        </div>
+
+        {/* ── Breakdown ── */}
+        <Panel dark={dark} style={{ marginBottom: 20 }}>
+          <PanelHead title="Revenue breakdown" meta="Where does the money go?" dark={dark} />
+          <div style={{ padding: 22, display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 12 }}>
+            {[
+              { label: "Gross sales",       value: money(a.gross),  pct: 100, color: ACCENT,    muted: false },
+              { label: "Platform fees (15%)",value: `− ${money(a.fees)}`, pct: 15, color: "#ef4444", muted: false },
+              { label: "VAT (5%)",           value: `− ${money(a.tax)}`,  pct: 5,  color: "#f59e0b", muted: false },
+              { label: "Net profit",         value: money(a.net),   pct: 80, color: "#10b981",   highlight: true },
+            ].map((b, i) => (
+              <div key={i} style={{
+                padding: "16px 18px", borderRadius: 10,
+                background: b.highlight ? (dark ? "rgba(16,185,129,0.08)" : "#f0fdf4") : subBg,
+                border: `0.5px solid ${b.highlight ? (dark ? "rgba(16,185,129,0.2)" : "#bbf7d0") : border}`,
+              }}>
+                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 800, color: mutedC, textTransform: "uppercase", letterSpacing: 0.5 }}>{b.label}</p>
+                <p style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 900, color: b.highlight ? "#10b981" : textC, letterSpacing: "-0.5px" }}>{b.value}</p>
+                <div style={{ height: 4, background: border, borderRadius: 100, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${b.pct}%`, background: b.color, borderRadius: 100 }} />
                 </div>
-            ) : (
-                <div className="rev-layout">
-                
-                {/* ── Enterprise HUD ── */}
-                <header className="rev-hud-header" style={{ justifyContent: 'flex-end', marginBottom: 24 }}>
-                    <div style={{ display: "flex", gap: 12 }}>
-                        <select 
-                            className="rev-select-premium"
-                            value={timeframe}
-                            onChange={(e) => setTimeframe(e.target.value)}
-                        >
-                            {TIMEFRAME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                        <button className="rev-btn-ghost" onClick={() => window.print()}><FileText size={16} /> Audit Report</button>
-                        <button className="rev-btn-primary" onClick={() => toast.info("Ledger export starting...")}><Download size={16} /> Export Ledger</button>
-                    </div>
-                </header>
+              </div>
+            ))}
+          </div>
+          {a.co2 > 0 && (
+            <div style={{ margin: "0 22px 22px", padding: "10px 14px", borderRadius: 9, background: dark ? "rgba(16,185,129,0.06)" : "#f0fdf4", border: `0.5px solid ${dark ? "rgba(16,185,129,0.15)" : "#bbf7d0"}`, display: "flex", alignItems: "center", gap: 9 }}>
+              <Lightbulb size={13} color="#10b981" />
+              <p style={{ margin: 0, fontSize: 12, color: dark ? "#6ee7b7" : "#15803d" }}>
+                Your restaurant saved <strong>{a.co2.toFixed(1)} kg</strong> of CO₂ via <strong>{a.shared}</strong> shared delivery matches this period.
+              </p>
+            </div>
+          )}
+        </Panel>
 
-                {/* ── KPI Grid ── */}
-                <div className="rev-enterprise-grid">
-                    <StatCard 
-                        title="Total Sales (Gross)" 
-                        value={money(analytics.gross)} 
-                        icon={<Globe size={24} />} 
-                        color="var(--rev-info)" 
-                        delta="+18.4%"
-                        up={true}
-                    />
-                    <StatCard 
-                        title="Your Take Home (Net)" 
-                        value={money(analytics.netSettlement)} 
-                        icon={<DollarSign size={24} />} 
-                        color="var(--rev-success)" 
-                        delta="+12.1%"
-                        up={true}
-                    />
-                    <StatCard 
-                        title="Orders Completed" 
-                        value={analytics.count} 
-                        icon={<ShoppingBag size={24} />} 
-                        color="var(--rev-primary)" 
-                        delta="-2.4%"
-                        up={false}
-                    />
-                    <StatCard 
-                        title="Average Order Value" 
-                        value={money(analytics.avgValue)} 
-                        icon={<Target size={24} />} 
-                        color="#8b5cf6" 
-                        delta="Customer Spends"
-                    />
-                </div>
+        {/* ── Chart + Sidebar ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 16, marginBottom: 20 }}>
 
-                {/* ── Money Breakdown Section ── */}
-                <div className="rev-main-panel" style={{ marginBottom: 30, padding: 32, background: 'linear-gradient(to bottom, var(--rev-card), var(--rev-bg))' }}>
-                    <h3 style={{ margin: '0 0 24px', fontWeight: 900 }}>Where does the money go?</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
-                        <div className="breakdown-box">
-                            <div className="bb-lbl">TOTAL SALES</div>
-                            <div className="bb-val">{money(analytics.gross)}</div>
-                            <div className="bb-bar"><div style={{ width: '100%', background: 'var(--rev-info)' }}></div></div>
-                        </div>
-                        <div className="breakdown-box">
-                            <div className="bb-lbl">PLATFORM FEES (15%)</div>
-                            <div className="bb-val" style={{ color: '#ef4444' }}>- {money(analytics.platformFees)}</div>
-                            <div className="bb-bar"><div style={{ width: '15%', background: '#ef4444' }}></div></div>
-                        </div>
-                        <div className="breakdown-box">
-                            <div className="bb-lbl">GOVT TAX (5%)</div>
-                            <div className="bb-val" style={{ color: '#f59e0b' }}>- {money(analytics.estimatedTax)}</div>
-                            <div className="bb-bar"><div style={{ width: '5%', background: '#f59e0b' }}></div></div>
-                        </div>
-                        <div className="breakdown-box" style={{ background: 'var(--rev-success-soft)', border: '1px solid var(--rev-success)' }}>
-                            <div className="bb-lbl" style={{ color: 'var(--rev-success)' }}>NET PROFIT</div>
-                            <div className="bb-val" style={{ color: 'var(--rev-success)' }}>{money(analytics.netSettlement)}</div>
-                            <div className="bb-bar"><div style={{ width: '80%', background: 'var(--rev-success)' }}></div></div>
-                        </div>
-                    </div>
-                    <div style={{ marginTop: 24, padding: '12px 20px', background: '#f0fdf4', borderRadius: 12, border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Globe size={18} color="#15803d" />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#15803d' }}>
-                            Your restaurant saved <strong style={{ fontSize: 15 }}>{analytics.sustainabilityImpact.toFixed(1)} KG</strong> of CO2 this period via <strong style={{ fontSize: 15 }}>{analytics.sharedCount}</strong> Shared Delivery matches.
-                        </span>
-                    </div>
-                </div>
+          {/* Chart */}
+          <Panel dark={dark}>
+            <PanelHead title="Revenue trend" meta={`Last ${a.trend.length} days`} dark={dark} />
+            <div style={{ padding: "20px 22px 10px" }}>
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={a.trend} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="aGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor={ACCENT} stopOpacity={0.18} />
+                      <stop offset="95%" stopColor={ACCENT} stopOpacity={0}    />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: dark ? "rgba(255,255,255,0.35)" : "#9ca3af" }} dy={8} />
+                  <YAxis hide />
+                  <Tooltip
+                    cursor={{ stroke: ACCENT, strokeWidth: 1, strokeDasharray: "4 2" }}
+                    contentStyle={{ background: cardBg, border: `0.5px solid ${border}`, borderRadius: 10, fontSize: 12, fontWeight: 500 }}
+                    formatter={v => [money(v), "Revenue"]}
+                  />
+                  <Area type="monotone" dataKey="amount" stroke={ACCENT} strokeWidth={2} fill="url(#aGrad)" dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </Panel>
 
-                {/* ── Trajectory & AI Forecasting ── */}
-                <div className="rev-insight-row">
-                    <div className="rev-main-panel">
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
-                            <div>
-                                <h3 style={{ margin: 0, fontWeight: 900 }}>Revenue Flow Visualization</h3>
-                                <span style={{ fontSize: 13, color: "var(--rev-muted)" }}>Real-time settlement trajectory data.</span>
-                            </div>
-                            <div style={{ display: "flex", gap: 10 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700, color: "var(--rev-muted)" }}>
-                                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--rev-primary)" }} /> Gross Flow
-                                </div>
-                            </div>
-                        </div>
-                        <div style={{ width: '100%', height: 350 }}>
-                            <ResponsiveContainer>
-                                <AreaChart data={analytics.trendData}>
-                                    <defs>
-                                        <linearGradient id="revGlow" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="var(--rev-primary)" stopOpacity={0.25}/>
-                                            <stop offset="95%" stopColor="var(--rev-primary)" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: "var(--rev-muted)" }} dy={10} />
-                                    <YAxis hide />
-                                    <Tooltip 
-                                        cursor={{ stroke: 'var(--rev-primary)', strokeWidth: 1 }}
-                                        contentStyle={{ background: "var(--rev-card)", border: "1px solid var(--rev-border)", borderRadius: 16, boxShadow: "0 10px 30px rgba(0,0,0,0.1)" }}
-                                        itemStyle={{ color: "var(--rev-primary)", fontWeight: 900 }}
-                                    />
-                                    <Area type="monotone" dataKey="amount" stroke="var(--rev-primary)" strokeWidth={4} fill="url(#revGlow)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
+          {/* Sidebar */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-                    <aside className="rev-ai-sidebar">
-                        <div className="rev-forecast-card">
-                            <h4 style={{ margin: 0, fontSize: 12, fontWeight: 900, opacity: 0.6, letterSpacing: 1 }}>AI GROWTH PREDICTION</h4>
-                            <div style={{ margin: "20px 0" }}>
-                                <div style={{ fontSize: 32, fontWeight: 950 }}>{money(analytics.predictedNextWeek)}</div>
-                                <span style={{ fontSize: 13, color: "var(--rev-success)", fontWeight: 800 }}>⚡ Expected Sales Next Week</span>
-                            </div>
-                            <p style={{ fontSize: 13, opacity: 0.8, lineHeight: 1.5 }}>
-                                Crave AI predicts a **Positive Trend**. We suggest keeping more breakfast inventory ready for the upcoming weekend.
-                            </p>
-                            <div className="rev-prediction-bar">
-                                <motion.div 
-                                    initial={{ width: 0 }} 
-                                    animate={{ width: "82%" }} 
-                                    className="rev-prediction-fill" 
-                                    style={{ height: "100%", background: "var(--rev-success)", borderRadius: 100 }} 
-                                />
-                            </div>
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 900, opacity: 0.5 }}>
-                                <span>MARKET FIT</span>
-                                <span>82%</span>
-                            </div>
-                        </div>
-
-                        <div className="rev-main-panel" style={{ padding: 24 }}>
-                            <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
-                                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#8b5cf6" }} />
-                                <span style={{ fontSize: 13, fontWeight: 900 }}>Payment Methods</span>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 800, marginBottom: 4 }}>
-                                        <span>ONLINE PAYMENTS</span>
-                                        <span>{analytics.gross > 0 ? Math.round((analytics.cardRev / analytics.gross) * 100) : 0}%</span>
-                                    </div>
-                                    <div style={{ height: 6, background: 'var(--rev-border)', borderRadius: 10 }}><div style={{ width: `${analytics.gross > 0 ? (analytics.cardRev / analytics.gross) * 100 : 0}%`, height: '100%', background: '#8b5cf6', borderRadius: 10 }}></div></div>
-                                </div>
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 800, marginBottom: 4 }}>
-                                        <span>CASH ON DELIVERY</span>
-                                        <span>{analytics.gross > 0 ? Math.round((analytics.cashRev / analytics.gross) * 100) : 0}%</span>
-                                    </div>
-                                    <div style={{ height: 6, background: 'var(--rev-border)', borderRadius: 10 }}><div style={{ width: `${analytics.gross > 0 ? (analytics.cashRev / analytics.gross) * 100 : 0}%`, height: '100%', background: '#f59e0b', borderRadius: 10 }}></div></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* ── Performance Insights ── */}
-                        <div className="rev-main-panel" style={{ padding: 24 }}>
-                            <h4 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 900 }}>TOP SELLING DISHES</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                {analytics.topItems.length > 0 ? analytics.topItems.map((item, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div style={{ fontSize: 13, fontWeight: 700 }}>{item.name}</div>
-                                        <div style={{ fontSize: 11, fontWeight: 900, background: 'var(--rev-primary-soft)', color: 'var(--rev-primary)', padding: '2px 8px', borderRadius: 6 }}>{item.qty} sold</div>
-                                    </div>
-                                )) : <div style={{ fontSize: 12, color: 'var(--rev-muted)' }}>No sales data yet</div>}
-                            </div>
-
-                            <h4 style={{ margin: '24px 0 16px', fontSize: 12, fontWeight: 900 }}>BUSIEST HOURS</h4>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                {analytics.busiestHours.length > 0 ? analytics.busiestHours.map((h, i) => (
-                                    <div key={i} style={{ flex: 1, textAlign: 'center', padding: '10px 4px', background: 'var(--rev-bg)', borderRadius: 12, border: '1px solid var(--rev-border)' }}>
-                                        <div style={{ fontSize: 11, fontWeight: 900 }}>{h.hour}</div>
-                                        <div style={{ fontSize: 10, color: 'var(--rev-muted)', marginTop: 2 }}>{h.count} orders</div>
-                                    </div>
-                                )) : <div style={{ fontSize: 12, color: 'var(--rev-muted)' }}>Calculating...</div>}
-                            </div>
-                        </div>
-                    </aside>
-                </div>
-
-                {/* ── Advanced Ledger ── */}
-                <div className="rev-ledger-container">
-                    <div style={{ padding: "32px 40px", borderBottom: "1px solid var(--rev-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div>
-                            <h3 style={{ margin: 0, fontWeight: 900 }}>Recent Sales Ledger</h3>
-                            <span style={{ fontSize: 13, color: "var(--rev-muted)" }}>Detailed list of all incoming orders and payments.</span>
-                        </div>
-                        <div className="rev-search-box">
-                            <SearchIcon size={16} color="var(--rev-muted)" />
-                            <input 
-                                type="text" 
-                                placeholder="Search by Order ID or Customer..." 
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <table className="rev-table">
-                        <thead>
-                            <tr>
-                                <th className="rev-th">Identifier</th>
-                                <th className="rev-th">Consumer</th>
-                                <th className="rev-th">Timestamp</th>
-                                <th className="rev-th">Status</th>
-                                <th className="rev-th" style={{ textAlign: "right" }}>Net Value</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {analytics.ledger.slice(0, 15).map((order) => (
-                                <tr key={order._id} className="rev-tr">
-                                    <td className="rev-td" style={{ fontFamily: "monospace", fontWeight: 900 }}>#{order._id.slice(-8).toUpperCase()}</td>
-                                    <td className="rev-td" style={{ fontWeight: 800 }}>{order.address?.firstName || "Anonymous Settlement"}</td>
-                                    <td className="rev-td" style={{ color: "var(--rev-muted)", fontWeight: 700 }}>
-                                        {new Date(order.createdAt).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}
-                                    </td>
-                                    <td className="rev-td">
-                                        <StatusPill status={order.status} />
-                                    </td>
-                                    <td className="rev-td" style={{ textAlign: "right", fontWeight: 950, fontSize: 16 }}>{money(order.amount)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                </div>
-            )}
-
-            {/* ── Professional Audit Report (Print Only) ── */}
-            <div className="rev-print-report">
-                <div className="print-header">
-                    <h1 style={{ color: '#111827', margin: 0 }}>CRAVE | Financial Audit Report</h1>
-                    <p style={{ color: '#6b7280', margin: '4px 0 20px' }}>Generated on {new Date().toLocaleString()}</p>
-                </div>
-                
-                <div className="print-grid">
-                    <div className="print-box">
-                        <div className="print-lbl">Reporting Period</div>
-                        <div className="print-val">{TIMEFRAME_OPTIONS.find(o => o.value === timeframe)?.label}</div>
-                    </div>
-                    <div className="print-box">
-                        <div className="print-lbl">Total Gross Revenue</div>
-                        <div className="print-val">{money(analytics.gross)}</div>
-                    </div>
-                    <div className="print-box">
-                        <div className="print-lbl">Net Settlement (Take Home)</div>
-                        <div className="print-val" style={{ color: '#059669' }}>{money(analytics.netSettlement)}</div>
-                    </div>
-                </div>
-
-                <div className="print-section">
-                    <h3>Revenue Breakdown</h3>
-                    <table className="print-table">
-                        <tbody>
-                            <tr><td>Gross Sales</td><td style={{ textAlign: 'right' }}>{money(analytics.gross)}</td></tr>
-                            <tr><td>Platform Service Fees (15%)</td><td style={{ textAlign: 'right', color: '#dc2626' }}>- {money(analytics.platformFees)}</td></tr>
-                            <tr><td>Estimated VAT (5%)</td><td style={{ textAlign: 'right', color: '#dc2626' }}>- {money(analytics.estimatedTax)}</td></tr>
-                            <tr style={{ fontWeight: 'bold', fontSize: '1.2em', borderTop: '2px solid #000' }}>
-                                <td>Net Payable Amount</td>
-                                <td style={{ textAlign: 'right' }}>{money(analytics.netSettlement)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div className="print-section">
-                    <h3>Top Performing Categories</h3>
-                    <div style={{ display: 'flex', gap: 20 }}>
-                        {analytics.topItems.map((item, i) => (
-                            <div key={i} className="print-mini-card">
-                                <strong>{item.name}</strong>
-                                <span>{item.qty} units sold</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="print-footer">
-                    <p>This report is electronically generated and verified by Crave Intelligence Hub.</p>
-                    <div style={{ marginTop: 40, borderTop: '1px solid #eee', paddingTop: 10, display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Manager Signature: _______________________</span>
-                        <span>Date: _______________________</span>
-                    </div>
-                </div>
+            {/* AI Forecast */}
+            <div style={{
+              borderRadius: 12, padding: "20px 20px",
+              background: dark ? "#1a1535" : "#26215C",
+              border: `0.5px solid ${dark ? "rgba(255,255,255,0.06)" : "transparent"}`,
+            }}>
+              <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 0.8 }}>AI forecast · next 7 days</p>
+              <p style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 900, color: "#fff", letterSpacing: "-0.5px" }}>{money(a.nextWeek)}</p>
+              <p style={{ margin: "0 0 14px", fontSize: 11, color: "rgba(255,255,255,0.6)", lineHeight: 1.5, fontWeight: 500 }}>
+                Based on your recent trend. Keep breakfast inventory ready for the upcoming weekend.
+              </p>
+              <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 100, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: "82%", background: "#7F77DD", borderRadius: 100 }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 10, color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>
+                <span>Market fit</span><span>82%</span>
+              </div>
             </div>
 
-            <style>{`
-                .rev-print-report { display: none; padding: 40px; font-family: 'Inter', sans-serif; }
-                @media print {
-                    .ra-sidebar, .rev-layout, .rev-loading-hub { display: none !important; }
-                    .rev-print-report { display: block !important; }
-                    .print-header { border-bottom: 3px solid #111827; padding-bottom: 20px; margin-bottom: 30px; }
-                    .print-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 40px; }
-                    .print-box { padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px; }
-                    .print-lbl { font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: 800; }
-                    .print-val { font-size: 18px; font-weight: 900; margin-top: 4px; }
-                    .print-section { margin-bottom: 40px; }
-                    .print-section h3 { font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 15px; }
-                    .print-table { width: 100%; border-collapse: collapse; }
-                    .print-table td { padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
-                    .print-mini-card { flex: 1; padding: 12px; border: 1px solid #eee; border-radius: 6px; font-size: 12px; }
-                    .print-footer { margin-top: 60px; font-size: 10px; color: #9ca3af; }
-                }
-                .rev-loading-text { font-weight: 900; letter-spacing: 2px; color: var(--rev-muted); text-transform: uppercase; margin-top: 16px; font-size: 11px; }
-                .rev-loading-hub { height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-                .rev-select-premium { padding: 10px 16px; border-radius: 12px; border: 1px solid var(--rev-border); background: var(--rev-card); color: var(--rev-text); font-weight: 800; font-size: 13px; outline: none; cursor: pointer; }
-                .rev-btn-ghost { display: flex; alignItems: center; gap: 8px; padding: 10px 20px; border-radius: 12px; border: 1px solid var(--rev-border); background: transparent; color: var(--rev-text); font-weight: 800; font-size: 13px; cursor: pointer; }
-                .rev-btn-primary { display: flex; alignItems: center; gap: 8px; padding: 10px 24px; border-radius: 12px; border: none; background: #111827; color: white; font-weight: 950; font-size: 13px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); }
-                [data-theme='dark'] .rev-btn-primary { background: var(--rev-primary); color: white; }
-                .rev-search-box { display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.03); padding: 10px 18px; border-radius: 14px; width: 300px; }
-                [data-theme='dark'] .rev-search-box { background: rgba(255,255,255,0.05); }
-                .rev-search-box input { background: transparent; border: none; outline: none; color: var(--rev-text); font-weight: 700; width: 100%; }
-                .rev-search-box input::placeholder { color: var(--rev-muted); }
-                .delivered-pill { background: var(--rev-success-soft); color: var(--rev-success); }
-                .pending-pill { background: var(--rev-info-soft); color: var(--rev-info); }
-                .cancelled-pill { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+            {/* Payment split */}
+            <Panel dark={dark} style={{ padding: 18 }}>
+              <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: mutedC }}>Payment methods</p>
+              {[
+                { label: "Online / card", pct: cardPercent, color: ACCENT,    icon: <CreditCard size={12} /> },
+                { label: "Cash on delivery", pct: cashPercent, color: "#f59e0b", icon: <Banknote  size={12} /> },
+              ].map((pm, i) => (
+                <div key={i} style={{ marginBottom: i === 0 ? 12 : 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: mutedC, fontWeight: 700 }}>{pm.icon}{pm.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: textC }}>{pm.pct}%</span>
+                  </div>
+                  <div style={{ height: 5, background: border, borderRadius: 100, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pm.pct}%`, background: pm.color, borderRadius: 100 }} />
+                  </div>
+                </div>
+              ))}
+            </Panel>
 
-                .breakdown-box { padding: 16px; background: var(--rev-card); border-radius: 16px; border: 1px solid var(--rev-border); }
-                .bb-lbl { font-size: 10px; font-weight: 900; color: var(--rev-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-                .bb-val { font-size: 18px; font-weight: 900; margin-bottom: 12px; }
-                .bb-bar { height: 4px; background: var(--rev-bg); border-radius: 10px; overflow: hidden; }
-                .bb-bar div { height: 100%; border-radius: 10px; }
-            `}</style>
-        </RestaurantLayout>
-    );
+            {/* Top dishes */}
+            <Panel dark={dark} style={{ padding: 18, flex: 1 }}>
+              <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: mutedC }}>Top selling dishes</p>
+              {a.topItems.length > 0 ? a.topItems.map((item, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
+                  <span style={{ fontSize: 13, color: textC, fontWeight: 700 }}>{item.name}</span>
+                  <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 100, background: ACC_BG, color: ACC_TXT }}>{item.qty} sold</span>
+                </div>
+              )) : <p style={{ fontSize: 12, color: mutedC, fontWeight: 600 }}>No data yet</p>}
+
+              {a.busiestHours.length > 0 && (
+                <>
+                  <p style={{ margin: "14px 0 10px", fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: mutedC }}>Busiest hours</p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {a.busiestHours.map((h, i) => (
+                      <div key={i} style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 8, background: subBg, border: `0.5px solid ${border}` }}>
+                        <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: textC }}>{h.hour}</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 10, color: mutedC, fontWeight: 600 }}>{h.count} orders</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </Panel>
+          </div>
+        </div>
+
+        {/* ── Ledger ── */}
+        <Panel dark={dark} style={{ overflow: "hidden" }}>
+          <div style={{
+            padding: "16px 22px", borderBottom: `0.5px solid ${border}`,
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+          }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: textC }}>Sales ledger</p>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: mutedC, fontWeight: 600 }}>Detailed list of all orders and payments</p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, border: `0.5px solid ${border}`, background: subBg, width: 260 }}>
+              <SearchIcon size={13} color={mutedC} />
+              <input
+                type="text"
+                placeholder="Search by order ID or name…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ border: "none", outline: "none", background: "transparent", fontSize: 12, color: textC, width: "100%", fontFamily: "inherit", fontWeight: 700 }}
+              />
+            </div>
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <thead>
+              <tr style={{ background: dark ? "rgba(255,255,255,0.02)" : "#f8fafc" }}>
+                {["Order ID", "Customer", "Date", "Status", "Amount"].map((h, i) => (
+                  <th key={h} style={{
+                    padding: "10px 20px", textAlign: i === 4 ? "right" : "left",
+                    fontSize: 10, fontWeight: 800, color: mutedC,
+                    textTransform: "uppercase", letterSpacing: 0.8,
+                  }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {a.ledger.slice(0, 15).map(order => (
+                <tr key={order._id} style={{ borderBottom: `0.5px solid ${border}` }}>
+                  <td style={{ padding: "13px 20px", fontFamily: "monospace", fontSize: 12, color: ACCENT, fontWeight: 800 }}>
+                    #{order._id.slice(-8).toUpperCase()}
+                  </td>
+                  <td style={{ padding: "13px 20px", fontSize: 13, fontWeight: 800, color: textC }}>
+                    {order.address?.firstName || "—"}
+                  </td>
+                  <td style={{ padding: "13px 20px", fontSize: 12, color: mutedC, fontWeight: 700 }}>
+                    {new Date(order.createdAt).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
+                  </td>
+                  <td style={{ padding: "13px 20px" }}>
+                    <StatusPill status={order.status} />
+                  </td>
+                  <td style={{ padding: "13px 20px", textAlign: "right", fontSize: 14, fontWeight: 900, color: textC, letterSpacing: "-0.5px" }}>
+                    {money(order.amount)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Panel>
+
+      </div>
+
+      {/* ── Print report ── */}
+      <div className="rev-print-only">
+        <h1>CRAVE — Financial Audit Report</h1>
+        <p style={{ color: "#6b7280", marginBottom: 24 }}>Generated: {new Date().toLocaleString()}</p>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 32 }}>
+          <tbody>
+            {[
+              ["Gross sales",          money(a.gross)],
+              ["Platform fees (15%)", `− ${money(a.fees)}`],
+              ["VAT (5%)",            `− ${money(a.tax)}`],
+              ["Net settlement",       money(a.net)],
+            ].map(([l, v]) => (
+              <tr key={l} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                <td style={{ padding: "10px 0" }}>{l}</td>
+                <td style={{ padding: "10px 0", textAlign: "right", fontWeight: 600 }}>{v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ fontSize: 10, color: "#9ca3af", marginTop: 60 }}>Electronically generated by Crave Intelligence Hub.</p>
+        <div style={{ borderTop: "1px solid #eee", marginTop: 12, paddingTop: 12, display: "flex", justifyContent: "space-between", fontSize: 10 }}>
+          <span>Manager Signature: _________________________</span>
+          <span>Date: _______________</span>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes spin  { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+        .rev-print-only { display: none; padding: 40px; font-family: sans-serif; }
+        @media print {
+          .ra-sidebar, nav, header, .rev-toolbar { display: none !important; }
+          .rev-print-only { display: block !important; }
+        }
+      `}</style>
+    </RestaurantLayout>
+  );
 }
 
-function StatCard({ title, value, icon, color, delta, up }) {
-    return (
-        <div className="rev-stat-card">
-            <div className="rev-stat-icon" style={{ background: color + "15", color: color }}>
-                {icon}
-            </div>
-            <div className="rev-stat-val">{value}</div>
-            <div className="rev-stat-change" style={{ color: up ? "var(--rev-success)" : "var(--rev-primary)" }}>
-                {up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                {delta}
-            </div>
-            <div style={{ position: "absolute", bottom: -20, right: -10, fontStyle: "italic", fontWeight: 900, color: "var(--rev-border)", fontSize: 42 }}>{title[0]}</div>
-            <div style={{ marginTop: 20, fontSize: 11, fontWeight: 900, color: "var(--rev-muted)", textTransform: "uppercase", letterSpacing: 1.5 }}>{title}</div>
-        </div>
-    );
+/* ─── Sub-components ─────────────────────────────────────────── */
+
+function Panel({ dark, children, style = {} }) {
+  const border = dark ? "rgba(255,255,255,0.07)" : "#e2e8f0";
+  const bg     = dark ? "rgba(255,255,255,0.03)" : "#ffffff";
+  return (
+    <div style={{ background: bg, border: `0.5px solid ${border}`, borderRadius: 12, overflow: "hidden", ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function PanelHead({ title, meta, dark }) {
+  const border = dark ? "rgba(255,255,255,0.06)" : "#f1f5f9";
+  const mutedC = dark ? "rgba(255,255,255,0.4)" : "#9ca3af";
+  return (
+    <div style={{ padding: "15px 22px", borderBottom: `0.5px solid ${border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <span style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text)" }}>{title}</span>
+      {meta && <span style={{ fontSize: 11, color: mutedC, fontWeight: 700 }}>{meta}</span>}
+    </div>
+  );
+}
+
+function KpiCard({ label, value, delta, up, icon, dark }) {
+  const border = dark ? "rgba(255,255,255,0.07)" : "#e2e8f0";
+  const bg     = dark ? "rgba(255,255,255,0.04)" : "#f8fafc";
+  const textC  = dark ? "#f8fafc" : "#0f172a";
+  const mutedC = dark ? "rgba(255,255,255,0.4)" : "#9ca3af";
+  const deltaC = up == null ? mutedC : up ? "#10b981" : "#ef4444";
+  return (
+    <div style={{ background: bg, border: `0.5px solid ${border}`, borderRadius: 10, padding: "16px 18px", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: 0, left: 0, width: 3, height: "100%", background: "#534AB7", borderRadius: "10px 0 0 10px" }} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: mutedC, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</p>
+        <span style={{ color: mutedC }}>{icon}</span>
+      </div>
+      <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: textC, lineHeight: 1, letterSpacing: "-1px" }}>{value}</p>
+      {delta && (
+        <p style={{ margin: "7px 0 0", fontSize: 11, color: deltaC, display: "flex", alignItems: "center", gap: 3, fontWeight: 800 }}>
+          {up != null && (up ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />)}
+          {delta}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Btn({ icon, label, onClick, dark, primary }) {
+  const border = dark ? "rgba(255,255,255,0.08)" : "#e2e8f0";
+  const bg     = primary ? (dark ? "#534AB7" : "#0f172a") : (dark ? "rgba(255,255,255,0.04)" : "#fff");
+  const color  = primary ? "#fff" : (dark ? "rgba(255,255,255,0.8)" : "#374151");
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
+        borderRadius: 8, border: `0.5px solid ${primary ? "transparent" : border}`,
+        background: bg, color, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
+        boxShadow: primary ? "0 4px 12px rgba(83, 74, 183, 0.25)" : "none",
+      }}
+    >
+      {icon}{label}
+    </button>
+  );
 }
 
 function StatusPill({ status }) {
-    const s = status.toLowerCase();
-    let cls = "pending-pill";
-    if (s === "delivered") cls = "delivered-pill";
-    if (s === "cancelled") cls = "cancelled-pill";
-    return <span className={`rev-status-pill ${cls}`}>{status}</span>;
+  const s = status?.toLowerCase();
+  const styles = {
+    delivered: { bg: "#EAF3DE", color: "#27500A" },
+    cancelled:  { bg: "#FCEBEB", color: "#791F1F" },
+    pending:    { bg: "#E6F1FB", color: "#0C447C" },
+    processing: { bg: "#FAEEDA", color: "#633806" },
+  };
+  const st = styles[s] || styles.pending;
+  return (
+    <span style={{ display: "inline-block", fontSize: 10, fontWeight: 800, padding: "3px 10px", borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.5px", background: st.bg, color: st.color }}>
+      {status}
+    </span>
+  );
 }
