@@ -5,6 +5,7 @@ import { Heart, Activity } from 'lucide-react';
 import './FoodItem.css';
 import { StoreContext } from '../../Context/StoreContext';
 import { useTheme } from '../../Context/ThemeContext';
+import { toast } from 'react-toastify';
 
 const DIET_RULES = {
   vegan:      { m: /vegan|plant.?based|tofu|falafel|hummus|lentil|chickpea/i, x: /chicken|beef|lamb|meat|fish|shrimp|egg|cheese|cream|butter|milk|honey/i },
@@ -96,7 +97,7 @@ const FoodItem = (props) => {
       if (group.required) {
         const sel = selections[gi];
         if (!sel || (Array.isArray(sel) && sel.length === 0)) {
-          alert(`Please select an option for "${group.title}"`);
+          toast.error(t(`Please select an option for "${group.title}"`));
           return;
         }
       }

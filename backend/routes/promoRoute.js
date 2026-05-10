@@ -362,7 +362,10 @@ promoRouter.post("/create", restaurantAuth, requireFeature("aiPromoGenerator"), 
     const maxUsesRaw = req.body?.maxUses;
     const expiresAtRaw = req.body?.expiresAt;
 
+    console.log("[promo/create] Received body:", { code, type, value, rawType: req.body?.type, rawValue: req.body?.value, rawCode: req.body?.code });
+
     if (!code || !type || !Number.isFinite(value)) {
+      console.log("[promo/create] VALIDATION FAILED:", { code: !!code, type: !!type, valueFinite: Number.isFinite(value) });
       return res.json({ success: false, message: "Code, type, and value are required." });
     }
 

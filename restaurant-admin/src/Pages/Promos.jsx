@@ -8,6 +8,7 @@ import {
   Cpu, 
   Loader2, 
   Trash2, 
+  PenLine,
   TrendingUp,
   BrainCircuit,
   Zap,
@@ -134,17 +135,19 @@ export default function Promos() {
     if (!data) return;
     setIsDeploying(true);
     try {
+      const code = (data.code || data.title || "PROMO").toUpperCase().replace(/[^A-Z0-9]/g, "");
       const deployPayload = {
-        name: data.title,
-        code: data.code.toUpperCase(),
-        type: data.type,
-        value: data.value,
-        minOrder: data.minOrder || 0,
-        description: data.reason || data.description,
+        name: data.title || code,
+        code: code,
+        type: data.type || "percent",
+        value: Number(data.value) || 10,
+        minOrder: Number(data.minOrder) || 0,
+        description: data.reason || data.description || "",
         isActive: true,
         promoType: "ai-generated",
         targetSegment: data.targetSegment || null
       };
+      console.log("Deploying:", deployPayload);
       const res = await api.post("/api/promo/create", deployPayload);
       if (res.data?.success) {
         toast.success("Deployment Success!");
@@ -156,7 +159,9 @@ export default function Promos() {
         toast.error(res.data?.message || "Failed to deploy strategy.");
       }
     } catch (err) {
-      toast.error("Network error during deployment.");
+      console.error("Deploy error:", err?.response?.data || err);
+      const msg = err?.response?.data?.message || "Network error during deployment.";
+      toast.error(msg);
     } finally {
       setIsDeploying(false);
     }
@@ -307,7 +312,7 @@ export default function Promos() {
                             aiIdeas.map((idea, i) => (
                                 <div 
                                     key={i} 
-                                    onClick={() => setEditingData({...idea, code: `STRAT-${Math.random().toString(36).substring(2,7).toUpperCase()}`})}
+                                    onClick={() => setEditingData({...idea})}
                                     className="strategy-card"
                                     style={{
                                         background: theme.surface,
@@ -407,6 +412,25 @@ export default function Promos() {
                                         <div style={{ fontSize: "8px", fontWeight: 800, opacity: 0.5 }}>HITS</div>
                                     </div>
                                     <button 
+                                        onClick={() => setEditingData({
+                                            title: p.name || p.code,
+                                            code: p.code,
+                                            type: p.type,
+                                            value: p.value,
+                                            minOrder: p.minOrder || 0,
+                                            description: p.description || "",
+                                            reason: p.description || "",
+                                            targetSegment: p.targetSegment || "",
+                                            audience: p.targetSegment || "All Customers",
+                                            timeText: p.expiresAt ? `Expires ${new Date(p.expiresAt).toLocaleDateString()}` : "Current Deployment"
+                                        })}
+                                        style={{ border: "none", background: "none", color: theme.accent, cursor: "pointer", opacity: 0.6, padding: "8px", borderRadius: "8px", transition: "all 0.2s" }}
+                                        onMouseOver={e => e.currentTarget.style.background = `${theme.accent}11`}
+                                        onMouseOut={e => e.currentTarget.style.background = "none"}
+                                    >
+                                        <PenLine size={16} />
+                                    </button>
+                                    <button 
                                         onClick={() => setDeleteConfirm({ isOpen: true, id: p._id })}
                                         style={{ border: "none", background: "none", color: "#ef4444", cursor: "pointer", opacity: 0.6, padding: "8px", borderRadius: "8px", transition: "all 0.2s" }}
                                         onMouseOver={e => e.currentTarget.style.background = "#ef444411"}
@@ -427,72 +451,91 @@ export default function Promos() {
           <div style={overlayStyle}>
             <div style={{ 
                 background: theme.surface, 
-                width: "900px", 
+                width: "800px", 
                 borderRadius: "32px", 
                 overflow: "hidden", 
                 display: "grid", 
-                gridTemplateColumns: "1fr 400px",
+                gridTemplateColumns: "1fr 300px",
                 boxShadow: "0 50px 100px rgba(0,0,0,0.5)",
                 animation: "modalIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)"
             }}>
                 {/* Left: Configuration */}
-                <div style={{ padding: "48px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px" }}>
-                        <h2 style={{ fontSize: "24px", fontWeight: 1000, margin: 0 }}>Strategy Refinement</h2>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span style={{ fontSize: "10px", fontWeight: 900, color: theme.textMuted }}>NODE ID:</span>
-                            <input 
-                                value={editingData.code} 
-                                onChange={e => setEditingData({...editingData, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "")})} 
-                                style={{ 
-                                    background: theme.bg, 
-                                    border: `1px solid ${theme.accent}44`, 
-                                    borderRadius: "8px", 
-                                    padding: "4px 12px", 
-                                    fontSize: "12px", 
-                                    fontWeight: 900, 
-                                    color: theme.accent, 
-                                    width: "140px",
-                                    outline: "none",
-                                    textAlign: "center"
-                                }} 
-                            />
-                        </div>
+                <div style={{ padding: "32px" }}>
+                    <div style={{ marginBottom: "24px" }}>
+                        <h2 style={{ fontSize: "20px", fontWeight: 1000, margin: "0 0 16px 0" }}>Strategy Refinement</h2>
+                        <label style={modalLabel}>PROMO CODE (what customers type)</label>
+                        <input 
+                            value={editingData.code || ""} 
+                            onChange={e => setEditingData({...editingData, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "")})} 
+                            placeholder="e.g. SAVE20, NIGHTBITE"
+                            style={{...modalInputStyle(theme, false), fontSize: "18px", fontWeight: 900, letterSpacing: "2px", textTransform: "uppercase"}} 
+                        />
                     </div>
 
-                    <div style={{ display: "grid", gap: "24px" }}>
-                        <div>
-                            <label style={modalLabel}>CAMPAIGN IDENTITY</label>
-                            <input value={editingData.title} onChange={e => setEditingData({...editingData, title: e.target.value})} style={modalInputStyle(theme, false)} />
+                    <div style={{ display: "grid", gap: "16px" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                            <div>
+                                <label style={modalLabel}>CAMPAIGN NAME</label>
+                                <input value={editingData.title} onChange={e => setEditingData({...editingData, title: e.target.value})} style={modalInputStyle(theme, false)} />
+                            </div>
+                            <div>
+                                <label style={modalLabel}>DISCOUNT TYPE</label>
+                                <div style={{ display: "flex", background: theme.bg, borderRadius: "12px", padding: "4px", border: `1px solid ${theme.border}` }}>
+                                    <button 
+                                        onClick={() => setEditingData({...editingData, type: "percent"})}
+                                        style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "none", background: editingData.type === "percent" ? theme.accent : "transparent", color: editingData.type === "percent" ? "#fff" : theme.textMuted, fontSize: "11px", fontWeight: 900, cursor: "pointer", transition: "all 0.2s" }}
+                                    >PERCENTAGE</button>
+                                    <button 
+                                        onClick={() => setEditingData({...editingData, type: "flat"})}
+                                        style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "none", background: editingData.type === "flat" ? theme.accent : "transparent", color: editingData.type === "flat" ? "#fff" : theme.textMuted, fontSize: "11px", fontWeight: 900, cursor: "pointer", transition: "all 0.2s" }}
+                                    >FLAT AED</button>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                             <div>
-                                <label style={modalLabel}>DISCOUNT ARCHITECTURE</label>
-                                <select value={editingData.type} onChange={e => setEditingData({...editingData, type: e.target.value})} style={modalInputStyle(theme, true)}>
-                                    <option value="percent">Percentage (%)</option>
-                                    <option value="flat">Fixed (AED)</option>
-                                    <option value="free-delivery">Free Delivery</option>
-                                </select>
-                            </div>
-                             {editingData.type !== 'free-delivery' && (
-                                <div>
-                                    <label style={modalLabel}>INTENSITY VALUE</label>
-                                    <input type="number" value={editingData.value} onChange={e => setEditingData({...editingData, value: e.target.value})} style={modalInputStyle(theme, false)} />
+                                <label style={modalLabel}>DISCOUNT AMOUNT</label>
+                                <div style={{ position: "relative" }}>
+                                    <input 
+                                        type="number" 
+                                        value={editingData.value || ""} 
+                                        onChange={e => setEditingData({...editingData, value: e.target.value === "" ? "" : Number(e.target.value)})} 
+                                        style={{...modalInputStyle(theme, false), paddingRight: "40px"}} 
+                                    />
+                                    <span style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", fontWeight: 900, color: theme.accent, opacity: 0.5, fontSize: "11px" }}>
+                                        {editingData.type === 'percent' ? '%' : 'AED'}
+                                    </span>
                                 </div>
-                             )}
+                            </div>
+                            <div>
+                                <label style={modalLabel}>MINIMUM ORDER (AED)</label>
+                                <input 
+                                    type="number" 
+                                    value={editingData.minOrder === undefined || editingData.minOrder === null ? "" : editingData.minOrder} 
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        setEditingData({
+                                            ...editingData, 
+                                            minOrder: val === "" ? null : Number(val)
+                                        });
+                                    }} 
+                                    placeholder="0"
+                                    style={modalInputStyle(theme, false)} 
+                                />
+                            </div>
                         </div>
 
                         <div>
-                            <label style={modalLabel}>CAMPAIGN DESCRIPTION & LOGIC</label>
+                            <label style={modalLabel}>DESCRIPTION & LOGIC</label>
                             <textarea 
                                 value={editingData.description || editingData.reason || ""} 
                                 onChange={e => setEditingData({...editingData, description: e.target.value, reason: e.target.value})} 
-                                style={{...modalInputStyle(theme, false), height: "100px", resize: "none"}} 
+                                style={{...modalInputStyle(theme, false), height: "60px", resize: "none", fontSize: "13px"}} 
                             />
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                             <div>
                                 <label style={modalLabel}>TARGET AUDIENCE</label>
                                 <select 
@@ -510,65 +553,65 @@ export default function Promos() {
                                 </select>
                             </div>
                             <div>
-                                <label style={modalLabel}>DEPLOYMENT WINDOW</label>
-                                <div style={modalReadOnly(theme)}><Clock size={14} style={{ opacity: 0.5 }} /> {editingData.timeText}</div>
+                                <label style={modalLabel}>WINDOW</label>
+                                <div style={modalReadOnly(theme)}><Clock size={12} style={{ opacity: 0.5 }} /> <span style={{fontSize: "11px"}}>{editingData.timeText}</span></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Right: Visualization & Deploy */}
-                <div style={{ background: dark ? "#0a0a0c" : "#f8fafc", padding: "48px", borderLeft: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ background: dark ? "#0a0a0c" : "#f8fafc", padding: "32px", borderLeft: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                     <div>
-                        <div style={{ textAlign: "center", marginBottom: "32px" }}>
-                            <div style={{ width: "64px", height: "64px", borderRadius: "20px", background: theme.accent, color: "white", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", boxShadow: `0 20px 40px ${theme.accent}33` }}>
-                                <Zap size={32} />
+                        <div style={{ textAlign: "center", marginBottom: "24px" }}>
+                            <div style={{ width: "48px", height: "48px", borderRadius: "16px", background: theme.accent, color: "white", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", boxShadow: `0 15px 30px ${theme.accent}33` }}>
+                                <Zap size={24} />
                             </div>
-                            <h3 style={{ fontSize: "18px", fontWeight: 1000, margin: 0 }}>Ready for Uplink</h3>
-                            <p style={{ fontSize: "13px", color: theme.textMuted, marginTop: "6px" }}>The neural model is optimized for high conversion.</p>
+                            <h3 style={{ fontSize: "16px", fontWeight: 1000, margin: 0 }}>Ready for Uplink</h3>
+                            <p style={{ fontSize: "11px", color: theme.textMuted, marginTop: "4px" }}>The model is optimized for conversion.</p>
                         </div>
 
-                        <div style={{ background: theme.surface, borderRadius: "20px", padding: "20px", border: `1px solid ${theme.border}` }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", fontSize: "10px", fontWeight: 900, opacity: 0.5 }}>
+                        <div style={{ background: theme.surface, borderRadius: "16px", padding: "16px", border: `1px solid ${theme.border}` }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px", fontSize: "9px", fontWeight: 900, opacity: 0.5 }}>
                                 <span>SIMULATED IMPACT</span>
                                 <span>CONFIDENCE: 94%</span>
                             </div>
-                            <div style={{ height: "4px", background: theme.bg, borderRadius: "2px", overflow: "hidden", marginBottom: "16px" }}>
+                            <div style={{ height: "3px", background: theme.bg, borderRadius: "2px", overflow: "hidden", marginBottom: "12px" }}>
                                 <div style={{ height: "100%", background: theme.accentSecondary, width: "94%" }} />
                             </div>
-                            <div style={{ fontSize: "12px", color: theme.accentSecondary, fontWeight: 800 }}>+ Strategy validated against historical data</div>
-                            <div style={{ fontSize: "12px", color: theme.accentSecondary, fontWeight: 800, marginTop: "4px" }}>+ Optimal for {editingData.audience?.toLowerCase()}</div>
+                            <div style={{ fontSize: "11px", color: theme.accentSecondary, fontWeight: 800 }}>+ Strategy validated</div>
+                            <div style={{ fontSize: "11px", color: theme.accentSecondary, fontWeight: 800, marginTop: "4px" }}>+ Optimal for target</div>
                         </div>
                     </div>
 
-                    <div style={{ display: "grid", gap: "12px" }}>
+                    <div style={{ display: "grid", gap: "10px" }}>
                         <button 
                             disabled={isDeploying}
-                            onClick={handleDeploy}
+                            onClick={() => handleDeploy()}
                             style={{ 
                                 background: theme.accent, 
                                 color: "#fff", 
                                 border: "none", 
-                                padding: "20px", 
-                                borderRadius: "18px", 
+                                padding: "16px", 
+                                borderRadius: "14px", 
                                 fontWeight: 900, 
-                                fontSize: "16px", 
+                                fontSize: "14px", 
                                 cursor: "pointer",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                gap: "12px",
-                                boxShadow: `0 10px 30px ${theme.accent}44`
+                                gap: "10px",
+                                boxShadow: `0 10px 25px ${theme.accent}44`
                             }}
                         >
-                            {isDeploying ? <Loader2 size={20} className="animate-spin" /> : <Rocket size={20} />}
+                            {isDeploying ? <Loader2 size={18} className="animate-spin" /> : <Rocket size={18} />}
                             {isDeploying ? "DEPLOYING..." : "DEPLOY STRATEGY"}
                         </button>
                         <button 
                             onClick={() => setEditingData(null)}
-                            style={{ background: "transparent", border: `1px solid ${theme.border}`, color: theme.text, padding: "16px", borderRadius: "18px", fontWeight: 800, fontSize: "14px", cursor: "pointer" }}
+                            style={{ background: "transparent", border: `1px solid ${theme.border}`, color: theme.text, padding: "12px", borderRadius: "14px", fontWeight: 800, fontSize: "12px", cursor: "pointer" }}
                         >
-                            Discard Model
+                            Discard
                         </button>
                     </div>
                 </div>
@@ -640,10 +683,10 @@ const modalInputStyle = (theme, isSelect) => ({
     width: "100%",
     background: theme.bg,
     border: `1px solid ${theme.border}`,
-    borderRadius: "14px",
-    padding: "16px",
+    borderRadius: "12px",
+    padding: "12px",
     color: theme.text,
-    fontSize: "15px",
+    fontSize: "14px",
     fontWeight: 600,
     outline: "none",
     fontFamily: "inherit",
@@ -671,8 +714,8 @@ const overlayStyle = {
     left: 0,
     width: "100%",
     height: "100%",
-    background: "rgba(0,0,0,0.8)",
-    backdropFilter: "blur(12px)",
+    background: "rgba(0,0,0,0.4)",
+    backdropFilter: "blur(6px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",

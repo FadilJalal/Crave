@@ -4,6 +4,7 @@ import ConfirmationModal from "../components/ConfirmationModal";
 import { api } from "../utils/api";
 import { useTheme } from "../ThemeContext";
 import { Sparkles, Loader2, Send, History, PenLine, Trash2, Megaphone, X } from "lucide-react";
+import { toast } from "react-toastify";
 
 const TYPES = [
   { key: "offer", label: "Special Offer", color: "#ff4e2a", desc: "Discount or limited-time deal" },
@@ -186,7 +187,7 @@ export default function EmailCampaign() {
         setAiPrompt("");
       }
     } catch {
-      alert("AI Generation failed.");
+      toast.error("AI Generation failed.");
     } finally {
       setAiGenerating(false);
     }
@@ -576,7 +577,7 @@ export default function EmailCampaign() {
 
             {/* HIGH FIDELITY PREVIEW */}
             <div style={{ position: "sticky", top: 20 }}>
-              <label style={lbl}>Real-Time Mobile Preview</label>
+              <label style={{ ...lbl, textAlign: "center" }}>Real-Time Mobile Preview</label>
               <div style={{
                 border: dark ? "10px solid #1e293b" : "10px solid #0f172a",
                 borderRadius: 48,
@@ -595,17 +596,17 @@ export default function EmailCampaign() {
                 </div>
 
                 <div style={{ flex: 1, overflowY: "auto", background: dark ? "#0f172a" : "white" }}>
-                  <div style={{ background: accentColor, padding: "32px 24px", textAlign: "center" }}>
+                  <div style={{ background: accentColor, padding: "32px 24px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                     <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>{restaurantName}</div>
-                    <div style={{ color: "white", fontWeight: 1000, fontSize: 24, lineHeight: 1.2 }}>{heading || "Headline Goes Here"}</div>
+                    <div style={{ color: "white", fontWeight: 1000, fontSize: 24, lineHeight: 1.2, textAlign: "center" }}>{heading || "Headline Goes Here"}</div>
                   </div>
 
-                  <div style={{ padding: "30px 24px" }}>
+                  <div style={{ padding: "40px 24px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "340px" }}>
                     {personalize && <p style={{ fontSize: 13, color: dark ? "#f1f5f9" : "#1e293b", margin: "0 0 12px", fontWeight: 800 }}>Hi Fadil Jalal,</p>}
-                    <p style={{ fontSize: 14, color: dark ? "#cbd5e1" : "#475569", lineHeight: 1.7, margin: "0 0 28px", whiteSpace: "pre-line" }}>{body || "Your creative copy will materialize here. Use AI to generate something that wows your customers."}</p>
+                    <p style={{ fontSize: 14, color: dark ? "#cbd5e1" : "#475569", lineHeight: 1.7, margin: "0 0 28px", whiteSpace: "pre-line", textAlign: "center" }}>{body || "Your creative copy will materialize here. Use AI to generate something that wows your customers."}</p>
 
                     {ctaText && (
-                      <div style={{ textAlign: "center" }}>
+                      <div style={{ textAlign: "center", marginTop: "auto" }}>
                         <div style={{ display: "inline-block", background: accentColor, color: "white", padding: "14px 28px", borderRadius: 12, fontWeight: 1000, fontSize: 15, boxShadow: `0 8px 18px ${accentColor}40` }}>{ctaText.toUpperCase()}</div>
                       </div>
                     )}

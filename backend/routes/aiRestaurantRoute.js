@@ -15,7 +15,7 @@ import { groqChat } from "../utils/groqClient.js";
 const router = express.Router();
 
 const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama3-70b-8192";
 
 
 // AI-powered review reply generation
@@ -96,12 +96,6 @@ async function ensureEnterpriseSubscription(restaurantId) {
   return { ok: true, restaurant };
 }
 
-function csvCell(value) {
-  const raw = value == null ? "" : String(value);
-  const escaped = raw.replace(/"/g, '""');
-  return `"${escaped}"`;
-}
-
 function segmentTypeFromUserStats({ orders, spending, daysSinceLast, daysActive }) {
   if (orders >= 20 && spending > 500) return "VIP";
   if (orders >= 10 && daysSinceLast < 30) return "Loyal";
@@ -109,6 +103,12 @@ function segmentTypeFromUserStats({ orders, spending, daysSinceLast, daysActive 
   if (orders === 1 && daysSinceLast < 7) return "New";
   if (daysSinceLast > 60 && daysActive > 30) return "At Risk";
   return "Regular";
+}
+
+function csvCell(value) {
+  const raw = value == null ? "" : String(value);
+  const escaped = raw.replace(/"/g, '""');
+  return `"${escaped}"`;
 }
 
 function parseFirstJsonObject(rawText = "") {
@@ -194,14 +194,14 @@ async function getGroqSegmentInsights({ segmentStats, metrics }) {
   };
 }
 
-async function generateGroqCampaignScript({ restaurantName, segmentType, supportersOnly }) {
+async function generateGroqCampaignScript({ restaurantName, segmentType, supportersOnly, userPrompt }) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     return {
       aiUsed: false,
       script: supportersOnly
-        ? `Hi! As one of our top ${segmentType} supporters at ${restaurantName}, enjoy an exclusive offer this week. Use code VIP20 and treat yourself today.`
-        : `Hi! Special offer for our ${segmentType} customers at ${restaurantName}. Enjoy this limited-time deal and order now.`,
+        ? `Hi! As one of our top ${segmentType} supporters at ${restaurantName}, we'd love to see you again. Check out our latest specials today!`
+        : `Hi! We have a special update for our ${segmentType} customers at ${restaurantName}. Order now and enjoy your favorite meal!`,
     };
   }
 
@@ -212,7 +212,7 @@ async function generateGroqCampaignScript({ restaurantName, segmentType, support
       maxChars: 280,
       plainTextOnly: true,
       includeEmoji: true,
-      includeUrgency: true,
+      includeUrgency: false, // Don't force urgency if not requested
       includeClearCTA: true,
       noMarkdown: true,
       noQuotes: true,
@@ -222,6 +222,7 @@ async function generateGroqCampaignScript({ restaurantName, segmentType, support
       segmentType,
       audience: supportersOnly ? "Top supporters in this segment" : "All customers in this segment",
       tone: "Friendly, premium, action-oriented",
+      managerInstruction: userPrompt || "Write a warm welcome or update for these customers"
     },
   };
 
@@ -230,7 +231,7 @@ async function generateGroqCampaignScript({ restaurantName, segmentType, support
       {
         role: "system",
         content:
-          "You are a restaurant campaign copywriter. Return only the final message as plain text, no preface, no markdown.",
+          "You are a professional restaurant marketing assistant. Your TOP PRIORITY is to follow the 'managerInstruction' provided in the context. If the manager just wants to say 'Hi' or give an update without a discount, DO NOT add a promo code or percentage off. Keep it concise (1-2 sentences).",
       },
       {
         role: "user",
@@ -238,6 +239,7 @@ async function generateGroqCampaignScript({ restaurantName, segmentType, support
       },
     ],
     temperature: 0.7,
+    jsonMode: false,
   });
 
   const script = String(content || "").trim();
@@ -707,6 +709,7 @@ router.post("/generate-campaign-ai", restaurantAuth, async (req, res) => {
 router.post("/generate-campaign-script", restaurantAuth, requireFeature("aiCustomerSegmentation"), async (req, res) => {
   try {
     const segmentType = String(req.body?.segmentType || "").trim();
+    const userPrompt = String(req.body?.prompt || "").trim();
     const supportersOnly = Boolean(req.body?.supportersOnly);
     if (!segmentType) {
       return res.json({ success: false, message: "segmentType is required" });
@@ -724,14 +727,15 @@ router.post("/generate-campaign-script", restaurantAuth, requireFeature("aiCusto
         restaurantName: restaurant.name,
         segmentType,
         supportersOnly,
+        userPrompt
       });
     } catch (aiErr) {
       console.warn("[ai/generate-campaign-script][groq] fallback:", aiErr.message);
       generated = {
         aiUsed: false,
         script: supportersOnly
-          ? `Hi! As one of our top ${segmentType} supporters at ${restaurant.name}, enjoy an exclusive reward this week. Order now and claim your benefit today.`
-          : `Hi! Special offer for our ${segmentType} customers from ${restaurant.name}. Don’t miss this limited-time deal and order now.`,
+          ? `Hi! As one of our top ${segmentType} supporters at ${restaurant.name}, we'd love to see you again. Check out our latest specials today!`
+          : `Hi! We have a special update for our ${segmentType} customers at ${restaurant.name}. Order now and enjoy your favorite meal!`,
       };
     }
 
@@ -830,7 +834,7 @@ router.post("/create-campaign", restaurantAuth, requireFeature("aiCustomerSegmen
           email: uMap[uid]?.email || "",
         };
       })
-      .filter((r) => r.segment === segmentType && r.email);
+      .filter((r) => (segmentType === "All" || r.segment === segmentType) && r.email);
 
     if (supportersOnly) {
       recipients = recipients

@@ -6,7 +6,7 @@ export default function QuickActions({ dark = false }) {
   const actions = [
     { id: 1, title: "Add Food", sub: "New menu item", icon: "🍔", route: "/add-food" },
     { id: 2, title: "Orders", sub: "Manage active orders", icon: "📦", route: "/orders" },
-    { id: 3, title: "Analytics", sub: "Performance growth", icon: "📈", route: "/analytics" },
+    { id: 3, title: "Analytics", sub: "Performance growth", icon: "📈", route: "/revenue" },
     { id: 4, title: "Menu", sub: "Full item listing", icon: "📜", route: "/menu" },
     { id: 5, title: "Inventory", sub: "Stock & Recipes", icon: "🥫", route: "/inventory" },
     { id: 6, title: "Reviews", sub: "Customer feedback", icon: "💬", route: "/reviews" },
