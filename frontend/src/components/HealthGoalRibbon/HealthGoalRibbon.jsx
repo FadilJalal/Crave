@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { StoreContext } from '../../context/StoreContext';
-import { Activity, ShieldCheck, Search } from 'lucide-react';
+import { Activity, ShieldCheck, Search, X } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 import './HealthGoalRibbon.css';
 
@@ -27,6 +27,16 @@ const HealthGoalRibbon = () => {
         }
     };
 
+    const clearGoal = () => {
+        setCustomQuery("");
+        updateHealthProfile("None");
+    };
+
+    const selectGoal = (goalId) => {
+        setCustomQuery("");
+        updateHealthProfile(goalId);
+    };
+
     return (
         <section className="hr-section">
             <div className="hr-container">
@@ -44,12 +54,39 @@ const HealthGoalRibbon = () => {
 
                 <div className="hr-card-main">
                     <form className="hr-search-bar" onSubmit={handleSearch}>
-                        <input 
-                            type="text" 
-                            placeholder="e.g. Low sodium, gluten free, or zero sugar options..." 
-                            value={customQuery}
-                            onChange={(e) => setCustomQuery(e.target.value)}
-                        />
+                        <div className="hr-input-wrapper" style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+                            <input 
+                                type="text" 
+                                placeholder="e.g. Low sodium, gluten free, or zero sugar options..." 
+                                value={customQuery}
+                                onChange={(e) => setCustomQuery(e.target.value)}
+                                style={{ width: '100%' }}
+                            />
+                            {(customQuery || (healthGoal !== "None" && !GOALS.some(g => g.id === healthGoal))) && (
+                                <button 
+                                    type="button" 
+                                    className="hr-clear-btn" 
+                                    onClick={clearGoal}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '12px',
+                                        background: 'rgba(0,0,0,0.05)',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: '24px',
+                                        height: '24px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        color: '#64748b',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
                         <button type="submit" className="hr-find-btn">FIND MATCH</button>
                     </form>
 
@@ -59,7 +96,7 @@ const HealthGoalRibbon = () => {
                                 key={g.id}
                                 className={`hr-goal-card ${healthGoal === g.id ? "active" : ""}`}
                                 style={{ "--accent": g.color }}
-                                onClick={() => updateHealthProfile(g.id)}
+                                onClick={() => selectGoal(g.id)}
                             >
                                 <span className="goal-emoji">{g.emoji}</span>
                                 <span className="goal-label">{g.label}</span>

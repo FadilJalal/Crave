@@ -698,22 +698,29 @@ router.post("/nutrition-scan", authMiddleware, async (req, res) => {
       let score = 0;
       let reason = "";
 
-      // Quick rules for scoring
-      if (healthGoal === "Vegan") {
+      // Quick rules for scoring (Fuzzy Matching)
+      if (/vegan/i.test(healthGoal)) {
         if (tags.includes("vegan")) { score = 100; reason = "Certified Plant-Based"; }
         else if (tags.includes("vegetarian")) { score = 40; reason = "Vegetarian (Contains Dairy)"; }
-      } else if (healthGoal === "Keto") {
+      } else if (/keto/i.test(healthGoal)) {
         if (tags.includes("keto")) { score = 95; reason = "Ideal Low-Carb Choice"; }
         else if (/grilled|steam|boiled/i.test(text) && !/rice|bread|pasta|sugar/i.test(text)) { score = 75; reason = "Keto-friendly preparation"; }
-      } else if (healthGoal === "High Protein") {
-        if (/protein|chicken|beef|steak|fish|paneer|egg|lentil|tofu/i.test(text)) { score = 90; reason = "Excellent source of protein"; }
-      } else if (healthGoal === "Low Carb") {
+      } else if (/protein/i.test(healthGoal)) {
+        if (/protein|chicken|beef|steak|fish|paneer|egg|lentil|tofu|lamb|meat|tuna|salmon|shrimp|prawn|whey|yogurt|curd/i.test(text)) { score = 90; reason = "Excellent source of protein"; }
+      } else if (/low carb|no carb/i.test(healthGoal)) {
         if (!/rice|bread|pasta|noodle|potato|fries/i.test(text)) { score = 85; reason = "Naturally low in carbs"; }
-      } else if (/party|sharing|family|group/i.test(healthGoal)) {
+      } else if (/budget|cheap|low price|value/i.test(healthGoal)) {
+        if (f.price <= 25) { score = 95; reason = "Best value for your budget"; }
+        else if (f.price <= 35) { score = 75; reason = "Great affordable option"; }
+        else if (f.price > 50) { score = 0; reason = "Exceeds low-budget target"; }
+      } else if (/healthy|clean|fit/i.test(healthGoal)) {
+        if (/salad|grilled|steam|fresh|organic|bowl|green/i.test(text) && !/fried|crispy|sugar|creamy/i.test(text)) { score = 90; reason = "Clean & nutritious choice"; }
+        else if (/grilled|boiled/i.test(text)) { score = 70; reason = "Healthy preparation style"; }
+      } else if (/party|sharing|family|group|together/i.test(healthGoal)) {
         if (/bucket|combo|box|platter|serves|pack|quantity|servings|pcs|pieces/i.test(text)) { 
-          score = 90; reason = "Perfect for sharing & groups"; 
+          score = 95; reason = "Perfect for sharing & groups"; 
         } else if (/large|family|party/i.test(text)) {
-          score = 75; reason = "Good portion size for multiple people";
+          score = 80; reason = "Ideal for multiple people";
         }
       }
 

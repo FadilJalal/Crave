@@ -4,6 +4,8 @@ import { StoreContext } from '../../Context/StoreContext';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
+import { ArrowLeft } from 'lucide-react';
+
 const Wallet = () => {
     const { walletBalance, walletHistory, token, currency, fetchWalletBalance } = useContext(StoreContext);
     const { t } = useTranslation();
@@ -18,7 +20,10 @@ const Wallet = () => {
     }, [token]);
 
     return (
-        <div className="wallet-container">
+        <div className="wallet-container" style={{ position: 'relative' }}>
+            <button className="back-btn-wallet" onClick={() => navigate(-1)}>
+                <ArrowLeft size={20} />
+            </button>
             <div className="wallet-header">
                 <h2>Crave Wallet</h2>
                 <div className="wallet-balance-card">

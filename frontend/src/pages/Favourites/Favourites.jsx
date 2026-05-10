@@ -2,15 +2,20 @@ import React, { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import "./Favourites.css";
 import { StoreContext } from "../../Context/StoreContext";
-import { Heart } from "lucide-react";
+import { Heart, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import FoodItem from "../../components/FoodItem/FoodItem";
 
 export default function Favourites() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { favourites = [], food_list = [] } = useContext(StoreContext);
 
   return (
     <div className="favourites-page-main">
+      <button className="back-btn-fav" onClick={() => navigate(-1)}>
+        <ArrowLeft size={20} />
+      </button>
       <h2 className="favourites-title">
         <Heart className="favourites-heart" fill="#ff3a0a" stroke="#ff3a0a" /> {t("my_favourites")}
       </h2>

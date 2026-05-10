@@ -26,11 +26,11 @@
 
 /* ── Cinematic Header ── */
 .mp-header {
-    text-align: left;
+    text-align: center;
     margin-bottom: 40px;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
 }
 
 .mp-badge-ai {
@@ -80,6 +80,8 @@
     font-weight: 600;
     margin-top: 16px;
     max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* ── Main Glass Card ── */
@@ -284,8 +286,8 @@
 
 .mp-grid-display {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 40px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 22px;
 }
 
 .mp-item-card {
@@ -392,6 +394,7 @@
     .mp-input { background: white; border-radius: 18px; margin-bottom: 12px; border: 1px solid rgba(0,0,0,0.05); }
     .mp-match-btn { padding: 18px; width: 100%; border-radius: 18px; }
     .mp-moods-grid { grid-template-columns: repeat(2, 1fr); }
+    .mp-grid-display { grid-template-columns: repeat(2, 1fr); gap: 12px; }
 }
 
 

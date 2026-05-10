@@ -47,7 +47,19 @@ const KDS                   = lazy(() => import("./Pages/KDS"));
 export default function App() {
   return (
     <>
-      <ToastContainer theme="dark" position="top-center" autoClose={3000} />
+      <ToastContainer 
+        theme="dark" 
+        position="top-center" 
+        autoClose={3000} 
+        toastStyle={{ 
+          background: "#0b1220", 
+          border: "1px solid rgba(255,255,255,0.12)", 
+          borderRadius: "16px",
+          color: "#fff",
+          fontWeight: 700,
+          boxShadow: "0 15px 40px rgba(0,0,0,0.4)"
+        }}
+      />
       <Suspense fallback={<PageSkeleton />}>
         <Routes>
           {/* Public */}

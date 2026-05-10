@@ -167,10 +167,12 @@ const AdminChat = () => {
                   background: m.role === "assistant" 
                     ? (dark ? "rgba(255,255,255,0.08)" : "#f3f4f6") 
                     : "linear-gradient(135deg, #6366f1, #4f46e5)",
-                  color: "#fff",
+                  color: m.role === "assistant" 
+                    ? (dark ? "#ffffff" : "#1f2937") 
+                    : "#ffffff",
                   fontSize: "13.5px",
-                  lineHeight: 1.6,
-                  fontWeight: 500,
+                  lineHeight: 1.55,
+                  fontWeight: 600,
                   boxShadow: m.role === "user" ? "0 4px 12px rgba(99, 102, 241, 0.2)" : "none",
                   whiteSpace: "pre-wrap"
                 }}

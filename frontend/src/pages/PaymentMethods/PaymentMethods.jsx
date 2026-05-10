@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { StoreContext } from "../../Context/StoreContext";
@@ -20,6 +22,7 @@ function CardBrandIcon({ brand }) {
 
 export default function PaymentMethods() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [cards, setCards] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -143,6 +146,9 @@ export default function PaymentMethods() {
 
   return (
     <main className="pm-main-bg">
+      <button className="back-btn-pm" onClick={() => navigate(-1)}>
+        <ArrowLeft size={20} />
+      </button>
       <section className="pm-section">
         <header className="pm-header">
           <h1 className="pm-title-pro">{t("payment_methods")}</h1>

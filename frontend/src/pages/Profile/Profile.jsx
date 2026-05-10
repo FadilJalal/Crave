@@ -1,48 +1,104 @@
-import React from "react";
+import React, { useContext } from "react";
 import { useTranslation } from "react-i18next";
+import { User, Mail, Phone, MapPin, Shield, Bell, CreditCard, LogOut, ArrowLeft, ChevronRight } from "lucide-react";
+import { StoreContext } from "../../Context/StoreContext";
 import "./Profile.css";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
   const { t } = useTranslation();
+  const { userData, setToken } = useContext(StoreContext);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    setToken("");
+    localStorage.removeItem("token");
+    navigate("/");
+  };
+
+  if (!userData) return <div className="profile-loading">{t("syncing_profile")}</div>;
+
   return (
     <div className="profile-page">
-      <div className="profile-row">
-        <div className="profile-card taste-profile">
-          <div className="profile-card-header">
-            <span className="profile-icon" role="img" aria-label="Taste Profile">📊</span>
-            <div>
-              <div className="profile-card-title">{t("your_taste_profile")}</div>
-              <div className="profile-card-desc">{t("based_on_orders")}</div>
+      <div className="profile-container">
+        <button className="back-btn" onClick={() => navigate(-1)}>
+          <ArrowLeft size={20} />
+        </button>
+
+        {/* MAIN IDENTITY CARD */}
+        <div className="profile-card main-identity">
+          <header className="profile-header">
+            <div className="avatar-wrapper">
+              <div className="user-avatar-large">
+                {userData.name ? userData.name.charAt(0).toUpperCase() : "U"}
+              </div>
             </div>
-          </div>
-          <div className="profile-bar-row">
-            <span className="profile-bar-label">🍗 {t("chicken_buckets")}</span>
-            <div className="profile-bar">
-              <div className="profile-bar-fill" style={{width: '100%'}}></div>
+            <div className="user-intro">
+              <h1>{userData.name || "User"}</h1>
+              <p className="member-tag">{t("member_since")} 2026</p>
             </div>
-            <span className="profile-bar-percent">100%</span>
+          </header>
+
+          <div className="profile-content">
+            <h3 className="section-label-pro">{t("personal_information")}</h3>
+            
+            <div className="info-grid-pro">
+              <div className="info-row-pro">
+                <div className="icon-box"><User size={18} /></div>
+                <div className="info-details">
+                  <label>{t("full_name")}</label>
+                  <p>{userData.name || "—"}</p>
+                </div>
+              </div>
+
+              <div className="info-row-pro">
+                <div className="icon-box"><Mail size={18} /></div>
+                <div className="info-details">
+                  <label>{t("email_address")}</label>
+                  <p>{userData.email || "—"}</p>
+                </div>
+              </div>
+
+              <div className="info-row-pro">
+                <div className="icon-box"><Phone size={18} /></div>
+                <div className="info-details">
+                  <label>{t("phone_number")}</label>
+                  <p>{userData.phone || t("no_phone_linked")}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="profile-card order-again">
-          <div className="profile-card-header">
-            <span className="profile-icon" role="img" aria-label="Order Again">🔄</span>
-            <div>
-              <div className="profile-card-title">{t("order_again")}</div>
-              <div className="profile-card-desc">{t("your_recent_favourites")}</div>
+
+        {/* ACCOUNT MANAGEMENT CARD */}
+        <div className="profile-card actions-card">
+          <h3 className="section-label-pro">{t("account_management")}</h3>
+          
+          <div className="action-grid-pro">
+            <div className="action-row-pro" onClick={() => navigate('/addresses')}>
+              <div className="icon-box blue"><MapPin size={18} /></div>
+              <span>{t("saved_addresses")}</span>
+              <ChevronRight size={16} className="chevron" />
             </div>
-          </div>
-          <div className="profile-order-row">
-            <img className="profile-order-img" src="https://images.ctfassets.net/9tka4b3550oc/4QkQwZr2Q2Q2Q2Q2Q2Q2Q2/15PCStrips.png" alt="15 PC Strips" />
-            <div className="profile-order-info">
-              <div className="profile-order-title">{t("15_pc_strips")}</div>
-              <div className="profile-order-price">{t("aed_52")}</div>
+
+            <div className="action-row-pro" onClick={() => navigate('/settings')}>
+              <div className="icon-box purple"><Bell size={18} /></div>
+              <span>{t("notification_settings")}</span>
+              <ChevronRight size={16} className="chevron" />
             </div>
-            <button className="profile-add-btn">{t("add")}</button>
+
+            <div className="action-row-pro" onClick={() => navigate('/settings')}>
+              <div className="icon-box green"><Shield size={18} /></div>
+              <span>{t("security_privacy")}</span>
+              <ChevronRight size={16} className="chevron" />
+            </div>
+
+            <div className="action-row-pro logout" onClick={handleLogout}>
+              <div className="icon-box red"><LogOut size={18} /></div>
+              <span>{t("log_out")}</span>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="profile-refresh-row">
-        <button className="profile-refresh-btn">{t("refresh")}</button>
       </div>
     </div>
   );

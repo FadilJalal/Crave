@@ -106,7 +106,8 @@ const registerUser = async (req, res) => {
 
 const getProfile = async (req, res) => {
   try {
-    const user = await userModel.findById(req.body.userId).select("name email phone savedAddresses");
+    const userId = req.userId || req.body.userId;
+    const user = await userModel.findById(userId).select("name email phone savedAddresses");
     if (!user) return res.json({ success: false, message: "User not found" });
     res.json({ success: true, user });
   } catch (error) {
@@ -217,7 +218,8 @@ const setDefaultAddress = async (req, res) => {
 
 const getHealthProfile = async (req, res) => {
   try {
-    const user = await userModel.findById(req.body.userId).select("healthGoal allergies");
+    const userId = req.userId || req.body.userId;
+    const user = await userModel.findById(userId).select("healthGoal allergies");
     if (!user) return res.json({ success: false, message: "User not found" });
     res.json({ success: true, profile: { healthGoal: user.healthGoal || "None", allergies: user.allergies || [] } });
   } catch (error) {
@@ -239,10 +241,36 @@ const updateHealthProfile = async (req, res) => {
   }
 };
 
+const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.userId || req.body.userId;
+
+    const user = await userModel.findById(userId);
+    if (!user) return res.json({ success: false, message: "User not found" });
+
+    // Verify old password
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) return res.json({ success: false, message: "Incorrect old password" });
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ success: true, message: "Password changed successfully" });
+  } catch (error) {
+    res.json({ success: false, message: "Failed to change password" });
+  }
+};
+
 export {
   googleLogin,
   loginUser,
   registerUser,
+  changePassword,
   getProfile,
   updateProfile,
   getAddresses,

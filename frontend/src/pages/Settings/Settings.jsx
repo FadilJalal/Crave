@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { User, Lock, Bell, ChevronRight, Mail, Phone, Smartphone, MapPin, CreditCard, LogOut, Heart, Activity, Leaf, ShieldAlert } from "lucide-react";
+import { User, Lock, Bell, ChevronRight, Mail, Phone, Smartphone, MapPin, CreditCard, LogOut, Heart, Activity, Leaf, ShieldAlert, ArrowLeft } from "lucide-react";
 import { StoreContext } from "../../context/StoreContext";
 import "./Settings.css";
 
 const Settings = () => {
 	const { t, i18n } = useTranslation();
-	const { healthGoal, updateHealthProfile, token } = React.useContext(StoreContext);
+	const { healthGoal, updateHealthProfile, token, userData, updateUserProfile } = React.useContext(StoreContext);
 	const [notifications, setNotifications] = useState({ email: true, sms: false, push: true });
 	const navigate = useNavigate();
 
@@ -27,7 +27,10 @@ const Settings = () => {
 
 	return (
 		<div className="settings-container">
-			<div className="settings-card">
+			<div className="settings-card" style={{ position: 'relative' }}>
+				<button className="back-btn-settings" onClick={() => navigate(-1)}>
+					<ArrowLeft size={20} />
+				</button>
 				<header className="settings-header">
 					<h2 className="settings-title">{t("settings")}</h2>
 					<p className="settings-subtitle">{t("settings_subtitle")}</p>
@@ -41,10 +44,30 @@ const Settings = () => {
 							<div className="item-icon"><User size={20} /></div>
 							<div className="item-content">
 								<span className="item-title">{t("profile_information")}</span>
-								<span className="item-desc">John Doe • john@example.com</span>
+								<span className="item-desc">{userData?.name || "Guest"} • {userData?.email || "No email"}</span>
 							</div>
 							<ChevronRight size={18} className="chevron" style={{ transform: i18n.language === 'ar' ? 'scaleX(-1)' : 'none' }} />
 						</div>
+
+						<div className="settings-item phone-update-item">
+							<div className="item-icon"><Smartphone size={20} /></div>
+							<div className="item-content">
+								<span className="item-title">{t("phone_number")}</span>
+								<div className="phone-input-group">
+									<input 
+										type="tel" 
+										placeholder={t("enter_phone")} 
+										defaultValue={userData?.phone || ""} 
+										id="settings-phone-input"
+									/>
+									<button className="save-phone-btn" onClick={() => {
+										const val = document.getElementById('settings-phone-input').value;
+										updateUserProfile({ phone: val });
+									}}>{t("save")}</button>
+								</div>
+							</div>
+						</div>
+
 						<div className="settings-item" onClick={() => navigate('/addresses')} tabIndex={0} role="button">
 							<div className="item-icon"><MapPin size={20} /></div>
 							<div className="item-content">

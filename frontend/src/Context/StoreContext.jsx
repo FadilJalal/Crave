@@ -12,6 +12,7 @@ const StoreContextProvider = (props) => {
   /** Canonical restaurant docs keyed by id — keeps menu cards in sync with /restaurant/list */
   const [restaurantsById, setRestaurantsById] = useState({});
   const [token, setToken] = useState("");
+  const [userData, setUserData] = useState(null);
   const currency = "AED ";
   // cartItems: { cartKey -> { itemId, quantity, selections, extraPrice } }
   const [cartItems, setCartItems] = useState(() => {
@@ -436,6 +437,51 @@ const StoreContextProvider = (props) => {
     } catch {}
   };
 
+  const fetchUserProfile = async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get(url + "/api/user/profile", { headers: { token } });
+      if (res.data.success) {
+        setUserData(res.data.user);
+      }
+    } catch {}
+  };
+
+  const updateUserProfile = async (data) => {
+    if (!token) return;
+    try {
+      const res = await axios.put(url + "/api/user/profile", data, { headers: { token } });
+      if (res.data.success) {
+        fetchUserProfile();
+        toast.success(res.data.message || "Profile updated");
+        return true;
+      } else {
+        toast.error(res.data.message || "Update failed");
+        return false;
+      }
+    } catch {
+      toast.error("Failed to update profile");
+      return false;
+    }
+  };
+
+  const changePassword = async (oldPassword, newPassword) => {
+    if (!token) return;
+    try {
+      const res = await axios.post(url + "/api/user/change-password", { oldPassword, newPassword }, { headers: { token } });
+      if (res.data.success) {
+        toast.success("Password changed successfully");
+        return true;
+      } else {
+        toast.error(res.data.message || "Failed to change password");
+        return false;
+      }
+    } catch {
+      toast.error("An error occurred");
+      return false;
+    }
+  };
+
   const updateHealthProfile = async (newGoal) => {
     if (!token) return;
     try {
@@ -478,6 +524,7 @@ const StoreContextProvider = (props) => {
         fetchAddresses();
         fetchWalletBalance();
         fetchHealthProfile();
+        fetchUserProfile();
     }
   }, [token]);
 
@@ -550,7 +597,9 @@ const StoreContextProvider = (props) => {
     // Wallet
     walletBalance, walletHistory, fetchWalletBalance,
     // Health Profile
-    healthGoal, nutritionMatches, updateHealthProfile, fetchHealthProfile
+    healthGoal, nutritionMatches, updateHealthProfile, fetchHealthProfile,
+    // User Profile
+    userData, fetchUserProfile, updateUserProfile, changePassword
   };
 
   return (

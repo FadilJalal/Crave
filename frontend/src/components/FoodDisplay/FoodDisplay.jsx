@@ -83,7 +83,7 @@ const FoodDisplay = ({ category }) => {
           <div className="fd-no-match-alert">
             <div className="fd-no-match-icon">🧬</div>
             <div className="fd-no-match-text">
-              <h4>No direct {healthGoal} matches here.</h4>
+              <h4>No direct matches for "{healthGoal}" here.</h4>
               <p>The AI suggests exploring other categories or customizing these items to fit your goal.</p>
             </div>
             <button className="fd-ai-help-btn" onClick={() => window.scrollTo(0, 0)}>Change Goal <ArrowRight size={14} /></button>

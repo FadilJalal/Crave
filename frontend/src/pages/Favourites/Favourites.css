@@ -6,6 +6,30 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
+  padding-top: 40px;
+}
+.back-btn-fav {
+  position: absolute;
+  left: 20px;
+  top: 40px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+}
+.back-btn-fav:hover {
+    background: var(--bg);
+    transform: translateX(-4px);
 }
 .favourites-title {
   font-size: 2.9rem;

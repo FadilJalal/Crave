@@ -162,9 +162,6 @@ const MyOrders = () => {
     });
 
     list.sort((a, b) => {
-      const aDelivered = (a.status || '').toLowerCase().trim() === 'delivered';
-      const bDelivered = (b.status || '').toLowerCase().trim() === 'delivered';
-      if (aDelivered !== bDelivered) return aDelivered ? 1 : -1;
       if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
       if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
       if (sortBy === 'highest') return getOrderDisplayTotal(b) - getOrderDisplayTotal(a);
@@ -348,6 +345,36 @@ const MyOrders = () => {
                           : <><span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--brand)', marginRight: 4, animation: 'pulse 1.5s infinite' }} />{getStatusLabel(order.status, false, false, t)}</>
                         }
                       </span>
+
+                      {/* Shared Delivery Badge */}
+                      {(order.isSharedDelivery || order.deliveryPreference === 'shared') && (
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                          <span style={{ 
+                            fontSize: '10px', 
+                            fontWeight: 850, 
+                            padding: '4px 10px', 
+                            borderRadius: '20px', 
+                            background: order.isSharedDelivery ? 'rgba(16, 185, 129, 0.12)' : 'rgba(99, 102, 241, 0.12)',
+                            color: order.isSharedDelivery ? '#10b981' : '#6366f1',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            border: `1px solid ${order.isSharedDelivery ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)'}`
+                          }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                            </svg>
+                            {order.isSharedDelivery ? 'Shared Match' : 'Waiting for Match'}
+                          </span>
+                          {order.isSharedDelivery && order.sharedSavings > 0 && (
+                            <div style={{ fontSize: '11px', fontWeight: 800, color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ opacity: 0.7 }}>Saved</span> {currency}{order.sharedSavings.toFixed(2)}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 

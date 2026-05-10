@@ -42,6 +42,7 @@ const Language              = lazy(() => import('./pages/Language/Language'));
 const Settings              = lazy(() => import('./pages/Settings/Settings'));
 const Profile               = lazy(() => import('./pages/Profile/Profile'));
 const Wallet                = lazy(() => import('./pages/Wallet/Wallet'));
+const ChangePassword        = lazy(() => import('./pages/ChangePassword/ChangePassword'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -90,6 +91,7 @@ const App = () => {
                 <Route path='/settings'                     element={<div className="app-container"><Settings /></div>} />
                 <Route path='/profile'                      element={<div className="app-container"><Profile /></div>} />
                 <Route path='/wallet'                       element={<div className="app-container"><Wallet /></div>} />
+                <Route path='/change-password'              element={<div className="app-container"><ChangePassword /></div>} />
               </Routes>
             </Suspense>
           </ErrorBoundary>

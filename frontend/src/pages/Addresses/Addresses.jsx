@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import "./Addresses.css";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -20,6 +22,7 @@ L.Icon.Default.mergeOptions({
 
 export default function Addresses() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { 
     addresses, 
     addAddress, 
@@ -159,6 +162,9 @@ export default function Addresses() {
   return (
     <main className="addresses-page-main">
       <div className="addresses-container">
+        <button className="back-btn" onClick={() => navigate(-1)}>
+          <ArrowLeft size={20} />
+        </button>
 
         {/* ===== FORM ===== */}
         <section className="address-form-section">
