@@ -36,6 +36,7 @@ const rerankMoodWithGroq = async ({ foods, mood, cfg, apiKey }) => {
     '{"ranked":[{"id":"candidate_id","score":0-100,"reason":"max 5 words matching the reason"}]}',
     "\nRules:",
     "- Return up to 12 strongest matches.",
+    "- ONLY include items that positively match the mood (e.g., if 'budget', do NOT include expensive items).",
     "- Reason must explain WHY it matches the mood (e.g., 'Perfect for family sharing').",
     "- Be extremely strict with ids - they must exist in the list below.",
     "\nCandidates:",
@@ -168,17 +169,33 @@ router.post("/smart-search", async (req, res) => {
 
     const cleanSearchStr = (parsedParams.cleanSearch || "").trim();
     if (cleanSearchStr.length > 1) {
-      const sw = cleanSearchStr.split(/\s+/).filter(w => w.length > 1);
+      const normalizedSearch = cleanSearchStr.replace(/['".,-]/g, "").toLowerCase();
+      const sw = normalizedSearch.split(/\s+/).filter(w => w.length > 1);
+      
       foods = foods.map(f => {
-        const t = `${f.name} ${f.description} ${f.category}`.toLowerCase();
+        const cleanT = (str) => (str || "").toLowerCase().replace(/['".,-]/g, "");
+        const t = `${cleanT(f.name)} ${cleanT(f.description)} ${cleanT(f.category)} ${cleanT(f.restaurantId?.name)}`;
+        
         let rel = 1; // Base relevance 1 so items aren't filtered out by default
         sw.forEach(s => { if (t.includes(s)) rel += 3; });
-        if (f.name.toLowerCase().includes(cleanSearchStr)) rel += 10;
+        if (cleanT(f.name).includes(normalizedSearch)) rel += 10;
+        if (cleanT(f.restaurantId?.name).includes(normalizedSearch)) rel += 15;
+        
         return { ...f, relevance: rel };
       }).filter(f => f.relevance > 0).sort((a, b) => b.relevance - a.relevance);
     } else {
       // If no text search, just sort by "Is Flash Deal" to show best deals first
       foods = foods.sort((a, b) => (b.isFlashDeal ? 1 : -1));
+    }
+
+    let matchingRestaurants = [];
+    if (cleanSearchStr.length > 1) {
+      const normalizedSearch = cleanSearchStr.replace(/['".,-]/g, "").toLowerCase();
+      const allRests = await restaurantModel.find({ isActive: true }).lean();
+      matchingRestaurants = allRests.filter(r => {
+        const n = (r.name || "").toLowerCase().replace(/['".,-]/g, "");
+        return n.includes(normalizedSearch);
+      }).slice(0, 3);
     }
 
     if (parsedParams.dietary && parsedParams.dietary.length > 0) {
@@ -196,6 +213,7 @@ router.post("/smart-search", async (req, res) => {
     res.json({
       success: true,
       data: results,
+      restaurants: matchingRestaurants,
       count: results.length,
       parsed: {
         maxPrice: parsedParams.maxPrice,
@@ -362,11 +380,42 @@ router.post("/mood", async (req, res) => {
 
     if (customMood) {
       cfg.label = `"${customMood}"`;
+      
+      let mappedCategories = [];
+      if (requestApiKey) {
+        try {
+          const prompt = [
+            `A user is describing their mood/craving: "${customMood}".`,
+            `Identify up to 3 appropriate food categories from this strict list: [salad, rolls, deserts, sandwich, cake, pure veg, pasta, noodles, burger, pizza, biryani, grills, seafood, drinks, soup, breakfast, snacks].`,
+            `If they mention a 'bad day', 'sad', or 'comfort', choose comfort foods like burger, pizza, desserts, or cake.`,
+            `Return ONLY a JSON array of strings. Example: ["pizza", "burger"]`
+          ].join("\n");
+          
+          const raw = await groqMoodChat({
+            messages: [{ role: "system", content: "You map moods to food categories. Return valid JSON only." }, { role: "user", content: prompt }],
+            temperature: 0.2,
+            model: "llama-3.1-8b-instant"
+          });
+          
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) mappedCategories = parsed.map(c => c.toLowerCase());
+          else if (parsed.categories && Array.isArray(parsed.categories)) mappedCategories = parsed.categories.map(c => c.toLowerCase());
+        } catch (e) {
+          console.warn("[ai/mood] Failed to map custom mood to categories");
+        }
+      }
+
       const searchTerms = customMood.toLowerCase().split(/\s+/).filter(t => t.length > 2);
       
       scored = allFoods.map(f => {
         let s = 0;
         const text = `${f.name} ${f.description} ${f.category}`.toLowerCase();
+        
+        // Huge boost if it matches the AI's semantic mapping
+        if (mappedCategories.some(c => f.category?.toLowerCase().includes(c))) {
+           s += 30;
+        }
+
         searchTerms.forEach(t => {
           if (text.includes(t)) s += 5;
         });
@@ -378,15 +427,13 @@ router.post("/mood", async (req, res) => {
         else if (shareKeywords.test(text)) s += 5;
 
         return { ...f, moodScore: s };
-      }).sort((a, b) => {
+      }).filter(f => f.moodScore > 0).sort((a, b) => {
           if (b.moodScore !== a.moodScore) return b.moodScore - a.moodScore;
           return String(a._id).localeCompare(String(b._id));
       });
 
       if (requestApiKey) {
         scored = scored.slice(0, 60);
-      } else {
-        scored = scored.filter(f => f.moodScore > 0);
       }
     } else {
       // Predefined mood logic
@@ -738,7 +785,12 @@ router.post("/nutrition-scan", authMiddleware, async (req, res) => {
     const hasPredefinedGoal = ["Vegan", "Keto", "High Protein", "Low Carb"].includes(healthGoal);
     if (apiKey && (matches.some(m => m.score > 50) || !hasPredefinedGoal)) {
        try {
-         const topMatches = matches.filter(m => m.score > 50).slice(0, 5);
+         let topMatches;
+         if (!hasPredefinedGoal && !matches.some(m => m.score > 50)) {
+           topMatches = matches.slice(0, 40);
+         } else {
+           topMatches = matches.filter(m => m.score > 50).slice(0, 10);
+         }
          const candidateNames = topMatches.map(m => {
            const f = foods.find(food => String(food._id) === String(m.foodId));
            return `${f.name}: ${f.description}`;
@@ -755,6 +807,7 @@ router.post("/nutrition-scan", authMiddleware, async (req, res) => {
          const aiRaw = await groqMoodChat({
            messages: [{ role: "system", content: "Nutrition expert role." }, { role: "user", content: prompt }],
            temperature: 0.3,
+           model: "llama-3.1-8b-instant"
          });
          if (aiRaw) {
            const parsed = JSON.parse(aiRaw || '{"reasons":[]}');
@@ -763,7 +816,10 @@ router.post("/nutrition-scan", authMiddleware, async (req, res) => {
                 const f = foods.find(food => String(food._id) === String(m.foodId));
                 return f && f.name === r.name;
               });
-              if (match) match.reason = r.reason;
+              if (match) {
+                if (!hasPredefinedGoal && !matches.some(m => m.score > 50)) match.score = 90;
+                match.reason = r.reason;
+              }
            });
          }
        } catch (err) {

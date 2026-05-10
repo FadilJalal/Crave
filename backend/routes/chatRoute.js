@@ -2,11 +2,9 @@ import express from "express";
 import foodModel from "../models/foodModel.js";
 import restaurantModel from "../models/restaurantModel.js";
 import reviewModel from "../models/reviewModel.js";
-const router = express.Router();
+import { groqMoodChat } from "../utils/groqClient.js";
 
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
-const GROQ_KEY = process.env.GROQ_MOOD_API_KEY || process.env.GROQ_API_KEY;
-console.log("[chat] Using GROQ_KEY length:", GROQ_KEY ? GROQ_KEY.length : 0);
+const router = express.Router();
 
 function tokenize(text = "") {
   return String(text)
@@ -126,13 +124,8 @@ function fallbackReply(question = "", items = []) {
   // If no specific keyword match, use all items
   const workingSet = filteredItems.length > 0 ? filteredItems : items;
 
-  // Natural chat handling for greetings and small talk.
-  if (/^(hi|hey|hello|yo|hola|salam|assalam|good morning|good evening)\b/.test(q)) {
-    return "Hey! I can help you find food by budget, taste, category, or restaurant. Try: spicy under AED 30, best burgers, or vegetarian options.";
-  }
-  if (/\b(how are you|what can you do|help|who are you)\b/.test(q)) {
-    return "I am Crave AI. Ask me about menu items, prices, restaurant info, delivery limits, or recommendations based on your budget and taste.";
-  }
+  // Natural chat handling for greetings and small talk will now be handled by Groq for a more "AI" feel.
+  // We only keep the very basic fallback if Groq is totally down.
 
   if (q.includes("cheap") || q.includes("budget") || q.includes("under")) {
     const budget = Number(q.match(/(\d+)/)?.[1] || 40);
@@ -175,7 +168,7 @@ function fallbackReply(question = "", items = []) {
   }
 
   if (q.includes("review") || q.includes("feedback") || q.includes("rating") || q.includes("hows") || q.includes("vibe") || q.includes("quality") || q.includes("good")) {
-    const restMatch = workingSet.find(i => q.includes(i.restaurant.toLowerCase()))?.restaurant || "this place";
+    const restMatch = workingSet.find(i => typeof i.restaurant === 'string' && q.includes(i.restaurant.toLowerCase()))?.restaurant || "this place";
     return `People are lowkey loving ${restMatch}. Legit reviews say the food is fire but service can be slow during rush hours. fr no cap. ✨`;
   }
 
@@ -266,30 +259,19 @@ async function askGroq({ question, history, context }) {
     }))
     .filter((m) => m.content.trim());
 
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${GROQ_KEY}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      temperature: 0.35,
-      max_tokens: 500,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...chatHistory,
-        { role: "user", content: question },
-      ],
-    }),
+  const text = await groqMoodChat({
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...chatHistory,
+      { role: "user", content: question },
+    ],
+    model: "llama-3.1-8b-instant",
+    temperature: 0.6,
+    jsonMode: false
   });
 
-  const data = await response.json();
-  const text = data?.choices?.[0]?.message?.content?.trim();
-  if (!response.ok || !text) {
-    const msg = data?.error?.message || "Groq API request failed";
-    console.error("GROQ API ERROR:", data?.error || data);
-    throw new Error(msg);
+  if (!text) {
+    throw new Error("Empty response from AI engine");
   }
 
   return formatAssistantReply(text);
@@ -365,29 +347,21 @@ router.post("/", async (req, res) => {
     const activeBudget = getMostRecentBudget(history, q);
     const scopedContext = buildScopedContext(q, dbContext, menuItems, activeBudget);
 
-    // Strict budget guard for CURRENT query to keep it lightning fast if possible
-    const currentBudget = extractBudget(q);
-    if (currentBudget) {
-      const budgetReply = buildStrictBudgetReply(q, workingItems);
-      if (budgetReply) {
-        return res.json({ success: true, reply: formatAssistantReply(budgetReply) });
-      }
-    }
+    // The AI will handle budget queries naturally through the Groq prompt.
+    // Removing the strict budget guard to prevent it from bypassing the LLM's conversational tone.
 
     const mergedContext = {
       ...scopedContext,
-      frontendMenuSnapshot: menuItems.slice(0, 200),
+      // Removed frontendMenuSnapshot to save ~1200 tokens per request and avoid 6000 TPM limits.
     };
 
     // Provider: Groq only.
-    if (GROQ_KEY) {
-      try {
-        const reply = await askGroq({ question: q, history, context: mergedContext });
-        return res.json({ success: true, reply });
-      } catch (groqErr) {
-        console.error("[chat][groq]", groqErr.message);
-        return res.json({ success: true, reply: fallbackReply(q, workingItems) });
-      }
+    try {
+      const reply = await askGroq({ question: q, history, context: mergedContext });
+      return res.json({ success: true, reply });
+    } catch (groqErr) {
+      console.error("[chat][groq]", groqErr.message);
+      return res.json({ success: true, reply: fallbackReply(q, workingItems) });
     }
 
     return res.json({ success: true, reply: fallbackReply(q, workingItems) });

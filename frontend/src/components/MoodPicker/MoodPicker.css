@@ -471,3 +471,42 @@
     50% { width: 60%; }
     100% { transform: translateX(300%); width: 30%; }
 }
+
+/* ── No Results State ── */
+.mp-no-results {
+    text-align: center;
+    padding: 60px 20px;
+    background: rgba(255, 90, 31, 0.05);
+    border-radius: 30px;
+    border: 1px dashed rgba(255, 90, 31, 0.2);
+    margin-top: 40px;
+}
+.no-res-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.8;
+}
+.mp-no-results h3 {
+    font-size: 24px;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+[data-theme="dark"] .mp-no-results h3 { color: white; }
+.mp-no-results p {
+    color: #64748b;
+    margin-bottom: 24px;
+}
+.clear-vibe-btn {
+    background: #ff5a1f;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 100px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.clear-vibe-btn:hover {
+    transform: scale(1.05);
+    background: #ff2e00;
+}

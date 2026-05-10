@@ -27,6 +27,7 @@ const Navbar = ({ setShowLogin }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [searchRestaurants, setSearchRestaurants] = useState([]);
   const [scrolled, setScrolled] = useState(false);
   const [isAiSearching, setIsAiSearching] = useState(false);
   const searchDebounce = useRef(null);
@@ -111,7 +112,7 @@ const Navbar = ({ setShowLogin }) => {
 
   useEffect(() => {
     clearTimeout(searchDebounce.current);
-    if (!searchQuery.trim()) { setSearchResults([]); setIsAiSearching(false); return; }
+    if (!searchQuery.trim()) { setSearchResults([]); setSearchRestaurants([]); setIsAiSearching(false); return; }
 
     // Instant local filter for speed
     const local = (food_list || []).filter(item =>
@@ -119,6 +120,7 @@ const Navbar = ({ setShowLogin }) => {
       item.category.toLowerCase().includes(searchQuery.toLowerCase())
     ).slice(0, 5);
     setSearchResults(local);
+    setSearchRestaurants([]); // Clear local initially
 
     // AI Deep Search for intent
     searchDebounce.current = setTimeout(async () => {
@@ -133,10 +135,12 @@ const Navbar = ({ setShowLogin }) => {
         if (data.success) {
           // If query has price intent (contains numbers), don't show old local results if AI found nothing
           const hasPriceIntent = /\d+/.test(searchQuery);
-          if (data.data.length > 0) {
+          if (data.data.length > 0 || (data.restaurants && data.restaurants.length > 0)) {
             setSearchResults(data.data.slice(0, 7));
+            setSearchRestaurants(data.restaurants || []);
           } else if (hasPriceIntent) {
             setSearchResults([]); // No results under that price
+            setSearchRestaurants([]);
           }
         }
       } catch (err) {
@@ -437,12 +441,36 @@ const Navbar = ({ setShowLogin }) => {
               onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchOpen(true)} />
             {searchQuery && <button className='nb-search-clear' onClick={() => { setSearchQuery(''); setSearchResults([]); }}>✕</button>}
           </div>
-          {searchOpen && (searchResults.length > 0 || isAiSearching) && (
+          {searchOpen && (searchResults.length > 0 || searchRestaurants.length > 0 || isAiSearching) && (
             <div className='nb-search-results'>
               {isAiSearching && <div className='nb-search-loading'>Searching with AI... ✨</div>}
+              
+              {searchRestaurants.length > 0 && (
+                <div className='nb-search-rest-section'>
+                  <div className='nb-search-section-title' style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Restaurants</div>
+                  {searchRestaurants.map(rest => (
+                    <div key={rest._id} className='nb-search-item' style={{ borderLeft: '3px solid #ff5a1f' }} onClick={() => {
+                      setSearchQuery(''); setSearchResults([]); setSearchRestaurants([]); setSearchOpen(false);
+                      navigate(`/restaurants/${rest._id}`);
+                    }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 8, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        {rest.logo ? <img src={`${url}/images/${rest.logo}`} alt={rest.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display='none'} /> : <span style={{ fontWeight: 800, color: '#ff5a1f' }}>{rest.name[0]}</span>}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p className='nb-si-name'>{rest.name}</p>
+                        <p className='nb-si-cat' style={{ color: '#ff5a1f' }}>Restaurant</p>
+                      </div>
+                    </div>
+                  ))}
+                  {searchResults.length > 0 && (
+                    <div className='nb-search-section-title' style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', borderTop: '1px solid #f1f5f9', marginTop: 4 }}>Menu Items</div>
+                  )}
+                </div>
+              )}
+
               {searchResults.map(item => (
                 <div key={item._id} className='nb-search-item' onClick={() => {
-                  setSearchQuery(''); setSearchResults([]); setSearchOpen(false);
+                  setSearchQuery(''); setSearchResults([]); setSearchRestaurants([]); setSearchOpen(false);
                   navigate(`/restaurants/${item.restaurantId?._id || item.restaurantId}`);
                   setTimeout(() => {
                     document.getElementById('food-display')?.scrollIntoView({ behavior: 'smooth' });

@@ -20,7 +20,9 @@ const FoodChat = () => {
 
   const buildMenuContext = () => {
     if (!food_list.length) return "Menu is loading...";
-    return food_list.slice(0, 150).map(f =>
+    // Slicing to 30 instead of 150 to drastically reduce payload size and save tokens.
+    // The backend AI already pulls from the DB directly anyway.
+    return food_list.slice(0, 30).map(f =>
       `- ${f.name} | ${f.category} | ${currency}${f.price} | "${f.description?.slice(0, 60)}"`
     ).join("\n");
   };
