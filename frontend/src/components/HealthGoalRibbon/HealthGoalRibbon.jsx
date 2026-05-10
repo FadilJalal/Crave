@@ -9,8 +9,6 @@ const HealthGoalRibbon = () => {
     const { healthGoal, updateHealthProfile, token } = useContext(StoreContext);
     const [customQuery, setCustomQuery] = useState("");
 
-    if (!token) return null;
-
     const GOALS = [
         { id: "None", label: "GENERAL", emoji: "🍱", color: "#64748b" },
         { id: "Keto", label: "KETO", emoji: "🥩", color: "#f59e0b" },

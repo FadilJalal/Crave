@@ -14,10 +14,17 @@ export const hasFeatureAccess = (subscription, featureName) => {
   const features = subscription.features;
   if (!features || typeof features !== "object") return true;
 
+  // Dependencies
   if (featureName === "bulkUpload" && features.menu === false) return false;
+
+  const aiFeatures = ["aiPromoGenerator", "aiInsights", "aiCustomerSegmentation", "aiReviewReply", "aiLaborOptimization", "aiMarketingCampaigns"];
 
   const v = features[featureName];
   if (v === false) return false;
+  
+  // If an AI feature is missing from the list, it should be locked (not free)
+  if (v === undefined && aiFeatures.includes(featureName)) return false;
+
   return true;
 };
 

@@ -7,15 +7,14 @@ export default function Topbar() {
   const location = useLocation();
 
   const getTitle = () => {
-    switch (location.pathname) {
-      case "/dashboard": return "Dashboard Overview";
-      case "/restaurants": return "Add Restaurant";
-      case "/restaurants/list": return "Restaurant List";
-      case "/broadcast": return "Broadcast";
-      case "/messages": return "Support Inbox";
-      case "/subscriptions": return "Subscriptions";
-      default: return "Crave. Super Admin";
-    }
+    const path = location.pathname;
+    if (path === "/dashboard") return "Platform Intelligence";
+    if (path === "/restaurants") return "Onboard Restaurant";
+    if (path === "/restaurants/list") return "Partner Network";
+    if (path === "/broadcast") return "System Broadcast";
+    if (path === "/messages") return "Support Inbox";
+    if (path === "/subscriptions") return "Enterprise Subscriptions";
+    return "Crave. Super Admin";
   };
 
   return (
@@ -25,10 +24,10 @@ export default function Topbar() {
       borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 100
     }}>
       <div>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 950, letterSpacing: "-0.8px" }}>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 950, letterSpacing: "-0.8px", color: "var(--text)" }}>
           {getTitle()}
         </h2>
-        <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>
+        <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--muted)", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           {new Date().toLocaleDateString("en-AE", { weekday: "long", day: "numeric", month: "long" })}
         </p>
       </div>
@@ -47,7 +46,6 @@ export default function Topbar() {
           }}
           onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
           onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-          title={dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
         >
           {dark ? "☀️" : "🌙"}
         </button>
@@ -58,7 +56,13 @@ export default function Topbar() {
             <div style={{ fontSize: 13, fontWeight: 900 }}>Crave.</div>
             <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>Super Admin</div>
           </div>
-          <div style={{ width: 38, height: 38, borderRadius: 12, background: "#6366f1", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 16 }}>
+          <div style={{ 
+            width: 38, height: 38, borderRadius: 12, 
+            background: "linear-gradient(135deg, #6366f1, #a855f7)", 
+            color: "white", display: "flex", alignItems: "center", justifyContent: "center", 
+            fontWeight: 900, fontSize: 16,
+            boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)"
+          }}>
             C
           </div>
         </div>

@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, LineChart, Line
+} from "recharts";
 
 /* ─── Procurement Hub ────────────────────────────────────────── */
 
@@ -252,6 +256,111 @@ export default function ProcurementHub() {
           </div>
         )}
 
+        {activeTab === "analytics" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* KPI Row */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+              <AnalyticsKpi 
+                label="Monthly Spend" 
+                value={`AED ${(suppliers.reduce((acc, s) => acc + (s.items.length * 1250), 0) / 12).toFixed(0)}`} 
+                trend="+12.5%" 
+                dark={dark} 
+                icon={<TrendingUp size={20} />} 
+              />
+              <AnalyticsKpi 
+                label="Supplier Network" 
+                value={suppliers.length} 
+                trend="Healthy" 
+                dark={dark} 
+                icon={<Users size={20} />} 
+              />
+              <AnalyticsKpi 
+                label="Inventory Health" 
+                value={`${Math.round((inventory.filter(i => i.currentStock > i.minimumStock).length / (inventory.length || 1)) * 100)}%`} 
+                trend="Optimized" 
+                dark={dark} 
+                icon={<ShieldCheck size={20} />} 
+              />
+              <AnalyticsKpi 
+                label="Avg Delivery Time" 
+                value="32h" 
+                trend="-4h" 
+                dark={dark} 
+                icon={<Clock size={20} />} 
+              />
+            </div>
+
+            {/* Charts Row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 24 }}>
+              {/* Spend Trend */}
+              <div style={{ background: glass, border: `1px solid ${border}`, borderRadius: 28, padding: 32 }}>
+                <h3 style={{ margin: "0 0 24px", fontSize: 18, fontWeight: 900 }}>Procurement Spend Trend</h3>
+                <div style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={[
+                      { name: "Jan", spend: 4200 }, { name: "Feb", spend: 3800 }, { name: "Mar", spend: 5100 },
+                      { name: "Apr", spend: 4800 }, { name: "May", spend: 6200 }, { name: "Jun", spend: 5800 }
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={dark ? "rgba(255,255,255,0.05)" : "#f1f5f9"} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: mutedC, fontSize: 12, fontWeight: 700 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: mutedC, fontSize: 12, fontWeight: 700 }} />
+                      <Tooltip 
+                        contentStyle={{ background: dark ? "#1e293b" : "white", border: `1px solid ${border}`, borderRadius: 12, boxShadow: "0 10px 20px rgba(0,0,0,0.1)" }}
+                        itemStyle={{ color: accent, fontWeight: 800 }}
+                      />
+                      <Line type="monotone" dataKey="spend" stroke={accent} strokeWidth={4} dot={{ r: 6, fill: accent, strokeWidth: 2, stroke: "white" }} activeDot={{ r: 8 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Category Distribution */}
+              <div style={{ background: glass, border: `1px solid ${border}`, borderRadius: 28, padding: 32 }}>
+                <h3 style={{ margin: "0 0 24px", fontSize: 18, fontWeight: 900 }}>Spend by Category</h3>
+                <div style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: "Dairy", value: 400 }, { name: "Meat", value: 300 },
+                          { name: "Dry Goods", value: 300 }, { name: "Packaging", value: 200 }
+                        ]}
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {[accent, "#10b981", "#f59e0b", "#ef4444"].map((color, index) => (
+                          <Cell key={`cell-${index}`} fill={color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Row: Top Suppliers */}
+            <div style={{ background: glass, border: `1px solid ${border}`, borderRadius: 28, padding: 32 }}>
+              <h3 style={{ margin: "0 0 24px", fontSize: 18, fontWeight: 900 }}>Top Suppliers by Volume</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+                {suppliers.slice(0, 3).map((s, i) => (
+                  <div key={i} style={{ padding: 20, borderRadius: 20, background: dark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: `1px solid ${border}`, display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 12, background: accent + "15", color: accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                      <Landmark size={24} />
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 900, fontSize: 15 }}>{s.name}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: mutedC, fontWeight: 700 }}>{s.items.length} Catalog Items</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Order Stock Modal ── */}
         <AnimatePresence>
           {showOrderModal && (
@@ -453,6 +562,25 @@ function FormInput({ label, value, onChange, dark, placeholder }) {
         placeholder={placeholder}
         style={{ padding: "16px 20px", borderRadius: 16, background: dark ? "rgba(255, 255, 255, 0.03)" : "#f8fafc", border: `1px solid ${border}`, color: "inherit", fontWeight: 700, outline: "none", transition: "0.2s" }}
       />
+    </div>
+  );
+}
+
+function AnalyticsKpi({ label, value, trend, dark, icon }) {
+  const border = dark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)";
+  const glass = dark ? "rgba(255, 255, 255, 0.03)" : "white";
+  const mutedC = dark ? "rgba(255, 255, 255, 0.4)" : "#64748b";
+
+  return (
+    <div style={{ background: glass, border: `1px solid ${border}`, borderRadius: 24, padding: "20px 24px", display: "flex", flexDirection: "column", gap: 12, boxShadow: "0 10px 20px rgba(0,0,0,0.02)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 11, fontWeight: 900, color: mutedC, textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</span>
+        <div style={{ color: "#6366f1", background: "rgba(99, 102, 241, 0.1)", padding: 8, borderRadius: 10 }}>{icon}</div>
+      </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <span style={{ fontSize: 24, fontWeight: 950 }}>{value}</span>
+        <span style={{ fontSize: 11, fontWeight: 800, color: trend.includes("+") ? "#10b981" : "#6366f1" }}>{trend}</span>
+      </div>
     </div>
   );
 }

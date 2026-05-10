@@ -2,6 +2,7 @@ import adminModel from "../models/adminModel.js";
 import restaurantModel from "../models/restaurantModel.js";
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
+import messageModel from "../models/messageModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -98,7 +99,9 @@ export const getAdminStats = async (req, res) => {
       activeRestaurants,
       upcomingRenewalsList,
       recentRestaurants,
-      sharedOrderCount
+      sharedOrderCount,
+      unreadMessagesCount,
+      recentMessages
     ] = await Promise.all([
       restaurantModel.countDocuments({}),
       orderModel.countDocuments({ status: { $ne: "Cancelled" } }),
@@ -108,10 +111,12 @@ export const getAdminStats = async (req, res) => {
       restaurantModel.find({ "subscription.status": "active" }).select("name subscription"),
       restaurantModel.find({ 
         "subscription.status": "active", 
-        "subscription.endDate": { $lte: nextWeek, $gte: now } 
-      }).select("name subscription.endDate logo"),
+        "subscription.expiresAt": { $lte: nextWeek, $gte: now } 
+      }).select("name subscription.expiresAt logo"),
       restaurantModel.find().sort({ createdAt: -1 }).limit(5).select("name logo createdAt"),
       orderModel.countDocuments({ isSharedDelivery: true, status: "Delivered" }),
+      messageModel.countDocuments({ readByAdmin: false, from: "restaurant" }),
+      messageModel.find({ from: "restaurant" }).sort({ createdAt: -1 }).limit(5).populate("restaurantId", "name logo")
     ]);
 
     // Calculate Idle Restaurants (Active subscription but 0 orders in 7 days)
@@ -138,7 +143,9 @@ export const getAdminStats = async (req, res) => {
         recentRestaurants,
         idleRestaurants: idleCount,
         activeSubscriptions: activeRestaurants.length,
-        sharedOrderCount
+        sharedOrderCount,
+        unreadMessagesCount,
+        recentMessages
       },
     });
   } catch (err) {

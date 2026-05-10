@@ -53,18 +53,28 @@ const Home = () => {
         <FlashDeals />
       </div>
 
+      <div className="section-spacer" />
+
       <div className="reveal-on-scroll reveal">
         <SmartTopPick />
       </div>
       <div className="reveal-on-scroll reveal">
         <TopRestaurants />
       </div>
+
+      <div className="section-spacer" />
+
       <div className="reveal-on-scroll reveal">
         <MoodPicker />
       </div>
+
+      <div className="section-spacer" />
+
       <div className="reveal-on-scroll reveal">
         <HealthGoalRibbon />
       </div>
+
+      <div className="section-spacer" />
       <div className="reveal-on-scroll reveal">
         <FoodDisplay category={category} />
       </div>

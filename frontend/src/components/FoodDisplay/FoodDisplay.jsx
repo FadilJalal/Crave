@@ -80,13 +80,15 @@ const FoodDisplay = ({ category }) => {
           </Link>
         </div>
         {healthGoal !== "None" && !hasMatches && (
-          <div className="fd-no-match-alert">
-            <div className="fd-no-match-icon">🧬</div>
+          <div className="fd-no-match-alert" style={{ padding: '16px 24px', borderStyle: 'solid', borderWidth: '1px' }}>
+            <div className="fd-no-match-icon" style={{ fontSize: '20px', padding: '8px' }}>🧬</div>
             <div className="fd-no-match-text">
-              <h4>No direct matches for "{healthGoal}" here.</h4>
-              <p>The AI suggests exploring other categories or customizing these items to fit your goal.</p>
+              <h4 style={{ fontSize: '14px' }}>No direct matches for "{healthGoal}" in this list.</h4>
+              <p style={{ fontSize: '12px' }}>Showing all items instead. You can customize them to fit your goal.</p>
             </div>
-            <button className="fd-ai-help-btn" onClick={() => window.scrollTo(0, 0)}>Change Goal <ArrowRight size={14} /></button>
+            <button className="fd-ai-help-btn" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ padding: '8px 14px', fontSize: '11px' }}>
+               Change Goal <ArrowRight size={12} />
+            </button>
           </div>
         )}
 

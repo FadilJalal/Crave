@@ -721,17 +721,33 @@ router.post("/recommendations", async (req, res) => {
 });
 
 // ── 11. AI NUTRITION SCAN (HEALTH-SYNC) ──────────────────────────────────
-router.post("/nutrition-scan", authMiddleware, async (req, res) => {
+router.post("/nutrition-scan", async (req, res) => {
   try {
-    const { items = [], userId } = req.body;
+    let { items = [], userId, healthGoal: guestGoal, allergies: guestAllergies } = req.body;
     
-    // 1. Get User Health Profile
-    const user = await userModel.findById(userId).select("healthGoal allergies");
-    if (!user || user.healthGoal === "None") {
-      return res.json({ success: true, matches: [] }); // No goal set, no matches to show
+    // Optional Auth: if no userId in body, check header token
+    if (!userId && req.headers.token) {
+      try {
+        const decoded = jwt.verify(req.headers.token, process.env.JWT_SECRET);
+        userId = decoded.id;
+      } catch (err) {}
     }
 
-    const { healthGoal, allergies } = user;
+    let healthGoal = guestGoal || "None";
+    let allergies = guestAllergies || [];
+
+    if (userId) {
+      const user = await userModel.findById(userId).select("healthGoal allergies");
+      if (user && user.healthGoal && user.healthGoal !== "None") {
+        healthGoal = user.healthGoal;
+        allergies = user.allergies || [];
+      }
+    }
+
+    if (healthGoal === "None") {
+      return res.json({ success: true, matches: [] });
+    }
+
     const apiKey = process.env.GROQ_MOOD_API_KEY || process.env.GROQ_API_KEY || "";
 
     // 2. Logic-based pre-scoring
@@ -768,6 +784,16 @@ router.post("/nutrition-scan", authMiddleware, async (req, res) => {
           score = 95; reason = "Perfect for sharing & groups"; 
         } else if (/large|family|party/i.test(text)) {
           score = 80; reason = "Ideal for multiple people";
+        } else if (/sharing/i.test(text)) {
+          score = 75; reason = "Designed for sharing";
+        }
+      }
+
+      // Generic fallback for any other custom text goal
+      if (score === 0 && healthGoal && healthGoal !== "None") {
+        if (new RegExp(healthGoal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "i").test(text)) {
+          score = 70;
+          reason = `Matches "${healthGoal}"`;
         }
       }
 

@@ -54,6 +54,14 @@ export const NotificationProvider = ({ children }) => {
             icon: "⚠️", cta: "Review" 
           });
         }
+
+        if (stats.unreadMessagesCount > 0) {
+          alertsArr.push({ 
+            id: "unread-msgs", type: "info", title: "Unread Messages", 
+            desc: `You have ${stats.unreadMessagesCount} unread message(s) in the support inbox.`, 
+            icon: "💬", cta: "Open Inbox" 
+          });
+        }
         
         setRawAlerts(alertsArr);
 
@@ -70,6 +78,21 @@ export const NotificationProvider = ({ children }) => {
               time: r.createdAt,
               color: "#10b981",
               icon: "🚀"
+            });
+          });
+        }
+
+        if (stats.recentMessages) {
+          stats.recentMessages.forEach(m => {
+            activityArr.push({
+              id: `msg-${m._id}`,
+              type: "message",
+              category: "Support",
+              title: `Message from ${m.restaurantId?.name || "Partner"}`,
+              desc: m.body.length > 50 ? m.body.substring(0, 50) + "..." : m.body,
+              time: m.createdAt,
+              color: "#6366f1",
+              icon: "💬"
             });
           });
         }

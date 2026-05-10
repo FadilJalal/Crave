@@ -6,13 +6,13 @@ const APP_NAME = import.meta.env.VITE_APP_NAME || "Crave.";
 
 export default function Sidebar() {
   const sidebarRef = useRef(null);
-  const { dark, toggle } = useTheme();
+  const { dark } = useTheme();
   const [expandedSections, setExpandedSections] = useState(() => {
     try {
       const saved = localStorage.getItem("as_sidebar_expanded");
       if (saved) return JSON.parse(saved);
     } catch { }
-    return { mgmt: true, infra: true, comms: true, finance: true };
+    return { infra: true, comms: true, finance: true };
   });
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export default function Sidebar() {
   useLayoutEffect(() => {
     const sidebar = sidebarRef.current;
     if (!sidebar) return;
-    const savedScroll = sessionStorage.getItem("sidebarScroll");
+    const savedScroll = sessionStorage.getItem("sidebarScroll_as");
     if (savedScroll) {
       sidebar.scrollTop = parseInt(savedScroll, 10);
     }
@@ -35,7 +35,7 @@ export default function Sidebar() {
   useEffect(() => {
     const sidebar = sidebarRef.current;
     if (!sidebar) return;
-    const handleScroll = () => sessionStorage.setItem("sidebarScroll", sidebar.scrollTop);
+    const handleScroll = () => sessionStorage.setItem("sidebarScroll_as", sidebar.scrollTop);
     sidebar.addEventListener("scroll", handleScroll, { passive: true });
     return () => sidebar.removeEventListener("scroll", handleScroll);
   }, []);
@@ -50,8 +50,10 @@ export default function Sidebar() {
     return (
       <div className={`nav-group ${isExpanded ? "expanded" : ""}`} key={id}>
         <button className="nav-group-header" onClick={() => toggleSection(id)}>
-          <span className="nav-group-icon">{icon}</span>
-          <span className="nav-group-label">{label}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+            <span className="nav-group-icon">{icon}</span>
+            <span className="nav-group-label">{label}</span>
+          </div>
           <span className={`nav-group-arrow ${isExpanded ? "open" : ""}`}>›</span>
         </button>
         <div className="nav-group-content" style={{ display: isExpanded ? "block" : "none" }}>
@@ -64,95 +66,86 @@ export default function Sidebar() {
   return (
     <>
       <style>{`
-        .ra-sidebar {
+        .as-sidebar {
           position: sticky;
           top: 0;
           height: 100vh;
-          padding: 20px 16px 0;
           background: #0b1220;
-          border-right: 1px solid rgba(255, 255, 255, 0.08);
+          color: #fff;
           display: flex;
           flex-direction: column;
-          gap: 6px;
-          overflow-y: auto;
           width: 260px;
-          color: #f9fafb;
+          border-right: 1px solid rgba(255, 255, 255, 0.05);
+          overflow-y: auto;
+          scrollbar-width: none;
         }
-        .ra-sidebar::-webkit-scrollbar {
-          display: none;
-        }
+        .as-sidebar::-webkit-scrollbar { display: none; }
+
         .brand {
+          padding: 32px 24px;
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 8px 10px 20px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-          margin-bottom: 6px;
+          margin-bottom: 8px;
         }
         .brand-logo {
           width: 40px;
           height: 40px;
-          border-radius: 12px;
-          background: linear-gradient(135deg, #e64a19, #f4511e);
-          box-shadow: 0 8px 20px rgba(230, 74, 25, 0.35);
+          border-radius: 10px;
+          background: linear-gradient(135deg, #6366f1, #a855f7);
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
           font-weight: 900;
           font-size: 18px;
-          flex-shrink: 0;
+          box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
         }
         .brand-name {
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 800;
-          color: #f9fafb;
-          letter-spacing: -0.3px;
+          color: #fff;
           margin: 0;
+          line-height: 1.1;
+          letter-spacing: -0.5px;
         }
         .brand-subtitle {
           font-size: 11px;
-          color: rgba(249, 250, 251, 0.62);
-          margin-top: 2px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.4);
           text-transform: uppercase;
+          margin-top: 2px;
+          letter-spacing: 0.5px;
         }
+
         .nav {
+          flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 4px;
-          flex: 1;
-          overflow-y: auto;
-          padding-right: 2px;
-          scrollbar-width: none;
-        }
-        .nav::-webkit-scrollbar {
-          display: none;
+          padding: 0 12px;
         }
         .nav-item-primary {
-          margin-bottom: 4px;
+          margin-bottom: 16px;
         }
         .nav-item-primary a {
-          padding: 11px 14px;
-          border-radius: 12px;
           display: flex;
           align-items: center;
           gap: 10px;
+          padding: 12px 16px;
+          border-radius: 12px;
+          color: #fff;
           font-weight: 700;
           font-size: 14px;
-          color: rgba(255, 255, 255, 0.76);
-          border: 1px solid transparent;
-          transition: all .15s ease;
           text-decoration: none;
+          transition: all 0.2s;
         }
         .nav-item-primary a:hover {
-          background: rgba(255, 255, 255, 0.06);
-          color: #ffffff;
+          background: rgba(255, 255, 255, 0.05);
         }
         .nav-item-primary a.active {
-          background: rgba(59, 130, 246, 0.12);
-          border-color: rgba(59, 130, 246, 0.25);
-          color: #ffffff;
+          background: #6366f1;
         }
+
         .nav-group {
           margin-bottom: 4px;
         }
@@ -160,22 +153,16 @@ export default function Sidebar() {
           width: 100%;
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 11px 14px;
+          padding: 12px 16px;
           background: transparent;
           border: none;
-          color: rgba(249, 250, 251, 0.62);
-          font-weight: 700;
-          font-size: 13px;
+          color: #fff;
           cursor: pointer;
-          transition: all 0.2s;
-          border-radius: 12px;
+          font-weight: 800;
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
           text-align: left;
-          margin-top: 4px;
-        }
-        .nav-group-header:hover {
-          background: rgba(255, 255, 255, 0.06);
-          color: #ffffff;
         }
         .nav-group-icon {
           font-size: 16px;
@@ -183,82 +170,70 @@ export default function Sidebar() {
         }
         .nav-group-label {
           flex: 1;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          font-size: 11px;
         }
         .nav-group-arrow {
           font-size: 14px;
-          transition: transform 0.3s ease;
+          transition: transform 0.2s;
           opacity: 0.4;
         }
-        .nav-group-arrow.open {
+        .nav-group.expanded .nav-group-arrow {
           transform: rotate(90deg);
           opacity: 0.8;
         }
+
         .nav-group-content {
-          max-height: 0;
-          overflow: hidden;
-          transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-          opacity: 0;
-          padding-left: 14px;
-          margin-top: 2px;
-        }
-        .nav-group.expanded .nav-group-content {
-          max-height: 400px;
-          opacity: 1;
+          padding-bottom: 8px;
         }
         .nav-group-content a {
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 9px 14px;
+          padding: 10px 16px 10px 42px;
           font-size: 13px;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.76);
+          color: rgba(255, 255, 255, 0.7);
           text-decoration: none;
+          font-weight: 600;
           transition: all 0.2s;
           border-radius: 8px;
+          margin-bottom: 2px;
         }
         .nav-group-content a:hover {
           color: #fff;
-          background: rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.05);
         }
         .nav-group-content a.active {
           color: #fff;
-          background: rgba(59, 130, 246, 0.12);
+          background: rgba(255, 255, 255, 0.08);
         }
+
         .logout-container {
-          margin-top: auto;
-          padding-bottom: 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
+          padding: 24px;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
         .btn-logout {
           width: 100%;
-          padding: 11px 14px;
+          padding: 12px;
           border-radius: 12px;
-          border: 1px solid rgba(255, 255, 255, 0.12);
           background: transparent;
-          color: #f9fafb;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.5);
           font-weight: 700;
-          font-size: 14px;
+          font-size: 13px;
           cursor: pointer;
-          transition: all .15s;
-          text-align: center;
+          transition: all 0.2s;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 10px;
         }
         .btn-logout:hover {
-          background: rgba(255, 255, 255, 0.06);
-          color: #ffffff;
+          border-color: rgba(255, 255, 255, 0.2);
+          color: #fff;
+          background: rgba(255, 255, 255, 0.03);
         }
       `}</style>
       
-      <aside className="ra-sidebar" ref={sidebarRef}>
+      <aside className="as-sidebar" ref={sidebarRef}>
         <div className="brand">
           <div className="brand-logo">
             {APP_NAME.charAt(0).toUpperCase()}
@@ -312,4 +287,4 @@ export default function Sidebar() {
       </aside>
     </>
   );
-}
+}

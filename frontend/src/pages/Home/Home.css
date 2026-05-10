@@ -6,6 +6,11 @@
   margin: 12px 0;
 }
 
+.section-spacer {
+  height: 20px;
+  width: 100%;
+}
+
 .home-mini-cart {
   position: fixed;
   left: 50%;

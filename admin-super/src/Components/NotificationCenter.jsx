@@ -70,6 +70,7 @@ export default function NotificationCenter({ dark = false }) {
     if (n.action) n.action();
     else if (n.id.includes("renewals")) navigate("/subscriptions");
     else if (n.id.includes("idle")) navigate("/restaurants/list");
+    else if (n.id.includes("msg-") || n.id === "unread-msgs") navigate("/messages");
     else navigate("/dashboard");
     
     setIsOpen(false);
@@ -162,7 +163,7 @@ export default function NotificationCenter({ dark = false }) {
 
         {/* Tabs */}
         <div style={{ px: 28, display: "flex", gap: 8, padding: "16px 28px", background: dark ? "rgba(255,255,255,0.02)" : "#fcfdfe" }}>
-          {["All", "System", "Deployments"].map(tab => (
+          {["All", "System", "Deployments", "Support"].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}

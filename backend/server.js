@@ -155,7 +155,7 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 10000, // Increased for presentation stability
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Too many login attempts, please try again later." },

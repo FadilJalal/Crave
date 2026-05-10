@@ -424,7 +424,14 @@ const StoreContextProvider = (props) => {
     } catch { toast.error("Failed to set default address"); }
   };
 
-  const [healthGoal, setHealthGoal] = useState("None");
+  const [healthGoal, setHealthGoal] = useState(() => {
+    try {
+      const saved = localStorage.getItem('crave_health_goal');
+      return saved || "None";
+    } catch {
+      return "None";
+    }
+  });
   const [nutritionMatches, setNutritionMatches] = useState({});
 
   const fetchHealthProfile = async () => {
@@ -483,25 +490,28 @@ const StoreContextProvider = (props) => {
   };
 
   const updateHealthProfile = async (newGoal) => {
+    setHealthGoal(newGoal);
+    try { localStorage.setItem('crave_health_goal', newGoal); } catch {}
+    // Clear cached matches when goal changes
+    setNutritionMatches({});
+
     if (!token) return;
     try {
       const res = await axios.post(url + "/api/user/health-profile", { healthGoal: newGoal }, { headers: { token } });
-      if (res.data.success) {
-        setHealthGoal(newGoal);
-        // Clear cached matches when goal changes
-        setNutritionMatches({});
-      }
     } catch {
-      toast.error("Failed to update health goal");
+      // toast.error("Failed to update health goal");
     }
   };
 
   // Run a nutrition scan when needed (e.g. when menu loads or health goal changes)
   const runNutritionScan = async () => {
-    if (!token || healthGoal === "None" || !food_list.length) return;
+    if (healthGoal === "None" || !food_list.length) return;
     try {
       const itemIds = food_list.slice(0, 100).map(f => f._id);
-      const res = await axios.post(url + "/api/ai/nutrition-scan", { items: itemIds }, { headers: { token } });
+      const res = await axios.post(url + "/api/ai/nutrition-scan", { 
+        items: itemIds,
+        healthGoal: healthGoal // Send goal for guest processing
+      }, { headers: { token } });
       if (res.data.success) {
         const matchMap = {};
         res.data.matches.forEach(m => {
@@ -513,7 +523,7 @@ const StoreContextProvider = (props) => {
   };
 
   useEffect(() => {
-    if (token && healthGoal !== "None" && food_list.length) {
+    if (healthGoal !== "None" && food_list.length) {
       runNutritionScan();
     }
   }, [token, healthGoal, food_list.length]);

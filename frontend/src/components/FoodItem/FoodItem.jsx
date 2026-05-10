@@ -372,8 +372,8 @@ const FoodItem = (props) => {
                 <div key={gi} style={{ marginBottom: 28 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                     <span style={{ fontWeight: 900, fontSize: 16, color: modalText }}>{group.title}</span>
-                    {group.required && <span style={{ fontSize: 10, fontWeight: 900, color: '#dc2626', background: '#ffebeb', border: '1px solid rgba(220,38,38,0.2)', padding: '2px 10px', borderRadius: 20, textTransform: 'uppercase' }}>Required</span>}
-                    {group.multiSelect && <span style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', background: '#eff6ff', border: '1px solid rgba(29,78,216,0.2)', padding: '2px 10px', borderRadius: 20, textTransform: 'uppercase' }}>Choose Many</span>}
+                    {group.required && <span style={{ fontSize: 10, fontWeight: 900, color: '#dc2626', background: '#ffebeb', border: '1px solid rgba(220,38,38,0.2)', padding: '2px 10px', borderRadius: 20, textTransform: 'uppercase' }}>{t('required')}</span>}
+                    {group.multiSelect && <span style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', background: '#eff6ff', border: '1px solid rgba(29,78,216,0.2)', padding: '2px 10px', borderRadius: 20, textTransform: 'uppercase' }}>{t('choose_many')}</span>}
                   </div>
                   {group.options.map((opt, oi) => {
                     const sel = selections[gi];
@@ -408,7 +408,7 @@ const FoodItem = (props) => {
             {/* Footer */}
             <div style={{ padding: '0 24px 24px', position: 'sticky', bottom: 0, background: modalSurface, zIndex: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderTop: `1px solid ${modalBorder}`, marginBottom: 16, fontSize: 16, fontWeight: 900, color: modalText }}>
-                <span>Total</span>
+                <span>{t('total')}</span>
                 <span>{currency}{totalPrice.toFixed(2)}</span>
               </div>
               <button 

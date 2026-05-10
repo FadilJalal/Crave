@@ -26,10 +26,18 @@ export default function Broadcast() {
   const [ctaUrl, setCtaUrl]   = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult]   = useState(null);
+  
+  const [targetType, setTargetType] = useState("all"); // "all" | "single"
+  const [selectedRestaurant, setSelectedRestaurant] = useState("");
+  const [restaurants, setRestaurants] = useState([]);
 
   useEffect(() => {
     api.get("/api/broadcast/restaurants-count")
       .then(res => { if (res.data.success) setRestaurantCount(res.data.count); })
+      .catch(() => {});
+
+    api.get("/api/admin/restaurants")
+      .then(res => { if (res.data.success) setRestaurants(res.data.data); })
       .catch(() => {});
   }, []);
 
@@ -44,10 +52,18 @@ export default function Broadcast() {
 
   const handleSend = async () => {
     if (!subject || !heading || !body) return;
-    if (!confirm(`Send this broadcast to all ${restaurantCount} restaurant owners?`)) return;
+    if (targetType === "single" && !selectedRestaurant) return toast.warning("Please select a target restaurant");
+    
+    const targetName = targetType === "all" ? `${restaurantCount} restaurants` : restaurants.find(r => r._id === selectedRestaurant)?.name;
+    if (!confirm(`Send this broadcast to ${targetName}?`)) return;
+
     setSending(true); setResult(null);
     try {
-      const res = await api.post("/api/broadcast/send", { subject, heading, body, ctaText, ctaUrl, type });
+      const payload = { 
+        subject, heading, body, ctaText, ctaUrl, type,
+        restaurantId: targetType === "single" ? selectedRestaurant : "all"
+      };
+      const res = await api.post("/api/broadcast/send", payload);
       setResult({ success: res.data.success, message: res.data.message });
       if (res.data.success) toast.success(res.data.message);
       else toast.error(res.data.message);
@@ -120,6 +136,47 @@ export default function Broadcast() {
             </div>
           </div>
 
+          {/* Targeting */}
+          <div className="dash-panel" style={{ padding: '24px' }}>
+            <div className="dash-panel-head" style={{ marginBottom: '16px' }}>
+               <div>
+                  <h3 className="dash-panel-title">🎯 TARGET AUDIENCE</h3>
+               </div>
+            </div>
+            <div style={{ display: "flex", gap: 12, marginBottom: targetType === "single" ? 16 : 0 }}>
+              <button 
+                onClick={() => setTargetType("all")}
+                className={`pill ${targetType === "all" ? "pill-ok" : ""}`}
+                style={{ cursor: "pointer", padding: "8px 20px" }}
+              >
+                ALL RESTAURANTS ({restaurantCount ?? "..."})
+              </button>
+              <button 
+                onClick={() => setTargetType("single")}
+                className={`pill ${targetType === "single" ? "pill-ok" : ""}`}
+                style={{ cursor: "pointer", padding: "8px 20px" }}
+              >
+                SINGLE RESTAURANT
+              </button>
+            </div>
+            
+            {targetType === "single" && (
+              <div className="field" style={{ marginTop: 16 }}>
+                <select 
+                  className="input" 
+                  value={selectedRestaurant} 
+                  onChange={e => setSelectedRestaurant(e.target.value)}
+                  style={{ fontWeight: 800 }}
+                >
+                  <option value="">Select a restaurant...</option>
+                  {restaurants.map(r => (
+                    <option key={r._id} value={r._id}>{r.name} ({r.email})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
           <div className="dash-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
              <div className="field">
                 <label className="label">SUBJECT LINE</label>
@@ -148,19 +205,19 @@ export default function Broadcast() {
           <button
             className="as-logout-btn"
             onClick={handleSend}
-            disabled={sending || !subject || !heading || !body}
+            disabled={sending || !subject || !heading || !body || (targetType === "single" && !selectedRestaurant)}
             style={{ 
               height: '56px',
-              background: (sending || !subject || !heading || !body) ? "var(--border)" : accentColor,
+              background: (sending || !subject || !heading || !body || (targetType === "single" && !selectedRestaurant)) ? "var(--border)" : accentColor,
               color: "#fff",
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '10px',
-              boxShadow: (sending || !subject || !heading || !body) ? 'none' : `0 10px 20px -5px ${accentColor}44`
+              boxShadow: (sending || !subject || !heading || !body || (targetType === "single" && !selectedRestaurant)) ? 'none' : `0 10px 20px -5px ${accentColor}44`
             }}
           >
-            {sending ? "TRANSMITTING..." : `📡 TRANSMIT TO ${restaurantCount ?? "..."} ENTITIES`}
+            {sending ? "TRANSMITTING..." : targetType === "all" ? `📡 TRANSMIT TO ${restaurantCount ?? "..."} ENTITIES` : `📡 TRANSMIT TO ${restaurants.find(r => r._id === selectedRestaurant)?.name || "SELECTED"} ENTITY`}
           </button>
         </div>
 
